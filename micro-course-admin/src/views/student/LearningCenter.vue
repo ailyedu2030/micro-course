@@ -139,7 +139,13 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
+      <button
+        v-if="recentCourse.title"
+        type="button"
+        class="continue-learning"
+        :aria-label="`继续学习：${recentCourse.title}`"
+        @click="navigateToLearning(recentCourse)"
+      >
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner">
             <div class="continue-info">
@@ -161,16 +167,18 @@
             </div>
           </div>
         </el-card>
-      </div>
+      </button>
 
       <!-- 最近学习 -->
       <div v-if="recentRecords.length > 0" class="recent-learning-section">
         <div class="section-title">最近学习</div>
         <div class="recent-learning-list">
-          <div
+          <button
             v-for="record in recentRecords"
             :key="record.courseId"
+            type="button"
             class="recent-learning-item"
+            :aria-label="`继续学习：${record.title}`"
             @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
@@ -196,7 +204,7 @@
               />
               <span class="recent-progress-text">{{ record.progress }}%</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -410,7 +418,13 @@
       </div>
 
       <!-- 继续学习 -->
-      <div v-if="recentCourse.title" class="continue-learning h5-continue" @click="navigateToLearning(recentCourse)" style="cursor:pointer">
+      <button
+        v-if="recentCourse.title"
+        type="button"
+        class="continue-learning h5-continue"
+        :aria-label="`继续学习：${recentCourse.title}`"
+        @click="navigateToLearning(recentCourse)"
+      >
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner h5-continue-inner">
             <div class="continue-info">
@@ -425,16 +439,18 @@
             </div>
           </div>
         </el-card>
-      </div>
+      </button>
 
       <!-- 最近学习 (H5) -->
       <div v-if="recentRecords.length > 0" class="recent-learning-section h5-recent-learning">
         <div class="section-title">最近学习</div>
         <div class="recent-learning-list h5-recent-list">
-          <div
+          <button
             v-for="record in recentRecords"
             :key="record.courseId"
+            type="button"
             class="recent-learning-item"
+            :aria-label="`继续学习：${record.title}`"
             @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
@@ -451,7 +467,7 @@
               />
               <span class="recent-progress-text">{{ record.progress }}%</span>
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -1362,6 +1378,9 @@ onMounted(async () => {
   padding: var(--space-3) var(--space-4);
   background: var(--el-bg-color-overlay);
   border-radius: var(--radius-lg);
+  border: none;
+  width: 100%;
+  text-align: left;
   cursor: pointer;
   transition: background-color var(--duration-base) var(--ease-out),
               transform var(--duration-base) var(--ease-out),
@@ -1516,6 +1535,22 @@ onMounted(async () => {
    --------------------------------------------------------------------------- */
 .continue-card {
   border-radius: var(--radius-lg);
+}
+
+.continue-learning {
+  display: block;
+  width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  text-align: left;
+}
+
+.continue-learning:focus-visible,
+.recent-learning-item:focus-visible,
+.quick-entry-item:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 3px;
 }
 
 .continue-card-inner {
