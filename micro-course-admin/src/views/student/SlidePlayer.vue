@@ -135,9 +135,15 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           <span v-if="audioStatus === 'loading'" class="status-loading">
             <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频加载中...
           </span>
-          <span v-else-if="audioStatus === 'ready'" class="status-ready" @click="togglePlay">
+          <button
+            v-else-if="audioStatus === 'ready'"
+            type="button"
+            class="status-ready audio-status-btn"
+            aria-label="开始播放当前页面音频"
+            @click="togglePlay"
+          >
             <el-icon :size="14"><VideoPlay /></el-icon> ▶ 点击开始
-          </span>
+          </button>
           <span v-else-if="audioStatus === 'pending'" class="status-pending">
             <el-icon :size="14"><Clock /></el-icon> 等待音频生成{{ pendingTimeoutWarning }}
           </span>
@@ -160,7 +166,18 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
 
         <div class="progress-area">
           <span class="time-label">{{ formatTime(audioTime) }}</span>
-          <div class="progress-track" @click="seekAudioByClick" v-if="audioStatus !== 'pending' && audioStatus !== 'none'">
+          <div
+            v-if="audioStatus !== 'pending' && audioStatus !== 'none'"
+            class="progress-track"
+            role="slider"
+            tabindex="0"
+            aria-label="音频播放进度"
+            :aria-valuemin="0"
+            :aria-valuemax="Math.round(audioDuration || 0)"
+            :aria-valuenow="Math.round(audioTime || 0)"
+            @click="seekAudioByClick"
+            @keydown="seekAudioByKeydown"
+          >
             <div class="progress-fill" :style="{ width: audioProgress + '%' }" />
             <div class="progress-thumb" :style="{ left: audioProgress + '%' }" />
           </div>
@@ -186,13 +203,21 @@ v-for="s in speeds" :key="s"
 
     <!-- Keyboard hint (first visit) -->
     <transition name="hint-fade">
-      <div v-if="showKeyboardHint" class="keyboard-hint" @click="showKeyboardHint = false">
+      <div
+        v-if="showKeyboardHint"
+        class="keyboard-hint"
+        role="dialog"
+        aria-modal="true"
+        aria-label="键盘操作提示"
+        @click.self="dismissKeyboardHint"
+      >
         <div class="hint-card">
           <div class="hint-row"><kbd>←</kbd><kbd>→</kbd> 翻页</div>
           <div class="hint-row"><kbd>Space</kbd> 下一页</div>
           <div class="hint-row"><kbd>F</kbd> 全屏</div>
           <div class="hint-row"><kbd>Esc</kbd> 退出全屏</div>
-          <span class="hint-dismiss">点击任意处关闭</span>
+          <button type="button" class="keyboard-hint-dismiss" @click="dismissKeyboardHint">关闭提示</button>
+          <span class="hint-dismiss">点击遮罩或按关闭按钮可退出</span>
         </div>
       </div>
     </transition>
@@ -708,7 +733,34 @@ function seekAudioByClick(e) {
   audioRef.value.currentTime = ((e.clientX - rect.left) / rect.width) * audioDuration.value
 }
 
+function seekAudioByKeydown(e) {
+  if (!audioRef.value || !audioDuration.value) return
+  const step = Math.max(5, Math.round(audioDuration.value / 20))
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+    e.preventDefault()
+    audioRef.value.currentTime = Math.min(audioDuration.value, audioRef.value.currentTime + step)
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+    e.preventDefault()
+    audioRef.value.currentTime = Math.max(0, audioRef.value.currentTime - step)
+  } else if (e.key === 'Home') {
+    e.preventDefault()
+    audioRef.value.currentTime = 0
+  } else if (e.key === 'End') {
+    e.preventDefault()
+    audioRef.value.currentTime = audioDuration.value
+  }
+}
+
+function dismissKeyboardHint() {
+  showKeyboardHint.value = false
+}
+
 function handleKeydown(e) {
+  if (showKeyboardHint.value && e.key === 'Escape') {
+    e.preventDefault()
+    dismissKeyboardHint()
+    return
+  }
   if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(Math.min(pages.value.length - 1, current.value + 1)) }
   if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(Math.max(0, current.value - 1)) }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen()
@@ -965,8 +1017,10 @@ onUnmounted(() => {
   flex: 1; height: 4px; background: rgba(255,255,255,.1); border-radius: 4px;
   position: relative; cursor: pointer;
 }
-.progress-track:hover { height: 6px; }
-.progress-track:hover .progress-thumb { opacity: 1; transform: scale(1); }
+.progress-track:hover,
+.progress-track:focus-visible { height: 6px; }
+.progress-track:hover .progress-thumb,
+.progress-track:focus-visible .progress-thumb { opacity: 1; transform: scale(1); }
 .progress-fill {
   height: 100%; border-radius: 4px; background: var(--player-accent);
   transition: width 100ms linear;
@@ -994,11 +1048,22 @@ onUnmounted(() => {
   border-radius: 20px; padding: 2px 10px;
 }
 .audio-status.loading { color: var(--player-text-secondary); }
-.audio-status.ready { color: var(--player-accent); cursor: pointer; }
+.audio-status.ready { color: var(--player-accent); }
 .audio-status.pending { color: #f59e0b; }
 .audio-status.error { color: var(--player-danger); }
 .audio-status.none { display: none; }
-.status-ready:hover { opacity: 0.8; }
+.audio-status-btn {
+  border: none;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  cursor: pointer;
+}
+.status-ready:hover,
+.status-ready:focus-visible { opacity: 0.8; }
 .progress-track--empty { cursor: default; background: rgba(255,255,255,.05); }
 
 /* Interactive Page Mask */
@@ -1035,6 +1100,27 @@ kbd {
   font-size: 11px; font-family: inherit; color: var(--player-text-secondary);
 }
 .hint-dismiss { display: block; margin-top: 16px; font-size: 12px; color: var(--player-text-secondary); text-align: center; }
+.keyboard-hint-dismiss {
+  width: 100%;
+  margin-top: 16px;
+  min-height: 44px;
+  border: 1px solid var(--player-border);
+  border-radius: 10px;
+  background: rgba(255,255,255,.06);
+  color: var(--player-text);
+  cursor: pointer;
+}
+.keyboard-hint-dismiss:focus-visible,
+.progress-track:focus-visible,
+.audio-status-btn:focus-visible,
+.interactive-btn:focus-visible,
+.ctrl-btn:focus-visible,
+.speed-chip:focus-visible,
+.btn-icon:focus-visible,
+.thumb-dot:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}
 .hint-fade-enter-active, .hint-fade-leave-active { transition: opacity .25s ease; }
 .hint-fade-enter-from, .hint-fade-leave-to { opacity: 0; }
 
