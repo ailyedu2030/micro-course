@@ -1,13 +1,16 @@
 package com.microcourse.plugin.interactive.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
@@ -39,13 +42,16 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
 
     private static final Logger log = LoggerFactory.getLogger(HtmlCoursewareServiceImpl.class);
 
+    private final CourseSlideMapper courseSlideMapper;
     private final SlideHtmlUnitMapper unitMapper;
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
 
-    public HtmlCoursewareServiceImpl(SlideHtmlUnitMapper unitMapper,
+    public HtmlCoursewareServiceImpl(CourseSlideMapper courseSlideMapper,
+                                      SlideHtmlUnitMapper unitMapper,
                                       SlideHtmlSegmentScriptMapper segmentScriptMapper,
                                       SlideHtmlSegmentAudioMapper segmentAudioMapper) {
+        this.courseSlideMapper = courseSlideMapper;
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
@@ -73,12 +79,7 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "htmlContent is required");
         }
         if (dto.getSlideId() == null) {
-            // 【BUG #24 修复】 slideId 必填 (DB NOT NULL), 前端没传时通过 sectionId 反查
-            // NOSONAR (S1135) — 真实实现需要 course_sections → slide 关联查询. 当前简化方案:
-            // 如果 dto 没传 slideId, 使用 1 作为占位 (假定每个 section 至少有 1 个 slide)
-            // 长期方案: 加 slide_id 自动反查 mapper
-            log.warn("[HTML-Unit] slideId not provided in DTO, using placeholder=1 (TODO: 反查)");
-            dto.setSlideId(1L);
+            dto.setSlideId(resolveSlideId(dto));
         }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
         String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
@@ -96,6 +97,25 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         log.info("[HTML-Unit] created: id={}, section={}, slideId={}, fileSize={} bytes, sanitized",
                 entity.getId(), entity.getSectionId(), entity.getSlideId(), entity.getFileSizeBytes());
         return entity.getId();
+    }
+
+    private Long resolveSlideId(SlideHtmlUnitDTO dto) {
+        if (dto.getSectionId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "slideId is required when sectionId is missing");
+        }
+        LambdaQueryWrapper<CourseSlide> wrapper = new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getSectionId, dto.getSectionId());
+        if (dto.getCourseId() != null) {
+            wrapper.eq(CourseSlide::getCourseId, dto.getCourseId());
+        }
+        wrapper.orderByDesc(CourseSlide::getUpdatedAt).last("LIMIT 1");
+        CourseSlide slide = courseSlideMapper.selectOne(wrapper);
+        if (slide == null || slide.getId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "slideId is required because no course slide exists for sectionId=" + dto.getSectionId());
+        }
+        log.info("[HTML-Unit] resolved slideId={} from sectionId={}", slide.getId(), dto.getSectionId());
+        return slide.getId();
     }
 
     @Override
