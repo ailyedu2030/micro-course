@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * V313 domain_event_outbox 表 MyBatis-Plus Repository.
  * 关键 SQL:
- *   - listPendingDueNow(int): OutboxPoller 5s 扫一次
+ *   - listPendingDueNow(LocalDateTime,int): OutboxPoller 5s 扫一次
  *   - markDelivered: 推成功
  *   - markRetry: 重试 + 退避 (next_attempt_at)
  *   - markDeadLetter: 5 次失败 → 死信
@@ -28,7 +28,8 @@ public interface DomainEventOutboxRepository extends BaseMapper<DomainEventOutbo
         ORDER BY occurred_at ASC
         LIMIT #{limit}
     """)
-    List<DomainEventOutbox> listPendingDueNow(@Param("limit") int limit);
+    List<DomainEventOutbox> listPendingDueNow(@Param("now") LocalDateTime now,
+                                              @Param("limit") int limit);
 
     @Update("""
         UPDATE domain_event_outbox

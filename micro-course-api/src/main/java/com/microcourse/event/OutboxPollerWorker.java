@@ -83,7 +83,8 @@ public class OutboxPollerWorker {
 
     @Scheduled(fixedDelayString = "${hermes.outbox.poll-interval-ms:5000}")
     public void pollOnce() {
-        List<DomainEventOutbox> rows = outboxRepo.listPendingDueNow(batchSize);
+        LocalDateTime now = LocalDateTime.now();
+        List<DomainEventOutbox> rows = outboxRepo.listPendingDueNow(now, batchSize);
         // 更新 gauge: 反映当前 PENDING / RETRY 状态
         long pending = rows.size();
         long retry = rows.stream().filter(r -> r.getAttemptCount() != null && r.getAttemptCount() > 0).count();
