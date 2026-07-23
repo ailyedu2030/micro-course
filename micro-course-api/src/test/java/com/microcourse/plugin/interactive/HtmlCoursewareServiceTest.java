@@ -3,9 +3,11 @@ package com.microcourse.plugin.interactive;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
@@ -34,6 +36,7 @@ import static org.mockito.Mockito.*;
  */
 class HtmlCoursewareServiceTest {
 
+    private CourseSlideMapper courseSlideMapper;
     private SlideHtmlUnitMapper unitMapper;
     private SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private SlideHtmlSegmentAudioMapper segmentAudioMapper;
@@ -41,10 +44,11 @@ class HtmlCoursewareServiceTest {
 
     @BeforeEach
     void setUp() {
+        courseSlideMapper = mock(CourseSlideMapper.class);
         unitMapper = mock(SlideHtmlUnitMapper.class);
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
-        service = new HtmlCoursewareServiceImpl(unitMapper, segmentScriptMapper, segmentAudioMapper);
+        service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper, segmentAudioMapper);
     }
 
     @Nested
@@ -129,6 +133,32 @@ class HtmlCoursewareServiceTest {
             BusinessException ex = assertThrows(BusinessException.class,
                     () -> service.createUnit(dto));
             assertEquals(ErrorCode.BAD_REQUEST_PARAM.getCode(), ex.getCode());
+        }
+
+        @Test
+        @DisplayName("createUnit resolves real slideId from section instead of placeholder=1")
+        void createUnitResolvesSlideIdFromSection() {
+            when(unitMapper.findBySection(99L)).thenReturn(null);
+            CourseSlide slide = new CourseSlide();
+            slide.setId(888L);
+            when(courseSlideMapper.selectOne(any())).thenReturn(slide);
+            when(unitMapper.insert(any(SlideHtmlUnit.class))).thenAnswer(inv -> {
+                SlideHtmlUnit e = inv.getArgument(0);
+                e.setId(101L);
+                return 1;
+            });
+
+            SlideHtmlUnitDTO dto = new SlideHtmlUnitDTO();
+            dto.setSectionId(99L);
+            dto.setCourseId(1L);
+            dto.setChapterId(1L);
+            dto.setHtmlContent("<p>resolved slide</p>");
+
+            service.createUnit(dto);
+
+            ArgumentCaptor<SlideHtmlUnit> captor = ArgumentCaptor.forClass(SlideHtmlUnit.class);
+            verify(unitMapper).insert(captor.capture());
+            assertEquals(888L, captor.getValue().getSlideId(), "must persist resolved course slide id");
         }
     }
 
