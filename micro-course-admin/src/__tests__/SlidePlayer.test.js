@@ -198,7 +198,7 @@ describe('SlidePlayer.vue iframe branch', () => {
 
     await wrapper.vm.$nextTick()
     wrapper.vm.pageLoading = false
-    wrapper.vm.pages = [{ pageNumber: 1, contentType: 'PPT_RENDERED' }]
+    wrapper.vm.pages = [{ pageNumber: 1, contentType: 'HTML_DIRECT', htmlContent: '<div>demo</div>' }]
     wrapper.vm.audioStatus = 'ready'
     await wrapper.vm.$nextTick()
 
