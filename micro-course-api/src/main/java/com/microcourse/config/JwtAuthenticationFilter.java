@@ -1,6 +1,7 @@
 package com.microcourse.config;
 
 import com.microcourse.enums.UserRole;
+import com.microcourse.exception.BusinessException;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import jakarta.servlet.FilterChain;
@@ -68,16 +69,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jti = jwtUtil.getJtiFromToken(token);
-        if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
-            writeErrorResponse(response, 1004, "token已失效,请重新登录");
-            return;
-        }
-
         Long userId = jwtUtil.getUserIdFromToken(token);
+        try {
+            if (jti != null && redisUtil.isTokenBlacklisted(jti)) {
+                writeErrorResponse(response, 1004, "token已失效,请重新登录");
+                return;
+            }
 
-        // P1I-001: 用户级 Token 黑名单校验（禁用用户后批量作废所有 Token）
-        if (redisUtil.isUserTokenBlacklisted(userId)) {
-            writeErrorResponse(response, 1004, "账号已被禁用，请重新登录");
+            // P1I-001: 用户级 Token 黑名单校验（禁用用户后批量作废所有 Token）
+            if (redisUtil.isUserTokenBlacklisted(userId)) {
+                writeErrorResponse(response, 1004, "账号已被禁用，请重新登录");
+                return;
+            }
+        } catch (BusinessException e) {
+            writeErrorResponse(response, e.getCode(), e.getMessage());
             return;
         }
 

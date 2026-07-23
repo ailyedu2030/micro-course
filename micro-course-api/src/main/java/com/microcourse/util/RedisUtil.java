@@ -1,5 +1,7 @@
 package com.microcourse.util;
 
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import com.microcourse.metrics.RedisMetrics;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
@@ -64,6 +66,10 @@ public class RedisUtil {
                              "return c");
         script.setResultType(Long.class);
         return redisTemplate.execute(script, java.util.Collections.singletonList(key), expireSeconds);
+    }
+
+    protected Long incrementCounter(String key) {
+        return redisTemplate.opsForValue().increment(key);
     }
 
     /**
@@ -139,11 +145,11 @@ public class RedisUtil {
      */
     public long incrementTokenGeneration(Long userId) {
         try {
-            Long val = redisTemplate.opsForValue().increment("mc:user:token-gen:" + userId);
+            Long val = incrementCounter("mc:user:token-gen:" + userId);
             return val != null ? val : 0L;
         } catch (Exception e) {
-            log.warn("[Redis] incrementTokenGeneration 失败 userId={},降级为 0: {}", userId, e.getMessage());
-            return 0L;
+            log.error("[Redis] incrementTokenGeneration 失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 安全状态服务暂时不可用，请稍后重试");
         }
     }
 
@@ -155,8 +161,8 @@ public class RedisUtil {
             Object val = get("mc:user:token-gen:" + userId);
             return val == null ? 0L : ((Number) val).longValue();
         } catch (Exception e) {
-            log.warn("[Redis] getTokenGeneration 失败 userId={},降级为 0: {}", userId, e.getMessage());
-            return 0L;
+            log.error("[Redis] getTokenGeneration 失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 安全状态服务暂时不可用，请稍后重试");
         }
     }
 
@@ -168,7 +174,8 @@ public class RedisUtil {
             set("mc:jwt:blacklist:" + jti, "1", ttlSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
             redisMetrics.recordTokenBlacklistError();
-            log.warn("[Redis] blacklistToken 失败 jti={}: {}", jti, e.getMessage());
+            log.error("[Redis] blacklistToken 失败 jti={}", jti, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 黑名单服务暂时不可用，请稍后重试");
         }
     }
 
@@ -182,7 +189,8 @@ public class RedisUtil {
             set("mc:jwt:user-blacklist:" + userId, "1", ttlSeconds, TimeUnit.SECONDS);
         } catch (Exception e) {
             redisMetrics.recordTokenBlacklistError();
-            log.warn("[Redis] blacklistUserTokens 失败 userId={}: {}", userId, e.getMessage());
+            log.error("[Redis] blacklistUserTokens 失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 黑名单服务暂时不可用，请稍后重试");
         }
     }
 
@@ -194,8 +202,8 @@ public class RedisUtil {
             return hasKey("mc:jwt:user-blacklist:" + userId);
         } catch (Exception e) {
             redisMetrics.recordTokenCheckError();
-            log.warn("[Redis] isUserTokenBlacklisted 失败 userId={}，降级为未黑名单: {}", userId, e.getMessage());
-            return false;
+            log.error("[Redis] isUserTokenBlacklisted 失败 userId={}", userId, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 黑名单校验暂时不可用，请稍后重试");
         }
     }
 
@@ -207,8 +215,8 @@ public class RedisUtil {
             return hasKey("mc:jwt:blacklist:" + jti);
         } catch (Exception e) {
             redisMetrics.recordTokenCheckError();
-            log.warn("[Redis] isTokenBlacklisted 失败 jti={}，降级为未黑名单: {}", jti, e.getMessage());
-            return false;
+            log.error("[Redis] isTokenBlacklisted 失败 jti={}", jti, e);
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Token 黑名单校验暂时不可用，请稍后重试");
         }
     }
 

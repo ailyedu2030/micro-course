@@ -301,15 +301,11 @@ public class AuthServiceImpl implements AuthService {
                 user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
         String newRefreshToken = jwtUtil.generateRefreshToken(user.getId(), currentTokenGen);
         // Step 4.5: 作废旧 refreshToken(旋转机制,防重放攻击)
-        try {
-            String oldJti = jwtUtil.getJtiFromToken(refreshToken);
-            long remainingTtl = jwtUtil.getExpirationRemainingSeconds(refreshToken);
-            if (oldJti != null && remainingTtl > 0) {
-                redisUtil.blacklistToken(oldJti, remainingTtl);
-                log.info("[Auth] refresh 轮换: 旧 jti={} 已加入黑名单 ttl={}", oldJti, remainingTtl);
-            }
-        } catch (Exception e) {
-            log.warn("[Auth] 旧 refreshToken 黑名单失败", e);
+        String oldJti = jwtUtil.getJtiFromToken(refreshToken);
+        long remainingTtl = jwtUtil.getExpirationRemainingSeconds(refreshToken);
+        if (oldJti != null && remainingTtl > 0) {
+            redisUtil.blacklistToken(oldJti, remainingTtl);
+            log.info("[Auth] refresh 轮换: 旧 jti={} 已加入黑名单 ttl={}", oldJti, remainingTtl);
         }
         // Step 5: 构建响应
         LoginResponse response = new LoginResponse();
@@ -367,16 +363,12 @@ public class AuthServiceImpl implements AuthService {
         String authHeader = httpServletRequest.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             String token = authHeader.substring(7);
-            try {
-                String jti = jwtUtil.getJtiFromToken(token);
-                long remainingTtl = jwtUtil.getExpirationRemainingSeconds(token);
-                if (jti != null && remainingTtl > 0) {
-                    redisUtil.blacklistToken(jti, remainingTtl);
-                    log.info("Logout: blacklisted token jti={} ttl={}",
-                            com.microcourse.util.LogSanitizer.sanitizeForLog(jti), remainingTtl);
-                }
-            } catch (Exception e) {
-                log.warn("Logout: failed to blacklist token", e);
+            String jti = jwtUtil.getJtiFromToken(token);
+            long remainingTtl = jwtUtil.getExpirationRemainingSeconds(token);
+            if (jti != null && remainingTtl > 0) {
+                redisUtil.blacklistToken(jti, remainingTtl);
+                log.info("Logout: blacklisted token jti={} ttl={}",
+                        com.microcourse.util.LogSanitizer.sanitizeForLog(jti), remainingTtl);
             }
         }
     }
@@ -685,15 +677,10 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
         String token = authHeader.substring(7);
-        try {
-            String jti = jwtUtil.getJtiFromToken(token);
-            long ttl = jwtUtil.getExpirationRemainingSeconds(token);
-            if (jti != null && ttl > 0) {
-                redisUtil.blacklistToken(jti, ttl);
-            }
-        } catch (Exception ex) {
-            // 黑名单失败不应阻塞密码修改结果,但需记录
-            log.warn("[Auth] 修改密码后失效旧 token 失败: {}", ex.getMessage());
+        String jti = jwtUtil.getJtiFromToken(token);
+        long ttl = jwtUtil.getExpirationRemainingSeconds(token);
+        if (jti != null && ttl > 0) {
+            redisUtil.blacklistToken(jti, ttl);
         }
     }
 
@@ -703,13 +690,9 @@ public class AuthServiceImpl implements AuthService {
      * 确保 refreshToken 在有效期内也会被拒绝。
      */
     private void blacklistAllUserTokens(Long userId) {
-        try {
-            // 使用 refreshToken 的最大 TTL（7天），确保所有 token 在整个生命周期内不可用
-            redisUtil.blacklistUserTokens(userId, 604800L);
-            log.info("[Auth] 已批量作废用户 userId={} 的所有 Token", userId);
-        } catch (Exception ex) {
-            log.warn("[Auth] 批量作废用户 Token 失败 userId={}: {}", userId, ex.getMessage());
-        }
+        // 使用 refreshToken 的最大 TTL（7天），确保所有 token 在整个生命周期内不可用
+        redisUtil.blacklistUserTokens(userId, 604800L);
+        log.info("[Auth] 已批量作废用户 userId={} 的所有 Token", userId);
     }
 
     @Override
