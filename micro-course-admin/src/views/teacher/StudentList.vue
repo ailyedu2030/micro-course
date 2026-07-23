@@ -242,7 +242,7 @@
  * 教师端 - 学员列表
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as XLSX from 'xlsx'
@@ -253,6 +253,7 @@ import { getCourses } from '@/api/course'
 import { getCourseEnrollments, getEnrollments, getStudentDetail, exportEnrollments } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
+import { useTableKeyboardNavigation } from '@/composables/useTableKeyboardNavigation'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -381,32 +382,14 @@ function handleRowClick(row) {
   handleViewDetail(row)
 }
 
-// a11y:el-table 行键盘支持(A11Y-018)
 const tableRef = ref(null)
-let _keydownBound = false
-function bindTableKeyboard() {
-  if (_keydownBound) return
-  const tbody = tableRef.value?.$el?.querySelector('tbody')
-  if (!tbody) return
-  tbody.addEventListener('keydown', (e) => {
-    const tr = e.target.closest('tr')
-    if (!tr) return
-    if (e.key !== 'Enter' && e.key !== ' ') return
-    const idx = Array.from(tbody.querySelectorAll('tr')).indexOf(tr)
-    const row = tableData.value?.[idx]
-    if (row) {
-      e.preventDefault()
-      handleRowClick(row)
-    }
-  })
-  tbody.querySelectorAll('tr').forEach((tr, idx) => {
-    tr.setAttribute('tabindex', '0')
-    tr.setAttribute('role', 'button')
-    tr.setAttribute('aria-label', `选择学员 ${tableData.value?.[idx]?.realName || tableData.value?.[idx]?.username || ''}`)
-  })
-  _keydownBound = true
-}
-onMounted(() => nextTick(bindTableKeyboard))
+const { refreshTableKeyboard } = useTableKeyboardNavigation({
+  tableRef,
+  tableData,
+  onActivate: handleRowClick,
+  getAriaLabel: (row) => `选择学员 ${row?.realName || row?.username || ''}`
+})
+onMounted(() => refreshTableKeyboard())
 
 // 查看详情（P0-2: 调用后端 getStudentDetail 获取完整信息）
 async function handleViewDetail(row) {

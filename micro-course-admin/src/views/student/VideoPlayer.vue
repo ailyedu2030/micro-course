@@ -575,6 +575,7 @@ import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
+import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -699,8 +700,90 @@ let lastFailedProgress = null // P0-L01: track failed progress for retry
 let progressReportTimer = null
 let hideControlsTimer = null
 const controlsVisible = ref(true)
-let creatingProgress = false // P1-4: mutex for ensureProgressRecord
 let isComponentUnmounted = false // P1-2: prevent state updates after unmount
+
+const getCurrentProgressSnapshot = () => {
+  const video = videoRef.value
+  if (!video || !video.duration) {
+    return null
+  }
+  const current = video.currentTime
+  return {
+    current,
+    progressPercentVal: (current / video.duration) * 100
+  }
+}
+
+const {
+  persistProgress: persistVideoProgress,
+  resetProgressReporter: resetVideoProgressReporter
+} = useLearningProgressReporter({
+  getDedupKey: () => videoId.value ? `progress_dedup_video_${videoId.value}` : '',
+  shouldPersist: ({ force }) => {
+    if (!force && isComponentUnmounted) return false
+    const video = videoRef.value
+    if (!video || !video.duration) return false
+    if (!force && video.paused) return false
+    return true
+  },
+  getProgressRecord: () => progressId.value ? { id: progressId.value } : null,
+  setProgressRecord: (record) => {
+    if (record?.id) {
+      progressId.value = record.id
+    }
+  },
+  createPayload: () => {
+    const snapshot = getCurrentProgressSnapshot()
+    return {
+      userId: userStore.userInfo?.id,
+      courseId: courseId.value,
+      chapterId: chapterId.value,
+      videoPosition: Math.floor(snapshot?.current || 0),
+      videoProgress: Math.round(snapshot?.progressPercentVal || 0)
+    }
+  },
+  updatePayload: () => {
+    const snapshot = getCurrentProgressSnapshot()
+    return {
+      videoPosition: Math.floor(snapshot?.current || 0),
+      videoProgress: Math.round(snapshot?.progressPercentVal || 0)
+    }
+  },
+  createProgress: createLearningProgress,
+  updateProgress: updateLearningProgress,
+  findExistingProgress: async () => {
+    const res = await getLearningProgress({
+      courseId: courseId.value,
+      chapterId: chapterId.value
+    })
+    const rawData = res.data || []
+    if (Array.isArray(rawData)) {
+      return rawData.find(p => Number(p.chapterId) === Number(chapterId.value))
+    }
+    if (rawData && typeof rawData === 'object' && rawData.id &&
+      Number(rawData.chapterId) === Number(chapterId.value)) {
+      return rawData
+    }
+    return null
+  },
+  onPersisted: () => {
+    const snapshot = getCurrentProgressSnapshot()
+    lastReportedProgress = snapshot?.progressPercentVal || 0
+    lastFailedProgress = null
+    if (snapshot) {
+      saveLocalPosition(snapshot.current)
+    }
+  },
+  onError: ({ error }) => {
+    const snapshot = getCurrentProgressSnapshot()
+    lastFailedProgress = snapshot?.progressPercentVal ?? lastFailedProgress
+    if (!sessionStorage.getItem(`progress_error_${videoId.value}`)) {
+      sessionStorage.setItem(`progress_error_${videoId.value}`, '1')
+      ElMessage.warning('进度上报失败,请检查网络')
+    }
+    console.warn('[进度上报]', error)
+  }
+})
 
 // Notes storage key
 const NOTES_STORAGE_KEY = computed(() => {
@@ -942,70 +1025,13 @@ const loadProgress = async () => {
   }
 }
 
-// P1-4: mutex to prevent concurrent createLearningProgress calls
-const ensureProgressRecord = async () => {
-  if (progressId.value) return true
-  if (creatingProgress) return false
-  if (!userStore.userInfo?.id || !courseId.value) return false
-  creatingProgress = true
-  try {
-    const res = await createLearningProgress({
-      userId: userStore.userInfo.id,
-      courseId: courseId.value,
-      chapterId: chapterId.value,
-      videoPosition: 0,
-      videoProgress: 0
-    })
-    const data = res.data || res
-    if (data && data.id) {
-      progressId.value = data.id
-    }
-    return !!progressId.value
-  } catch (e) {
-    console.warn('[VideoPlayer] ensureProgressRecord 创建进度记录失败', e)
-    ElMessage.warning('学习进度保存失败')
-    return false
-  } finally {
-    creatingProgress = false
-  }
-}
-
 const reportProgress = async (force = false) => {
-  if (!force && isComponentUnmounted) return
-  const video = videoRef.value
-  if (!video || !video.duration || video.paused) return
-  const current = video.currentTime
-  const total = video.duration
-  const progressPercentVal = (current / total) * 100
+  const snapshot = getCurrentProgressSnapshot()
+  if (!snapshot) return
+  const { progressPercentVal } = snapshot
   // P0-L01: 差异不足 1% 且无待重试的失败记录 → 跳过；失败重试不受此限
-  if (Math.abs(progressPercentVal - lastReportedProgress) < 1 && lastFailedProgress === null) return
-
-  // P2-003: sessionStorage dedup — 5 秒内同 videoId 不上报，防双倍请求
-  const dedupKey = `progress_dedup_video_${videoId.value}`
-  const lastReport = sessionStorage.getItem(dedupKey)
-  if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
-  sessionStorage.setItem(dedupKey, String(Date.now()))
-  try {
-    const hasRecord = await ensureProgressRecord()
-    if (!hasRecord || (!force && isComponentUnmounted)) return
-    await updateLearningProgress(progressId.value, {
-      videoPosition: Math.floor(current),
-      videoProgress: Math.round(progressPercentVal)
-    })
-    // P0-L01: API 成功后再更新 lastReportedProgress，失败后下一轮定时器自动重试
-    lastReportedProgress = progressPercentVal
-    lastFailedProgress = null
-    saveLocalPosition(current)
-  } catch (e) {
-    // P0-L01: 记录失败值，确保下次定时器（差异不足 1% 时）仍能重试
-    lastFailedProgress = progressPercentVal
-    // 同一会话只弹一次 warning
-    if (!sessionStorage.getItem(`progress_error_${videoId.value}`)) {
-      sessionStorage.setItem(`progress_error_${videoId.value}`, '1')
-      ElMessage.warning('进度上报失败,请检查网络')
-    }
-    console.warn('[进度上报]', e)
-  }
+  if (!force && Math.abs(progressPercentVal - lastReportedProgress) < 1 && lastFailedProgress === null) return
+  await persistVideoProgress({ force })
 }
 
 // P1-1: Progress reporting only when playing
@@ -1539,6 +1565,7 @@ const handleTouchEnd = (e) => {
 onMounted(async () => {
   isMobile.value = window.innerWidth <= 768
   isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
+  resetVideoProgressReporter()
   await nextTick()
   loadVideo()
   // P1-1: Progress reporting controlled by play state via watch (no immediate start)

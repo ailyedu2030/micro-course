@@ -302,8 +302,9 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useTableKeyboardNavigation } from '@/composables/useTableKeyboardNavigation'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -476,33 +477,14 @@ const handleRowClick = (row) => {
   // 预留：可点击行查看详情
 }
 
-// a11y:让 el-table 行可被键盘聚焦,Enter 触发 handleRowClick(A11Y-016)
 const tableRef = ref(null)
-let _keydownBound = false
-const bindTableKeyboard = () => {
-  // 在表格 tbody 上挂 keydown 监听,聚焦行后 Enter/Space 等价于点击
-  if (_keydownBound) return
-  const tbody = tableRef.value?.$el?.querySelector('tbody')
-  if (!tbody) return
-  tbody.addEventListener('keydown', (e) => {
-    const tr = e.target.closest('tr')
-    if (!tr) return
-    if (e.key !== 'Enter' && e.key !== ' ') return
-    const idx = Array.from(tbody.querySelectorAll('tr')).indexOf(tr)
-    const row = tableData.value?.[idx]
-    if (row) {
-      e.preventDefault()
-      handleRowClick(row)
-    }
-  })
-  tbody.querySelectorAll('tr').forEach((tr, idx) => {
-    tr.setAttribute('tabindex', '0')
-    tr.setAttribute('role', 'button')
-    tr.setAttribute('aria-label', `选择课程 ${tableData.value?.[idx]?.title || ''}`)
-  })
-  _keydownBound = true
-}
-onMounted(() => nextTick(bindTableKeyboard))
+const { refreshTableKeyboard } = useTableKeyboardNavigation({
+  tableRef,
+  tableData,
+  onActivate: handleRowClick,
+  getAriaLabel: (row) => `选择课程 ${row?.title || ''}`
+})
+onMounted(() => refreshTableKeyboard())
 
 const handleCreate = () => {
   dialogTitle.value = '新增课程'
