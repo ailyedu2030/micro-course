@@ -10,17 +10,19 @@ const progressApiMocks = vi.hoisted(() => ({
 
 const enrollmentApiMocks = vi.hoisted(() => ({
   getMyEnrollments: vi.fn(() => Promise.resolve({
-    data: [
-      {
-        courseId: 201,
-        courseTitle: '继续学习课程',
-        courseCover: '/cover.png',
-        progress: 60,
-        currentChapter: 2,
-        courseType: 'VIDEO',
-        completed: false,
-      },
-    ],
+    data: {
+      items: [
+        {
+          courseId: 201,
+          title: '继续学习课程',
+          cover: '/cover.png',
+          progress: 60,
+          currentChapter: 2,
+          courseType: 'VIDEO',
+          completed: false,
+        },
+      ],
+    },
   })),
 }))
 
