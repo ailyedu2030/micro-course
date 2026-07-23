@@ -90,8 +90,8 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
                 return;
             }
         } catch (Exception e) {
-            // Redis + DB 双重异常等不可控故障：fail-open 放行，绝不阻塞合法用户主流程。
-            log.error("用户状态检查异常（fail-open 放行）", e);
+            // fail-open 路径已明确放行，记录为 warn 避免把降级误报成主流程故障。
+            log.warn("用户状态检查异常（fail-open 放行）", e);
         }
 
         chain.doFilter(request, response);

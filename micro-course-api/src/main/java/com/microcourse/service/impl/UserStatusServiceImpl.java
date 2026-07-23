@@ -135,7 +135,7 @@ if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
                     redisUtil.delete("mc:jwt:user-blacklist:" + id);
                     log.info("用户激活清除 Token 黑名单: userId={}", id);
                 } catch (Exception e) {
-                    log.error("清除 Token 黑名单失败 userId={}，不影响主流程", id, e);
+                    log.warn("清除 Token 黑名单失败 userId={}，不影响主流程", id, e);
                 }
                 /* ---- 【I-14(跨域)修复】DISABLED→ACTIVE 无 enrollment 恢复 ---- */
                 /* 【根因】用户从 DISABLED(2) 恢复为 ACTIVE(1) 时，
@@ -154,7 +154,7 @@ if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
                         log.info("用户激活恢复已暂停选课: userId={}, count={}", id, recovered);
                     }
                 } catch (Exception e) {
-                    log.error("恢复已暂停选课失败 userId={}，不影响主流程", id, e);
+                    log.warn("恢复已暂停选课失败 userId={}，不影响主流程", id, e);
                 }
                 break;
             case DISABLED:
