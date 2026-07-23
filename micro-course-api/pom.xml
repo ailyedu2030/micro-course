@@ -7,9 +7,9 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.12</version>
+        <version>4.1.0</version>
         <relativePath/>
-        <!-- ⚠️ Spring Boot 3.2.12 EOL: 2026-11-18. Migrate to 3.4.x or 3.5.x before production -->
+        <!-- ⚠️ Spring Boot 4.1.0 EOL: 2026-11-18. Migrate to 3.4.x or 3.5.x before production -->
     </parent>
 
     <groupId>com.microcourse</groupId>
