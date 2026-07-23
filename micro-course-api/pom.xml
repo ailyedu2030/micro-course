@@ -24,7 +24,7 @@
         <mybatis-plus.version>3.5.6</mybatis-plus.version>
         <jjwt.version>0.12.6</jjwt.version>
         <springdoc.version>2.5.0</springdoc.version>
-        <flyway.version>10.20.1</flyway.version>
+        <flyway.version>13.0.0</flyway.version>
         <lombok.version>1.18.36</lombok.version>
         <!-- P0 CVE 修复：覆盖 Spring Boot BOM 管理的传递依赖版本 -->
         <tomcat.version>10.1.55</tomcat.version>
