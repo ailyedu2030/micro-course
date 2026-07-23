@@ -134,6 +134,7 @@ import { getCourseById } from '@/api/course'
 import { getVideos } from '@/api/video'
 import { getLearningProgress, updateLearningProgress, createLearningProgress, getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyFavorites, addFavorite, removeFavorite } from '@/api/favorite'
+import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 
 // ==================== 路由 & 状态 ====================
 const route = useRoute()
@@ -187,8 +188,61 @@ const totalProgress = computed(() => {
 const currentTime = ref(0)
 const isPlaying = ref(false)
 let progressSaveTimer = null
-let lastSaveTime = Date.now()  // P0-3: 上次保存时间，用于计算 watchDelta
-let saveFailCount = 0  // P2-1: 连续保存失败计数
+
+const {
+  persistProgress: persistLessonProgress,
+  resetProgressReporter: resetLessonProgressReporter
+} = useLearningProgressReporter({
+  getDedupKey: () => currentLessonId.value ? `progress_dedup_lesson_${currentLessonId.value}` : '',
+  shouldPersist: ({ force }) => {
+    if (!force && !isPlaying.value) return false
+    if (!currentLessonId.value) return false
+    return /^\d+$/.test(String(currentLessonId.value))
+  },
+  getProgressRecord: () => progressMap.value[currentLessonId.value],
+  setProgressRecord: (record) => {
+    if (!currentLessonId.value || !record?.id) return
+    progressMap.value[currentLessonId.value] = {
+      ...progressMap.value[currentLessonId.value],
+      ...record,
+      sectionId: currentLessonId.value
+    }
+  },
+  createPayload: ({ watchDelta, completed }) => ({
+    courseId: courseId.value,
+    chapterId: currentChapter.value?.id,
+    sectionId: currentLessonId.value,
+    ...(completed
+      ? { completed: true }
+      : {
+          videoPosition: Math.floor(currentTime.value),
+          watchDelta
+        })
+  }),
+  updatePayload: ({ watchDelta, completed }) => (
+    completed
+      ? { completed: true }
+      : {
+          videoPosition: Math.floor(currentTime.value),
+          watchDelta
+        }
+  ),
+  createProgress: createLearningProgress,
+  updateProgress: updateLearningProgress,
+  findExistingProgress: async () => {
+    const existing = await getLearningProgress({
+      courseId: courseId.value,
+      sectionId: currentLessonId.value
+    })
+    return (existing.data || []).find(p => p.sectionId === currentLessonId.value)
+  },
+  onError: ({ error, failureCount }) => {
+    console.warn('[LearningView] saveVideoProgress 保存进度失败', error)
+    if (failureCount % 3 === 0) {
+      ElMessage.warning('进度保存异常，请检查网络')
+    }
+  }
+})
 
 function onChildTimeUpdate(t) { currentTime.value = t }
 function onChildPlayingChange(p) { isPlaying.value = p }
@@ -437,6 +491,7 @@ function selectLesson(sectionId) {
   // 此处仅同步进度镜像，避免切换瞬间 saveVideoProgress 误判
   isPlaying.value = false
   currentTime.value = 0
+  resetLessonProgressReporter()
 }
 
 function goToLesson(lesson) {
@@ -453,69 +508,7 @@ function goToLesson(lesson) {
 
 // ==================== 进度保存（每 10 秒） ====================
 async function saveVideoProgress(force = false) {
-  // P1-10: 只在播放中保存进度（force=true 时跳过此检查，用于卸载前最终上报）
-  if (!force && !isPlaying.value) return
-  if (!currentLessonId.value) return
-  // 跳过非数字sectionId(如offline-76,slide-42等合成ID,由子页面自行管理进度)
-  if (!/^\d+$/.test(String(currentLessonId.value))) return
-
-  // P2-003: sessionStorage dedup — 5 秒内同 sectionId 不上报，防 LearningView+VideoPlayer 双倍请求
-  const dedupKey = `progress_dedup_lesson_${currentLessonId.value}`
-  const lastReport = sessionStorage.getItem(dedupKey)
-  if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
-  sessionStorage.setItem(dedupKey, String(Date.now()))
-
-  try {
-    const sectionId = currentLessonId.value
-    // P0-3: 计算 watchDelta（距上次保存的秒数）
-    const now = Date.now()
-    const watchDelta = Math.floor((now - lastSaveTime) / 1000)
-    lastSaveTime = now
-
-    const lessonProgress = progressMap.value[sectionId]
-    if (lessonProgress?.id) {
-      // P0-1: 只上传 videoPosition，不传 completed
-      await updateLearningProgress(lessonProgress.id, {
-        videoPosition: Math.floor(currentTime.value),
-        watchDelta
-      })
-    } else {
-      // P0-7: create 可能因 UNIQUE 冲突失败，添加重试逻辑
-      try {
-        const res = await createLearningProgress({
-          courseId: courseId.value,
-          chapterId: currentChapter.value?.id,
-          sectionId: sectionId,
-          videoPosition: Math.floor(currentTime.value),
-          watchDelta
-        })
-        const newId = res.data?.id || (res.data || res).id
-        if (newId) {
-          progressMap.value[sectionId] = { id: newId, sectionId }
-        }
-      } catch (createErr) {
-        // UNIQUE 冲突：查询已有记录后重试 update
-        console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
-        const existing = await getLearningProgress({ courseId: courseId.value, sectionId })
-        const record = (existing.data || []).find(p => p.sectionId === sectionId)
-        if (record?.id) {
-          progressMap.value[sectionId] = record
-          await updateLearningProgress(record.id, {
-            videoPosition: Math.floor(currentTime.value),
-            watchDelta
-          })
-        }
-      }
-    }
-    saveFailCount = 0
-  } catch (e) {
-    saveFailCount++
-    console.warn('[LearningView] saveVideoProgress 保存进度失败', e)
-    if (saveFailCount >= 3) {
-      ElMessage.warning('进度保存异常，请检查网络')
-      saveFailCount = 0
-    }
-  }
+  await persistLessonProgress({ force })
 }
 
 async function markLessonComplete() {
@@ -524,35 +517,7 @@ async function markLessonComplete() {
   clearInterval(progressSaveTimer)
   let marked = false
   try {
-    const sectionId = currentLessonId.value
-    const lessonProgress = progressMap.value[sectionId]
-    if (lessonProgress?.id) {
-      await updateLearningProgress(lessonProgress.id, { completed: true })
-    } else {
-      // P0-7: create 可能因 UNIQUE 冲突失败，添加重试逻辑
-      try {
-        const res = await createLearningProgress({
-          courseId: courseId.value,
-          chapterId: currentChapter.value?.id,
-          sectionId: sectionId,
-          completed: true
-        })
-        const newId = res.data?.id || (res.data || res).id
-        if (newId) {
-          progressMap.value[sectionId] = { id: newId, sectionId }
-        }
-      } catch (createErr) {
-        // UNIQUE 冲突：查询已有记录后重试 update
-        console.warn('[LearningView] create 冲突，尝试查询已有记录', createErr)
-        const existing = await getLearningProgress({ courseId: courseId.value, sectionId })
-        const record = (existing.data || []).find(p => p.sectionId === sectionId)
-        if (record?.id) {
-          progressMap.value[sectionId] = record
-          await updateLearningProgress(record.id, { completed: true })
-        }
-      }
-    }
-    marked = true
+    marked = await persistLessonProgress({ force: true, completed: true })
   } catch (e) {
     console.warn('[LearningView] markLessonComplete 标记完成失败', e)
     ElMessage.warning('完成标记失败，可稍后重试')
@@ -627,6 +592,7 @@ onMounted(async () => {
   await Promise.all([loadProgress(), checkFavorite()])
 
   // 启动进度保存定时器（每 10 秒，P1-10: saveVideoProgress 内部判断 isPlaying）
+  resetLessonProgressReporter()
   progressSaveTimer = setInterval(saveVideoProgress, 10000)
 })
 
