@@ -11,7 +11,6 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * 微课平台后端入口。
@@ -43,11 +42,6 @@ public class MicroCourseApplication {
 
     @Value("${payment.mode:mock}")
     private String paymentMode;
-
-    @PostConstruct
-    public void initSecurityContextPropagation() {
-        SecurityContextHolder.setStrategyName(SecurityContextHolder.MODE_INHERITABLETHREADLOCAL);
-    }
 
     public static void main(String[] args) {
         SpringApplication.run(MicroCourseApplication.class, args);
