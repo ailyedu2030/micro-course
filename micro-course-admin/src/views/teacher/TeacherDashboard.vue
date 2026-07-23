@@ -212,7 +212,7 @@
       <div class="rating-card-body">
         <div class="rating-tier-section">
           <div class="rating-tier-badge" :class="'tier-badge--' + (ratingData.tier || 'NEW').toLowerCase()">
-            <span class="tier-icon">{{ tierIcon }}</span>
+            <el-icon class="tier-icon"><component :is="tierIconComponent" /></el-icon>
             <span class="tier-name">{{ ratingData.tierLabel || '新教师' }}</span>
           </div>
           <div class="rating-score-section">
@@ -249,27 +249,51 @@
         </div>
         <!-- 提升指南 -->
         <el-collapse v-if="ratingData.tier" class="rating-guide">
-          <el-collapse-item title="💡 如何提升等级？" name="guide">
+          <el-collapse-item name="guide">
+            <template #title>
+              <span class="collapse-title">
+                <el-icon><InfoFilled /></el-icon>
+                <span>如何提升等级？</span>
+              </span>
+            </template>
             <div class="guide-list">
               <div class="guide-item" :class="{ 'guide-done': (ratingData.avgStudentRating || 0) >= 4.5 }">
-                <span class="guide-icon">{{ (ratingData.avgStudentRating || 0) >= 4.5 ? '✅' : '⬜' }}</span>
+                <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.avgStudentRating || 0) >= 4.5 }">
+                  <CircleCheckFilled v-if="(ratingData.avgStudentRating || 0) >= 4.5" />
+                  <CircleCloseFilled v-else />
+                </el-icon>
                 <span class="guide-text">学生评价 ≥ 4.5 分（当前 {{ (ratingData.avgStudentRating || 0).toFixed(1) }}）</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.completionRate || 0) >= 80 }">
-                <span class="guide-icon">{{ (ratingData.completionRate || 0) >= 80 ? '✅' : '⬜' }}</span>
+                <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.completionRate || 0) >= 80 }">
+                  <CircleCheckFilled v-if="(ratingData.completionRate || 0) >= 80" />
+                  <CircleCloseFilled v-else />
+                </el-icon>
                 <span class="guide-text">课程完成率 ≥ 80%（当前 {{ (ratingData.completionRate || 0).toFixed(1) }}%）</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.totalStudents || 0) >= 200 }">
-                <span class="guide-icon">{{ (ratingData.totalStudents || 0) >= 200 ? '✅' : '⬜' }}</span>
+                <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.totalStudents || 0) >= 200 }">
+                  <CircleCheckFilled v-if="(ratingData.totalStudents || 0) >= 200" />
+                  <CircleCloseFilled v-else />
+                </el-icon>
                 <span class="guide-text">累计学员 ≥ 200 人（当前 {{ ratingData.totalStudents || 0 }}）</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.totalCourses || 0) >= 5 }">
-                <span class="guide-icon">{{ (ratingData.totalCourses || 0) >= 5 ? '✅' : '⬜' }}</span>
+                <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.totalCourses || 0) >= 5 }">
+                  <CircleCheckFilled v-if="(ratingData.totalCourses || 0) >= 5" />
+                  <CircleCloseFilled v-else />
+                </el-icon>
                 <span class="guide-text">课程数 ≥ 5 门（当前 {{ ratingData.totalCourses || 0 }}）</span>
               </div>
             </div>
           </el-collapse-item>
-          <el-collapse-item v-if="tierHistory.length > 0" title="📜 等级变更记录" name="history">
+          <el-collapse-item v-if="tierHistory.length > 0" name="history">
+            <template #title>
+              <span class="collapse-title">
+                <el-icon><Tickets /></el-icon>
+                <span>等级变更记录</span>
+              </span>
+            </template>
             <div class="history-list">
               <div v-for="h in tierHistory" :key="h.createdAt" class="history-item">
                 <span class="history-arrow">{{ h.fromTierLabel }} → {{ h.toTierLabel }}</span>
@@ -458,7 +482,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts } from '@element-plus/icons-vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts, CircleCheckFilled, CircleCloseFilled, InfoFilled, Tickets } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
@@ -539,9 +563,13 @@ function formatTxTime(time) {
 const ratingLoading = ref(false)
 const ratingData = ref({})
 const tierHistory = ref([])
-const tierIcon = computed(() => {
-  const icons = { PLATINUM: '💎', GOLD: '🥇', SILVER: '🥈', BRONZE: '🥉', NEW: '🌱' }
-  return icons[ratingData.value.tier] || '📊'
+const tierIconComponent = computed(() => {
+  const tier = ratingData.value.tier
+  if (tier === 'GOLD') return Star
+  if (tier === 'PLATINUM') return Medal
+  if (tier === 'SILVER') return Medal
+  if (tier === 'BRONZE') return Medal
+  return TrendCharts
 })
 const nextTierInfo = computed(() => {
   const score = Number(ratingData.value.ratingScore) || 0
@@ -788,13 +816,7 @@ async function startRefresh() {
 
 onMounted(async () => {
   document.title = '教师工作台 - 微课平台'
-  await Promise.all([
-    loadStats(),
-    loadActivity(),
-    loadTasks(),
-    loadNotifications(),
-    loadCourses()
-  ])
+  await refreshAll()
   window.addEventListener('resize', debouncedResizeCharts)
   refreshTimer = setTimeout(startRefresh, refreshInterval.value)
 })
@@ -1557,6 +1579,7 @@ onBeforeUnmount(() => {
 /* 提升指南 */
 .rating-guide { margin-top: var(--space-4); }
 .rating-guide :deep(.el-collapse-item__header) { font-size: var(--text-sm); font-weight: var(--weight-medium); }
+.collapse-title { display: inline-flex; align-items: center; gap: var(--space-2); }
 .guide-list { display: flex; flex-direction: column; gap: var(--space-2); }
 .guide-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); padding: var(--space-1) 0; }
 .guide-done { opacity: 0.6; }

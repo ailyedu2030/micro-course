@@ -48,6 +48,12 @@ export const globalUploadState = reactive({
   fileName: ''
 })
 
+function resetUploadState() {
+  globalUploadState.active = false
+  globalUploadState.percent = 0
+  globalUploadState.fileName = ''
+}
+
 request.interceptors.request.use(config => {
   if (config._skipAuth) return config
   const token = getToken()
@@ -84,16 +90,15 @@ request.interceptors.response.use(response => {
     return response
   }
   if (res.code !== 200) {
+    resetUploadState()
     return Promise.reject(new Error(res.message))
   }
   // D2: 请求完成后重置上传状态
-  globalUploadState.active = false
-  globalUploadState.percent = 0
+  resetUploadState()
   return res
 }, async error => {
   // D2: 请求异常也重置上传状态
-  globalUploadState.active = false
-  globalUploadState.percent = 0
+  resetUploadState()
   if (!error.response) {
     if (error.code === 'ECONNABORTED') {
       ElMessage.error('请求超时，请检查网络后重试')
@@ -104,6 +109,7 @@ request.interceptors.response.use(response => {
   }
   const status = error.response?.status
   const config = error.config
+  const responseMessage = error.response?.data?.message
 
   if (status === 401 && !config._retry && !config._skipAuth) {
     const refreshToken = getRefreshToken()
@@ -169,15 +175,15 @@ request.interceptors.response.use(response => {
       ElMessage.error('无权访问该资源，请联系管理员获取权限')
     }
   } else if (status === 423) {
-    ElMessage.warning(error.response?.data?.message || '登录失败次数过多，账号已锁定，请 30 分钟后重试')
+    ElMessage.warning(responseMessage || '登录失败次数过多，账号已锁定，请 30 分钟后重试')
   } else if (status === 429) {
-    ElMessage.warning(res.message || '操作过于频繁，请稍后重试')
+    ElMessage.warning(responseMessage || '操作过于频繁，请稍后重试')
   } else if (status === 413) {
-    ElMessage.error(res.message || '文件过大，超出上传限制')
+    ElMessage.error(responseMessage || '文件过大，超出上传限制')
   } else if (status >= 500) {
     ElMessage.error('服务器错误，请稍后重试')
   } else {
-    ElMessage.error(error.response?.data?.message || '请求失败')
+    ElMessage.error(responseMessage || '请求失败')
   }
   return Promise.reject(error)
 })
