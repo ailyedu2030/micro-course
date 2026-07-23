@@ -117,22 +117,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         proposal.setStatus("DRAFT");
         proposal.setCreatedAt(LocalDateTime.now());
         proposal.setUpdatedAt(LocalDateTime.now());
-        // 自动填充所属学院
-        try {
-            User user = userRepository.selectById(userId);
-            if (user != null && user.getDepartmentId() != null) {
-                proposal.setOfferDepartmentId(user.getDepartmentId());
-            } else {
-                // 用户无学院时，兜底取第一个可用学院
-                List<Department> depts = departmentRepository.selectList(null);
-                if (depts != null && !depts.isEmpty()) {
-                    proposal.setOfferDepartmentId(depts.get(0).getId());
-                    log.warn("initDraft: userId={} 无学院，兜底使用 departmentId={}", userId, depts.get(0).getId());
-                }
-            }
-        } catch (Exception e) {
-            log.warn("initDraft: 无法获取用户学院信息, userId={}", userId);
-        }
+        proposal.setOfferDepartmentId(resolveOfferDepartmentId(userId));
         proposalRepository.insert(proposal);
         Long newId = proposal.getId();
 
@@ -150,6 +135,21 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         log.info("initDraft: userId={}, proposalId={}, departmentId={}",
             userId, newId, proposal.getOfferDepartmentId());
         return newId;
+    }
+
+    private Long resolveOfferDepartmentId(Long userId) {
+        User user = userRepository.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND, "用户不存在，无法初始化申报草稿");
+        }
+        if (user.getDepartmentId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "当前教师账号未绑定学院，无法初始化申报草稿");
+        }
+        Department department = departmentRepository.selectById(user.getDepartmentId());
+        if (department == null) {
+            throw new BusinessException(ErrorCode.DEPARTMENT_NOT_FOUND, "当前教师所属学院不存在，无法初始化申报草稿");
+        }
+        return department.getId();
     }
 
     // ================================================================
