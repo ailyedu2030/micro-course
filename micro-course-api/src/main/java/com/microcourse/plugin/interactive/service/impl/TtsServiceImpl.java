@@ -51,7 +51,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 
 @Service
@@ -103,7 +102,7 @@ public class TtsServiceImpl implements TtsService {
     /** Qwen3-TTS 本地服务是否可用 */
     private volatile boolean ttsLocalAvailable = false;
 
-    private final ConcurrentHashMap<String, TtsTaskState> taskStates = new ConcurrentHashMap<>();
+    private static final long TASK_STATE_TTL_MILLIS = 30 * 60 * 1000L;
 
     public TtsServiceImpl(SlidePageMapper slidePageMapper,
                           CourseRepository courseRepository,
@@ -436,10 +435,6 @@ public class TtsServiceImpl implements TtsService {
         for (SlidePage page : pages) {
             try {
                 doGenerate(courseId, page.getPageNumber(), page);
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
             } catch (BusinessException e) {
                 log.warn("TTS failed for page {}: {}", page.getPageNumber(), e.getMessage());
             }
@@ -472,7 +467,7 @@ public class TtsServiceImpl implements TtsService {
         int estimatedSeconds = Math.max(30, scriptContent.length() / 50);
 
         TtsTaskState state = new TtsTaskState(taskId, courseId, sectionId, estimatedSeconds);
-        taskStates.put(taskId, state);
+        persistNewTaskState(state);
 
         doGenerateSectionAsync(taskId, courseId, sectionId, scriptContent, voice, model, speed, splitByPage);
 
@@ -483,8 +478,9 @@ public class TtsServiceImpl implements TtsService {
                                         String scriptContent, String voice,
                                         String model, Double speed, boolean splitByPage) {
         slideRenderExecutor.submit(() -> {
+            List<SlidePage> pages = new ArrayList<>();
             try {
-                List<SlidePage> pages = transactionTemplate.execute(tx -> {
+                pages = transactionTemplate.execute(tx -> {
                     LambdaQueryWrapper<SlidePage> wrapper = new LambdaQueryWrapper<>();
                     wrapper.eq(SlidePage::getCourseId, courseId)
                             .eq(SlidePage::getSectionId, sectionId)
@@ -493,7 +489,7 @@ public class TtsServiceImpl implements TtsService {
                 });
 
                 if (pages == null || pages.isEmpty()) {
-                    markTaskFailed(taskId, "该小节没有 SlidePage 记录");
+                    markTaskFailed(taskId, courseId, "该小节没有 SlidePage 记录");
                     return;
                 }
 
@@ -509,6 +505,8 @@ public class TtsServiceImpl implements TtsService {
                     pages = pages.subList(0, Math.min(segments.length, pages.size()));
                 }
 
+                markSectionPagesGenerating(pages);
+
                 Path audioDir = Paths.get(storagePath, String.valueOf(courseId), "audio");
                 Files.createDirectories(audioDir);
 
@@ -518,21 +516,25 @@ public class TtsServiceImpl implements TtsService {
                 for (int i = 0; i < pages.size(); i++) {
                     SlidePage page = pages.get(i);
                     String segText = segments[i].trim();
-                    if (segText.isEmpty()) continue;
+                    if (segText.isEmpty()) {
+                        txSetPageStatus(page.getId(), "TEACHER_EDITED");
+                        continue;
+                    }
 
                     String segFileName = "section_" + sectionId + "_page_" + page.getPageNumber() + ".mp3";
                     Path segPath = audioDir.resolve(segFileName);
 
                     int segDuration = 0;
-                    int retries = 3;
-                    while (retries-- > 0) {
+                    for (int attempt = 1; attempt <= 3; attempt++) {
                         try {
                             segDuration = callMmxCliWithVoice(segText, segPath, voice != null ? voice : ttsVoice, model, speed);
                             break;
                         } catch (Exception e) {
-                            log.warn("[TTS] segment {} retry, error: {}", page.getPageNumber(), e.getMessage());
-                            if (retries == 0) throw e;
-                            try { Thread.sleep(2000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); throw new RuntimeException(ie); }
+                            if (attempt == 3) {
+                                throw e;
+                            }
+                            log.warn("[TTS] segment {} attempt {}/3 failed: {}",
+                                    page.getPageNumber(), attempt, e.getMessage());
                         }
                     }
 
@@ -569,17 +571,17 @@ public class TtsServiceImpl implements TtsService {
                         return null;
                     });
 
-                    stateAppendSegment(ftaskId, seg);
-                    try { Thread.sleep(1000); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+                    stateAppendSegment(ftaskId, courseId, seg);
                 }
 
                 String mergedUrl = "/api/courses/" + courseId + "/slides/pages/1/audio?sectionId="
                         + sectionId + "&v=2&merged=true";
-                markTaskCompleted(taskId, mergedUrl, totalDuration, resultSegments);
+                markTaskCompleted(taskId, courseId, mergedUrl, totalDuration, resultSegments);
 
             } catch (Exception e) {
                 log.error("[TTS] section async task failed: taskId={}, error={}", taskId, e.getMessage());
-                markTaskFailed(taskId, e.getMessage());
+                resetSectionPagesGenerating(pages);
+                markTaskFailed(taskId, courseId, e.getMessage());
             }
         });
     }
@@ -587,11 +589,11 @@ public class TtsServiceImpl implements TtsService {
     @Override
     @Transactional(readOnly = true)
     public TtsStatusResponse getSectionTtsStatus(Long courseId, Long sectionId, String taskId) {
-        TtsTaskState state = taskStates.get(taskId);
+        TtsTaskState state = readTaskState(courseId, taskId);
         if (state == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "任务不存在或已过期");
         }
-        if (!courseId.equals(state.courseId) || !sectionId.equals(state.sectionId)) {
+        if (!courseId.equals(state.getCourseId()) || !sectionId.equals(state.getSectionId())) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "任务与课程/小节不匹配");
         }
         return state.toResponse();
@@ -704,57 +706,91 @@ public class TtsServiceImpl implements TtsService {
         return estimatedSec;
     }
 
-    private synchronized void stateAppendSegment(String taskId, TtsStatusResponse.AudioSegment seg) {
-        TtsTaskState state = taskStates.get(taskId);
-        if (state != null) {
-            state.segments.add(seg);
+    private synchronized void stateAppendSegment(String taskId, Long courseId, TtsStatusResponse.AudioSegment seg) {
+        TtsTaskState state = readTaskState(courseId, taskId);
+        if (state == null) {
+            return;
         }
+        state.getSegments().add(seg);
+        state.setUpdatedAt(System.currentTimeMillis());
+        writeTaskState(state);
     }
 
-    private synchronized void markTaskCompleted(String taskId, String mergedUrl, long totalDuration,
+    private synchronized void markTaskCompleted(String taskId, Long courseId, String mergedUrl, long totalDuration,
                                                List<TtsStatusResponse.AudioSegment> segments) {
-        TtsTaskState state = taskStates.get(taskId);
-        if (state != null) {
-            state.status = "completed";
-            state.mergedAudioUrl = mergedUrl;
-            state.totalDuration = totalDuration;
-            state.segments = new ArrayList<>(segments);
-            state.completedAt = System.currentTimeMillis();
+        TtsTaskState state = readTaskState(courseId, taskId);
+        if (state == null) {
+            return;
         }
+        state.setStatus("completed");
+        state.setMergedAudioUrl(mergedUrl);
+        state.setTotalDuration(totalDuration);
+        state.setSegments(new ArrayList<>(segments));
+        state.setCompletedAt(System.currentTimeMillis());
+        state.setUpdatedAt(System.currentTimeMillis());
+        writeTaskState(state);
     }
 
-    private synchronized void markTaskFailed(String taskId, String errorMsg) {
-        TtsTaskState state = taskStates.get(taskId);
-        if (state != null) {
-            state.status = "failed";
-            state.errorMessage = errorMsg;
-            state.completedAt = System.currentTimeMillis();
+    private synchronized void markTaskFailed(String taskId, Long courseId, String errorMsg) {
+        try {
+            TtsTaskState state = readTaskState(courseId, taskId);
+            if (state == null) {
+                return;
+            }
+            state.setStatus("failed");
+            state.setErrorMessage(errorMsg);
+            state.setCompletedAt(System.currentTimeMillis());
+            state.setUpdatedAt(System.currentTimeMillis());
+            writeTaskState(state);
+        } catch (Exception e) {
+            log.error("[TTS] 持久化失败任务状态失败 taskId={}", taskId, e);
         }
     }
 
     @org.springframework.scheduling.annotation.Scheduled(fixedRate = 300000)
     public void cleanupExpiredTaskStates() {
-        long expireThreshold = System.currentTimeMillis() - 30 * 60 * 1000L;
-        taskStates.entrySet().removeIf(entry -> {
-            if (entry.getValue().completedAt > 0 && entry.getValue().completedAt < expireThreshold) {
-                log.debug("[Tts] cleanup expired task state: {}", entry.getKey());
-                return true;
+        long expireThreshold = System.currentTimeMillis() - TASK_STATE_TTL_MILLIS;
+        Path basePath = Paths.get(storagePath);
+        if (!Files.isDirectory(basePath)) {
+            return;
+        }
+        try (DirectoryStream<Path> courseDirs = Files.newDirectoryStream(basePath)) {
+            for (Path courseDir : courseDirs) {
+                Path taskDir = courseDir.resolve("audio").resolve("tasks");
+                if (!Files.isDirectory(taskDir)) {
+                    continue;
+                }
+                try (DirectoryStream<Path> taskFiles = Files.newDirectoryStream(taskDir, "*.json")) {
+                    for (Path taskFile : taskFiles) {
+                        TtsTaskState state = objectMapper.readValue(taskFile.toFile(), TtsTaskState.class);
+                        if (state.getCompletedAt() > 0 && state.getCompletedAt() < expireThreshold) {
+                            Files.deleteIfExists(taskFile);
+                            log.debug("[Tts] cleanup expired task state: {}", taskFile.getFileName());
+                        }
+                    }
+                }
             }
-            return false;
-        });
+        } catch (NoSuchFileException e) {
+            log.debug("[Tts] task state directory not found: {}", e.getMessage());
+        } catch (Exception e) {
+            log.error("[Tts] cleanup expired task states failed", e);
+        }
     }
 
     private static class TtsTaskState {
-        final String taskId;
-        final Long courseId;
-        final Long sectionId;
-        final int estimatedSeconds;
-        volatile String status = "queued";
-        volatile String errorMessage;
-        volatile String mergedAudioUrl;
-        volatile long totalDuration = 0;
-        volatile List<TtsStatusResponse.AudioSegment> segments = new ArrayList<>();
-        volatile long completedAt = 0;
+        private String taskId;
+        private Long courseId;
+        private Long sectionId;
+        private int estimatedSeconds;
+        private String status = "queued";
+        private String errorMessage;
+        private String mergedAudioUrl;
+        private long totalDuration = 0;
+        private List<TtsStatusResponse.AudioSegment> segments = new ArrayList<>();
+        private long completedAt = 0;
+        private long updatedAt = System.currentTimeMillis();
+
+        TtsTaskState() {}
 
         TtsTaskState(String taskId, Long courseId, Long sectionId, int estimatedSeconds) {
             this.taskId = taskId;
@@ -771,6 +807,116 @@ public class TtsServiceImpl implements TtsService {
                 return TtsStatusResponse.failed(taskId, errorMessage);
             }
             return TtsStatusResponse.completed(taskId, segments, mergedAudioUrl, totalDuration);
+        }
+
+        public String getTaskId() { return taskId; }
+        public void setTaskId(String taskId) { this.taskId = taskId; }
+        public Long getCourseId() { return courseId; }
+        public void setCourseId(Long courseId) { this.courseId = courseId; }
+        public Long getSectionId() { return sectionId; }
+        public void setSectionId(Long sectionId) { this.sectionId = sectionId; }
+        public int getEstimatedSeconds() { return estimatedSeconds; }
+        public void setEstimatedSeconds(int estimatedSeconds) { this.estimatedSeconds = estimatedSeconds; }
+        public String getStatus() { return status; }
+        public void setStatus(String status) { this.status = status; }
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+        public String getMergedAudioUrl() { return mergedAudioUrl; }
+        public void setMergedAudioUrl(String mergedAudioUrl) { this.mergedAudioUrl = mergedAudioUrl; }
+        public long getTotalDuration() { return totalDuration; }
+        public void setTotalDuration(long totalDuration) { this.totalDuration = totalDuration; }
+        public List<TtsStatusResponse.AudioSegment> getSegments() { return segments; }
+        public void setSegments(List<TtsStatusResponse.AudioSegment> segments) { this.segments = segments; }
+        public long getCompletedAt() { return completedAt; }
+        public void setCompletedAt(long completedAt) { this.completedAt = completedAt; }
+        public long getUpdatedAt() { return updatedAt; }
+        public void setUpdatedAt(long updatedAt) { this.updatedAt = updatedAt; }
+    }
+
+    private void persistNewTaskState(TtsTaskState state) {
+        try {
+            writeTaskState(state);
+        } catch (Exception e) {
+            log.error("[TTS] 初始化任务状态失败 taskId={}", state.getTaskId(), e);
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "任务状态初始化失败");
+        }
+    }
+
+    private synchronized TtsTaskState readTaskState(Long courseId, String taskId) {
+        try {
+            Path taskPath = getTaskStatePath(courseId, taskId);
+            if (!Files.exists(taskPath)) {
+                return null;
+            }
+            return objectMapper.readValue(taskPath.toFile(), TtsTaskState.class);
+        } catch (BusinessException e) {
+            throw e;
+        } catch (NoSuchFileException e) {
+            return null;
+        } catch (Exception e) {
+            log.error("[TTS] 读取任务状态失败 taskId={}", taskId, e);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "任务状态读取失败");
+        }
+    }
+
+    private synchronized void writeTaskState(TtsTaskState state) {
+        try {
+            Path taskDir = getTaskStateDirectory(state.getCourseId());
+            Files.createDirectories(taskDir);
+            Path taskPath = getTaskStatePath(state.getCourseId(), state.getTaskId());
+            objectMapper.writerWithDefaultPrettyPrinter().writeValue(taskPath.toFile(), state);
+        } catch (Exception e) {
+            throw new IllegalStateException("写入任务状态失败 taskId=" + state.getTaskId(), e);
+        }
+    }
+
+    private Path getTaskStateDirectory(Long courseId) {
+        return Paths.get(storagePath, String.valueOf(courseId), "audio", "tasks");
+    }
+
+    private Path getTaskStatePath(Long courseId, String taskId) {
+        String safeTaskId = normalizeTaskId(taskId);
+        return getTaskStateDirectory(courseId).resolve(safeTaskId + ".json");
+    }
+
+    private String normalizeTaskId(String taskId) {
+        if (taskId == null || !taskId.matches("[A-Za-z0-9\\-]+")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法任务标识");
+        }
+        return taskId;
+    }
+
+    private void markSectionPagesGenerating(List<SlidePage> pages) {
+        transactionTemplate.execute(tx -> {
+            LocalDateTime now = LocalDateTime.now();
+            for (SlidePage page : pages) {
+                page.setNarrationStatus("AUDIO_GENERATING");
+                page.setUpdatedAt(now);
+                slidePageMapper.updateById(page);
+            }
+            return null;
+        });
+    }
+
+    private void resetSectionPagesGenerating(List<SlidePage> pages) {
+        if (pages == null || pages.isEmpty()) {
+            return;
+        }
+        try {
+            transactionTemplate.execute(tx -> {
+                LocalDateTime now = LocalDateTime.now();
+                for (SlidePage page : pages) {
+                    SlidePage current = slidePageMapper.selectById(page.getId());
+                    if (current != null && "AUDIO_GENERATING".equals(current.getNarrationStatus())) {
+                        current.setNarrationStatus("TEACHER_EDITED");
+                        current.setUpdatedAt(now);
+                        slidePageMapper.updateById(current);
+                    }
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            log.error("[TTS] 回退小节页面状态失败", e);
         }
     }
 
