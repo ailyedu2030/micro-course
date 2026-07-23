@@ -31,7 +31,17 @@ public final class MybatisPlusTestHelper {
         TableInfoHelper.initTableInfo(assistant, MicroSpecialtyFeaturedAudit.class);
         TableInfoHelper.initTableInfo(assistant, Enrollment.class);
         TableInfoHelper.initTableInfo(assistant, User.class);
+        TableInfoHelper.initTableInfo(assistant, Course.class);
+        TableInfoHelper.initTableInfo(assistant, CourseChapter.class);
+        TableInfoHelper.initTableInfo(assistant, LearningProgress.class);
+        TableInfoHelper.initTableInfo(assistant, Exercise.class);
+        TableInfoHelper.initTableInfo(assistant, CourseNote.class);
+        TableInfoHelper.initTableInfo(assistant, DiscussionPost.class);
+        TableInfoHelper.initTableInfo(assistant, DiscussionComment.class);
+        TableInfoHelper.initTableInfo(assistant, VideoBookmark.class);
         TableInfoHelper.initTableInfo(assistant, Video.class);
+        TableInfoHelper.initTableInfo(assistant, com.microcourse.plugin.interactive.entity.CourseSlide.class);
+        TableInfoHelper.initTableInfo(assistant, com.microcourse.plugin.interactive.entity.SlidePage.class);
         TableInfoHelper.initTableInfo(assistant, MicroSpecialty.class);
     }
 }
