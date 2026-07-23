@@ -25,7 +25,7 @@ class DomainEventOutboxRepositoryTest {
     @BeforeEach
     void setup() {
         repo = mock(DomainEventOutboxRepository.class);
-        when(repo.listPendingDueNow(anyInt())).thenReturn(java.util.List.of());
+        when(repo.listPendingDueNow(any(LocalDateTime.class), anyInt())).thenReturn(java.util.List.of());
         when(repo.insert(any(DomainEventOutbox.class))).thenReturn(1);
         when(repo.markDelivered(anyString(), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(1);
         when(repo.markRetry(anyString(), any(LocalDateTime.class), anyString(), any(LocalDateTime.class))).thenReturn(1);
