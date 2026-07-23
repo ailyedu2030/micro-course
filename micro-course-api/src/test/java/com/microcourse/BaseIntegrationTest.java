@@ -77,6 +77,9 @@ public abstract class BaseIntegrationTest {
             // 清空 JWT 黑名单和 refresh token 缓存，防止跨测试污染
             clearRedisPattern("mc:jwt:blacklist:*");
             clearRedisPattern("mc:refresh:*");
+            // 清空课程详情/统计缓存，避免共享 Redis 下旧课程缓存污染集成测试读路径
+            clearRedisPattern("mc:course:detail:*");
+            clearRedisPattern("mc:course:stats:*");
             applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }
