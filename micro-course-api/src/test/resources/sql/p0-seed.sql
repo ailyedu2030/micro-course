@@ -33,12 +33,13 @@ INSERT INTO course_categories (id, name, level, sort_order, created_at, updated_
 VALUES (1, 'P0测试分类', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
--- 2) 教师账号（courses.teacher_id 的 NOT NULL FK）
-INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)
+-- 2) 教师账号（courses.teacher_id 的 NOT NULL FK；StorageApplication 正向流要求教师绑定学院）
+INSERT INTO users (id, username, password, real_name, role, status, cas_bound, department_id, created_at, updated_at)
 VALUES (6, 'p0_teacher',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
-        'P0测试教师', 'TEACHER', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+        'P0测试教师', 'TEACHER', 1, FALSE, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE
+SET department_id = EXCLUDED.department_id;
 
 -- 3) 学生账号 student/student123（EnrollmentP0ConcurrencyTest 以此登录，且 body userId=7）
 INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)

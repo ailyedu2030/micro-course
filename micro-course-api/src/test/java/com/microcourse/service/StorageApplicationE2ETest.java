@@ -126,6 +126,19 @@ class StorageApplicationE2ETest extends BaseIntegrationTest {
     }
 
     @Test
+    @DisplayName("账号未绑定学院: initDraft 应返回400")
+    void testInitDraftRejectsTeacherWithoutDepartment() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(applicationContext.getBean(javax.sql.DataSource.class));
+        jdbc.update("UPDATE users SET department_id = NULL WHERE username = ?", "p0_teacher");
+
+        mockMvc.perform(post("/api/storage-applications/init")
+                .header("Authorization", "Bearer " + teacherToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(9005))
+                .andExpect(jsonPath("$.message").value("当前教师账号未绑定学院，无法初始化申报草稿"));
+    }
+
+    @Test
     @DisplayName("自动保存: 非编辑状态应跳过")
     void testAutoSaveSkippedOnNonDraft() throws Exception {
         // 先创建一个DRAFT，提交它
