@@ -588,12 +588,14 @@ import { useVideoDisplayState } from '@/composables/useVideoDisplayState'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
+import { useVideoModuleState } from '@/composables/useVideoModuleState'
 import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
 import { useVideoPageActions } from '@/composables/useVideoPageActions'
 import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
 import { useVideoPageViewState } from '@/composables/useVideoPageViewState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
+import { useVideoRouteContext } from '@/composables/useVideoRouteContext'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
 import { useVideoSourceLifecycle } from '@/composables/useVideoSourceLifecycle'
 import { useVideoSubtitles } from '@/composables/useVideoSubtitles'
@@ -610,20 +612,27 @@ const videoRef = ref(null)
 const videoContainerRef = ref(null)
 const progressTrack = ref(null)
 
-// Route params
-const videoId = computed(() => route.params.videoId || route.query.videoId)
-const courseId = computed(() => route.params.id || route.query.courseId)
-const chapterId = computed(() => route.query.chapterId)
+const {
+  videoId,
+  courseId,
+  chapterId,
+  userId
+} = useVideoRouteContext({
+  route,
+  userStore
+})
 
-// State
-const loading = ref(true)
-const errorMsg = ref('')
-const videoData = ref({})
-const chapters = ref([])
-const discussions = ref([])
-
-const isPipSupported = ref(false)
-const currentChapterIndex = ref(0)
+const {
+  loading,
+  errorMsg,
+  videoData,
+  chapters,
+  discussions,
+  isPipSupported,
+  currentChapterIndex,
+  isComponentUnmounted,
+  setErrorMessage
+} = useVideoModuleState()
 
 const {
   setChapterItemRef,
@@ -632,9 +641,6 @@ const {
   currentChapterIndexRef: currentChapterIndex,
   nextTickFn: nextTick
 })
-
-// Progress reporting
-const isComponentUnmounted = ref(false) // P1-2: prevent state updates after unmount
 
 const {
   isMobile,
@@ -714,7 +720,7 @@ const {
 } = useVideoDisplayState({
   currentTimeRef: currentTime,
   durationRef: duration,
-  userIdRef: computed(() => userStore.userInfo?.id)
+  userIdRef: userId
 })
 
 const {
@@ -778,9 +784,7 @@ const {
   handlePipLeave,
   getVideoUrl: () => videoData.value.hlsUrl || videoData.value.url,
   loadVideo: () => loadVideo(),
-  setErrorMessage: (message) => {
-    errorMsg.value = message
-  },
+  setErrorMessage,
   scheduleRetryInit: () => nextTick()
 })
 
@@ -828,7 +832,7 @@ const {
   videoId,
   courseId,
   chapterId,
-  userId: computed(() => userStore.userInfo?.id),
+  userId,
   isComponentUnmounted: () => isComponentUnmounted.value,
   saveLocalPosition,
   showWarning: (message) => {
@@ -844,7 +848,7 @@ const {
 } = useVideoLearningData({
   courseId,
   chapterId,
-  userId: computed(() => userStore.userInfo?.id),
+  userId,
   chaptersRef: chapters,
   discussionsRef: discussions,
   currentChapterIndexRef: currentChapterIndex,
