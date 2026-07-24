@@ -578,6 +578,7 @@ import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
+import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -609,9 +610,7 @@ const showChapterList = ref(false)
 const isMobile = ref(window.innerWidth <= 768)
 
 // Playback state
-const isPlaying = ref(false)
 const isBuffering = ref(false)
-const isMuted = ref(false)
 
 // P1-3: 视频缓冲超时提示 - 客户体验第一原则
 // 根因: 之前只显示 spinner,网差时用户不知道要等多久,容易误以为卡死退出
@@ -663,17 +662,8 @@ function stopBufferingWatchdog() {
     bufferingLongTimer = null
   }
 }
-const isFullscreen = ref(false)
-const isPip = ref(false)
 const isPipSupported = ref(false)
-const subtitlesEnabled = ref(false)
 const currentSubtitle = ref('')
-const playbackRate = ref(1)
-const volumePercent = ref(100)
-const volume = computed(() => volumePercent.value / 100)
-const currentTime = ref(0)
-const duration = ref(0)
-const bufferedPercent = ref(0)
 const currentChapterIndex = ref(0)
 const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
 
@@ -697,8 +687,6 @@ const scrollToActiveChapter = () => {
 const progressId = ref(null)
 let lastReportedProgress = 0
 let lastFailedProgress = null // P0-L01: track failed progress for retry
-let hideControlsTimer = null
-const controlsVisible = ref(true)
 let isComponentUnmounted = false // P1-2: prevent state updates after unmount
 
 const getCurrentProgressSnapshot = () => {
@@ -823,7 +811,6 @@ const showSeekIndicator = ref(false)
 const seekIndicatorDir = ref('')
 const seekIndicatorSeconds = ref(10)
 let seekIndicatorTimer = null
-let speedToastTimer = null
 const showObjectivesOverlay = () => {
   showObjectives.value = true
   if (objectivesTimer) clearTimeout(objectivesTimer)
@@ -855,6 +842,47 @@ const formatDateTime = (isoString) => {
   const d = new Date(isoString)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+const {
+  isPlaying,
+  isMuted,
+  isFullscreen,
+  isPip,
+  subtitlesEnabled,
+  playbackRate,
+  volumePercent,
+  currentTime,
+  duration,
+  bufferedPercent,
+  controlsVisible,
+  speedToastVisible,
+  togglePlay,
+  skipBackward,
+  skipForward,
+  seekRelative,
+  toggleMute,
+  changeVolume,
+  changeSpeed,
+  toggleSubtitles,
+  toggleFullscreen,
+  togglePictureInPicture,
+  handlePipEnter,
+  handlePipLeave,
+  seekVideo,
+  showControls,
+  hideControlsDelayed,
+  onCanPlay,
+  onTimeUpdate,
+  onProgress,
+  handleFullscreenChange
+} = useVideoPlaybackControls({
+  videoRef,
+  videoContainerRef,
+  progressTrackRef: progressTrack,
+  getLastPosition: () => lastPosition.value
+})
+
+const volume = computed(() => volumePercent.value / 100)
 
 const {
   lastPosition,
@@ -1141,32 +1169,6 @@ const switchChapter = async (id) => {
 }
 
 // Playback controls
-const togglePlay = () => {
-  const video = videoRef.value
-  if (!video) return
-  if (video.paused) {
-    video.play().catch(() => {})
-    isPlaying.value = true
-  } else {
-    video.pause()
-    isPlaying.value = false
-  }
-}
-
-const skipBackward = () => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = Math.max(video.currentTime - 10, 0)
-  }
-}
-
-const skipForward = () => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = Math.min(video.currentTime + 10, video.duration)
-  }
-}
-
 const showSeekIndicatorHelper = (dir, seconds) => {
   seekIndicatorDir.value = dir
   seekIndicatorSeconds.value = seconds
@@ -1175,138 +1177,6 @@ const showSeekIndicatorHelper = (dir, seconds) => {
   seekIndicatorTimer = setTimeout(() => {
     showSeekIndicator.value = false
   }, 600)
-}
-
-// P0-3: seekRelative for keyboard arrow controls on progress bar
-const seekRelative = (delta) => {
-  if (videoRef.value) {
-    videoRef.value.currentTime = Math.max(0, Math.min(videoRef.value.duration || 0, videoRef.value.currentTime + delta))
-  }
-}
-
-const toggleMute = () => {
-  const video = videoRef.value
-  if (!video) return
-  video.muted = !video.muted
-  isMuted.value = video.muted
-}
-
-const changeVolume = (val) => {
-  const video = videoRef.value
-  if (video) {
-    video.volume = val / 100
-    volumePercent.value = val
-    isMuted.value = val === 0
-  }
-}
-
-const changeSpeed = (speed) => {
-  playbackRate.value = speed
-  const video = videoRef.value
-  if (video) {
-    video.playbackRate = speed
-  }
-  speedToastVisible.value = true
-  if (speedToastTimer) clearTimeout(speedToastTimer)
-  speedToastTimer = setTimeout(() => {
-    speedToastVisible.value = false
-  }, 1500)
-}
-
-const toggleSubtitles = () => {
-  subtitlesEnabled.value = !subtitlesEnabled.value
-}
-
-// P0-2: Fullscreen on container (not video element) so custom controls are visible
-const toggleFullscreen = async () => {
-  const container = videoContainerRef.value
-  if (!container) return
-  try {
-    if (!document.fullscreenElement) {
-      await container.requestFullscreen?.()
-      isFullscreen.value = true
-    } else {
-      await document.exitFullscreen?.()
-      isFullscreen.value = false
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] toggleFullscreen 全屏切换失败', e)
-    isFullscreen.value = false
-  }
-}
-
-const togglePictureInPicture = async () => {
-  const video = videoRef.value
-  if (!video) return
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture()
-    } else {
-      await video.requestPictureInPicture()
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] togglePictureInPicture 画中画切换失败', e)
-  }
-}
-
-const handlePipEnter = () => { isPip.value = true }
-const handlePipLeave = () => { isPip.value = false }
-
-const seekVideo = (e) => {
-  const video = videoRef.value
-  const track = progressTrack.value
-  if (!video || !track) return
-  const rect = track.getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
-  video.currentTime = percent * video.duration
-}
-
-// Controls visibility
-const showControls = () => {
-  controlsVisible.value = true
-  if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer)
-    hideControlsTimer = null
-  }
-}
-
-const hideControlsDelayed = () => {
-  hideControlsTimer = setTimeout(() => {
-    if (isPlaying.value) {
-      controlsVisible.value = false
-    }
-  }, 3000)
-}
-
-const speedToastVisible = ref(false)
-
-// Event handlers
-const onCanPlay = () => {
-  const video = videoRef.value
-  if (video) {
-    duration.value = video.duration
-    video.playbackRate = playbackRate.value
-    video.volume = volumePercent.value / 100
-
-    // P0-1: Restore saved position now that duration is known
-    if (lastPosition.value > 0 && lastPosition.value < video.duration - 10) {
-      video.currentTime = lastPosition.value
-    }
-  }
-}
-
-const onTimeUpdate = () => {
-  const video = videoRef.value
-  if (video) {
-    currentTime.value = video.currentTime
-  }
-}
-
-const onProgress = () => {
-  const video = videoRef.value
-  if (video && video.buffered.length > 0) {
-    bufferedPercent.value = (video.buffered.end(video.buffered.length - 1) / video.duration) * 100
-  }
 }
 
 const onEnded = async () => {
@@ -1379,11 +1249,6 @@ const handleKeydown = (e) => {
       showControls()
       break
   }
-}
-
-// Fullscreen change handler
-const handleFullscreenChange = () => {
-  isFullscreen.value = !!document.fullscreenElement
 }
 
 // Navigation
@@ -1559,10 +1424,6 @@ onBeforeUnmount(() => {
   }
   // P1-3: 清理缓冲 watchdog,避免内存泄漏
   stopBufferingWatchdog()
-  if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer)
-    hideControlsTimer = null
-  }
   if (seekIndicatorTimer) {
     clearTimeout(seekIndicatorTimer)
     seekIndicatorTimer = null
@@ -1574,10 +1435,6 @@ onBeforeUnmount(() => {
   if (tapTimer) {
     clearTimeout(tapTimer)
     tapTimer = null
-  }
-  if (speedToastTimer) {
-    clearTimeout(speedToastTimer)
-    speedToastTimer = null
   }
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
