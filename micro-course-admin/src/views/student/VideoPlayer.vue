@@ -578,6 +578,7 @@ import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchd
 import { useVideoChapterScroller } from '@/composables/useVideoChapterScroller'
 import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
 import { useVideoDisplayFormatters } from '@/composables/useVideoDisplayFormatters'
+import { useVideoDisplayState } from '@/composables/useVideoDisplayState'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
@@ -638,20 +639,6 @@ const {
   showObjectivesOverlay
 } = useVideoUiState()
 
-// P1-13: 前端提示性水印（用户ID+时间戳）
-const watermarkText = computed(() => {
-  const uid = userStore.userInfo?.id || 'unknown'
-  const now = new Date()
-  const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
-  return `用户 ${uid} · ${ts}`
-})
-
-// Computed
-const progressPercent = computed(() => {
-  if (!duration.value) return 0
-  return (currentTime.value / duration.value) * 100
-})
-
 const {
   formatTime,
   formatDateTime
@@ -694,6 +681,15 @@ const {
   videoContainerRef,
   progressTrackRef: progressTrack,
   getLastPosition: () => lastPosition.value
+})
+
+const {
+  progressPercent,
+  watermarkText
+} = useVideoDisplayState({
+  currentTimeRef: currentTime,
+  durationRef: duration,
+  userIdRef: computed(() => userStore.userInfo?.id)
 })
 
 const volume = computed(() => volumePercent.value / 100)
