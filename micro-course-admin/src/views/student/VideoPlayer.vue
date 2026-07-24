@@ -85,12 +85,6 @@
               <line x1="3" y1="18" x2="3.01" y2="18" />
             </svg>
           </el-button>
-          <el-button link @click="toggleSettings" aria-label="设置">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </el-button>
         </div>
       </header>
 
@@ -133,6 +127,7 @@
               ref="videoRef"
               class="video-element"
               :poster="videoData.thumbnail"
+              @loadedmetadata="syncSubtitleTrack"
               @canplay="onCanPlay"
               @timeupdate="onTimeUpdate"
               @ended="onEnded"
@@ -141,7 +136,16 @@
               @playing="onBufferingEnd"
               @progress="onProgress"
               @dblclick="togglePlay"
-            ></video>
+            >
+              <track
+                v-if="videoData.subtitleUrl"
+                :src="videoData.subtitleUrl"
+                kind="subtitles"
+                srclang="zh-CN"
+                label="中文字幕"
+                @load="syncSubtitleTrack"
+              />
+            </video>
 
             <!-- Buffering Spinner -->
             <div v-if="isBuffering" class="video-buffering">
@@ -456,10 +460,11 @@
                   v-for="note in notes"
                   :key="note.id"
                   class="note-item"
+                  :class="{ 'is-highlighted': highlightedNoteTime === note.time }"
                   @mouseenter="highlightTime(note.time)"
                   @mouseleave="highlightTime(null)"
                 >
-                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                   <el-button link size="small" @click="deleteNote(note.id)">删除</el-button>
                 </div>
@@ -531,8 +536,9 @@
                   v-for="note in notes"
                   :key="note.id"
                   class="note-item h5-note-item"
+                  :class="{ 'is-highlighted': highlightedNoteTime === note.time }"
                 >
-                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                 </div>
               </div>
@@ -583,12 +589,14 @@ import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
+import { useVideoPageActions } from '@/composables/useVideoPageActions'
 import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
 import { useVideoPageViewState } from '@/composables/useVideoPageViewState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
 import { useVideoSourceLifecycle } from '@/composables/useVideoSourceLifecycle'
+import { useVideoSubtitles } from '@/composables/useVideoSubtitles'
 import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
 import { useVideoUiState } from '@/composables/useVideoUiState'
 import { useUserStore } from '@/store/user'
@@ -646,7 +654,6 @@ const {
   isMuted,
   isFullscreen,
   isPip,
-  subtitlesEnabled,
   playbackRate,
   volumePercent,
   currentTime,
@@ -661,7 +668,6 @@ const {
   toggleMute,
   changeVolume,
   changeSpeed,
-  toggleSubtitles,
   toggleFullscreen,
   togglePictureInPicture,
   handlePipEnter,
@@ -681,9 +687,18 @@ const {
 })
 
 const {
+  subtitlesEnabled,
+  currentSubtitle,
+  toggleSubtitles,
+  syncSubtitleTrack
+} = useVideoSubtitles({
+  videoRef,
+  subtitleUrlRef: computed(() => videoData.value.subtitleUrl || '')
+})
+
+const {
   activeTab,
   showChapterList,
-  currentSubtitle,
   currentChapter,
   volume,
   toggleChapterList
@@ -928,22 +943,15 @@ const {
   }
 })
 
-const highlightTime = () => {
-  // Could emit event to highlight in video if needed
-}
-
-const onVideoError = () => {
-  errorMsg.value = '视频播放出错，请尝试刷新页面'
-}
-
-// Navigation
-const goBack = () => {
-  router.back()
-}
-
-const toggleSettings = () => {
-  // Could show settings panel
-}
+const {
+  highlightedNoteTime,
+  highlightTime,
+  onVideoError,
+  goBack
+} = useVideoPageActions({
+  router,
+  errorMsgRef: errorMsg
+})
 
 useVideoPageLifecycle({
   isPlayingRef: isPlaying,
@@ -1850,6 +1858,10 @@ useVideoPageLifecycle({
   background: rgba(255, 255, 255, 0.05);
 }
 
+.note-item.is-highlighted {
+  background: rgba(99, 102, 241, 0.12);
+}
+
 .note-time {
   font-size: var(--text-xs);
   color: var(--vp-accent);
@@ -1858,6 +1870,11 @@ useVideoPageLifecycle({
   padding: 2px 6px;
   background: rgba(99, 102, 241, 0.1);
   border-radius: var(--radius-sm);
+}
+
+.note-time.is-highlighted {
+  background: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
 }
 
 .note-content {
