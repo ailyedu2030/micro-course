@@ -571,13 +571,13 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getVideoById } from '@/api/video'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
+import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
@@ -938,29 +938,26 @@ const {
   }
 })
 
-// Video load
-const loadVideo = async () => {
-  try {
-    loading.value = true
-    errorMsg.value = ''
-    const res = await getVideoById(videoId.value)
-    if (isComponentUnmounted) return
-    videoData.value = res.data || res
-
-    await nextTick()
-    initPlayer()
-    await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
-    loadLocalPosition()
-    loadNotesFromStorage()
-    showObjectivesOverlay()
-  } catch (e) {
-    if (isComponentUnmounted) return
-    console.warn('[VideoPlayer] loadVideo 加载视频失败', e)
-    errorMsg.value = '无法加载视频，请检查网络连接'
-  } finally {
-    loading.value = false
+const {
+  loadVideo
+} = useVideoLoadOrchestrator({
+  loadingRef: loading,
+  errorMsgRef: errorMsg,
+  videoDataRef: videoData,
+  videoId,
+  nextTickFn: nextTick,
+  initPlayer,
+  loadChapters,
+  loadProgress,
+  loadDiscussions,
+  loadLocalPosition,
+  loadNotesFromStorage,
+  showObjectivesOverlay,
+  isComponentUnmounted: () => isComponentUnmounted,
+  onLoadError: (error) => {
+    console.warn('[VideoPlayer] loadVideo 加载视频失败', error)
   }
-}
+})
 
 const reportProgress = async (force = false) => {
   const snapshot = getCurrentProgressSnapshot()
