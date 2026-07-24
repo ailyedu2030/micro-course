@@ -90,6 +90,39 @@
 - 未选课程时显示“上传课件”
 - 已选课程时显示“查看全部课程”
 
+### 7. 视频批量上传队列补齐（本轮新增）
+
+根据 [Phase 6 规格](file:///Users/jackie/微课平台/docs/开发规划/phase5-10-spec.md#L130-L135) 中 `VideoList.vue` 需要支持“多文件上传队列”的要求，本轮已完成 [VideoList.vue](file:///Users/jackie/微课平台/micro-course-admin/src/views/courses/VideoList.vue) 的批量上传能力补齐，并新增 [useVideoUploadQueue.js](file:///Users/jackie/微课平台/micro-course-admin/src/composables/useVideoUploadQueue.js) 统一管理上传队列状态：
+
+- 上传弹窗已支持多文件选择，限制 `20` 个文件并保留拖拽上传体验
+- 新增可见队列区，展示文件名、逐项进度、成功/失败状态与汇总文案
+- 批量模式下自动锁定标题与排序输入，避免表单语义与后端上传契约漂移
+- 前端本轮保持“逐个顺序调用现有单文件上传接口”的实现策略，优先保证低风险落地与逐文件进度可见性
+- 本轮继续补齐两个边界问题：
+  - 通用 `/videos` 路由下，批量上传不再错误要求教师手动输入单个标题
+  - 批量队列删除到仅剩 1 个文件时，会自动恢复剩余文件名为默认标题
+- 上传完成后已支持：
+  - 全部成功：关闭弹窗并刷新列表
+  - 部分成功：保留失败提示并刷新已完成数据
+  - 全部失败：明确提示用户重试
+
+对应测试已新增：
+
+- [useVideoUploadQueue.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/useVideoUploadQueue.test.js)
+  - 覆盖队列构建、批量模式判断、摘要文案、顺序上传、逐项进度与失败统计
+- [VideoList.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/VideoList.test.js)
+  - 覆盖多文件选中后队列摘要与文件名可见性
+
+### 8. 课件上传组件告警清理（本轮新增）
+
+本轮同步修复了 [SlideUploadZone.vue](file:///Users/jackie/微课平台/micro-course-admin/src/plugins/interactive/components/SlideUploadZone.vue) 中 `UploadFilled` 图标未导入导致的运行时告警噪音：
+
+- 根因：模板中使用了 `<UploadFilled />`，但脚本区缺少对应导入
+- 修复：补充 `@element-plus/icons-vue` 图标导入
+- 结果：移除控制台 `Failed to resolve component: UploadFilled` 告警，避免干扰课件上传链路回归判断
+
+对应在 [SlideUploadZone.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/SlideUploadZone.test.js) 中补充了“挂载时无未解析图标告警”的回归护栏。
+
 ## 二、当前剩余任务清单
 
 ### P0 / P1-C 优先级
@@ -109,10 +142,9 @@
 ### P1-I / 后续阶段任务
 
 4. Phase 6 剩余能力补齐状态核对
-   - 教师数据看板
-   - 学员管理导出
-   - 成绩明细可用性
-   - 课程复制模板、章节排序、批量上传视频、视频封面自定义、审核时效提示
+   - 待继续联调确认：教师数据看板、成绩明细可用性、视频封面自定义
+   - 已完成补齐：学员管理导出、课程复制模板、章节排序、批量上传视频、审核时效提示
+   - 已在先前阶段完成：题目乱序、Excel 题目导入、题目预览、试题导出
 
 5. 横向扫描教师端其它残留旧身份来源
    - 已发现但尚未纳入本轮处理的页面，需要按业务优先级继续收敛
@@ -152,7 +184,7 @@
 ### 节点 C（节点 B 完成后推进）
 
 - 教学班 / 课件总览真实联调（已完成第一轮浏览器验证）
-- 教师端剩余能力补齐状态核对
+- 教师端剩余能力补齐状态核对（本轮已确认批量上传视频不再是缺口）
 
 ## 五、本轮验证结果
 
@@ -176,11 +208,33 @@
   - `TeacherIdentityConsistency.test.js` 7/7 通过
   - 合计 10/10 通过
 
+- 本轮新增上传与课件回归：
+  - `npm run test:unit -- src/__tests__/SlideUploadZone.test.js`
+  - `npm run test:unit -- src/__tests__/useVideoUploadQueue.test.js`
+  - `npm run test:unit -- src/__tests__/VideoList.test.js`
+
+结果：
+
+- `SlideUploadZone.test.js` 4/4 通过
+- `useVideoUploadQueue.test.js` 2/2 通过
+- `VideoList.test.js` 3/3 通过
+
+- 全量前端单测回归：
+  - `npm run test:unit`
+
+结果：`38` 个测试文件、`99/99` 用例全部通过，本轮新增改动未引入前端回归失败
+
 ### 构建验证
 
 - `npm run build`
 
 结果：通过
+
+### 代码规范检查
+
+- `npm run lint`
+
+结果：通过，本轮新增测试桩与历史样式告警均已清理
 
 ### 本地隔离环境验证
 
@@ -191,6 +245,8 @@
 
 - 本地隔离环境 `15/15` 全通过
 - 保留容器后已完成教师账号本地浏览器走查
+- 本轮在新增上传队列实现后再次执行 `bash scripts/local-dev-deploy.sh --skip-build --keep`
+- 结果仍为 `15/15` 全通过，说明本轮课程视频管理改动未破坏本地联调基线
 
 ### 本地浏览器走查
 
@@ -235,16 +291,26 @@
    - 已切换为更稳定的 `p0_teacher/student123` 完成浏览器验证
    - 不影响应用逻辑，但需在后续联调中继续采用稳定教师账号
 
+5. 项目级结构预检存在历史噪音
+   - 现象：`precheck.sh` 的全局结构扫描仍会被仓库既有白名单问题阻断
+   - 结论：不是本轮前端上传队列改动引入
+   - 当前处理：本轮以目标测试、全量单测、构建与本地隔离环境验证作为交付闭环
+
+6. 批量上传边界在通用路由下暴露出标题校验问题（已修复）
+   - 现象：`/videos` 路由的批量上传仍沿用单文件标题必填规则
+   - 根因：表单校验未根据 `isBatchUpload` 动态切换
+   - 修复：标题规则在批量模式下自动放宽，并补充回归测试
+
 ## 七、下一步推进计划
 
 ### 下一优先级建议
 
 1. 以 `TeacherDashboard.vue` 为入口做教师主链路联调
 2. 继续复核 `StudentGrades.vue` 的统计、分页、批改态是否完全符合教师场景
-3. 继续走查教师课程 -> 教学班 -> 学员管理 / 教师课程 -> 课件总览 -> 课件管理 的深一层交互
+3. 继续走查教师课程 -> 教学班 -> 学员管理 / 教师课程 -> 课件总览 -> 课件管理 / 教师课程 -> 视频管理 的深一层交互
 
 ### 预期交付
 
 - 教师端课程模块一批更稳定的真实使用路径
-- 新一轮教师端工作进展报告
+- 已补齐视频批量上传队列与课件上传告警治理后的新一轮教师端工作进展报告
 - 如变更范围足够完整，则进入提交、PR、CI、merge 闭环
