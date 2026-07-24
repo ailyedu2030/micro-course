@@ -7,17 +7,13 @@ import com.microcourse.dto.hermes.HermesCourseListVO;
 import com.microcourse.dto.hermes.HermesSectionVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
 import com.microcourse.entity.HermesCourseMapping;
+import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.enums.UserRole;
-import com.microcourse.plugin.interactive.entity.CourseSlide;
-import com.microcourse.plugin.interactive.entity.SlidePage;
-import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
-import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
-import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
@@ -26,15 +22,11 @@ import com.microcourse.repository.HermesCourseMappingRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.HermesCourseSyncService;
 import com.microcourse.service.HermesCourseSyncService.HermesSyncResult;
+import com.microcourse.service.HermesWebhookCoursewareService;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,9 +46,7 @@ public class HermesWebhookController {
     private final CourseCategoryRepository categoryRepository;
     private final CourseChapterRepository chapterRepository;
     private final CourseSectionRepository sectionRepository;
-    private final CourseSlideMapper courseSlideMapper;
-    private final SlidePageMapper slidePageMapper;
-    private final SlideService slideService;
+    private final HermesWebhookCoursewareService coursewareService;
 
     public HermesWebhookController(HermesCourseSyncService syncService,
                                    UserRepository userRepository,
@@ -65,9 +55,7 @@ public class HermesWebhookController {
                                    CourseCategoryRepository categoryRepository,
                                    CourseChapterRepository chapterRepository,
                                    CourseSectionRepository sectionRepository,
-                                   CourseSlideMapper courseSlideMapper,
-                                   SlidePageMapper slidePageMapper,
-                                   SlideService slideService) {
+                                   HermesWebhookCoursewareService coursewareService) {
         this.syncService = syncService;
         this.userRepository = userRepository;
         this.mappingRepository = mappingRepository;
@@ -75,9 +63,7 @@ public class HermesWebhookController {
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
         this.sectionRepository = sectionRepository;
-        this.courseSlideMapper = courseSlideMapper;
-        this.slidePageMapper = slidePageMapper;
-        this.slideService = slideService;
+        this.coursewareService = coursewareService;
     }
 
     private User authenticate(String apiKey) {
@@ -116,7 +102,7 @@ public class HermesWebhookController {
      */
     private void verifyCourseOwnership(User caller, HermesCourseMapping mapping) {
         if (caller.getRole() == UserRole.ADMIN) return;
-        com.microcourse.entity.Course course = courseRepository.selectById(mapping.getCourseId());
+        Course course = courseRepository.selectById(mapping.getCourseId());
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
@@ -255,36 +241,8 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        CourseSection existingDelete = sectionRepository.selectById(sectionId);
-        if (existingDelete == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
-        if (!existingDelete.getCourseId().equals(mapping.getCourseId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
-        }
-        var slideQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSlide>()
-                .eq(CourseSlide::getSectionId, sectionId);
-        List<CourseSlide> slides = courseSlideMapper.selectList(slideQw);
-        Long courseId = mapping.getCourseId();
-        for (CourseSlide slide : slides) {
-            slidePageMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SlidePage>()
-                    .eq(SlidePage::getSlideId, slide.getId()));
-            courseSlideMapper.deleteById(slide.getId());
-            registerSlideCleanup(courseId, slide.getId());
-        }
-        sectionRepository.deleteById(sectionId);
+        coursewareService.deleteSectionCascade(mapping.getCourseId(), sectionId);
         return R.ok();
-    }
-
-    private void registerSlideCleanup(Long courseId, Long slideId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    slideService.cleanupSlideFiles(courseId, slideId);
-                }
-            });
-        } else {
-            slideService.cleanupSlideFiles(courseId, slideId);
-        }
     }
 
     /**
@@ -331,13 +289,7 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        CourseChapter existing = chapterRepository.selectById(chapterId);
-        if (existing == null) throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
-        if (!existing.getCourseId().equals(mapping.getCourseId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "章节不属于该课程");
-        }
-        cascadeDeleteSectionsByChapterId(mapping.getCourseId(), chapterId);
-        chapterRepository.deleteById(chapterId);
+        coursewareService.deleteChapterCascade(mapping.getCourseId(), chapterId);
         return R.ok();
     }
 
@@ -353,59 +305,9 @@ public class HermesWebhookController {
                             @PathVariable Long lessonId,
                             @RequestParam("file") MultipartFile file) {
         User caller = authenticate(apiKey);
-
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
-        Long courseId = mapping.getCourseId();
-
-        // 按 lessonId(实际是 section_id)查找所属的 chapterId
-        Long chapterId = null;
-        CourseSection sec = sectionRepository.selectById(lessonId);
-        if (sec != null) {
-            chapterId = sec.getChapterId();
-        }
-
-        String filename = file.getOriginalFilename();
-        if (filename == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件名不能为空");
-        }
-        String lower = filename.toLowerCase();
-        boolean isHtml = lower.endsWith(".html") || lower.endsWith(".htm");
-        boolean isPptx = lower.endsWith(".pptx");
-        if (!isHtml && !isPptx) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 .pptx / .html / .htm 文件");
-        }
-        long maxSize = isHtml ? 5 * 1024 * 1024 : 50 * 1024 * 1024;
-        if (file.getSize() > maxSize) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    isHtml ? "HTML 文件大小不能超过 5MB" : "文件大小不能超过 50MB");
-        }
-
-        try {
-            // 设置 SecurityContext，让 slideService 权限检查通过
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    caller.getId(), null,
-                    java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            Object resp;
-            if (isHtml) {
-                // UPSERT 按 (courseId, chapterId, sectionId) 匹配，不同 section 有独立 slide
-                resp = slideService.uploadHtmlFile(courseId, file, chapterId, lessonId);
-            } else {
-                resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, lessonId);
-            }
-            // content_url 已在 upload()/uploadHtmlFile() 内与上传同事务写入
-            return R.ok(resp);
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[HermesWebhook] Slide upload failed: hermesCourseId={}, lessonId={}",
-                    hermesCourseId, lessonId, e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
-                    (isHtml ? "HTML" : "PPT") + " 上传失败: " + e.getMessage());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+        verifyCourseOwnership(caller, mapping);
+        return R.ok(coursewareService.uploadSlide(mapping.getCourseId(), lessonId, file));
     }
 
     /**
@@ -419,14 +321,7 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        CourseSection sec = sectionRepository.selectById(lessonId);
-        if (sec == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
-        if (!sec.getCourseId().equals(mapping.getCourseId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
-        }
-        List<com.microcourse.plugin.interactive.dto.SlidePageVO> pages =
-                slideService.getPages(mapping.getCourseId(), lessonId);
-        return R.ok(pages);
+        return R.ok(coursewareService.listSlidePages(mapping.getCourseId(), lessonId));
     }
 
     /**
@@ -443,31 +338,7 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        CourseSection sec = sectionRepository.selectById(lessonId);
-        if (sec == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
-        if (!sec.getCourseId().equals(mapping.getCourseId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
-        }
-        if (body.containsKey("narrationScript")) {
-            Object ns = body.get("narrationScript");
-            if (ns instanceof String) {
-                body.put("narrationScript", com.microcourse.util.XssSanitizer.sanitizePlainText((String) ns));
-            } else {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "narrationScript 必须为字符串类型");
-            }
-        }
-        body.put("_lessonId", lessonId);
-        try {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    caller.getId(), null,
-                    java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            com.microcourse.plugin.interactive.dto.SlidePageVO updated =
-                    slideService.updatePage(mapping.getCourseId(), pageNumber, body);
-            return R.ok(updated);
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+        return R.ok(coursewareService.updateSlidePageNarration(mapping.getCourseId(), lessonId, pageNumber, body));
     }
 
     /**
@@ -483,56 +354,8 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        CourseSection sec = sectionRepository.selectById(lessonId);
-        if (sec == null) throw new BusinessException(ErrorCode.SECTION_NOT_FOUND);
-        if (!sec.getCourseId().equals(mapping.getCourseId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "课时不属于该课程");
-        }
-        try {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    caller.getId(), null, java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-            slideService.deletePage(mapping.getCourseId(), pageNumber, lessonId);
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+        coursewareService.deleteSlidePage(mapping.getCourseId(), lessonId, pageNumber);
         return R.ok();
-    }
-
-    /**
-     * 级联删除课程数据（内部方法，不依赖映射表）
-     */
-    private void cascadeDeleteCourse(Long courseId) {
-        List<CourseSection> sections = sectionRepository.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
-                        .eq(CourseSection::getCourseId, courseId));
-        java.util.Set<Long> seenChapterIds = new java.util.HashSet<>();
-        for (CourseSection sec : sections) {
-            if (seenChapterIds.add(sec.getChapterId())) {
-                cascadeDeleteSectionsByChapterId(courseId, sec.getChapterId());
-            }
-        }
-        chapterRepository.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseChapter>()
-                .eq(CourseChapter::getCourseId, courseId));
-        courseRepository.deleteById(courseId);
-    }
-
-    private void cascadeDeleteSectionsByChapterId(Long courseId, Long chapterId) {
-        List<CourseSection> sections = sectionRepository.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSection>()
-                        .eq(CourseSection::getChapterId, chapterId));
-        for (CourseSection sec : sections) {
-            var slideQw = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CourseSlide>()
-                    .eq(CourseSlide::getSectionId, sec.getId());
-            List<CourseSlide> slides = courseSlideMapper.selectList(slideQw);
-            for (CourseSlide slide : slides) {
-                slidePageMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SlidePage>()
-                        .eq(SlidePage::getSlideId, slide.getId()));
-                courseSlideMapper.deleteById(slide.getId());
-                registerSlideCleanup(courseId, slide.getId());
-            }
-            sectionRepository.deleteById(sec.getId());
-        }
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -542,7 +365,9 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         Long courseId = mapping.getCourseId();
-        cascadeDeleteCourse(courseId);
+        verifyCourseOwnership(caller, mapping);
+        coursewareService.deleteCourseCascade(courseId);
+        courseRepository.deleteById(courseId);
         mappingRepository.deleteById(mapping.getId());
         log.info("[HermesWebhook] Course cascade deleted: hermesCourseId={}, courseId={}, caller={}",
                 hermesCourseId, courseId, caller.getUsername());
@@ -565,7 +390,8 @@ public class HermesWebhookController {
         if (!caller.getId().equals(course.getTeacherId()) && caller.getRole() != UserRole.ADMIN) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        cascadeDeleteCourse(courseId);
+        coursewareService.deleteCourseCascade(courseId);
+        courseRepository.deleteById(courseId);
         // 清理映射（如果有的话）
         mappingRepository.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<HermesCourseMapping>()
                 .eq(HermesCourseMapping::getCourseId, courseId));
@@ -582,32 +408,12 @@ public class HermesWebhookController {
             @PathVariable String hermesCourseId) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
-        com.microcourse.entity.Course course = courseRepository.selectById(mapping.getCourseId());
+        Course course = courseRepository.selectById(mapping.getCourseId());
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         if (caller.getRole() != UserRole.ADMIN && !caller.getId().equals(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "无权查看该课程课件");
         }
-        List<com.microcourse.plugin.interactive.entity.CourseSlide> slides = courseSlideMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
-                        .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, mapping.getCourseId()));
-        List<com.microcourse.plugin.interactive.dto.SlideVO> vos = slides.stream()
-                .map(s -> {
-                    com.microcourse.plugin.interactive.dto.SlideVO vo = new com.microcourse.plugin.interactive.dto.SlideVO();
-                    vo.setId(s.getId());
-                    vo.setCourseId(s.getCourseId());
-                    vo.setChapterId(s.getChapterId());
-                    vo.setSectionId(s.getSectionId());
-                    vo.setLessonTitle(s.getFileName());
-                    vo.setFileName(s.getFileName());
-                    vo.setTotalPages(s.getTotalPages());
-                    vo.setStatus(s.getStatus());
-                    vo.setErrorMessage(s.getErrorMessage());
-                    vo.setCreatedAt(s.getCreatedAt());
-                    vo.setUpdatedAt(s.getUpdatedAt());
-                    return vo;
-                })
-                .toList();
-        return R.ok(vos);
+        return R.ok(coursewareService.listSlides(mapping.getCourseId()));
     }
 
     /**
@@ -683,87 +489,18 @@ public class HermesWebhookController {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        Long courseId = mapping.getCourseId();
         Object scriptContentRaw = body.get("scriptContent");
         if (!(scriptContentRaw instanceof String)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 必须为字符串类型");
         }
-        String fullScript = (String) scriptContentRaw;
-        if (fullScript == null || fullScript.isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 不能为空");
-        }
-        if (fullScript.length() > 65535) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 不能超过 65535 字符");
-        }
-        fullScript = com.microcourse.util.XssSanitizer.sanitizePlainText(fullScript);
-
         Number sectionIdNum = (Number) body.get("sectionId");
-
-        try {
-            UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                    caller.getId(), null,
-                    java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_TEACHER")));
-            SecurityContextHolder.getContext().setAuthentication(auth);
-
-            Long targetSectionId = sectionIdNum != null ? sectionIdNum.longValue() : null;
-            java.util.List<com.microcourse.plugin.interactive.dto.SlidePageVO> pages =
-                    slideService.getPages(courseId, targetSectionId);
-            if (pages == null || pages.isEmpty()) {
-                if (targetSectionId != null) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课时无课件页面");
-                }
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先上传课件");
-            }
-            int pageCount = pages.size();
-            int updated = 0;
-
-            if (targetSectionId != null) {
-                for (com.microcourse.plugin.interactive.dto.SlidePageVO p : pages) {
-                    java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
-                    pageBody.put("narrationScript", fullScript);
-                    if (p.getSectionId() != null) { pageBody.put("_lessonId", p.getSectionId()); }
-                    slideService.updatePage(courseId, p.getPageNumber(), pageBody);
-                    updated++;
-                }
-            } else {
-                Number chapterIdNum = (Number) body.get("chapterId");
-                if (chapterIdNum == null) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                            "批量推送讲述稿时必须指定 chapterId 参数，以避免跨章节数据串写");
-                }
-                long targetChapterId = chapterIdNum.longValue();
-                if (fullScript.length() < pageCount) {
-                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                            "讲述稿长度(" + fullScript.length() + ")少于课件页数(" + pageCount + ")，无法自动分配");
-                }
-                int chunkSize = fullScript.length() / pageCount;
-                for (int i = 0; i < pageCount; i++) {
-                    int start = i * chunkSize;
-                    int end = (i == pageCount - 1) ? fullScript.length() : (i + 1) * chunkSize;
-                    String pageScript = fullScript.substring(start, end).trim();
-
-                    com.microcourse.plugin.interactive.dto.SlidePageVO p = pages.get(i);
-                    java.util.Map<String, Object> pageBody = new java.util.HashMap<>();
-                    pageBody.put("narrationScript", pageScript);
-                    pageBody.put("_chapterId", targetChapterId);
-                    slideService.updatePage(courseId, p.getPageNumber(), pageBody);
-                    updated++;
-                }
-            }
-
-            java.util.Map<String, Object> result = new java.util.HashMap<>();
-            result.put("updated", updated);
-            result.put("totalPages", pageCount);
-            log.info("[HermesWebhook] Scripts pushed: courseId={}, pages={}, sectionId={}, chars={}",
-                    courseId, pageCount, targetSectionId, fullScript.length());
-            return R.ok(result);
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[HermesWebhook] Script push failed: hermesCourseId={}", hermesCourseId, e);
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "讲述稿推送失败: " + e.getMessage());
-        } finally {
-            SecurityContextHolder.clearContext();
-        }
+        Number chapterIdNum = (Number) body.get("chapterId");
+        Long targetSectionId = sectionIdNum != null ? sectionIdNum.longValue() : null;
+        Long targetChapterId = chapterIdNum != null ? chapterIdNum.longValue() : null;
+        return R.ok(coursewareService.batchPushScripts(
+                mapping.getCourseId(),
+                targetSectionId,
+                targetChapterId,
+                (String) scriptContentRaw));
     }
 }
