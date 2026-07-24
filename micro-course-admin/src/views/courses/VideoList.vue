@@ -9,12 +9,12 @@
     <!-- 课程上下文头部 -->
     <div v-if="courseIdFromRoute && courseTitle" class="course-context">
       <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
-        <el-breadcrumb-item :to="{ path: `/courses/${courseIdFromRoute}` }">{{ courseTitle }}</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: courseListPath }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: courseDetailPath(courseIdFromRoute) }">{{ courseTitle }}</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
         <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
-          <el-link type="primary" :underline="'never'" :to="{ path: isTeacherRole ? `/teacher/courses/${courseIdFromRoute}` : `/courses/${courseIdFromRoute}` }">
+          <el-link type="primary" :underline="'never'" :to="{ path: courseDetailPath(courseIdFromRoute) }">
             ← 返回课程
           </el-link>
         </el-breadcrumb-item>
@@ -207,6 +207,7 @@ import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { useUserStore } from '@/store/user'
 import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
@@ -225,7 +226,12 @@ const lockedChapterId = computed(() => {
 })
 const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
-const isTeacherRole = computed(() => userStore.role === 'TEACHER')
+const {
+  courseListPath,
+  courseDetailPath
+} = useCourseWorkspaceRoutes({
+  userRoleRef: userRole
+})
 
 const loading = ref(false)
 const submitLoading = ref(false)
