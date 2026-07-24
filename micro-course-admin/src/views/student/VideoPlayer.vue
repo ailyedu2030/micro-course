@@ -577,14 +577,13 @@ import { getVideoById } from '@/api/video'
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
+import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
 import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
 import { getToken } from '@/utils/auth'
-import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
-import { getPosts } from '@/api/discussion'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -933,6 +932,41 @@ const {
   }
 })
 
+const {
+  loadChapters,
+  loadProgress,
+  loadDiscussions,
+  switchChapter
+} = useVideoLearningData({
+  courseId,
+  chapterId,
+  userId: computed(() => userStore.userInfo?.id),
+  chaptersRef: chapters,
+  discussionsRef: discussions,
+  currentChapterIndexRef: currentChapterIndex,
+  progressIdRef: progressId,
+  lastPositionRef: lastPosition,
+  route,
+  router,
+  reportProgress: () => reportProgress(),
+  reloadVideo: () => loadVideo(),
+  isComponentUnmounted: () => isComponentUnmounted,
+  onActiveChapterChange: () => {
+    scrollToActiveChapter()
+  },
+  onChaptersError: (error) => {
+    console.warn('[VideoPlayer] loadChapters 加载章节失败', error)
+    ElMessage.warning('章节列表加载失败，部分功能不可用')
+  },
+  onProgressError: (error) => {
+    console.warn('[VideoPlayer] loadProgress 加载学习进度失败', error)
+    ElMessage.warning('学习进度加载失败，进度记忆不可用')
+  },
+  onDiscussionsError: (error) => {
+    console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', error)
+  }
+})
+
 // Video load
 const loadVideo = async () => {
   try {
@@ -1031,62 +1065,6 @@ const retryHls = () => {
   nextTick(() => initPlayer())
 }
 
-// Chapters
-const loadChapters = async () => {
-  if (isComponentUnmounted) return
-  if (!courseId.value) return
-  try {
-    const res = await getChapters({ courseId: courseId.value })
-    if (isComponentUnmounted) return
-    const list = res.data?.items || res.data || []
-    chapters.value = list.map((c, i) => ({
-      ...c,
-      isCompleted: false
-    })).filter(ch => ch.sectionType === 'VIDEO')
-    // Mark current chapter
-    const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
-    if (idx >= 0) currentChapterIndex.value = idx
-    scrollToActiveChapter()
-  } catch (e) {
-    console.warn('[VideoPlayer] loadChapters 加载章节失败', e)
-    chapters.value = []
-    ElMessage.warning('章节列表加载失败，部分功能不可用')
-  }
-}
-
-// Progress
-const loadProgress = async () => {
-  if (isComponentUnmounted) return
-  if (!userStore.userInfo?.id || !courseId.value) return
-  try {
-    const res = await getLearningProgress({
-      userId: userStore.userInfo.id,
-      courseId: courseId.value
-    })
-    if (isComponentUnmounted) return
-    const rawData = res.data || []
-    // P2: handle both array and single-object response shapes
-    let progressData = null
-    if (Array.isArray(rawData)) {
-      progressData = rawData.find(p => Number(p.chapterId) === Number(chapterId.value))
-    } else if (rawData && typeof rawData === 'object' && rawData.id) {
-      // Single object response - check if it matches current chapter
-      if (Number(rawData.chapterId) === Number(chapterId.value)) {
-        progressData = rawData
-      }
-    }
-    if (progressData?.id) {
-      progressId.value = progressData.id
-    }
-    if (progressData?.videoPosition > 0) {
-      lastPosition.value = progressData.videoPosition
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadProgress 加载学习进度失败', e)
-    ElMessage.warning('学习进度加载失败，进度记忆不可用')
-  }
-}
-
 const reportProgress = async (force = false) => {
   const snapshot = getCurrentProgressSnapshot()
   if (!snapshot) return
@@ -1116,20 +1094,6 @@ const {
   }
 })
 
-// Discussions
-const loadDiscussions = async () => {
-  if (isComponentUnmounted) return
-  if (!chapterId.value) return
-  try {
-    const res = await getPosts({ chapterId: chapterId.value, page: 0, size: 20 })
-    if (isComponentUnmounted) return
-    discussions.value = res.data?.items || res.data || []
-  } catch (e) {
-    console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', e)
-    discussions.value = []
-  }
-}
-
 const addNote = () => {
   if (!addStoredNote()) return
   ElMessage.success('笔记已添加')
@@ -1156,30 +1120,6 @@ const seekToTime = (time) => {
   if (video) {
     video.currentTime = time
   }
-}
-
-// Chapter switching
-// P0-4: Chapter switching - await router.push, pass explicit chapterId
-const switchChapter = async (id) => {
-  // Save current progress before switching
-  await reportProgress()
-  await router.push({
-    query: {
-      ...route.query,
-      chapterId: id
-    }
-  })
-  // Reload video data for new chapter
-  const idx = chapters.value.findIndex(c => Number(c.id) === Number(id))
-  if (idx >= 0) {
-    currentChapterIndex.value = idx
-    chapters.value[idx].isCompleted = false
-    scrollToActiveChapter()
-  }
-  // Reset position for new chapter
-  lastPosition.value = 0
-  progressId.value = null
-  await loadVideo()
 }
 
 const onEnded = async () => {
