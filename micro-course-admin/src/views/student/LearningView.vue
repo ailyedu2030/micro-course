@@ -135,6 +135,7 @@ import { getVideos } from '@/api/video'
 import { getLearningProgress, updateLearningProgress, createLearningProgress, getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyFavorites, addFavorite, removeFavorite } from '@/api/favorite'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
+import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 
 // ==================== 路由 & 状态 ====================
 const route = useRoute()
@@ -187,7 +188,6 @@ const totalProgress = computed(() => {
 // ==================== 视频进度镜像（由 VideoSection 同步上来，用于进度保存） ====================
 const currentTime = ref(0)
 const isPlaying = ref(false)
-let progressSaveTimer = null
 
 const {
   persistProgress: persistLessonProgress,
@@ -511,10 +511,19 @@ async function saveVideoProgress(force = false) {
   await persistLessonProgress({ force })
 }
 
+const {
+  startHeartbeat: startLessonProgressHeartbeat,
+  stopHeartbeat: stopLessonProgressHeartbeat,
+  restartHeartbeat: restartLessonProgressHeartbeat
+} = useLearningProgressHeartbeat({
+  onInterval: saveVideoProgress,
+  onBeforeUnmountPersist: () => saveVideoProgress(true)
+})
+
 async function markLessonComplete() {
   if (!currentLessonId.value) return
   // P0-7: 串行化 - 先暂停定时器，防止与 saveVideoProgress 竞态
-  clearInterval(progressSaveTimer)
+  stopLessonProgressHeartbeat()
   let marked = false
   try {
     marked = await persistLessonProgress({ force: true, completed: true })
@@ -528,7 +537,7 @@ async function markLessonComplete() {
       if (lesson) lesson.status = 'COMPLETED'
     }
     // P0-7: 恢复定时器
-    progressSaveTimer = setInterval(saveVideoProgress, 10000)
+    restartLessonProgressHeartbeat()
   }
 }
 
@@ -593,7 +602,7 @@ onMounted(async () => {
 
   // 启动进度保存定时器（每 10 秒，P1-10: saveVideoProgress 内部判断 isPlaying）
   resetLessonProgressReporter()
-  progressSaveTimer = setInterval(saveVideoProgress, 10000)
+  startLessonProgressHeartbeat()
 })
 
 // P1-6: 监听 courseId 变化（URL query 切换课程）
@@ -601,20 +610,7 @@ const stopCourseWatch = watch(() => route.query.courseId, (newId) => {
   if (newId) loadCourse(parseInt(newId))
 })
 
-onBeforeUnmount(async () => {
-  // P1-C #8: 先清理定时器，再做最后一次进度上报
-  if (progressSaveTimer) {
-    clearInterval(progressSaveTimer)
-    progressSaveTimer = null
-  }
-  
-  // 最后一次进度上报（force=true 确保暂停状态下也能保存进度）
-  try {
-    await saveVideoProgress(true)
-  } catch (e) {
-    console.warn('[LearningView] final progress report failed:', e)
-  }
-  
+onBeforeUnmount(() => {
   stopCourseWatch()
 })
 </script>
