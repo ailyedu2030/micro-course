@@ -44,6 +44,7 @@ class StorageApplicationServiceTest {
     @Mock private DepartmentRepository departmentRepository;
     @Mock private StorageApplicationQueryService queryService;
     @Mock private StorageApplicationCudService cudService;
+    @Mock private StorageApplicationImageStorageService imageStorageService;
     @Mock private NotificationService notificationService;
     @Mock private MicroSpecialtyProposalService msProposalService;
 
