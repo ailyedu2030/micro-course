@@ -2,7 +2,7 @@
 
 > 建档日期：2026-07-23
 > 基线提交：`dd46e9c3` (`main`)
-> 最新主干：`6553f7cf`（合并 PR #93）
+> 最新主干：`bf5cf255`（合并 PR #95）
 > 范围：`micro-course-api` + `micro-course-admin`
 > 方法：后端高风险代码质量只读扫描 + 前端 UX/可访问性只读扫描 + 既有审计文档去重归并
 > 目标：建立后续治理的唯一执行台账，所有问题必须进入“发现 → 定级 → 修复 → 验收 → 关闭”闭环
@@ -142,11 +142,13 @@
 | QX-P1C-008 | LearningCenter 继续学习/最近学习卡片按钮化 + 回归测试 | #91 | `aeb9373a` | CI 全绿；高频继续学习入口支持键盘触达与清晰焦点反馈 |
 | QX-P1C-009 | 抽离统一学习进度上报 composable，收敛定时上报/补报/冲突回补路径 | #93 | `6553f7cf` | CI 全绿；LearningView 与 VideoPlayer 进度保存链路统一，定时上报与离页补报走同一能力 |
 | QX-P1C-010 | 抽离统一表格键盘增强 composable，补重渲染刷新与卸载清理 | #93 | `6553f7cf` | CI 全绿；CourseList / StudentList 行语义、键盘触发与监听清理保持一致 |
+| QX-P1I-001 | HermesWebhookController 课件桥接逻辑下沉到应用服务，移除手工 `SecurityContext` 注入 | #95 | `bf5cf255` | CI 5/5 全绿；Bot 自动 approve；控制器回到鉴权适配层，课件上传/讲稿/级联删除/批量推送统一由 `HermesWebhookCoursewareService` 承接 |
+| QX-P1I-002 | 存储申请导出改为事务内读取快照、事务外生成 Word/PDF，并补事务边界回归测试 | #95 | `bf5cf255` | CI 5/5 全绿；Bot 自动 approve；导出长事务收口，`StorageApplicationExportServiceImpl` 不再在只读事务内执行文档生成 |
 
 ---
 
 ## 8. 下一步
 
-- **Wave D 已完成**：`QX-P1C-009` ~ `QX-P1C-010` 全部关闭，学习进度上报与列表键盘增强已收敛到共享能力
-- 进入 **Wave E**：优先处理 `QX-P1I-001` ~ `QX-P1I-002`（HermesWebhookController 职责拆分 + 导出长事务收敛）
-- Wave E 完成标准：高风险控制器职责下降、导出链路事务边界收口，且补齐回归验证与文档基线
+- **Wave E 已完成**：`QX-P1I-001` ~ `QX-P1I-002` 全部关闭，Hermes webhook 高风险控制器职责已下沉，导出链路事务边界已收口
+- 进入 **Wave F**：优先处理 `QX-P1I-003` ~ `QX-P1I-004`（`AuthServiceImpl` 职责拆分 + `StorageApplicationServiceImpl` 文件链路脱离事务）
+- Wave F 完成标准：认证主服务与存储申请主服务完成职责切分，文件系统副作用迁出事务边界，并补齐对应回归验证与文档基线
