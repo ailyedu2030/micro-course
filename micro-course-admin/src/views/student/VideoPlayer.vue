@@ -576,6 +576,7 @@ import { getVideoById } from '@/api/video'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
+import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -697,7 +698,6 @@ const scrollToActiveChapter = () => {
 const progressId = ref(null)
 let lastReportedProgress = 0
 let lastFailedProgress = null // P0-L01: track failed progress for retry
-let progressReportTimer = null
 let hideControlsTimer = null
 const controlsVisible = ref(true)
 let isComponentUnmounted = false // P1-2: prevent state updates after unmount
@@ -1034,20 +1034,25 @@ const reportProgress = async (force = false) => {
   await persistVideoProgress({ force })
 }
 
-// P1-1: Progress reporting only when playing
-const startProgressReporting = () => {
-  if (progressReportTimer) return // already running
-  progressReportTimer = setInterval(() => {
-    reportProgress()
-  }, 10000) // 10 seconds
-}
+const {
+  startHeartbeat: startVideoProgressHeartbeat,
+  stopHeartbeat: stopVideoProgressHeartbeat
+} = useLearningProgressHeartbeat({
+  onInterval: reportProgress,
+  onBeforeUnmountPersist: async () => {
+    const video = videoRef.value
 
-const stopProgressReporting = () => {
-  if (progressReportTimer) {
-    clearInterval(progressReportTimer)
-    progressReportTimer = null
+    if (video) {
+      saveLocalPosition(video.currentTime)
+    }
+
+    try {
+      await reportProgress(true)
+    } catch (e) {
+      console.warn('[VideoPlayer] final progress report failed:', e)
+    }
   }
-}
+})
 
 // Local position
 const saveLocalPosition = (time) => {
@@ -1579,33 +1584,19 @@ onMounted(async () => {
 // P1-1: Watch isPlaying to start/stop progress timer
 watch(isPlaying, (playing) => {
   if (playing) {
-    startProgressReporting()
+    startVideoProgressHeartbeat()
   } else {
-    stopProgressReporting()
+    stopVideoProgressHeartbeat()
   }
 })
 
-onBeforeUnmount(async () => {
-  // P1-C #7: 先保存本地进度 → 上报服务端 → 最后标记卸载，避免竞态
+onBeforeUnmount(() => {
   const video = videoRef.value
 
-  // 1. 先保存本地（同步，最快）
-  if (video) {
-    saveLocalPosition(video.currentTime)
-  }
-
-  // 2. 上报服务端（force=true 跳过 isComponentUnmounted 检查，等待完成）
-  try {
-    await reportProgress(true)
-  } catch (e) {
-    console.warn('[VideoPlayer] final progress report failed:', e)
-  }
-
-  // 3. 标记卸载（在此之后所有异步尝试都会短路）
+  // P1-C #7: 心跳 composable 已先完成本地保存与强制上报，这里再进入资源卸载阶段
   isComponentUnmounted = true
 
-  // 4. 清理定时器和资源
-  stopProgressReporting()
+  // 4. 清理播放器资源
   if (video) {
     video.removeEventListener('enterpictureinpicture', handlePipEnter)
     video.removeEventListener('leavepictureinpicture', handlePipLeave)
