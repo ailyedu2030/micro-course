@@ -579,6 +579,7 @@ import { useLearningProgressReporter } from '@/composables/useLearningProgressRe
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
+import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -883,6 +884,20 @@ const {
 })
 
 const volume = computed(() => volumePercent.value / 100)
+
+const {
+  handleKeydown
+} = useVideoKeyboardShortcuts({
+  videoRef,
+  volumePercent,
+  togglePlay,
+  skipBackward,
+  skipForward,
+  changeVolume,
+  toggleFullscreen,
+  toggleMute,
+  showControls
+})
 
 const {
   lastPosition,
@@ -1201,54 +1216,6 @@ const onEnded = async () => {
 
 const onVideoError = () => {
   errorMsg.value = '视频播放出错，请尝试刷新页面'
-}
-
-// Keyboard shortcuts
-const handleKeydown = (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-  const video = videoRef.value
-  switch (e.code) {
-    case 'Space':
-      e.preventDefault()
-      togglePlay()
-      showControls()
-      break
-    case 'ArrowLeft':
-      e.preventDefault()
-      skipBackward()
-      showControls()
-      break
-    case 'ArrowRight':
-      e.preventDefault()
-      skipForward()
-      showControls()
-      break
-    case 'ArrowUp':
-      e.preventDefault()
-      if (video) {
-        const newVol = Math.min(100, volumePercent.value + 10)
-        changeVolume(newVol)
-        showControls()
-      }
-      break
-    case 'ArrowDown':
-      e.preventDefault()
-      if (video) {
-        const newVol = Math.max(0, volumePercent.value - 10)
-        changeVolume(newVol)
-        showControls()
-      }
-      break
-    case 'KeyF':
-      e.preventDefault()
-      toggleFullscreen()
-      break
-    case 'KeyM':
-      e.preventDefault()
-      toggleMute()
-      showControls()
-      break
-  }
 }
 
 // Navigation
