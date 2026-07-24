@@ -75,7 +75,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button link @click="showChapterList = !showChapterList" aria-label="章节列表">
+          <el-button link @click="toggleChapterList" aria-label="章节列表">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
@@ -411,7 +411,7 @@
         </div>
 
         <!-- Right Sidebar (PC >= 769px) -->
-        <aside class="player-sidebar pc-sidebar">
+        <aside v-show="showChapterList" class="player-sidebar pc-sidebar">
           <el-tabs v-model="activeTab" class="sidebar-tabs">
             <el-tab-pane label="章节" name="chapters">
               <div class="tab-content chapters-tab">
@@ -584,6 +584,7 @@ import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
 import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
+import { useVideoPageViewState } from '@/composables/useVideoPageViewState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
@@ -612,13 +613,9 @@ const errorMsg = ref('')
 const videoData = ref({})
 const chapters = ref([])
 const discussions = ref([])
-const activeTab = ref('chapters')
-const showChapterList = ref(false)
 
 const isPipSupported = ref(false)
-const currentSubtitle = ref('')
 const currentChapterIndex = ref(0)
-const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
 
 const {
   setChapterItemRef,
@@ -684,6 +681,19 @@ const {
 })
 
 const {
+  activeTab,
+  showChapterList,
+  currentSubtitle,
+  currentChapter,
+  volume,
+  toggleChapterList
+} = useVideoPageViewState({
+  chaptersRef: chapters,
+  currentChapterIndexRef: currentChapterIndex,
+  volumePercentRef: volumePercent
+})
+
+const {
   progressPercent,
   watermarkText
 } = useVideoDisplayState({
@@ -691,8 +701,6 @@ const {
   durationRef: duration,
   userIdRef: computed(() => userStore.userInfo?.id)
 })
-
-const volume = computed(() => volumePercent.value / 100)
 
 const {
   handleKeydown
