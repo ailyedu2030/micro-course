@@ -167,13 +167,33 @@
   - 验证重复选择封面图片时会释放旧预览 URL
   - 验证封面上传成功后会清空弹窗状态并刷新列表
 
+### 11. 教师看板课程封面链路补齐（本轮新增）
+
+本轮继续按 Phase 6 优先级复核 [TeacherDashboard.vue](file:///Users/jackie/微课平台/micro-course-admin/src/views/teacher/TeacherDashboard.vue) 的教师数据看板链路，收敛了“课程卡片封面缺失”的真实显示问题：
+
+- 现象：
+  - 教师看板“我教的课程”卡片在课程已配置封面时，仍可能只显示占位图
+- 根因：
+  - 后端 [TeacherServiceImpl.java](file:///Users/jackie/微课平台/micro-course-api/src/main/java/com/microcourse/service/impl/TeacherServiceImpl.java) 的 `getMyCourses()` 仅保留 `https://` 开头的封面地址
+  - 站内相对路径封面（如 `covers/*.jpg`）被错误归零为 `null`
+- 修复：
+  - 教师课程卡片封面地址改为与课程查询链路统一，站内相对路径自动标准化为 `/api/files/...`
+  - 保留已是完整外链或已标准化 `/api/files/` 的封面地址
+
+本轮新增回归测试：
+
+- [TeacherDashboard.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/TeacherDashboard.test.js)
+  - 验证教师课程存在封面时，课程卡片会渲染 `<img>` 而不是退化为占位态
+- [TeacherCourseCoverIntegrationTest.java](file:///Users/jackie/微课平台/micro-course-api/src/test/java/com/microcourse/controller/TeacherCourseCoverIntegrationTest.java)
+  - 验证 `GET /api/teachers/courses` 会保留并标准化站内封面地址
+
 ## 二、当前剩余任务清单
 
 ### P0 / P1-C 优先级
 
 1. 教师数据看板闭环复核
    - 目标：继续确认 `TeacherDashboard.vue` 的关键指标、图表、待办和课程卡片与教师课程模块主链路完全一致
-   - 依赖：当前快捷入口与身份来源修复已完成，可继续复核看板数据映射与真实联调
+   - 依赖：当前快捷入口、身份来源和课程封面链路已修复，可继续复核统计口径与真实联调
 
 2. 成绩明细体验补强
    - 目标：围绕 `StudentGrades.vue` 继续核对分页、只读/批改态是否符合教师使用路径
@@ -190,7 +210,7 @@
 ### P1-I / 后续阶段任务
 
 5. Phase 6 剩余能力补齐状态核对
-   - 待继续联调确认：教师数据看板、成绩明细可用性、视频封面自定义真实链路
+   - 待继续联调确认：教师数据看板统计口径、成绩明细可用性、视频封面自定义真实链路
    - 已完成补齐：学员管理导出、课程复制模板、章节排序、批量上传视频、审核时效提示
    - 已在先前阶段完成：题目乱序、Excel 题目导入、题目预览、试题导出
 
@@ -260,19 +280,23 @@
   - `npm run test:unit -- src/__tests__/SlideUploadZone.test.js`
   - `npm run test:unit -- src/__tests__/useVideoUploadQueue.test.js`
   - `npm run test:unit -- src/__tests__/VideoList.test.js`
+  - `npm run test:unit -- src/__tests__/TeacherDashboard.test.js`
   - `mvn -Dtest=VideoChapterFilterIntegrationTest test`
+  - `mvn -Dtest=TeacherCourseCoverIntegrationTest test`
 
 结果：
 
 - `SlideUploadZone.test.js` 4/4 通过
 - `useVideoUploadQueue.test.js` 2/2 通过
 - `VideoList.test.js` 6/6 通过
+- `TeacherDashboard.test.js` 4/4 通过
 - `VideoChapterFilterIntegrationTest` 1/1 通过
+- `TeacherCourseCoverIntegrationTest` 1/1 通过
 
 - 全量前端单测回归：
   - `npm run test:unit`
 
-结果：`38` 个测试文件、`102/102` 用例全部通过，本轮新增改动未引入前端回归失败
+结果：`38` 个测试文件、`103/103` 用例全部通过，本轮新增改动未引入前端回归失败
 
 ### 构建验证
 
@@ -298,6 +322,8 @@
 - 保留容器后已完成教师账号本地浏览器走查
 - 本轮在新增上传队列实现后再次执行 `bash scripts/local-dev-deploy.sh --skip-build --keep`
 - 结果仍为 `15/15` 全通过，说明本轮课程视频管理改动未破坏本地联调基线
+- 本轮在教师看板课程封面链路修复后，再次执行 `bash scripts/local-dev-deploy.sh --skip-build --keep`
+- 结果仍为 `15/15` 全通过，说明本轮教师看板与教师课程接口改动未破坏本地联调基线
 
 ### 本地浏览器走查
 
@@ -361,6 +387,11 @@
    - 现象：重复选择封面或上传成功后，旧 blob 预览与当前视频上下文可能残留
    - 根因：封面弹窗缺少统一的关闭重置逻辑
    - 修复：补齐 blob URL 回收、弹窗关闭重置和上传成功后的状态清理，并增加回归测试
+
+9. 教师看板课程封面被错误过滤为空（已修复）
+   - 现象：教师看板课程卡片在课程已有站内封面时仍展示占位图
+   - 根因：教师课程接口只保留 `https://` 封面地址，导致相对路径封面被置空
+   - 修复：统一教师课程封面地址标准化逻辑，并增加前后端回归测试
 
 ## 七、下一步推进计划
 

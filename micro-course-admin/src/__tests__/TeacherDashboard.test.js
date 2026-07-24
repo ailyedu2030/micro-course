@@ -177,4 +177,37 @@ describe('TeacherDashboard.vue', () => {
 
     wrapper.unmount()
   })
+
+  it('renders the course cover image when the teacher course has a cover URL', async () => {
+    teacherApiMocks.getMyCourses.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 11, title: '有封面的课程', studentCount: 18, rating: 4.8, cover: '/api/files/covers/course-11.jpg' },
+        ],
+      },
+    })
+
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const image = wrapper.find('.course-cover-img')
+    expect(image.exists()).toBe(true)
+    expect(image.attributes('src')).toBe('/api/files/covers/course-11.jpg')
+    expect(image.attributes('alt')).toBe('有封面的课程')
+
+    wrapper.unmount()
+  })
 })

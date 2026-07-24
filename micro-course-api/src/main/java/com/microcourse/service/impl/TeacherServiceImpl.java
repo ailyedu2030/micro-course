@@ -504,8 +504,7 @@ public class TeacherServiceImpl implements TeacherService {
             TeacherCourseVO vo = new TeacherCourseVO();
             vo.setId(c.getId());
             vo.setTitle(c.getTitle());
-            String coverUrl = c.getCoverUrl();
-            vo.setCover(coverUrl != null && coverUrl.startsWith("https://") ? coverUrl : null);
+            vo.setCover(normalizeCourseCoverUrl(c.getCoverUrl()));
             vo.setStudentCount(c.getStudentCount());
             vo.setRating(c.getAvgRating());
             vo.setStatus(c.getStatus());
@@ -513,6 +512,13 @@ public class TeacherServiceImpl implements TeacherService {
         }).collect(Collectors.toList());
 
         return PageResult.of(vos, coursePage.getTotal(), page, size);
+    }
+
+    private String normalizeCourseCoverUrl(String coverUrl) {
+        if (coverUrl != null && !coverUrl.startsWith("http") && !coverUrl.startsWith("/api/files/")) {
+            return "/api/files/" + coverUrl;
+        }
+        return coverUrl;
     }
 
     // getPlatformShareRate 已被 PlatformShareRateResolver 取代 (修复 P0-1)
