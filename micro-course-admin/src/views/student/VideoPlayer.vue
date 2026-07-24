@@ -568,7 +568,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
@@ -580,6 +580,7 @@ import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
+import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
@@ -633,7 +634,7 @@ const scrollToActiveChapter = () => {
 }
 
 // Progress reporting
-let isComponentUnmounted = false // P1-2: prevent state updates after unmount
+const isComponentUnmounted = ref(false) // P1-2: prevent state updates after unmount
 
 const {
   isMobile,
@@ -828,7 +829,7 @@ const {
   courseId,
   chapterId,
   userId: computed(() => userStore.userInfo?.id),
-  isComponentUnmounted: () => isComponentUnmounted,
+  isComponentUnmounted: () => isComponentUnmounted.value,
   saveLocalPosition,
   showWarning: (message) => {
     ElMessage.warning(message)
@@ -853,7 +854,7 @@ const {
   router,
   reportProgress: () => reportProgress(),
   reloadVideo: () => loadVideo(),
-  isComponentUnmounted: () => isComponentUnmounted,
+  isComponentUnmounted: () => isComponentUnmounted.value,
   onActiveChapterChange: () => {
     scrollToActiveChapter()
   },
@@ -885,7 +886,7 @@ const {
   loadLocalPosition,
   loadNotesFromStorage,
   showObjectivesOverlay,
-  isComponentUnmounted: () => isComponentUnmounted,
+  isComponentUnmounted: () => isComponentUnmounted.value,
   onLoadError: (error) => {
     console.warn('[VideoPlayer] loadVideo 加载视频失败', error)
   }
@@ -959,40 +960,22 @@ const toggleSettings = () => {
   // Could show settings panel
 }
 
-onMounted(async () => {
-  syncViewportMode()
-  isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
-  resetVideoProgressReporter()
-  await nextTick()
-  loadVideo()
-  // P1-1: Progress reporting controlled by play state via watch (no immediate start)
-  document.addEventListener('keydown', handleKeydown)
-  document.addEventListener('fullscreenchange', handleFullscreenChange)
-  window.addEventListener('resize', handleResize)
-  // Scroll to initial active chapter
-  scrollToActiveChapter()
-})
-
-// P1-1: Watch isPlaying to start/stop progress timer
-watch(isPlaying, (playing) => {
-  if (playing) {
-    startVideoProgressHeartbeat()
-  } else {
-    stopVideoProgressHeartbeat()
-  }
-})
-
-onBeforeUnmount(() => {
-  // P1-C #7: 心跳 composable 已先完成本地保存与强制上报，这里再进入资源卸载阶段
-  isComponentUnmounted = true
-
-  // 4. 清理播放器资源
-  destroyPlayer()
-  // P1-3: 清理缓冲 watchdog,避免内存泄漏
-  stopBufferingWatchdog()
-  document.removeEventListener('keydown', handleKeydown)
-  document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  window.removeEventListener('resize', handleResize)
+useVideoPageLifecycle({
+  isPlayingRef: isPlaying,
+  componentUnmountedRef: isComponentUnmounted,
+  isPipSupportedRef: isPipSupported,
+  syncViewportMode,
+  resetVideoProgressReporter,
+  nextTickFn: nextTick,
+  loadVideo,
+  handleKeydown,
+  handleFullscreenChange,
+  handleResize,
+  scrollToActiveChapter,
+  startVideoProgressHeartbeat,
+  stopVideoProgressHeartbeat,
+  destroyPlayer,
+  stopBufferingWatchdog
 })
 </script>
 
