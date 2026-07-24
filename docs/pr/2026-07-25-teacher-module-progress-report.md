@@ -144,6 +144,29 @@
 - [VideoChapterFilterIntegrationTest.java](file:///Users/jackie/微课平台/micro-course-api/src/test/java/com/microcourse/controller/VideoChapterFilterIntegrationTest.java)
   - 验证 `GET /api/videos` 按 `courseId + chapterId` 仅返回当前章节视频
 
+### 10. 视频封面自定义交互收口（本轮新增）
+
+本轮继续收口 [VideoList.vue](file:///Users/jackie/微课平台/micro-course-admin/src/views/courses/VideoList.vue) 的视频封面设置体验，重点解决“功能可用但状态回收不完整”的问题：
+
+- 现象：
+  - 连续更换封面图片时，旧的本地预览 blob URL 未释放
+  - 关闭封面弹窗后，`coverFile/currentVideoId/currentCoverUrl` 仍残留旧状态
+  - 上传成功后虽然会刷新列表，但弹窗内部仍保留旧的本地预览状态
+- 根因：
+  - 封面弹窗缺少统一的关闭/重置逻辑
+  - `handleCoverChange()` 在重新选择图片时未清理旧 blob URL
+  - `handleSubmitCover()` 成功分支只关闭弹窗，没有显式回收临时预览状态
+- 修复：
+  - 新增封面预览 URL 回收与弹窗状态重置逻辑
+  - 封面弹窗关闭时统一清理 `blob:` 预览、当前视频 ID 与所选文件
+  - 封面上传成功后先刷新列表，再清空弹窗临时状态，避免下次打开时继承旧上下文
+
+本轮新增回归测试：
+
+- [VideoList.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/VideoList.test.js)
+  - 验证重复选择封面图片时会释放旧预览 URL
+  - 验证封面上传成功后会清空弹窗状态并刷新列表
+
 ## 二、当前剩余任务清单
 
 ### P0 / P1-C 优先级
@@ -162,12 +185,12 @@
 
 4. 视频管理深一层联调
    - 目标：继续完成教师课程 -> 章节视频 -> 封面设置 / 转码失败重试 / 章节筛选的真实链路走查
-   - 依赖：本轮已补齐章节筛选前后端链路，剩余重点转向封面设置与异常态体验
+   - 依赖：本轮已补齐章节筛选前后端链路，并完成封面弹窗状态回收与回归护栏；剩余重点转向真实链路联调与异常态体验
 
 ### P1-I / 后续阶段任务
 
 5. Phase 6 剩余能力补齐状态核对
-   - 待继续联调确认：教师数据看板、成绩明细可用性、视频封面自定义
+   - 待继续联调确认：教师数据看板、成绩明细可用性、视频封面自定义真实链路
    - 已完成补齐：学员管理导出、课程复制模板、章节排序、批量上传视频、审核时效提示
    - 已在先前阶段完成：题目乱序、Excel 题目导入、题目预览、试题导出
 
@@ -243,13 +266,13 @@
 
 - `SlideUploadZone.test.js` 4/4 通过
 - `useVideoUploadQueue.test.js` 2/2 通过
-- `VideoList.test.js` 4/4 通过
+- `VideoList.test.js` 6/6 通过
 - `VideoChapterFilterIntegrationTest` 1/1 通过
 
 - 全量前端单测回归：
   - `npm run test:unit`
 
-结果：`38` 个测试文件、`100/100` 用例全部通过，本轮新增改动未引入前端回归失败
+结果：`38` 个测试文件、`102/102` 用例全部通过，本轮新增改动未引入前端回归失败
 
 ### 构建验证
 
@@ -333,6 +356,11 @@
    - 现象：章节筛选 UI 已存在，但实际列表请求未按章节过滤
    - 根因：前端未透传 `chapterId`，后端分页接口也未支持该参数
    - 修复：补齐 `chapterId` 前后端契约与集成测试，锁住章节工作区数据范围
+
+8. 视频封面弹窗状态回收不完整（已修复）
+   - 现象：重复选择封面或上传成功后，旧 blob 预览与当前视频上下文可能残留
+   - 根因：封面弹窗缺少统一的关闭重置逻辑
+   - 修复：补齐 blob URL 回收、弹窗关闭重置和上传成功后的状态清理，并增加回归测试
 
 ## 七、下一步推进计划
 

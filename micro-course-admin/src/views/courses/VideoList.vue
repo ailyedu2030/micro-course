@@ -194,7 +194,7 @@
     </el-dialog>
 
     <!-- 封面设置弹窗 -->
-    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true">
+    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true" @close="handleCoverDialogClose">
       <div class="cover-preview">
         <el-image v-if="currentCoverUrl" :src="currentCoverUrl" fit="contain" class="cover-img" />
         <span v-else class="no-cover">暂无封面</span>
@@ -208,7 +208,7 @@
         <el-button type="primary" size="small">选择图片</el-button>
       </el-upload>
       <template #footer>
-        <el-button @click="coverDialogVisible = false">取消</el-button>
+        <el-button @click="handleCoverDialogClose">取消</el-button>
         <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
       </template>
     </el-dialog>
@@ -312,6 +312,19 @@ const currentVideoId = ref(null)
 const currentCoverUrl = ref('')
 const previewCoverUrl = ref('')
 const coverFile = ref(null)
+
+const revokeCoverPreviewUrl = () => {
+  if (currentCoverUrl.value && currentCoverUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(currentCoverUrl.value)
+  }
+}
+
+const resetCoverDialogState = () => {
+  revokeCoverPreviewUrl()
+  currentCoverUrl.value = ''
+  coverFile.value = null
+  currentVideoId.value = null
+}
 
 const fetchCourses = async () => {
   try {
@@ -548,6 +561,7 @@ const handleDialogClose = () => {
 }
 
 const handleSetCover = (row) => {
+  resetCoverDialogState()
   currentVideoId.value = row.id
   currentCoverUrl.value = row.coverUrl || ''
   coverFile.value = null
@@ -555,8 +569,15 @@ const handleSetCover = (row) => {
 }
 
 const handleCoverChange = (file) => {
+  if (!file?.raw) return
+  revokeCoverPreviewUrl()
   coverFile.value = file.raw
   currentCoverUrl.value = URL.createObjectURL(file.raw)
+}
+
+const handleCoverDialogClose = () => {
+  coverDialogVisible.value = false
+  resetCoverDialogState()
 }
 
 const handleSubmitCover = async () => {
@@ -568,8 +589,8 @@ const handleSubmitCover = async () => {
   try {
     await uploadVideoCover(currentVideoId.value, coverFile.value)
     ElMessage.success('封面上传成功')
-    coverDialogVisible.value = false
-    fetchData()
+    await fetchData()
+    handleCoverDialogClose()
   } catch {
     ElMessage.error('上传失败')
   } finally {
@@ -626,9 +647,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   // 清理未释放的封面预览 blob URL
-  if (currentCoverUrl.value && currentCoverUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(currentCoverUrl.value)
-  }
+  revokeCoverPreviewUrl()
 })
 </script>
 

@@ -159,6 +159,8 @@ describe('VideoList.vue batch upload queue', () => {
     vi.clearAllMocks()
     routeState.params = { courseId: '12' }
     routeState.query = {}
+    global.URL.createObjectURL = vi.fn(() => 'blob:cover-preview')
+    global.URL.revokeObjectURL = vi.fn()
   })
 
   it('shows a queue summary after multiple files are selected in the create dialog', async () => {
@@ -292,5 +294,73 @@ describe('VideoList.vue batch upload queue', () => {
         size: 10,
       })
     )
+  })
+
+  it('releases the previous cover preview blob when selecting a new image and closing the dialog', async () => {
+    global.URL.createObjectURL = vi
+      .fn()
+      .mockReturnValueOnce('blob:first-cover')
+      .mockReturnValueOnce('blob:second-cover')
+
+    const wrapper = mount(VideoList, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+      },
+    })
+
+    await flushPromises()
+
+    wrapper.vm.handleSetCover({ id: 9, coverUrl: '/api/files/covers/9/original.jpg' })
+    wrapper.vm.handleCoverChange({ raw: { name: 'first-cover.png' } })
+
+    expect(wrapper.vm.currentCoverUrl).toBe('blob:first-cover')
+
+    wrapper.vm.handleCoverChange({ raw: { name: 'second-cover.png' } })
+
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:first-cover')
+    expect(wrapper.vm.currentCoverUrl).toBe('blob:second-cover')
+
+    wrapper.vm.handleCoverDialogClose()
+
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:second-cover')
+    expect(wrapper.vm.currentCoverUrl).toBe('')
+    expect(wrapper.vm.coverFile).toBe(null)
+    expect(wrapper.vm.currentVideoId).toBe(null)
+  })
+
+  it('resets cover dialog state after a successful cover upload', async () => {
+    global.URL.createObjectURL = vi.fn(() => 'blob:cover-preview')
+    videoApiMocks.uploadVideoCover.mockResolvedValueOnce({ data: '/api/files/covers/9/updated.jpg' })
+
+    const wrapper = mount(VideoList, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const initialFetchCalls = videoApiMocks.getVideos.mock.calls.length
+    const selectedFile = { name: 'cover.png' }
+
+    wrapper.vm.handleSetCover({ id: 9, coverUrl: '/api/files/covers/9/original.jpg' })
+    wrapper.vm.handleCoverChange({ raw: selectedFile })
+
+    await wrapper.vm.handleSubmitCover()
+    await flushPromises()
+
+    expect(videoApiMocks.uploadVideoCover).toHaveBeenCalledWith(9, selectedFile)
+    expect(videoApiMocks.getVideos.mock.calls.length).toBeGreaterThan(initialFetchCalls)
+    expect(wrapper.vm.coverDialogVisible).toBe(false)
+    expect(wrapper.vm.currentCoverUrl).toBe('')
+    expect(wrapper.vm.coverFile).toBe(null)
+    expect(wrapper.vm.currentVideoId).toBe(null)
+    expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:cover-preview')
   })
 })
