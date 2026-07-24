@@ -577,6 +577,7 @@ import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressH
 import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
 import { useVideoChapterScroller } from '@/composables/useVideoChapterScroller'
 import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
+import { useVideoDisplayFormatters } from '@/composables/useVideoDisplayFormatters'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
@@ -651,23 +652,10 @@ const progressPercent = computed(() => {
   return (currentTime.value / duration.value) * 100
 })
 
-// Utils
-const formatTime = (seconds) => {
-  if (!seconds || isNaN(seconds)) return '00:00'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-const formatDateTime = (isoString) => {
-  if (!isoString) return ''
-  const d = new Date(isoString)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const {
+  formatTime,
+  formatDateTime
+} = useVideoDisplayFormatters()
 
 const {
   isPlaying,
