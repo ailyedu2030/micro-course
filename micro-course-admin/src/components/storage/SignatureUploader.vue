@@ -10,28 +10,19 @@
     </div>
 
     <div v-else class="sign-image-upload">
-      <el-upload
-        :show-file-list="false"
-        :before-upload="beforeUpload"
-        :http-request="handleUpload"
-        accept="image/jpeg,image/png"
-      >
-        <el-button size="small" type="primary">选择图片</el-button>
-        <template #tip>
-          <div class="el-upload__tip">jpg/png，≤2MB</div>
-        </template>
-      </el-upload>
-      <div v-if="imageUrl" class="preview-img">
-        <img :src="imageUrl" alt="签名预览" />
-        <el-button size="small" type="danger" link @click="removeImage">移除</el-button>
-      </div>
+      <CommonSignatureUploader
+        label="签名图片"
+        :image-url="imageUrl"
+        :uploader="props.uploadHandler ? forwardUpload : null"
+        @update:image-url="handleImageChange"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import CommonSignatureUploader from '../common/SignatureUploader.vue'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({ type: 'TEXT', text: '', imageUrl: '' }) },
@@ -52,30 +43,15 @@ watch(() => props.modelValue, (newVal) => {
   }
 }, { deep: true })
 
-function beforeUpload(file) {
-  const isJpgPng = file.type === 'image/jpeg' || file.type === 'image/png'
-  const isLt2M = file.size / 1024 / 1024 < 2
-  if (!isJpgPng) ElMessage.error('仅支持 jpg/png 格式')
-  if (!isLt2M) ElMessage.error('图片大小不能超过 2MB')
-  return isJpgPng && isLt2M
+function forwardUpload(file, onProgress) {
+  return props.uploadHandler(file, onProgress)
 }
 
-async function handleUpload({ file }) {
-  if (props.uploadHandler) {
-    try {
-      const res = await props.uploadHandler(file)
-      imageUrl.value = res.data?.url || URL.createObjectURL(file)
-    } catch {
-      ElMessage.error('上传失败')
-      if (imageUrl.value) { URL.revokeObjectURL(imageUrl.value); imageUrl.value = ''; }
-    }
-  } else {
-    imageUrl.value = URL.createObjectURL(file)
-  }
+function handleImageChange(url) {
+  imageUrl.value = url || ''
   onChange()
 }
 
-function removeImage() { imageUrl.value = ''; onChange() }
 function onChange() {
   emit('update:modelValue', { type: signType.value, text: signText.value, imageUrl: imageUrl.value })
 }
