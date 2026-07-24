@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onErrorCaptured, onMounted } from 'vue'
+import { ref, computed, onErrorCaptured, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from './store/user'
@@ -70,19 +70,46 @@ onErrorCaptured((err, instance, info) => {
   return false
 })
 
-// D1: 全局网络状态检测
-function setupNetworkListeners() {
-  window.addEventListener('offline', () => {
-    ElMessage.warning('网络已断开，部分功能暂不可用')
-  })
-  window.addEventListener('online', () => {
-    ElMessage.success('网络已恢复')
-  })
+function handleOffline() {
+  ElMessage.warning('网络已断开，部分功能暂不可用')
+}
+
+function handleOnline() {
+  ElMessage.success('网络已恢复')
+}
+
+function handleStorageChange(e) {
+  if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
+    if (e.newValue !== userStore.token) {
+      userStore.token = e.newValue || ''
+      userStore.userInfo = null
+    }
+  }
+}
+
+function handleTokenRefreshed(e) {
+  userStore.token = e.detail.token
+  if (e.detail.refreshToken) {
+    userStore.refreshToken = e.detail.refreshToken
+  }
+}
+
+function registerGlobalListeners() {
+  window.addEventListener('offline', handleOffline)
+  window.addEventListener('online', handleOnline)
+  window.addEventListener('storage', handleStorageChange)
+  window.addEventListener('token-refreshed', handleTokenRefreshed)
+}
+
+function unregisterGlobalListeners() {
+  window.removeEventListener('offline', handleOffline)
+  window.removeEventListener('online', handleOnline)
+  window.removeEventListener('storage', handleStorageChange)
+  window.removeEventListener('token-refreshed', handleTokenRefreshed)
 }
 
 onMounted(async () => {
-  // D1: 启动离线检测
-  setupNetworkListeners()
+  registerGlobalListeners()
   // 仅在 beforeEach 未填充角色时补充获取（避免冗余 API 调用）
   if (isAuthenticated() && !userStore.role) {
     try {
@@ -91,22 +118,10 @@ onMounted(async () => {
       console.error('[App] 获取用户信息失败', err)
     }
   }
-  // P2: 跨标签页 token 同步 — 另一个标签页登录/登出后，同步 store
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
-      if (e.newValue !== userStore.token) {
-        userStore.token = e.newValue || ''
-        userStore.userInfo = null  // 强制下次路由守卫/API 调用时重新获取
-      }
-    }
-  })
-  // P2: Token 刷新同步 — request.js 401 拦截器刷新 token 后更新 store
-  window.addEventListener('token-refreshed', (e) => {
-    userStore.token = e.detail.token
-    if (e.detail.refreshToken) {
-      userStore.refreshToken = e.detail.refreshToken
-    }
-  })
+})
+
+onBeforeUnmount(() => {
+  unregisterGlobalListeners()
 })
 </script>
 
