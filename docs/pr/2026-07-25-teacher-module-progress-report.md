@@ -123,6 +123,27 @@
 
 对应在 [SlideUploadZone.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/SlideUploadZone.test.js) 中补充了“挂载时无未解析图标告警”的回归护栏。
 
+### 9. 视频章节筛选链路补齐（本轮新增）
+
+本轮继续在 [VideoList.vue](file:///Users/jackie/微课平台/micro-course-admin/src/views/courses/VideoList.vue) 收敛一个真实的客户可感知问题：
+
+- 现象：页面提供了“章节”筛选与“章节上下文”入口，但列表请求实际未透传 `chapterId`
+- 影响：教师从章节上下文进入视频管理时，列表可能展示整门课的视频，而不是当前章节的视频
+- 根因：
+  - 前端 `fetchData()` 仅传递 `courseId`
+  - 后端 [VideoController.java](file:///Users/jackie/微课平台/micro-course-api/src/main/java/com/microcourse/controller/VideoController.java) 与 [VideoServiceImpl.java](file:///Users/jackie/微课平台/micro-course-api/src/main/java/com/microcourse/service/impl/VideoServiceImpl.java) 也未支持 `chapterId` 查询条件
+- 修复：
+  - 前端在列表请求中补齐 `chapterId`
+  - 后端 `GET /api/videos` 与 `GET /api/courses/{courseId}/videos` 同步支持 `chapterId` 可选过滤
+  - 服务层分页查询增加 `chapterId` 条件，确保章节工作区展示范围与页面上下文一致
+
+本轮新增回归测试：
+
+- [VideoList.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/VideoList.test.js)
+  - 验证章节上下文下请求会透传 `chapterId`
+- [VideoChapterFilterIntegrationTest.java](file:///Users/jackie/微课平台/micro-course-api/src/test/java/com/microcourse/controller/VideoChapterFilterIntegrationTest.java)
+  - 验证 `GET /api/videos` 按 `courseId + chapterId` 仅返回当前章节视频
+
 ## 二、当前剩余任务清单
 
 ### P0 / P1-C 优先级
@@ -139,14 +160,18 @@
    - 目标：做教师课程 -> 教学班 -> 学员 / 教师课程 -> 课件总览 -> 课件管理 两条真实链路联调
    - 依赖：当前 `TeacherTeachingClasses`、`TeacherSlideOverview` 的 teacherId 来源与空态表达已统一
 
+4. 视频管理深一层联调
+   - 目标：继续完成教师课程 -> 章节视频 -> 封面设置 / 转码失败重试 / 章节筛选的真实链路走查
+   - 依赖：本轮已补齐章节筛选前后端链路，剩余重点转向封面设置与异常态体验
+
 ### P1-I / 后续阶段任务
 
-4. Phase 6 剩余能力补齐状态核对
+5. Phase 6 剩余能力补齐状态核对
    - 待继续联调确认：教师数据看板、成绩明细可用性、视频封面自定义
    - 已完成补齐：学员管理导出、课程复制模板、章节排序、批量上传视频、审核时效提示
    - 已在先前阶段完成：题目乱序、Excel 题目导入、题目预览、试题导出
 
-5. 横向扫描教师端其它残留旧身份来源
+6. 横向扫描教师端其它残留旧身份来源
    - 已发现但尚未纳入本轮处理的页面，需要按业务优先级继续收敛
 
 ## 三、优先级与依赖关系
@@ -212,23 +237,26 @@
   - `npm run test:unit -- src/__tests__/SlideUploadZone.test.js`
   - `npm run test:unit -- src/__tests__/useVideoUploadQueue.test.js`
   - `npm run test:unit -- src/__tests__/VideoList.test.js`
+  - `mvn -Dtest=VideoChapterFilterIntegrationTest test`
 
 结果：
 
 - `SlideUploadZone.test.js` 4/4 通过
 - `useVideoUploadQueue.test.js` 2/2 通过
-- `VideoList.test.js` 3/3 通过
+- `VideoList.test.js` 4/4 通过
+- `VideoChapterFilterIntegrationTest` 1/1 通过
 
 - 全量前端单测回归：
   - `npm run test:unit`
 
-结果：`38` 个测试文件、`99/99` 用例全部通过，本轮新增改动未引入前端回归失败
+结果：`38` 个测试文件、`100/100` 用例全部通过，本轮新增改动未引入前端回归失败
 
 ### 构建验证
 
 - `npm run build`
+- `mvn -DskipTests compile`
 
-结果：通过
+结果：前后端均通过
 
 ### 代码规范检查
 
@@ -300,6 +328,11 @@
    - 现象：`/videos` 路由的批量上传仍沿用单文件标题必填规则
    - 根因：表单校验未根据 `isBatchUpload` 动态切换
    - 修复：标题规则在批量模式下自动放宽，并补充回归测试
+
+7. 视频章节筛选链路前后端脱节（已修复）
+   - 现象：章节筛选 UI 已存在，但实际列表请求未按章节过滤
+   - 根因：前端未透传 `chapterId`，后端分页接口也未支持该参数
+   - 修复：补齐 `chapterId` 前后端契约与集成测试，锁住章节工作区数据范围
 
 ## 七、下一步推进计划
 

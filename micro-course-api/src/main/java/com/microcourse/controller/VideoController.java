@@ -58,12 +58,13 @@ public class VideoController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<VideoVO>> page(
             @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         if (courseId == null) {
             return R.ok(PageResult.of(List.of(), 0L, page, size));
         }
-        PageResult<VideoVO> result = videoService.page(courseId, page, size);
+        PageResult<VideoVO> result = videoService.page(courseId, chapterId, page, size);
         return R.ok(result);
     }
 

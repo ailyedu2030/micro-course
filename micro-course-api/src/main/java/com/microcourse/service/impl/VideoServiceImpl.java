@@ -106,9 +106,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResult<VideoVO> page(Long courseId, int page, int size) {
+    public PageResult<VideoVO> page(Long courseId, Long chapterId, int page, int size) {
         LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Video::getCourseId, courseId)
+                .eq(chapterId != null, Video::getChapterId, chapterId)
                 .orderByAsc(Video::getSortOrder)
                 .orderByDesc(Video::getCreatedAt);
 

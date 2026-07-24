@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface VideoService {
 
-    PageResult<VideoVO> page(Long courseId, int page, int size);
+    PageResult<VideoVO> page(Long courseId, Long chapterId, int page, int size);
 
     VideoVO getById(Long id);
 

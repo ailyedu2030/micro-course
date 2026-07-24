@@ -269,4 +269,28 @@ describe('VideoList.vue batch upload queue', () => {
 
     expect(videoApiMocks.uploadVideo).toHaveBeenCalledTimes(2)
   })
+
+  it('passes the locked chapter id when loading videos in chapter context', async () => {
+    routeState.params = { courseId: '12', chapterId: '8' }
+
+    mount(VideoList, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(videoApiMocks.getVideos).toHaveBeenCalledWith(
+      expect.objectContaining({
+        courseId: 12,
+        chapterId: 8,
+        page: 0,
+        size: 10,
+      })
+    )
+  })
 })

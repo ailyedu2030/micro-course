@@ -334,6 +334,7 @@ const fetchData = async () => {
   try {
     const params = {
       courseId: searchForm.courseId,
+      chapterId: searchForm.chapterId || undefined,
       page: page.value - 1,
       size: size.value
     }
