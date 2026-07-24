@@ -571,7 +571,6 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import Hls from 'hls.js'
 import { getVideoById } from '@/api/video'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
@@ -581,9 +580,9 @@ import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
+import { useVideoSourceLifecycle } from '@/composables/useVideoSourceLifecycle'
 import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
 import { useVideoUiState } from '@/composables/useVideoUiState'
-import { getToken } from '@/utils/auth'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
 
@@ -617,7 +616,6 @@ const isBuffering = ref(false)
 // 根因: 之前只显示 spinner,网差时用户不知道要等多久,容易误以为卡死退出
 // 修复: 缓冲 > 15s 提示网络问题,> 30s 提示重试
 let bufferingWatchdogTimer = null
-let bufferingToastShown = false
 function onBufferingStart() {
   isBuffering.value = true
   startBufferingWatchdog()
@@ -630,12 +628,10 @@ function onBufferingEnd() {
 let bufferingLongTimer = null
 function startBufferingWatchdog() {
   stopBufferingWatchdog()
-  bufferingToastShown = false
   bufferingWatchdogTimer = setTimeout(() => {
     // 15s 仍在缓冲
     if (isBuffering.value) {
       ElMessage.warning({ message: '视频缓冲中,网络可能较慢,请稍候...', duration: 5000 })
-      bufferingToastShown = true
     }
   }, 15000)
   bufferingLongTimer = setTimeout(() => {
@@ -773,10 +769,6 @@ const {
   }
 })
 
-// HLS
-const hlsInstance = ref(null)
-const hlsFatal = ref(false)
-
 const {
   isMobile,
   showObjectives,
@@ -894,6 +886,25 @@ const {
 })
 
 const {
+  hlsFatal,
+  initPlayer,
+  retryLoad,
+  retryHls,
+  destroyPlayer
+} = useVideoSourceLifecycle({
+  videoRef,
+  isPipSupported,
+  handlePipEnter,
+  handlePipLeave,
+  getVideoUrl: () => videoData.value.hlsUrl || videoData.value.url,
+  loadVideo: () => loadVideo(),
+  setErrorMessage: (message) => {
+    errorMsg.value = message
+  },
+  scheduleRetryInit: () => nextTick()
+})
+
+const {
   lastPosition,
   notes,
   noteText,
@@ -987,80 +998,6 @@ const loadVideo = async () => {
   }
 }
 
-const initPlayer = () => {
-  const video = videoRef.value
-  const url = videoData.value.hlsUrl || videoData.value.url
-
-  if (!url) {
-    errorMsg.value = '视频地址无效'
-    return
-  }
-
-  // P0-6: Register PiP event listeners (remove first to prevent stacking)
-  if (video && isPipSupported.value) {
-    video.removeEventListener('enterpictureinpicture', handlePipEnter)
-    video.removeEventListener('leavepictureinpicture', handlePipLeave)
-    video.addEventListener('enterpictureinpicture', handlePipEnter)
-    video.addEventListener('leavepictureinpicture', handlePipLeave)
-  }
-
-  if (isHLS(url)) {
-    if (Hls.isSupported()) {
-      const token = getToken()
-      hlsInstance.value = new Hls({
-        xhrSetup: (xhr) => {
-          if (token) {
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token)
-          }
-        }
-      })
-      hlsInstance.value.loadSource(url)
-      hlsInstance.value.attachMedia(video)
-      hlsInstance.value.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {})
-      })
-      hlsInstance.value.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          hlsFatal.value = true
-          errorMsg.value = '视频播放出错'
-        }
-      })
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url
-      video.play().catch(() => {})
-    }
-  } else {
-    video.src = url
-    video.load()
-  }
-}
-
-const isHLS = (url) => {
-  return url && (url.endsWith('.m3u8') || url.includes('.m3u8'))
-}
-
-const retryLoad = () => {
-  hlsFatal.value = false
-  loadVideo()
-}
-
-// P1-1: 重试 HLS 播放（仅重新初始化播放器，不重新加载数据）
-const retryHls = () => {
-  hlsFatal.value = false
-  errorMsg.value = ''
-  if (hlsInstance.value) {
-    hlsInstance.value.destroy()
-    hlsInstance.value = null
-  }
-  const video = videoRef.value
-  if (video) {
-    video.pause()
-    video.removeAttribute('src')
-    video.load()
-  }
-  nextTick(() => initPlayer())
-}
-
 const reportProgress = async (force = false) => {
   const snapshot = getCurrentProgressSnapshot()
   if (!snapshot) return
@@ -1107,7 +1044,7 @@ const insertNoteAtCurrentTime = () => {
   insertStoredNoteAtCurrentTime()
 }
 
-const highlightTime = (time) => {
+const highlightTime = () => {
   // Could emit event to highlight in video if needed
 }
 
@@ -1175,20 +1112,11 @@ watch(isPlaying, (playing) => {
 })
 
 onBeforeUnmount(() => {
-  const video = videoRef.value
-
   // P1-C #7: 心跳 composable 已先完成本地保存与强制上报，这里再进入资源卸载阶段
   isComponentUnmounted = true
 
   // 4. 清理播放器资源
-  if (video) {
-    video.removeEventListener('enterpictureinpicture', handlePipEnter)
-    video.removeEventListener('leavepictureinpicture', handlePipLeave)
-  }
-  if (hlsInstance.value) {
-    hlsInstance.value.destroy()
-    hlsInstance.value = null
-  }
+  destroyPlayer()
   // P1-3: 清理缓冲 watchdog,避免内存泄漏
   stopBufferingWatchdog()
   document.removeEventListener('keydown', handleKeydown)
