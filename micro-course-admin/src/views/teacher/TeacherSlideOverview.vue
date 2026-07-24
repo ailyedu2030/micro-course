@@ -45,8 +45,9 @@
         <el-empty v-if="courses.length === 0" description="您还没有互动课程，去课程列表创建。">
           <el-button type="primary" @click="router.push('/teacher/courses')">前往课程列表</el-button>
         </el-empty>
-        <el-empty v-else description="已选课程尚未上传课件。从左侧课程列表选择一门课程，进入后上传 PPT 即可。">
-          <el-button @click="handleReset">查看全部课程</el-button>
+        <el-empty v-else :description="emptyDescription">
+          <el-button v-if="searchForm.courseId" @click="handleReset">查看全部课程</el-button>
+          <el-button v-else type="primary" @click="openUploadDialog">上传课件</el-button>
         </el-empty>
       </div>
       <el-table v-else :data="displaySlides" stripe v-loading="loading">
@@ -203,8 +204,15 @@ const displaySlides = computed(() => {
   return filteredSlides.value.slice(start, start + pageSize.value)
 })
 
+const emptyDescription = computed(() => {
+  if (searchForm.value.courseId) {
+    return '该课程尚未上传课件，可先上传 PPT 或切换查看其它课程。'
+  }
+  return '当前还没有课件，可直接上传或按课程筛选。'
+})
+
 async function loadData() {
-  if (!userStore.userInfo?.id && !initialized.value) {
+  if (!userStore.userId && !initialized.value) {
     try {
       await userStore.getInfo()
     } catch { /* ignore */ }
@@ -212,7 +220,7 @@ async function loadData() {
   }
   loading.value = true
   try {
-    const { data } = await getCourses({ size: 1000, teacherId: userStore.userInfo?.id })
+    const { data } = await getCourses({ size: 1000, teacherId: userStore.userId })
     const courseList = data?.items || data?.content || data?.records || []
     courses.value = courseList
 
