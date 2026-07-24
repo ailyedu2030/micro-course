@@ -13,9 +13,9 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.NotificationService;
 import com.microcourse.service.StorageApplicationCudService;
+import com.microcourse.service.StorageApplicationImageStorageService;
 import com.microcourse.service.StorageApplicationQueryService;
 import com.microcourse.service.StorageApplicationService;
-import com.microcourse.util.FileUploadUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.StorageValidator;
 import org.slf4j.Logger;
@@ -24,18 +24,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -50,8 +40,6 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private static final Logger log = LoggerFactory.getLogger(StorageApplicationServiceImpl.class);
 
     private static final String MODULE_COURSES = "courses";
-
-    private static final int TARGET_IMAGE_SIZE = 150;
 
     private static final long AUTO_SAVE_MIN_INTERVAL_MS = 1000;
 
@@ -72,6 +60,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final DepartmentRepository departmentRepository;
     private final StorageApplicationQueryService queryService;
     private final StorageApplicationCudService cudService;
+    private final StorageApplicationImageStorageService imageStorageService;
     private final NotificationService notificationService;
     private final com.microcourse.service.MicroSpecialtyProposalService msProposalService;
 
@@ -87,6 +76,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             DepartmentRepository departmentRepository,
             StorageApplicationQueryService queryService,
             StorageApplicationCudService cudService,
+            StorageApplicationImageStorageService imageStorageService,
             NotificationService notificationService,
             com.microcourse.service.MicroSpecialtyProposalService msProposalService) {
         this.proposalRepository = proposalRepository;
@@ -100,6 +90,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.departmentRepository = departmentRepository;
         this.queryService = queryService;
         this.cudService = cudService;
+        this.imageStorageService = imageStorageService;
         this.notificationService = notificationService;
         this.msProposalService = msProposalService;
     }
@@ -256,7 +247,6 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // 6. uploadImage
     // ================================================================
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public UploadResultVO uploadImage(Long proposalId, Long userId, MultipartFile file, String type) {
         MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
         if (proposal == null) {
@@ -265,117 +255,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-
-        // P2-4 fix (S-004): validate filename to prevent path traversal
-        FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
-
-        // 校验文件
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "文件不能为空");
-        }
-
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename == null) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "文件名不能为空");
-        }
-
-        String lowerName = originalFilename.toLowerCase();
-        if (!lowerName.endsWith(".jpg") && !lowerName.endsWith(".jpeg") && !lowerName.endsWith(".png")) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE);
-        }
-
-        if (file.getSize() > 2 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_TOO_LARGE);
-        }
-
-        // P2-2 fix (S-004): verify file content via magic bytes (not just extension)
-        // I-02 fix: cross-validate extension vs content magic
-        boolean isJpegMagic = false;
-        boolean isPngMagic = false;
-        try (InputStream is = file.getInputStream()) {
-            byte[] header = new byte[8];
-            int read = is.read(header, 0, 8);
-            if (read >= 8) {
-                // JPEG: FF D8 FF
-                if (header[0] == (byte)0xFF && header[1] == (byte)0xD8 && header[2] == (byte)0xFF) {
-                    isJpegMagic = true;
-                }
-                // PNG: 89 50 4E 47 0D 0A 1A 0A
-                if (header[0] == (byte)0x89 && header[1] == 0x50 && header[2] == 0x4E &&
-                    header[3] == 0x47 && header[4] == 0x0D && header[5] == 0x0A &&
-                    header[6] == 0x1A && header[7] == 0x0A) {
-                    isPngMagic = true;
-                }
-            }
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
-                "无法读取文件内容");
-        }
-        if (!isJpegMagic && !isPngMagic) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
-                "文件内容不是有效的 jpg/png 图片");
-        }
-        // I-02 fix: cross-validate extension vs content magic to prevent PNG disguised as .jpg
-        boolean isJpegExt = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg");
-        boolean isPngExt = lowerName.endsWith(".png");
-        if (isJpegMagic && !isJpegExt) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
-                "文件内容与扩展名不匹配：JPEG 内容需使用 .jpg/.jpeg 扩展名");
-        }
-        if (isPngMagic && !isPngExt) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
-                "文件内容与扩展名不匹配：PNG 内容需使用 .png 扩展名");
-        }
-
-        // 保存文件到本地 uploads 目录
-        try {
-            String uploadDir = "uploads/storage/" + proposalId;
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // B6 fix: delete old signature/seal files of the same type to prevent accumulation
-            if (Files.exists(uploadPath)) {
-                try (var dirStream = Files.newDirectoryStream(uploadPath, type + "_*")) {
-                    for (Path oldFile : dirStream) {
-                        Files.deleteIfExists(oldFile);
-                        log.info("Deleted old image: {}", oldFile);
-                    }
-                } catch (IOException e) {
-                    log.warn("Failed to clean old images for proposalId={}, type={}", proposalId, type, e);
-                }
-            }
-
-            String ext = lowerName.endsWith(".png") ? ".png" : ".jpg";
-            String newFileName = type + "_" + UUID.randomUUID().toString().substring(0, 8) + ext;
-            Path destPath = uploadPath.resolve(newFileName);
-
-            // 缩放图片至 150×150
-            try (InputStream is = file.getInputStream()) {
-                BufferedImage original = ImageIO.read(is);
-                if (original != null) {
-                    BufferedImage resized = new BufferedImage(TARGET_IMAGE_SIZE, TARGET_IMAGE_SIZE, BufferedImage.TYPE_INT_RGB);
-                    Graphics2D g = resized.createGraphics();
-                    g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                    g.drawImage(original, 0, 0, TARGET_IMAGE_SIZE, TARGET_IMAGE_SIZE, null);
-                    g.dispose();
-                    ImageIO.write(resized, ext.equals(".png") ? "png" : "jpg", destPath.toFile());
-                } else {
-                    file.transferTo(destPath.toFile());
-                }
-            } catch (Exception e) {
-                log.warn("Image resize failed, saving original: proposalId={}", proposalId, e);
-                file.transferTo(destPath.toFile());
-            }
-
-            String url = "/" + uploadDir + "/" + newFileName;
-
-            return new UploadResultVO(url, originalFilename, file.getSize());
-        } catch (IOException e) {
-            log.error("uploadImage failed: proposalId={}", proposalId, e);
-            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "图片上传失败");
-        }
+        return imageStorageService.storeImage(proposalId, file, type);
     }
 
     // ================================================================
