@@ -577,6 +577,7 @@ import { getVideoById } from '@/api/video'
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
+import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -602,7 +603,6 @@ const loading = ref(true)
 const errorMsg = ref('')
 const videoData = ref({})
 const chapters = ref([])
-const notes = ref([])
 const discussions = ref([])
 const activeTab = ref('chapters')
 const showChapterList = ref(false)
@@ -674,7 +674,6 @@ const volume = computed(() => volumePercent.value / 100)
 const currentTime = ref(0)
 const duration = ref(0)
 const bufferedPercent = ref(0)
-const lastPosition = ref(0)
 const currentChapterIndex = ref(0)
 const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
 
@@ -785,13 +784,6 @@ const {
   }
 })
 
-// Notes storage key
-const NOTES_STORAGE_KEY = computed(() => {
-  const id = videoId.value
-  if (!id || typeof id !== 'string' && typeof id !== 'number') return null
-  return `video_notes_${id}`
-})
-
 // HLS
 const hlsInstance = ref(null)
 const hlsFatal = ref(false)
@@ -840,13 +832,6 @@ const showObjectivesOverlay = () => {
   }, 3000)
 }
 
-// Local storage key (P1-5: validated id)
-const STORAGE_KEY = computed(() => {
-  const id = videoId.value
-  if (!id || (typeof id !== 'string' && typeof id !== 'number')) return null
-  return `video_progress_${id}`
-})
-
 // Computed
 const progressPercent = computed(() => {
   if (!duration.value) return 0
@@ -870,6 +855,41 @@ const formatDateTime = (isoString) => {
   const d = new Date(isoString)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
+
+const {
+  lastPosition,
+  notes,
+  noteText,
+  saveLocalPosition,
+  loadLocalPosition,
+  loadNotesFromStorage,
+  addNote: addStoredNote,
+  deleteNote: deleteStoredNote,
+  insertNoteAtCurrentTime: insertStoredNoteAtCurrentTime
+} = useVideoLocalState({
+  videoId,
+  currentTime,
+  formatTime,
+  confirmDelete: async () => {
+    await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
+      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    })
+  },
+  onStorageError: ({ type, error }) => {
+    if (type === 'notes_save') {
+      ElMessage.warning('笔记保存失败')
+    }
+    if (type === 'position_load') {
+      console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', error)
+    } else if (type === 'notes_load') {
+      console.warn('[VideoPlayer] loadNotesFromStorage 加载笔记失败', error)
+    } else if (type === 'notes_save') {
+      console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', error)
+    } else if (type === 'position_save') {
+      console.warn('[VideoPlayer] saveLocalPosition 保存播放位置失败', error)
+    }
+  }
+})
 
 // Video load
 const loadVideo = async () => {
@@ -1054,30 +1074,6 @@ const {
   }
 })
 
-// Local position
-const saveLocalPosition = (time) => {
-  if (!STORAGE_KEY.value) return
-  localStorage.setItem(STORAGE_KEY.value, JSON.stringify({ time, updatedAt: Date.now() }))
-}
-
-// P1I-012: 优先使用服务端进度，仅在无网络或服务端无进度时使用本地存储
-const loadLocalPosition = () => {
-  try {
-    // 如果服务端已有有效进度，不再用本地存储覆盖
-    if (lastPosition.value > 0) return
-    if (!STORAGE_KEY.value) return
-    const saved = localStorage.getItem(STORAGE_KEY.value)
-    if (saved) {
-      const { time } = JSON.parse(saved)
-      if (time > 0) {
-        lastPosition.value = time
-      }
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', e)
-  }
-}
-
 // Discussions
 const loadDiscussions = async () => {
   if (isComponentUnmounted) return
@@ -1092,65 +1088,21 @@ const loadDiscussions = async () => {
   }
 }
 
-// Notes
-const noteText = ref('')
-
-// P0-5: Persist notes to localStorage
-const saveNotesToStorage = () => {
-  if (!NOTES_STORAGE_KEY.value) return
-  try {
-    localStorage.setItem(NOTES_STORAGE_KEY.value, JSON.stringify(notes.value))
-  } catch (e) {
-    console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', e)
-    ElMessage.warning('笔记保存失败')
-  }
-}
-
-const loadNotesFromStorage = () => {
-  if (!NOTES_STORAGE_KEY.value) return
-  try {
-    const saved = localStorage.getItem(NOTES_STORAGE_KEY.value)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed)) {
-        notes.value = parsed
-      }
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadNotesFromStorage 加载笔记失败', e)
-  }
-}
-
 const addNote = () => {
-  if (!noteText.value.trim()) return
-  const note = {
-    id: Date.now(),
-    time: currentTime.value,
-    content: noteText.value.trim(),
-    createdAt: new Date().toISOString()
-  }
-  notes.value.unshift(note)
-  noteText.value = ''
-  saveNotesToStorage()
+  if (!addStoredNote()) return
   ElMessage.success('笔记已添加')
 }
 
 const deleteNote = async (id) => {
-  try {
-    await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
-      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
-    })
-    notes.value = notes.value.filter(n => n.id !== id)
-    saveNotesToStorage()
+  const deleted = await deleteStoredNote(id)
+  if (deleted) {
     ElMessage.success('笔记已删除')
-  } catch {
-    // 已取消,不做操作
   }
 }
 
 // P1-3: Insert timestamp prefix at current time
 const insertNoteAtCurrentTime = () => {
-  noteText.value = `[${formatTime(currentTime.value)}] ${noteText.value}`
+  insertStoredNoteAtCurrentTime()
 }
 
 const highlightTime = (time) => {
