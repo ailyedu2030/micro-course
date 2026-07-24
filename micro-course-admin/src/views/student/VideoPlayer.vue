@@ -575,6 +575,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
+import { useVideoChapterScroller } from '@/composables/useVideoChapterScroller'
 import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
@@ -617,21 +618,13 @@ const currentSubtitle = ref('')
 const currentChapterIndex = ref(0)
 const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
 
-// Chapter item refs for smooth scroll
-const chapterItemRefs = ref({})
-const setChapterItemRef = (el, index) => {
-  if (el) {
-    chapterItemRefs.value[index] = el
-  }
-}
-const scrollToActiveChapter = () => {
-  nextTick(() => {
-    const el = chapterItemRefs.value[currentChapterIndex.value]
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-  })
-}
+const {
+  setChapterItemRef,
+  scrollToActiveChapter
+} = useVideoChapterScroller({
+  currentChapterIndexRef: currentChapterIndex,
+  nextTickFn: nextTick
+})
 
 // Progress reporting
 const isComponentUnmounted = ref(false) // P1-2: prevent state updates after unmount
