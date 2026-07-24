@@ -576,6 +576,7 @@ import { getVideoById } from '@/api/video'
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
+import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
@@ -609,56 +610,6 @@ const discussions = ref([])
 const activeTab = ref('chapters')
 const showChapterList = ref(false)
 
-// Playback state
-const isBuffering = ref(false)
-
-// P1-3: 视频缓冲超时提示 - 客户体验第一原则
-// 根因: 之前只显示 spinner,网差时用户不知道要等多久,容易误以为卡死退出
-// 修复: 缓冲 > 15s 提示网络问题,> 30s 提示重试
-let bufferingWatchdogTimer = null
-function onBufferingStart() {
-  isBuffering.value = true
-  startBufferingWatchdog()
-}
-function onBufferingEnd() {
-  isBuffering.value = false
-  stopBufferingWatchdog()
-}
-// P1I-013: 第二个超时定时器（30s）句柄也需保留以便销毁时清理
-let bufferingLongTimer = null
-function startBufferingWatchdog() {
-  stopBufferingWatchdog()
-  bufferingWatchdogTimer = setTimeout(() => {
-    // 15s 仍在缓冲
-    if (isBuffering.value) {
-      ElMessage.warning({ message: '视频缓冲中,网络可能较慢,请稍候...', duration: 5000 })
-    }
-  }, 15000)
-  bufferingLongTimer = setTimeout(() => {
-    // 30s 仍在缓冲 - 提供重试入口
-    if (isBuffering.value) {
-      ElMessageBox.confirm('视频缓冲超过 30 秒,可能是网络问题。是否重试?', '缓冲超时', {
-        confirmButtonText: '重试',
-        cancelButtonText: '继续等待',
-        type: 'warning'
-      }).then(() => {
-        retryHls()
-      }).catch(() => {
-        // 用户选择继续等待,不做处理
-      })
-    }
-  }, 30000)
-}
-function stopBufferingWatchdog() {
-  if (bufferingWatchdogTimer) {
-    clearTimeout(bufferingWatchdogTimer)
-    bufferingWatchdogTimer = null
-  }
-  if (bufferingLongTimer) {
-    clearTimeout(bufferingLongTimer)
-    bufferingLongTimer = null
-  }
-}
 const isPipSupported = ref(false)
 const currentSubtitle = ref('')
 const currentChapterIndex = ref(0)
@@ -883,6 +834,19 @@ const {
   changeVolume,
   skipBackward,
   skipForward
+})
+
+const {
+  isBuffering,
+  onBufferingStart,
+  onBufferingEnd,
+  stopWatchdog: stopBufferingWatchdog
+} = useVideoBufferingWatchdog({
+  showWarning: (options) => {
+    ElMessage.warning(options)
+  },
+  showRetryConfirm: ({ message, title, options }) => ElMessageBox.confirm(message, title, options),
+  onRetry: () => retryHls()
 })
 
 const {
