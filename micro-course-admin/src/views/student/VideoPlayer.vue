@@ -576,6 +576,7 @@ import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
+import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
@@ -988,6 +989,22 @@ const {
   }
 })
 
+const {
+  handleEnded: onEnded
+} = useVideoCompletionFlow({
+  isPlayingRef: isPlaying,
+  chaptersRef: chapters,
+  currentChapterIndexRef: currentChapterIndex,
+  reportProgress: () => reportProgress(),
+  confirmExerciseStart: ({ message, title, options }) => ElMessageBox.confirm(message, title, options),
+  navigateToExercise: (path) => {
+    router.push(path)
+  },
+  showSuccessMessage: (message) => {
+    ElMessage.success(message)
+  }
+})
+
 const addNote = () => {
   if (!addStoredNote()) return
   ElMessage.success('笔记已添加')
@@ -1013,26 +1030,6 @@ const seekToTime = (time) => {
   const video = videoRef.value
   if (video) {
     video.currentTime = time
-  }
-}
-
-const onEnded = async () => {
-  isPlaying.value = false
-  if (chapters.value[currentChapterIndex.value]) {
-    chapters.value[currentChapterIndex.value].isCompleted = true
-  }
-  await reportProgress()
-  const chapter = chapters.value[currentChapterIndex.value]
-  if (chapter && chapter.exerciseCount > 0) {
-    ElMessageBox.confirm(
-      `「${chapter.title}」的视频已看完，是否开始本节练习？`,
-      '视频播放完成',
-      { confirmButtonText: '开始练习', cancelButtonText: '继续看下一节', type: 'success' }
-    ).then(() => {
-      router.push(`/student/chapters/${chapter.id}/exercises`)
-    }).catch(() => {})
-  } else {
-    ElMessage.success('视频播放完成')
   }
 }
 
