@@ -48,7 +48,6 @@ describe('useVideoPageViewState', () => {
 
     expect(viewState.activeTab.value).toBe('chapters')
     expect(viewState.showChapterList.value).toBe(true)
-    expect(viewState.currentSubtitle.value).toBe('')
     expect(viewState.currentChapter.value).toEqual({ id: 1, title: '第一章' })
     expect(viewState.volume.value).toBe(0.65)
 

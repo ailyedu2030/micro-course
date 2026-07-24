@@ -9,7 +9,6 @@ export function useVideoPageViewState(options = {}) {
 
   const activeTab = ref('chapters')
   const showChapterList = ref(true)
-  const currentSubtitle = ref('')
 
   const currentChapter = computed(() => chaptersRef.value[currentChapterIndexRef.value])
   const volume = computed(() => volumePercentRef.value / 100)
@@ -21,7 +20,6 @@ export function useVideoPageViewState(options = {}) {
   return {
     activeTab,
     showChapterList,
-    currentSubtitle,
     currentChapter,
     volume,
     toggleChapterList

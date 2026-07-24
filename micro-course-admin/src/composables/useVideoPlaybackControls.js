@@ -15,7 +15,6 @@ export function useVideoPlaybackControls(options = {}) {
   const isMuted = ref(false)
   const isFullscreen = ref(false)
   const isPip = ref(false)
-  const subtitlesEnabled = ref(false)
   const playbackRate = ref(1)
   const volumePercent = ref(100)
   const currentTime = ref(0)
@@ -101,10 +100,6 @@ export function useVideoPlaybackControls(options = {}) {
     speedToastTimer = setTimeout(() => {
       speedToastVisible.value = false
     }, speedToastDurationMs)
-  }
-
-  function toggleSubtitles() {
-    subtitlesEnabled.value = !subtitlesEnabled.value
   }
 
   async function toggleFullscreen() {
@@ -209,7 +204,6 @@ export function useVideoPlaybackControls(options = {}) {
     isMuted,
     isFullscreen,
     isPip,
-    subtitlesEnabled,
     playbackRate,
     volumePercent,
     currentTime,
@@ -224,7 +218,6 @@ export function useVideoPlaybackControls(options = {}) {
     toggleMute,
     changeVolume,
     changeSpeed,
-    toggleSubtitles,
     toggleFullscreen,
     togglePictureInPicture,
     handlePipEnter,
