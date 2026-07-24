@@ -582,6 +582,7 @@ import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
 import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
+import { useVideoUiState } from '@/composables/useVideoUiState'
 import { getToken } from '@/utils/auth'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
@@ -608,7 +609,6 @@ const chapters = ref([])
 const discussions = ref([])
 const activeTab = ref('chapters')
 const showChapterList = ref(false)
-const isMobile = ref(window.innerWidth <= 768)
 
 // Playback state
 const isBuffering = ref(false)
@@ -777,9 +777,13 @@ const {
 const hlsInstance = ref(null)
 const hlsFatal = ref(false)
 
-// Learning objectives overlay
-const showObjectives = ref(false)
-let objectivesTimer = null
+const {
+  isMobile,
+  showObjectives,
+  syncViewportMode,
+  handleResize,
+  showObjectivesOverlay
+} = useVideoUiState()
 
 // P1-13: 前端提示性水印（用户ID+时间戳）
 const watermarkText = computed(() => {
@@ -788,14 +792,6 @@ const watermarkText = computed(() => {
   const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
   return `用户 ${uid} · ${ts}`
 })
-
-const showObjectivesOverlay = () => {
-  showObjectives.value = true
-  if (objectivesTimer) clearTimeout(objectivesTimer)
-  objectivesTimer = setTimeout(() => {
-    showObjectives.value = false
-  }, 3000)
-}
 
 // Computed
 const progressPercent = computed(() => {
@@ -1155,17 +1151,8 @@ const toggleSettings = () => {
   // Could show settings panel
 }
 
-// Lifecycle
-let resizeTimer = null
-const handleResize = () => {
-  if (resizeTimer) clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    isMobile.value = window.innerWidth <= 768
-  }, 200)
-}
-
 onMounted(async () => {
-  isMobile.value = window.innerWidth <= 768
+  syncViewportMode()
   isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
   resetVideoProgressReporter()
   await nextTick()
@@ -1204,14 +1191,9 @@ onBeforeUnmount(() => {
   }
   // P1-3: 清理缓冲 watchdog,避免内存泄漏
   stopBufferingWatchdog()
-  if (objectivesTimer) {
-    clearTimeout(objectivesTimer)
-    objectivesTimer = null
-  }
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   window.removeEventListener('resize', handleResize)
-  if (resizeTimer) clearTimeout(resizeTimer)
 })
 </script>
 
