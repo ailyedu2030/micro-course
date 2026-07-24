@@ -580,6 +580,7 @@ import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressH
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
+import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
 import { getToken } from '@/utils/auth'
 import { getChapters } from '@/api/chapter'
 import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
@@ -789,29 +790,6 @@ const watermarkText = computed(() => {
   return `用户 ${uid} · ${ts}`
 })
 
-// Mobile touch gestures
-let touchStartX = 0
-let touchStartY = 0
-let touchStartTime = 0
-let touchStartVolume = 100
-let touchStartBrightness = 100
-const lastTapTime = 0
-let tapCount = 0
-let tapTimer = null
-let isSwiping = false
-let swipeType = null // 'volume' | 'brightness' | 'seek'
-
-// Gesture indicators
-const volumeIndicatorVisible = ref(false)
-const brightnessIndicatorVisible = ref(false)
-const volumeIndicatorValue = ref(100)
-const brightnessIndicatorValue = ref(100)
-const gestureIndicatorX = ref(0) // for positioning
-const gestureIndicatorY = ref(0)
-const showSeekIndicator = ref(false)
-const seekIndicatorDir = ref('')
-const seekIndicatorSeconds = ref(10)
-let seekIndicatorTimer = null
 const showObjectivesOverlay = () => {
   showObjectives.value = true
   if (objectivesTimer) clearTimeout(objectivesTimer)
@@ -897,6 +875,27 @@ const {
   toggleFullscreen,
   toggleMute,
   showControls
+})
+
+const {
+  volumeIndicatorVisible,
+  brightnessIndicatorVisible,
+  volumeIndicatorValue,
+  brightnessIndicatorValue,
+  gestureIndicatorX,
+  gestureIndicatorY,
+  showSeekIndicator,
+  seekIndicatorDir,
+  seekIndicatorSeconds,
+  handleTouchStart,
+  handleTouchMove,
+  handleTouchEnd
+} = useVideoTouchGestures({
+  isMobile,
+  videoRef,
+  changeVolume,
+  skipBackward,
+  skipForward
 })
 
 const {
@@ -1183,17 +1182,6 @@ const switchChapter = async (id) => {
   await loadVideo()
 }
 
-// Playback controls
-const showSeekIndicatorHelper = (dir, seconds) => {
-  seekIndicatorDir.value = dir
-  seekIndicatorSeconds.value = seconds
-  showSeekIndicator.value = true
-  if (seekIndicatorTimer) clearTimeout(seekIndicatorTimer)
-  seekIndicatorTimer = setTimeout(() => {
-    showSeekIndicator.value = false
-  }, 600)
-}
-
 const onEnded = async () => {
   isPlaying.value = false
   if (chapters.value[currentChapterIndex.value]) {
@@ -1236,121 +1224,6 @@ const handleResize = () => {
   }, 200)
 }
 
-// Mobile touch handlers
-const handleTouchStart = (e) => {
-  if (!isMobile.value) return
-  const touch = e.touches[0]
-  touchStartX = touch.clientX
-  touchStartY = touch.clientY
-  touchStartTime = Date.now()
-  const video = videoRef.value
-  if (video) {
-    touchStartVolume = video.volume * 100
-    touchStartBrightness = 100
-  }
-  isSwiping = false
-  swipeType = null
-}
-
-const handleTouchMove = (e) => {
-  if (!isMobile.value) return
-  const touch = e.touches[0]
-  const deltaX = touch.clientX - touchStartX
-  const deltaY = touch.clientY - touchStartY
-  const video = videoRef.value
-  if (!video) return
-  const rect = e.target.closest('.video-container')?.getBoundingClientRect()
-  if (!rect) return
-
-  // Determine swipe type on first significant move
-  if (!isSwiping && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
-    const relativeX = touchStartX - rect.left
-    const isRightSide = relativeX > rect.width / 2
-
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal swipe - seeking
-      swipeType = 'seek'
-    } else {
-      // Vertical swipe - volume/brightness
-      swipeType = isRightSide ? 'volume' : 'brightness'
-      isSwiping = true
-      gestureIndicatorY.value = touch.clientY
-      gestureIndicatorX.value = touch.clientX
-    }
-  }
-
-  if (swipeType === 'volume') {
-    // Left side vertical: volume
-    const sensitivity = 0.4
-    const delta = -deltaY * sensitivity
-    const newVol = Math.min(100, Math.max(0, touchStartVolume + delta))
-    video.volume = newVol / 100
-    volumePercent.value = newVol
-    volumeIndicatorValue.value = Math.round(newVol)
-    isMuted.value = newVol === 0
-    volumeIndicatorVisible.value = true
-  } else if (swipeType === 'brightness') {
-    // Right side vertical: brightness
-    const sensitivity = 0.4
-    const delta = -deltaY * sensitivity
-    const newBri = Math.min(100, Math.max(20, touchStartBrightness + delta))
-    brightnessIndicatorValue.value = Math.round(newBri)
-    brightnessIndicatorVisible.value = true
-    // Apply brightness via CSS filter on video element
-    const brightness = newBri / 100
-    video.style.filter = `brightness(${brightness})`
-  }
-}
-
-const handleTouchEnd = (e) => {
-  if (!isMobile.value) return
-  const touch = e.changedTouches[0]
-  const elapsed = Date.now() - touchStartTime
-  const deltaX = Math.abs(touch.clientX - touchStartX)
-  const deltaY = Math.abs(touch.clientY - touchStartY)
-
-  // Hide gesture indicators after a delay
-  if (volumeIndicatorVisible.value || brightnessIndicatorVisible.value) {
-    setTimeout(() => {
-      volumeIndicatorVisible.value = false
-      brightnessIndicatorVisible.value = false
-    }, 500)
-  }
-
-  // Reset brightness on touch end (keep it for video session)
-  swipeType = null
-  isSwiping = false
-
-  // Double tap detection for seek (quick tap without significant move)
-  if (elapsed < 300 && deltaX < 30 && deltaY < 30 && !isSwiping) {
-    const rect = e.target.closest('.video-container')?.getBoundingClientRect()
-    if (!rect) return
-    const tapX = touch.clientX - rect.left
-    const tapRegion = tapX / rect.width
-
-    tapCount++
-    if (tapTimer) clearTimeout(tapTimer)
-
-    if (tapCount === 2) {
-      // Double tap detected
-      tapCount = 0
-      if (tapRegion < 1 / 3) {
-        // Left 1/3: seek backward
-        skipBackward()
-        showSeekIndicatorHelper('backward', 10)
-      } else if (tapRegion > 2 / 3) {
-        // Right 1/3: seek forward
-        skipForward()
-        showSeekIndicatorHelper('forward', 10)
-      }
-    } else {
-      tapTimer = setTimeout(() => {
-        tapCount = 0
-      }, 300)
-    }
-  }
-}
-
 onMounted(async () => {
   isMobile.value = window.innerWidth <= 768
   isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
@@ -1391,17 +1264,9 @@ onBeforeUnmount(() => {
   }
   // P1-3: 清理缓冲 watchdog,避免内存泄漏
   stopBufferingWatchdog()
-  if (seekIndicatorTimer) {
-    clearTimeout(seekIndicatorTimer)
-    seekIndicatorTimer = null
-  }
   if (objectivesTimer) {
     clearTimeout(objectivesTimer)
     objectivesTimer = null
-  }
-  if (tapTimer) {
-    clearTimeout(tapTimer)
-    tapTimer = null
   }
   document.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
