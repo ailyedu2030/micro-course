@@ -279,7 +279,7 @@ const groupedClasses = computed(() => {
 async function fetchCourses() {
   loadingCourses.value = true
   try {
-    const teacherId = userStore.userInfo?.id
+    const teacherId = userStore.userId
     if (!teacherId) {
       ElMessage.error('无法获取当前用户信息')
       return

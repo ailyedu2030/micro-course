@@ -50,7 +50,7 @@
     </el-card>
 
     <!-- 统计卡片 -->
-    <div v-if="tableData.length > 0" class="stats-grid">
+    <div v-if="searchForm.courseId && tableData.length > 0" class="stats-grid">
       <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary-color">{{ stats.averageScore ?? '-' }}</div>
@@ -80,7 +80,7 @@
     </div>
 
     <!-- 图表 + 表格 -->
-    <div v-if="tableData.length > 0" class="content-grid">
+    <div v-if="loading || searchForm.courseId || tableData.length > 0" class="content-grid">
       <!-- 成绩分布图 -->
       <el-card class="chart-card shadow-hover" shadow="never">
         <template #header>
@@ -104,8 +104,8 @@
 
         <!-- 空状态 -->
         <el-empty
-          v-else-if="!loading && tableData.length === 0"
-          description="暂无成绩数据"
+          v-else-if="!loading && searchForm.courseId && tableData.length === 0"
+          description="该课程暂无成绩数据"
           :image-size="120"
         />
 
@@ -183,7 +183,7 @@
     <!-- 空状态提示（无数据） -->
     <el-empty
       v-if="!loading && tableData.length === 0 && !searchForm.courseId"
-      description="暂无学生数据"
+      description="请选择课程查看成绩"
       :image-size="120"
       class="empty-hint"
     />
@@ -315,7 +315,7 @@ const isGraded = computed(() => currentStudent.value?.score != null)
 async function fetchCourses() {
   try {
     const params = { size: 20 }
-    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    if (isTeacher.value) params.teacherId = userStore.userId
     // P1I-071: 按院系筛选课程
     if (searchForm.departmentId) params.offerDepartmentId = searchForm.departmentId
     const { data } = await getCourses(params)
@@ -326,7 +326,7 @@ async function fetchCourses() {
       const exists = courseOptions.value.some(c => c.id === searchForm.courseId)
       if (!exists) {
         const p2 = { size: 1, courseId: searchForm.courseId }
-        if (isTeacher.value) p2.teacherId = userStore.userInfo?.id
+        if (isTeacher.value) p2.teacherId = userStore.userId
         const { data: extra } = await getCourses(p2)
         const extraItems = extra.items || []
         courseOptions.value = [...courseOptions.value, ...extraItems]
@@ -347,7 +347,7 @@ async function searchCourses(keyword) {
   courseLoading.value = true
   try {
     const params = { size: 20, keyword }
-    if (isTeacher.value) params.teacherId = userStore.userInfo?.id
+    if (isTeacher.value) params.teacherId = userStore.userId
     // P1I-071: 按院系筛选课程
     if (searchForm.departmentId) params.offerDepartmentId = searchForm.departmentId
     const { data } = await getCourses(params)
@@ -360,6 +360,17 @@ async function searchCourses(keyword) {
 
 // 获取成绩数据
 async function fetchData() {
+  if (!searchForm.courseId) {
+    loading.value = false
+    tableData.value = []
+    totalElements.value = 0
+    resetStats()
+    if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
+    return
+  }
   loading.value = true
   try {
     const params = {
@@ -371,22 +382,51 @@ async function fetchData() {
     const result = data || {}
     const items = result.items || []
     totalElements.value = result.totalElements || items.length
-    // 映射成绩数据
-    tableData.value = items.map((item) => ({
-      id: item.id,
-      realName: item.realName || '-',     // 统一使用后端返回的 realName 字段
-      courseName: item.courseName || '',
-      score: item.score != null ? Math.round(item.score * 10) / 10 : null,
-      comment: item.comment || '',
-      gradedAt: item.gradedAt || item.updatedAt || null,
-      enrollmentId: item.enrollmentId
-    }))
-    updateStats(tableData.value)
-    if (tableData.value.length > 0) renderChart(tableData.value)
+    tableData.value = normalizeGradeItems(items)
+
+    const statsSource = await fetchStatsSource(items, totalElements.value)
+    updateStats(statsSource)
+    if (statsSource.length > 0) {
+      renderChart(statsSource)
+    } else if (chartInstance) {
+      chartInstance.dispose()
+      chartInstance = null
+    }
   } catch {
     ElMessage.error('获取成绩数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+function normalizeGradeItems(items) {
+  return items.map((item) => ({
+    id: item.id,
+    realName: item.realName || item.studentName || '-',
+    courseName: item.courseName || '',
+    score: item.score != null ? Math.round(item.score * 10) / 10 : null,
+    comment: item.comment || '',
+    gradedAt: item.gradedAt || item.updatedAt || null,
+    enrollmentId: item.enrollmentId
+  }))
+}
+
+async function fetchStatsSource(currentPageItems, totalCount) {
+  const normalizedCurrentPage = normalizeGradeItems(currentPageItems)
+  if (!searchForm.courseId || totalCount <= normalizedCurrentPage.length) {
+    return normalizedCurrentPage
+  }
+
+  try {
+    const { data } = await getGrades({
+      page: 0,
+      size: totalCount,
+      courseId: searchForm.courseId
+    })
+    const allItems = data?.items || []
+    return normalizeGradeItems(allItems)
+  } catch {
+    return normalizedCurrentPage
   }
 }
 
@@ -579,12 +619,13 @@ function handleResize() {
   chartInstance?.resize()
 }
 
-onMounted(() => {
+onMounted(async () => {
   // P1I-071: ADMIN/ACADEMIC 角色加载院系列表
-  fetchDepartments()
-  fetchCourses()
-  // 默认加载该教师所有课程的学生成绩
-  fetchData()
+  await fetchDepartments()
+  await fetchCourses()
+  if (searchForm.courseId) {
+    await fetchData()
+  }
   window.addEventListener('resize', handleResize)
 })
 
