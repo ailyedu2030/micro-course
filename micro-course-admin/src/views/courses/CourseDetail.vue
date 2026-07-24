@@ -345,6 +345,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
@@ -360,6 +361,15 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const {
+  courseListPath,
+  courseDetailPath,
+  courseEditPath,
+  slideManagePath,
+  chapterManagePath
+} = useCourseWorkspaceRoutes({
+  userRoleRef: userRole
+})
 
 const userId = computed(() => userStore.userId)
 
@@ -493,14 +503,9 @@ const initSortable = () => {
 
 // ===== 页面操作 =====
 const handleBack = () => {
-  const role = userStore.role
-  if (role === 'TEACHER') {
-    router.push('/teacher/courses')
-  } else {
-    router.push('/courses')
-  }
+  router.push(courseListPath.value)
 }
-const goSlides = () => router.push(`/teacher/courses/${route.params.id}/slides/manage`)
+const goSlides = () => router.push(slideManagePath(route.params.id))
 const previewAsStudent = () => {
   window.open(`/student/courses/${courseId.value}`, '_blank')
 }
@@ -509,9 +514,9 @@ const switchToEdit = () => {
     ElMessage.warning('已发布课程不可编辑，请先下架')
     return
   }
-  router.push(`/courses/${courseId.value}/edit`)
+  router.push(courseEditPath(courseId.value))
 }
-const switchToView = () => router.push(`/courses/${courseId.value}`)
+const switchToView = () => router.push(courseDetailPath(courseId.value))
 
 const handleSubmitForReview = async () => {
   if (submitLoading.value) return
@@ -558,7 +563,7 @@ const handleCopy = async () => {
     if (res.data?.videoCopied === false) {
       ElMessageBox.alert('副本课程已创建,但视频内容未复制,请逐个章节手动上传', '提示')
     }
-    router.push(`/courses/${res.data.id}`)
+    router.push(courseDetailPath(res.data.id))
   } catch (e) { ElMessage.error(e?.response?.data?.message || '复制失败') }
 }
 
@@ -604,7 +609,7 @@ const handleSubmit = async () => {
       catch { ElMessage.warning('信息已保存，封面上传失败') }
     }
     ElMessage.success('保存成功')
-    router.push(`/courses/${courseId.value}`)
+    router.push(courseDetailPath(courseId.value))
   } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { submitLoading.value = false }
 }
@@ -622,7 +627,7 @@ const handleEditChapter = (row) => {
   chapterDialogVisible.value = true
 }
 const gotoChapterContent = (chapterId, type) => {
-  router.push(`/teacher/courses/${courseId.value}/chapters/${chapterId}/${type}`)
+  router.push(chapterManagePath(courseId.value, chapterId, type))
 }
 const loadSections = async (chapterId) => {
   try {
@@ -719,7 +724,7 @@ const handleChapterDialogClose = () => { chapterFormRef.value?.resetFields() }
 onMounted(() => {
   // P1C-075: ACADEMIC 角色从编辑模式重定向到查看模式
   if (userRole.value === 'ACADEMIC' && isEditMode.value) {
-    router.replace(`/courses/${courseId.value}`)
+    router.replace(courseDetailPath(courseId.value))
     return
   }
   fetchCategories()

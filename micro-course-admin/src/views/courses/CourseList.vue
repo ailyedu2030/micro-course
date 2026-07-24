@@ -305,6 +305,7 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTableKeyboardNavigation } from '@/composables/useTableKeyboardNavigation'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -324,6 +325,14 @@ const route = useRoute()
 const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const {
+  courseListPath,
+  courseDetailPath,
+  courseEditPath,
+  slideManagePath
+} = useCourseWorkspaceRoutes({
+  userRoleRef: userRole
+})
 
 // NN/g IA 原则: 标签精度比覆盖更重要。courseType filter 由 URL 驱动,
 // 落地直接显示"我的视频课/互动课/线下课"避免泛词
@@ -538,11 +547,11 @@ const handleRemoveCover = () => {
 }
 
 const handleEdit = (row) => {
-  router.push(`/courses/${row.id}/edit`)
+  router.push(courseEditPath(row.id))
 }
 
 const handleView = (row) => {
-  router.push(`/courses/${row.id}`)
+  router.push(courseDetailPath(row.id))
 }
 
 const handleApprove = async (row) => {
@@ -607,7 +616,7 @@ const handleCopy = async (row) => {
     const { data } = await copyCourse(row.id)
     const newId = data?.id || data
     ElMessage.success('复制成功，即将跳转到编辑页面')
-    router.push(`/courses/${newId}/edit`)
+    router.push(courseEditPath(newId))
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '复制失败')
   } finally { actingId.value = null }
@@ -664,14 +673,14 @@ function getStatusLabel(status) {
 }
 
 const goSlides = (row) => {
-  router.push(`/teacher/courses/${row.id}/slides/manage`)
+  router.push(slideManagePath(row.id))
 }
 const handleManageOffline = (row) => {
-  router.push(`/teacher/courses/${row.id}`)
+  router.push(courseDetailPath(row.id))
 }
 const handleBackToFullList = () => {
   handleReset()
-  router.push('/teacher/courses')
+  router.push(courseListPath.value)
 }
 const handleSubmit = async () => {
   if (submitLoading.value) return
@@ -714,6 +723,10 @@ const handleSubmit = async () => {
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false
+    if (newCourseId) {
+      router.push(courseDetailPath(newCourseId))
+      return
+    }
     fetchData()
   } catch {
     ElMessage.error('创建失败')

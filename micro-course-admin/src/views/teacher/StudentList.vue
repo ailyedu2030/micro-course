@@ -316,7 +316,7 @@ function handleReset() {
 // 获取课程列表
 async function fetchCourses() {
   try {
-    const teacherId = userStore.userInfo?.id
+    const teacherId = userStore.userId
     const { data } = await getCourses({ size: 9999, teacherId })
     courseOptions.value = data.items || []
     if (route.query.courseId) {
