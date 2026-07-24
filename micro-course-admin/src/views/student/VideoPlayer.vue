@@ -579,6 +579,7 @@ import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
 import { useVideoLearningData } from '@/composables/useVideoLearningData'
 import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
 import { useVideoLocalState } from '@/composables/useVideoLocalState'
+import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
@@ -926,32 +927,23 @@ const {
   }
 })
 
-const addNote = () => {
-  if (!addStoredNote()) return
-  ElMessage.success('笔记已添加')
-}
-
-const deleteNote = async (id) => {
-  const deleted = await deleteStoredNote(id)
-  if (deleted) {
-    ElMessage.success('笔记已删除')
+const {
+  addNote,
+  deleteNote,
+  insertNoteAtCurrentTime,
+  seekToTime
+} = useVideoNoteActions({
+  addStoredNote,
+  deleteStoredNote,
+  insertStoredNoteAtCurrentTime,
+  videoRef,
+  showSuccessMessage: (message) => {
+    ElMessage.success(message)
   }
-}
-
-// P1-3: Insert timestamp prefix at current time
-const insertNoteAtCurrentTime = () => {
-  insertStoredNoteAtCurrentTime()
-}
+})
 
 const highlightTime = () => {
   // Could emit event to highlight in video if needed
-}
-
-const seekToTime = (time) => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = time
-  }
 }
 
 const onVideoError = () => {
