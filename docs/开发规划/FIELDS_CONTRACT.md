@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 74 | API 文件数: 45
+> 实体数: 280 | Vue 视图数: 60 | Controller 数: 74 | API 文件数: 45
 
 ---
 
@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2624
+- 后端实体字段总数: 2627
 
 - 前端引用字段总数: 434
 
@@ -980,6 +980,8 @@
 
 | AttendanceUpdateRequest | 1 | 0 |
 
+| AutoSaveResult | 2 | 0 |
+
 | BadgeDefinition | 8 | 0 |
 
 | BadgeDefinitionVO | 8 | 0 |
@@ -1398,7 +1400,7 @@
 
 | SettingUpdateRequest | 3 | 0 |
 
-| StorageApplicationAutoSaveRequest | 35 | 0 |
+| StorageApplicationAutoSaveRequest | 36 | 0 |
 
 | StorageApplicationPreviewVO | 36 | 0 |
 
