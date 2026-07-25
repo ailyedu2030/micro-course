@@ -54,15 +54,11 @@ class StudentOnlyEndpointPermissionTest extends BaseIntegrationTest {
         jdbc.update("INSERT INTO check_ins (id, user_id, checkin_date, duration, created_at) " +
             "SELECT 999001, 7, CURRENT_DATE, 300, NOW() " +
             "WHERE NOT EXISTS (SELECT 1 FROM check_ins WHERE id = 999001)");
-        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, enrolled_at, updated_at, version) " +
-            "VALUES (7, 1, 'APPROVED', NOW(), NOW(), 0) " +
-            "ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
     }
 
     @AfterEach
     void tearDown() {
         jdbc.update("DELETE FROM check_ins WHERE id = 999001");
-        jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1");
     }
 
     // ================================================================
