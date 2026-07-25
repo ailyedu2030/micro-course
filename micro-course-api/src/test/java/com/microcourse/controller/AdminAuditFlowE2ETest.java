@@ -52,7 +52,7 @@ class AdminAuditFlowE2ETest extends BaseIntegrationTest {
 
     /** p0-seed 教师账号（courses.teacher_id），同时是审核通过/驳回后异步通知的接收者。 */
     private static final long TEACHER_ID = 6L;
-    private static final String TEACHER_PASSWORD = "student123";
+    // TEACHER_PASSWORD 继承自 BaseIntegrationTest.P0_PASSWORD（"student123"）
     /** p0-seed 课程分类（courses.category_id 的 NOT NULL FK）。 */
     private static final long CATEGORY_ID = 1L;
 
@@ -104,7 +104,7 @@ class AdminAuditFlowE2ETest extends BaseIntegrationTest {
     }
 
     private String teacherBearer() throws Exception {
-        return "Bearer " + loginAs("p0_teacher", TEACHER_PASSWORD);
+        return "Bearer " + loginAs("p0_teacher", P0_PASSWORD);
     }
 
     @AfterEach

@@ -281,7 +281,16 @@
                          改用 methods 级别并行(同一 class 内方法并行,跨 class 串行)
                          可以部分提速且不破坏 fixture 隔离 -->
                     <forkCount>1</forkCount>
-                    <reuseForks>true</reuseForks>
+                    <!-- P0-12(总工程师 2026-07-26 兜底): forkCount=1 + reuseForks=true
+                         在 ~150 测试后触发 Spring ClassPathResource NotFound
+                         (Caused by java.io.FileNotFoundException: class path resource
+                         [sql/p0-seed.sql] cannot be opened because it does not exist),
+                         推测为 JVM heap (748M of 1500m) 累积导致 resource cache 损坏,
+                         单 JVM 共享 classloader 不可靠. 改为 reuseForks=false, 每 test class
+                         启动独立 JVM, spring context 一次性 setup/teardown, 牺牲 ~30s
+                         总耗时换 0 测试虚假失败. CLI 标 -Dsurefire.reuseForks=false 不生效
+                         (因 POM 显式 true 覆盖), 须改 POM. -->
+                    <reuseForks>false</reuseForks>
                 </configuration>
             </plugin>
 
