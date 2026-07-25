@@ -989,17 +989,21 @@
 - staging 执行与回传材料：
   - [docs/releases/2026-07-25-phase6-teacher-staging-checklist.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-staging-checklist.md)
   - [docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md)
+- production 执行记录：
+  - [docs/releases/2026-07-25-phase6-teacher-production-execution-record.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-production-execution-record.md)
 
 ### 14.1 当前项目级结论
 
 - Phase 6 教师模块的开发、测试、文档、PR、CI、主线合并闭环已完成
 - 发布交接包与状态同步已通过 PR #124 / PR #125 合并到 `main`，执行时以 `origin/main` HEAD 作为实际部署提交
 - 本地 `main` 已与 `origin/main` 对齐，发布交接分支已清理
-- 当前项目已进入“发布准备与总控跟进”阶段
-- 当前建议动作是等待项目负责人 / 运维人工执行 staging，并回填执行记录，而不是直接跳过门禁发生产
+- 项目负责人在 2026-07-25 明确授权后，已完成 production 发布，实际部署提交为 `d3c39bd70995f397672a3e111b4f31c526872701`
+- 当前生产状态已完成收口：`micro-course-micro-course-api-1` 与 `micro-course-micro-course-admin-1` 均为 `running + healthy`，生产站点返回 `HTTP/2 200`
+- 本次发布未执行生产 DB 写操作，也未引入 schema 变更
+- 当前项目已从“发布准备”推进到“已发布、进入观察窗口与总控跟进”阶段
 
 ### 14.2 下一个总控节点
 
-- 2026-07-28：确认 staging 执行窗口与交接状态
-- 2026-07-29：根据 staging 回传结果决定继续 gray 准备或回到修复流
-- 2026-07-31：输出 W31 周状态更新与发布准备结论
+- 2026-07-26：持续跟进 24 小时观察窗口，确认无新增 P0 / P1-C
+- 2026-07-28：在项目总控周节奏中回看发布后教师链路运行情况
+- 2026-07-31：输出 W31 周状态更新与发布后复盘结论
