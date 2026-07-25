@@ -25,7 +25,7 @@ DELETE FROM micro_specialties WHERE id > 1;
 --   · LearningProgressServiceImpl.createProgress：courseId EXISTS + chapterId EXISTS
 --   · status=4=PUBLISHED（CourseStatus 枚举），仅为语义清晰；服务层只校验存在性
 --
--- bcrypt 口令：student123 / p0teacher123（$2b$12$，与 V1 admin 同算法同 cost）
+-- bcrypt 口令：student123（$2b$12$，与 V1 admin 同算法同 cost；p0_teacher 与 student 复用同一哈希）
 -- =============================================================================
 
 -- 1) 课程分类（courses.category_id 的 NOT NULL FK）
@@ -34,19 +34,35 @@ VALUES (1, 'P0测试分类', 1, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;
 
 -- 2) 教师账号（courses.teacher_id 的 NOT NULL FK；StorageApplication 正向流要求教师绑定学院）
+--    关键:ON CONFLICT 需强制重置 password,防止先前的脏 hash 残留导致登录失败
 INSERT INTO users (id, username, password, real_name, role, status, cas_bound, department_id, created_at, updated_at)
 VALUES (6, 'p0_teacher',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
         'P0测试教师', 'TEACHER', 1, FALSE, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO UPDATE
-SET department_id = EXCLUDED.department_id;
+SET username   = EXCLUDED.username,
+    password   = EXCLUDED.password,
+    real_name  = EXCLUDED.real_name,
+    role       = EXCLUDED.role,
+    status     = EXCLUDED.status,
+    cas_bound  = EXCLUDED.cas_bound,
+    department_id = EXCLUDED.department_id,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- 3) 学生账号 student/student123（EnrollmentP0ConcurrencyTest 以此登录，且 body userId=7）
+--    关键:同样强制重置 password
 INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)
 VALUES (7, 'student',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
         'P0测试学生', 'STUDENT', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET username   = EXCLUDED.username,
+    password   = EXCLUDED.password,
+    real_name  = EXCLUDED.real_name,
+    role       = EXCLUDED.role,
+    status     = EXCLUDED.status,
+    cas_bound  = EXCLUDED.cas_bound,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- 4) 课程 1..4（免费 + 已发布；is_free=TRUE 以通过选课付费拦截）
 INSERT INTO courses (id, title, category_id, teacher_id, status, is_free, price,
@@ -77,7 +93,7 @@ ON CONFLICT (id) DO NOTHING;
 SELECT setval(pg_get_serial_sequence('course_categories', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 1) FROM course_categories), 1));
 SELECT setval(pg_get_serial_sequence('users', 'id'),
-              GREATEST((SELECT COALESCE(MAX(id), 7) FROM users), 7));
+              GREATEST((SELECT COALESCE(MAX(id), 100) FROM users), 100));
 SELECT setval(pg_get_serial_sequence('courses', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 4) FROM courses), 4));
 SELECT setval(pg_get_serial_sequence('course_chapters', 'id'),
@@ -85,7 +101,6 @@ SELECT setval(pg_get_serial_sequence('course_chapters', 'id'),
 SELECT setval(pg_get_serial_sequence('course_sections', 'id'),
               GREATEST((SELECT COALESCE(MAX(id), 5) FROM course_sections), 5));
 
--- =============================================================================
 -- 7) 微专业种子数据（供 MicroSpecialtyEnrollmentFlowTest / InviteFlowTest）
 -- =============================================================================
 -- 7a) 额外测试用户 ID=22（供 InviteFlowTest 邀请使用）
@@ -93,7 +108,14 @@ INSERT INTO users (id, username, password, real_name, role, status, cas_bound, c
 VALUES (22, 'invite_teacher',
         '$2b$12$8INfOluI..wPsed6wvZSsOxfoH/dzsxaXvPR5ABQffWVKyjH7gcmK',
         '被邀请教师', 'TEACHER', 1, FALSE, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO UPDATE
+SET username   = EXCLUDED.username,
+    password   = EXCLUDED.password,
+    real_name  = EXCLUDED.real_name,
+    role       = EXCLUDED.role,
+    status     = EXCLUDED.status,
+    cas_bound  = EXCLUDED.cas_bound,
+    updated_at = CURRENT_TIMESTAMP;
 
 -- 7b) 微专业主表（status=RECRUITING，依赖 departments(id=1) + users(id=6)）
 INSERT INTO micro_specialties (id, code, title, offer_department_id, lead_teacher_id, status, max_students,

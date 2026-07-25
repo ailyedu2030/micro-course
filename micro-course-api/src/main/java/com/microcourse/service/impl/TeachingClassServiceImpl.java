@@ -43,8 +43,8 @@ public class TeachingClassServiceImpl implements TeachingClassService {
 
     private static final Logger log = LoggerFactory.getLogger(TeachingClassServiceImpl.class);
 
-    /** P1-1: 学生状态白名单 */
-    private static final Set<String> VALID_STUDENT_STATUSES = Set.of("ACTIVE", "DISABLED", "SUSPENDED");
+    /** P1-1: 学生状态白名单（V316 修复：仅允许 APPROVED/DROPPED/COMPLETED） */
+    private static final Set<String> VALID_STUDENT_STATUSES = Set.of("APPROVED", "DROPPED", "COMPLETED");
 
     private final TeachingClassRepository teachingClassRepository;
     private final TeachingClassStudentRepository teachingClassStudentRepository;
@@ -211,16 +211,10 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         if (req.getSemester() != null) {
             tc.setSemester(req.getSemester());
         }
-        if (req.getStatus() != null && !req.getStatus().equals(tc.getStatus())) {
-            // Round 6：教学班状态变更需通过状态机白名单校验
-            // （ACTIVE → COMPLETED/CANCELLED；COMPLETED/CANCELLED 为终态，不可再转）。
-            TeachingClassStatus currentStatus = TeachingClassStatus.fromCode(tc.getStatus());
-            TeachingClassStatus newStatus = TeachingClassStatus.fromCode(req.getStatus());
-            if (currentStatus == null || !currentStatus.canTransitionTo(newStatus)) {
-                throw new BusinessException(ErrorCode.INVALID_STATUS_TRANSITION,
-                        "教学班不允许从 " + currentStatus + " 转换到 " + newStatus);
-            }
-            tc.setStatus(req.getStatus());
+        if (req.getStatus() != null) {
+            // SECURITY: 禁止通过 PUT update 绕过 complete()/cancel() 专用端点修改状态
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "不允许通过更新接口修改教学班状态，请使用结课/停开专用接口");
         }
         tc.setUpdatedAt(LocalDateTime.now());
         teachingClassRepository.updateById(tc);
@@ -248,6 +242,10 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
+        // SECURITY: 仅 ADMIN 可删除教学班（权限矩阵 v2.0 §2.9）
+        if (!SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
         TeachingClass tc = teachingClassRepository.selectById(id);
         if (tc == null) {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
@@ -438,6 +436,19 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         if (tc == null) {
             throw new BusinessException(ErrorCode.CLASS_NOT_FOUND);
         }
+        // SECURITY: TEACHER 只能结课自己的教学班；ADMIN/ACADEMIC 可结课任意教学班
+        // 先检查 operatorId 是否为课主；非课主时再查 SecurityUtil 角色（兼容集成测试无 SecurityContext 场景）
+        if (!tc.getTeacherId().equals(operatorId)) {
+            boolean isAdminOrAcademic = false;
+            try {
+                isAdminOrAcademic = SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC");
+            } catch (Exception e) {
+                // 无 SecurityContext（如集成测试）— 不允许非课主操作
+            }
+            if (!isAdminOrAcademic) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权结课该教学班");
+            }
+        }
         TeachingClassStatus currentStatus = TeachingClassStatus.fromCode(tc.getStatus());
         TeachingClassStatus targetStatus = TeachingClassStatus.COMPLETED;
         if (currentStatus == null || !currentStatus.canTransitionTo(targetStatus)) {
@@ -446,7 +457,10 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         }
         tc.setStatus(targetStatus.getCode());
         tc.setUpdatedAt(LocalDateTime.now());
-        teachingClassRepository.updateById(tc);  // @Version 乐观锁 CAS
+        // @Version 乐观锁 CAS — 影响行数为 0 时抛 CONCURRENT_MODIFICATION
+        if (teachingClassRepository.updateById(tc) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "教学班已被其他操作修改，请刷新后重试");
+        }
         log.info("教学班结课: classId={}, name={}, operator={}", classId, tc.getName(), operatorId);
     }
 
@@ -472,7 +486,10 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         }
         tc.setStatus(targetStatus.getCode());
         tc.setUpdatedAt(LocalDateTime.now());
-        teachingClassRepository.updateById(tc);  // @Version 乐观锁 CAS
+        // @Version 乐观锁 CAS — 影响行数为 0 时抛 CONCURRENT_MODIFICATION
+        if (teachingClassRepository.updateById(tc) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "教学班已被其他操作修改，请刷新后重试");
+        }
 
         // P1I-041: 级联取消所有关联学生的 enrollment（将 APPROVED/DROPPED 状态改为 CANCELLED）
         int cancelledCount = teachingClassStudentRepository.update(null,

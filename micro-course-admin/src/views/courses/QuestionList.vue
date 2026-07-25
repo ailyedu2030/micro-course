@@ -16,7 +16,7 @@
     <el-card class="course-select-card" shadow="never">
       <div class="course-select-header">
         <span class="course-select-label">选择课程</span>
-        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" @change="onCourseChange">
+        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" aria-label="选择课程" @change="onCourseChange">
           <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
         </el-select>
       </div>

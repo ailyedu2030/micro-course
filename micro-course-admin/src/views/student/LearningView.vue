@@ -123,6 +123,7 @@ import { ref, computed, watch, onMounted, onUnmounted, onBeforeUnmount } from 'v
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Document, Bell, ChatDotRound, Edit, List } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
 
 import ResourceToolbar from '@/components/learning-view/ResourceToolbar.vue'
 import VideoSection from '@/components/learning-view/VideoSection.vue'
@@ -584,8 +585,13 @@ function continueLearning() {
 // ==================== 生命周期 ====================
 onMounted(async () => {
   if (!courseId.value) {
-    ElMessage.warning('请先选择一门课程')
-    router.replace('/student/courses')
+    // 无 courseId 时跳转角色首页（非 STUDENT 角色避免重定向到 /student/courses 被 guard 拦截）
+    const token = localStorage.getItem('micro_course_token')
+    if (token && useUserStore().role && useUserStore().role !== 'STUDENT') {
+      router.replace('/teacher/dashboard')
+    } else {
+      router.replace('/student/courses')
+    }
     return
   }
   await loadCourse(courseId.value)

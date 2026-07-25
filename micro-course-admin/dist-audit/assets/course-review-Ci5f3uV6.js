@@ -1,0 +1,1 @@
+import{r as t}from"./vendor-video-player-Dct-RoXs.js";function u(e,r){return t({method:"POST",url:`/courses/${e}/reviews`,data:r})}function o(e,r){return t({method:"GET",url:`/courses/${e}/reviews`,params:r})}function i(e){return t({method:"GET",url:"/reviews/my",params:e})}export{i as a,u as c,o as g};

@@ -44,8 +44,10 @@ export function useVideoPlaybackControls(options = {}) {
     const video = videoRef?.value
     if (!video) return
     if (video.paused) {
-      video.play().catch(() => {})
       isPlaying.value = true
+      video.play().catch(() => {
+        isPlaying.value = false
+      })
     } else {
       video.pause()
       isPlaying.value = false
@@ -170,8 +172,8 @@ export function useVideoPlaybackControls(options = {}) {
     duration.value = video.duration
     video.playbackRate = playbackRate.value
     video.volume = volumePercent.value / 100
-    const lastPosition = getLastPosition()
-    if (lastPosition > 0 && lastPosition < video.duration - 10) {
+    const lastPosition = Number(getLastPosition())
+    if (!Number.isNaN(lastPosition) && lastPosition > 0 && lastPosition < video.duration - 10) {
       video.currentTime = lastPosition
     }
   }

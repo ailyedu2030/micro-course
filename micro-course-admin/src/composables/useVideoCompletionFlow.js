@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, unref } from 'vue'
 
 export function useVideoCompletionFlow(options = {}) {
   const {
@@ -28,7 +28,11 @@ export function useVideoCompletionFlow(options = {}) {
       ))
     }
 
-    await reportProgress()
+    try {
+      await reportProgress()
+    } catch {
+      // 进度上报失败不阻塞完成流程
+    }
 
     if (chapter?.exerciseCount > 0) {
       try {
@@ -41,7 +45,10 @@ export function useVideoCompletionFlow(options = {}) {
             type: 'success'
           }
         })
-        navigateToExercise(`/student/chapters/${chapter.id}/exercises`)
+        const chapterId = chapter?.id
+        if (chapterId) {
+          navigateToExercise(`/student/chapters/${chapterId}/exercises`)
+        }
       } catch {
         // 用户选择继续留在当前播放器，不做额外处理
       }

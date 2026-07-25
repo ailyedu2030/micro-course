@@ -574,9 +574,21 @@ function handleGrade(row) {
 
 // 确认提交成绩
 async function confirmGrade() {
+  // 双击保护：正在提交中，跳过
+  if (savingGrade.value) return
+  // enrollmentId 缺失时不发请求
+  if (!currentStudent.value?.enrollmentId) {
+    savingGrade.value = false
+    return
+  }
   if (gradeFormRef.value) {
     try {
-      await gradeFormRef.value.validate()
+      const valid = await gradeFormRef.value.validate()
+      // validate 返回 false 表示校验不通过
+      if (valid === false) {
+        savingGrade.value = false
+        return
+      }
     } catch {
       return // 校验失败时 el-form-item 已显示错误消息
     }

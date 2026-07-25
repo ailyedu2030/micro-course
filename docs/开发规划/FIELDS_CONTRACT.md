@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 279 | Vue 视图数: 60 | Controller 数: 73 | API 文件数: 45
+> 实体数: 279 | Vue 视图数: 60 | Controller 数: 74 | API 文件数: 45
 
 ---
 
@@ -875,7 +875,7 @@
 
 | InteractiveCourseware | /api/courses/{courseId}/interactive | 4 | - |
 
-| LearningProgress | /api/learning-progress | 9 | - |
+| LearningProgress | /api/learning-progress | 8 | - |
 
 | Lesson | /api/lessons | 6 | - |
 
@@ -932,6 +932,8 @@
 | TeachingClass | /api/teaching-classes | 12 | - |
 
 | User | /api/users | 9 | - |
+
+| UserLearningProgressAlias | /api/users | 1 | - |
 
 | Video | /api/videos | 15 | - |
 

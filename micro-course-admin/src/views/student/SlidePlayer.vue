@@ -45,7 +45,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
     </div>
 
     <!-- Main Content -->
-    <main v-else class="player-main">
+    <section v-else class="player-main" role="region" aria-label="幻灯片内容">
       <!-- Slide Image Area -->
       <section class="slide-stage" @click="handleStageClick">
         <div class="slide-frame">
@@ -116,7 +116,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
       </section>
 
       <!-- No narration panel (removed per UX feedback - irrelevant for students) -->
-    </main>
+    </section>
 
     <!-- Bottom Controls -->
     <footer class="player-footer">

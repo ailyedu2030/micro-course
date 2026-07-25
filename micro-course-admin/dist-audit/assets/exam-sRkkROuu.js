@@ -1,0 +1,1 @@
+import{r}from"./vendor-video-player-Dct-RoXs.js";function a(e){return r({method:"GET",url:"/exercises",params:e})}function n(){return r({method:"GET",url:"/exams/my"})}function s(e){return r({method:"POST",url:"/exams/generate",data:e})}function m(e){return r({method:"DELETE",url:`/exercises/${e}`})}export{s as a,n as b,m as d,a as g};

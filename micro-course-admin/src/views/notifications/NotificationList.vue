@@ -138,8 +138,6 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useUrlPagination } from '@/composables/useUrlPagination';
-import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useNotificationStore } from '@/store/notification'
@@ -222,6 +220,19 @@ function syncQueryToUrl() {
   router.replace({ query })
 }
 
+// P1-I: 反向同步 — URL query 变化（浏览器前进/后退）→ 组件状态
+watch(() => route.query, (newQuery) => {
+  const qPage = Number(newQuery.page) || 1
+  const qSize = Number(newQuery.size) || 10
+  const qType = newQuery.type || ''
+  if (qPage !== page.value || qSize !== size.value || qType !== typeFilter.value) {
+    page.value = qPage
+    size.value = qSize
+    typeFilter.value = qType
+    fetchData()
+  }
+})
+
 // ---------------------------------------------------------------------------
 // P2: 统一使用 Store action 获取数据
 // ---------------------------------------------------------------------------
@@ -230,7 +241,7 @@ const fetchData = async () => {
   try {
     const params = { page: page.value - 1, size: size.value }
     if (typeFilter.value) params.type = typeFilter.value
-    const data = await notificationStore.fetchList(params)
+    await notificationStore.fetchList(params)
     tableData.value = notificationStore.list
     totalElements.value = notificationStore.totalElements
   } catch {
@@ -267,9 +278,13 @@ const handleMarkAllRead = async () => {
   } catch {
     return // 用户取消
   }
-  await notificationStore.markAllRead()
-  tableData.value.forEach(n => { n.isRead = true })
-  ElMessage.success('全部已标记为已读')
+  try {
+    await notificationStore.markAllRead()
+    tableData.value.forEach(n => { n.isRead = true })
+    ElMessage.success('全部已标记为已读')
+  } catch (e) {
+    ElMessage.error('标记已读失败，请重试')
+  }
 }
 
 // ---------------------------------------------------------------------------

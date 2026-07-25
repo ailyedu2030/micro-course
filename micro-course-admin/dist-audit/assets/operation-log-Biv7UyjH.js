@@ -1,0 +1,1 @@
+import{r as e}from"./vendor-video-player-Dct-RoXs.js";function t(o){return e({method:"GET",url:"/operation-logs",params:o})}function n(o){return e({method:"GET",url:"/operation-logs/export",params:o,responseType:"blob"})}export{n as e,t as g};

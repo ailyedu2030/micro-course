@@ -6,6 +6,7 @@
 -->
 <template>
   <div class="discussion-detail-page">
+    <h1 class="sr-only">{{ postData.title ? `讨论详情 - ${postData.title}` : '讨论详情' }}</h1>
     <el-breadcrumb separator="→" style="margin-bottom:20px">
       <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
       <el-breadcrumb-item :to="{ path: '/discussions' }">讨论管理</el-breadcrumb-item>
@@ -98,7 +99,7 @@ const fetchPost = async () => {
 
 const fetchReplies = async () => {
   try {
-    const { data } = await getComments({ postId: route.params.id })
+    const { data } = await getComments(route.params.id)
     // P1I-15: 后端返回直接数组（R.ok(list)），但做 safety check 兼容可能的分页格式
     replies.value = data?.items || data || []
   } catch {

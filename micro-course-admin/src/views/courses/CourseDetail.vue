@@ -144,7 +144,7 @@ v-if="userRole === 'ACADEMIC'"
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
           <template #empty><el-empty description="暂无章节，点击上方「新增章节」添加内容" /></template>
-          <el-table-column type="expand" width="40">
+          <el-table-column type="expand" width="40" label="展开">
             <template #default="{ row }">
               <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
                 <div v-loading="sectionLoading[row.id]">
@@ -195,30 +195,30 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <template #header><span class="card-title">基本信息</span></template>
         <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="edit-form">
           <el-form-item label="课程标题" prop="title">
-            <el-input v-model="formData.title" placeholder="请输入课程标题" />
+            <el-input v-model="formData.title" placeholder="请输入课程标题" aria-label="课程标题" />
           </el-form-item>
           <el-form-item label="分类" prop="categoryId">
-            <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width">
+            <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width" aria-label="课程分类">
               <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
             </el-select>
           </el-form-item>
           <el-form-item label="授课教师">
-            <el-input :model-value="teacherName" disabled />
+            <el-input :model-value="teacherName" disabled aria-label="授课教师" />
           </el-form-item>
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item label="学分">
-                <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
+                <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" aria-label="学分" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="学期">
-                <el-input v-model="formData.semester" placeholder="如：2024春季" />
+                <el-input v-model="formData.semester" placeholder="如：2024春季" aria-label="学期" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
               <el-form-item label="难度">
-                <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable>
+                <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable aria-label="难度">
                   <el-option label="初级" :value="1" />
                   <el-option label="中级" :value="2" />
                   <el-option label="高级" :value="3" />
@@ -229,7 +229,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="价格(¥)">
-                <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" />
+                <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" aria-label="价格" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -238,7 +238,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           <el-row :gutter="20">
             <el-col :span="8">
               <el-form-item label="免费范围">
-                <el-select v-model="formData.freeAccessScope" placeholder="选择免费范围" class="full-width">
+                <el-select v-model="formData.freeAccessScope" placeholder="选择免费范围" class="full-width" aria-label="免费范围">
                   <el-option label="无" value="none" />
                   <el-option label="同院系" value="same_department" />
                   <el-option label="同学院" value="same_college" />
@@ -248,7 +248,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
             </el-col>
             <el-col :span="8">
               <el-form-item label="优惠范围">
-                <el-select v-model="formData.discountScope" placeholder="选择优惠范围" class="full-width">
+                <el-select v-model="formData.discountScope" placeholder="选择优惠范围" class="full-width" aria-label="优惠范围">
                   <el-option label="无" value="none" />
                   <el-option label="同学院" value="same_college" />
                   <el-option label="同学校" value="same_school" />
@@ -257,7 +257,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
             </el-col>
             <el-col :span="8">
               <el-form-item label="优惠比例">
-                <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" />%
+                <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" aria-label="优惠比例" />%
               </el-form-item>
             </el-col>
           </el-row>
@@ -281,7 +281,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <template #header><span class="card-title">课程封面</span></template>
         <div class="cover-edit-area">
           <template v-if="!coverPreviewUrl">
-            <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange" drag>
+            <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange" drag aria-label="上传课程封面">
               <el-icon class="el-icon--upload"><i class="el-icon-upload" /></el-icon>
               <div class="el-upload__text">拖拽或<em>点击上传</em></div>
               <template #tip><div class="form-tip">建议 1200×628px，支持 JPG/PNG/GIF/WebP，最大 2MB</div></template>
@@ -305,7 +305,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
     <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
         <el-form-item label="章节标题" prop="title">
-          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" />
+          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" aria-label="章节标题" />
         </el-form-item>
         <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
           章节类型已迁移到「课时」管理。创建章节后，可在章节下添加不同类型的课时。
@@ -313,12 +313,12 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="排序号">
-              <el-input-number v-model="chapterFormData.sortOrder" :min="1" class="full-width" />
+              <el-input-number v-model="chapterFormData.sortOrder" :min="1" class="full-width" aria-label="排序号" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="预计时长(分)">
-              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="选填" class="full-width" />
+              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="选填" class="full-width" aria-label="预计时长" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -384,6 +384,33 @@ const loading = ref(true)
 const submitLoading = ref(false)
 const courseData = ref({})
 const categories = ref([])
+
+// P1-C: 修复 QuillEditor 工具栏按钮缺少 aria-label
+const QUILL_LABELS = {
+  'ql-bold': '粗体', 'ql-italic': '斜体', 'ql-underline': '下划线',
+  'ql-strike': '删除线', 'ql-link': '插入链接', 'ql-clean': '清除格式',
+  'ql-blockquote': '引用', 'ql-code-block': '代码块',
+  'ql-image': '插入图片', 'ql-list': '有序列表', 'ql-bullet': '无序列表',
+  'ql-header': '标题'
+}
+function fixQuillAria() {
+  setTimeout(() => {
+    document.querySelectorAll('.ql-toolbar button').forEach(btn => {
+      if (btn.hasAttribute('aria-label')) return
+      const cls = Array.from(btn.classList).find(c => c.startsWith('ql-'))
+      if (cls && QUILL_LABELS[cls]) btn.setAttribute('aria-label', QUILL_LABELS[cls])
+      else if (cls) btn.setAttribute('aria-label', cls.replace('ql-', '').replace('-', ' '))
+    })
+    document.querySelectorAll('.ql-picker').forEach(picker => {
+      if (!picker.hasAttribute('aria-label') && picker.classList.contains('ql-header')) {
+        const labelBtn = picker.querySelector('.ql-picker-label')
+        if (labelBtn && !labelBtn.getAttribute('aria-label')) {
+          labelBtn.setAttribute('aria-label', '标题')
+        }
+      }
+    })
+  }, 500)
+}
 
 const formRef = ref(null)
 const formData = reactive({
@@ -728,7 +755,10 @@ onMounted(() => {
     return
   }
   fetchCategories()
-  fetchCourse().then(() => { if (!isEditMode.value) fetchChapters() })
+  fetchCourse().then(() => { 
+    if (!isEditMode.value) fetchChapters()
+    if (isEditMode.value) fixQuillAria()
+  })
 })
 onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 </script>
@@ -753,7 +783,7 @@ onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 .info-card { margin-bottom: 16px; }
 .card-title { font-size: 16px; font-weight: 600; color: #303133; }
 .card-header-row { display: flex; justify-content: space-between; align-items: center; }
-.hint { font-size: 12px; color: #909399; font-weight: 400; }
+.hint { font-size: 12px; color: var(--el-color-info); font-weight: 400; }
 .edit-card { margin-bottom: 16px; }
 .submit-bar { margin-top: 16px; display: flex; gap: 12px; justify-content: flex-end; }
 .cover-edit-area { max-width: 400px; }
@@ -761,9 +791,9 @@ onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 /* 信息网格 */
 .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px 24px; }
 .info-item { display: flex; flex-direction: column; gap: 4px; }
-.info-item label { font-size: 13px; color: #909399; }
-.info-item span { font-size: 14px; color: #303133; word-break: break-word; }
-.price { color: #e6a23c; font-weight: 600; }
+.info-item label { font-size: 13px; color: var(--el-text-color-secondary); }
+.info-item span { font-size: 14px; color: var(--el-text-color-primary); word-break: break-word; }
+.price { color: var(--el-color-warning); font-weight: 600; }
 
 /* 封面 */
 .cover-img { max-width: 300px; border-radius: 6px; }
@@ -781,7 +811,7 @@ onUnmounted(() => { if (sortableInstance) sortableInstance.destroy() })
 /* 编辑表单 */
 .edit-form { max-width: 700px; }
 .full-width { width: 100%; }
-.form-tip { font-size: 12px; color: #909399; margin-top: 4px; }
+.form-tip { font-size: 12px; color: var(--el-color-info); margin-top: 4px; }
 .cover-preview-wrap { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
 .cover-preview-wrap img { max-width: 200px; max-height: 120px; border-radius: 6px; border: 1px solid #ebeef5; object-fit: cover; }
 

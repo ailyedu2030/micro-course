@@ -22,26 +22,26 @@
 
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="exercise-form">
         <el-form-item label="练习标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入练习标题" />
+          <el-input v-model="formData.title" placeholder="请输入练习标题" aria-label="练习标题" />
         </el-form-item>
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" @change="handleCourseChange">
+          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" @change="handleCourseChange" aria-label="练习课程">
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="章节" prop="chapterIds">
-          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
+          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId" aria-label="练习章节">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="及格分数" prop="passScore">
-          <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
+          <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" aria-label="及格分数" />
         </el-form-item>
         <el-form-item label="时间限制" prop="timeLimit">
-          <el-input-number v-model="formData.timeLimit" :min="0" placeholder="0表示无限制" class="full-width" />
+          <el-input-number v-model="formData.timeLimit" :min="0" placeholder="0表示无限制" class="full-width" aria-label="时间限制" />
         </el-form-item>
         <el-form-item label="答题次数" prop="maxAttempts">
-          <el-input-number v-model="formData.maxAttempts" :min="0" placeholder="0表示无限制" class="full-width" />
+          <el-input-number v-model="formData.maxAttempts" :min="0" placeholder="0表示无限制" class="full-width" aria-label="答题次数" />
         </el-form-item>
         <el-form-item label="题目乱序" prop="shuffleQuestions">
           <el-switch v-model="formData.shuffleQuestions" />
@@ -52,7 +52,7 @@
           <span class="field-hint">开启后学员作答时选项顺序随机</span>
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入练习描述" />
+          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入练习描述" aria-label="练习描述" />
         </el-form-item>
 
         <!-- 题库统计 & 随机选题 -->
@@ -69,7 +69,7 @@
           <div class="random-pick">
             <div class="pick-filter">
               <span class="pick-filter-label">难度</span>
-              <el-select v-model="pickDifficulty" placeholder="全部难度" clearable size="small" style="width:120px">
+              <el-select v-model="pickDifficulty" placeholder="全部难度" clearable size="small" style="width:120px" aria-label="随机选题难度">
                 <el-option label="简单" value="EASY" />
                 <el-option label="中等" value="MEDIUM" />
                 <el-option label="困难" value="HARD" />
@@ -77,7 +77,7 @@
             </div>
             <div v-for="s in bankStats" :key="s.type" class="pick-row">
               <span class="pick-label">{{ s.label }}</span>
-              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" />
+              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" :aria-label="'随机抽取' + s.label + '数量'" />
               <span class="pick-hint">/ {{ s.count }} 题</span>
             </div>
             <el-button type="success" size="small" :disabled="totalPickCount === 0" @click="handleRandomPick">
@@ -158,7 +158,7 @@
 
         <!-- 简答题 -->
         <div v-else-if="currentPreviewQuestion.questionType === 'SHORT_ANSWER'" class="preview-options">
-          <el-input type="textarea" :rows="3" placeholder="学员在此输入答案" disabled />
+          <el-input type="textarea" :rows="3" placeholder="学员在此输入答案" disabled aria-label="答案预览" />
         </div>
 
         <!-- 正确答案 -->
