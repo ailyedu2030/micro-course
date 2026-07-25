@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2612
+- 后端实体字段总数: 2624
 
 - 前端引用字段总数: 434
 
@@ -935,7 +935,7 @@
 
 | UserLearningProgressAlias | /api/users | 1 | - |
 
-| Video | /api/videos | 15 | - |
+| Video | /api/videos | 16 | - |
 
 | VideoBookmark | /api/videos/{videoId}/bookmarks | 3 | - |
 
@@ -1270,7 +1270,7 @@
 
 | MicroSpecialtyLeadTransferRequest | 1 | 0 |
 
-| MicroSpecialtyProposal | 46 | 0 |
+| MicroSpecialtyProposal | 57 | 0 |
 
 | MicroSpecialtyProposalRequest | 9 | 0 |
 
@@ -1370,7 +1370,7 @@
 
 | QuestionVO | 20 | 0 |
 
-| R | 3 | 0 |
+| R | 4 | 0 |
 
 | RefreshRequest | 1 | 0 |
 
