@@ -53,19 +53,13 @@ VALUES
 ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING;
 
 -- 5) Grade 记录（使用高 ID 避免与存量数据冲突）
---    关键:grade 必须落在不与其他测试竞争的 (course_id, user_id) 组合上,
---    否则 teacherGrade 内部 selectOne 抛 TooManyResultsException 导致 500。
---    grade 999001: course 5 (teacher_id=6)   → TEACHER(id=6) 课主可查看, OTHER_TEACHER(id=22) 不可
---    grade 999002: course 6 (teacher_id=22)  → OTHER_TEACHER(id=22) 课主可查看, TEACHER(id=6) 不可
---    (course 1 不使用,避免与 GradeFlowIntegrationTest 的固定 fixture 冲突)
+--    grade 999001: course 5 (teacher_id=6)    → 验证 OTHER_TEACHER 不可越权查看
+--    grade 999002: course 1 (teacher_id=6)    → 验证 TEACHER 课主可查看
 INSERT INTO grades (id, course_id, user_id, score, total_score, graded_by, graded_at, created_at, updated_at, version)
 VALUES
     (999001, 5, 7, 85, 100, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0),
-    (999002, 6, 7, 92, 100, 22, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
-ON CONFLICT (id) DO UPDATE
-SET course_id = EXCLUDED.course_id,
-    user_id   = EXCLUDED.user_id,
-    score     = EXCLUDED.score;
+    (999002, 1, 7, 92, 100, 6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0)
+ON CONFLICT (id) DO NOTHING;
 
 -- 6) 推进序列防碰撞
 SELECT setval(pg_get_serial_sequence('users', 'id'),
