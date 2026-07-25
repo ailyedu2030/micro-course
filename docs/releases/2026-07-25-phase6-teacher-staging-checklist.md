@@ -65,11 +65,41 @@
 - [ ] staging 数据库备份
 - [ ] 记录当前 staging 运行版本
 
+### 2.4 执行前取值快照
+
+> 建议先在本地仓库根目录执行以下命令，并把结果抄送到 execution record。
+
+```bash
+git fetch origin --prune
+git rev-parse origin/main
+git log --oneline -1 origin/main
+date "+%Y-%m-%d %H:%M:%S %Z"
+```
+
+建议记录以下 4 项：
+
+- [ ] 本次拟部署提交 SHA
+- [ ] 本次拟部署提交标题
+- [ ] 执行开始时间
+- [ ] 执行人与 staging 环境标识
+
 ---
 
 ## 三、部署到 Staging 的人工执行步骤
 
 > 以下步骤由项目负责人或运维人工执行，AI 不代操作。
+
+### 3.1 推荐命名约定
+
+```bash
+export RELEASE_TS="$(date +%Y%m%d_%H%M%S)"
+export DEPLOY_COMMIT="$(git rev-parse origin/main)"
+export BACKUP_TAG="phase6_teacher_${RELEASE_TS}_${DEPLOY_COMMIT:0:8}"
+```
+
+建议所有备份名都带上 `${BACKUP_TAG}`，便于回滚和回填审计。
+
+### 3.2 推荐执行顺序
 
 1. 备份当前 staging 后端 jar 与前端 dist
 2. 上传当前候选发布构建产物
@@ -77,6 +107,17 @@
 4. 优雅重启应用 / reload nginx
 5. 记录启动日志中的 `Started`、`ERROR`、`Exception`
 6. 保持至少 5 分钟监控窗口
+
+### 3.3 推荐取证内容
+
+执行结束后，建议至少留存以下证据并写入 execution record：
+
+- [ ] 部署提交 SHA 与提交标题
+- [ ] 后端备份路径 / 文件名
+- [ ] 前端备份路径 / 文件名
+- [ ] 数据库备份文件名
+- [ ] 启动完成日志时间点
+- [ ] 5 分钟观察窗口开始 / 结束时间
 
 ---
 
