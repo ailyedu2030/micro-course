@@ -33,7 +33,7 @@
           size="small"
           :type="liked ? 'primary' : 'default'"
           class="action-btn"
-          :aria-label="likeBtnLabel"
+          aria-label="点赞"
           @click="handleLike"
         >
           <el-icon class="action-icon"><Select /></el-icon>
@@ -71,7 +71,7 @@
         />
         <div class="reply-actions">
           <el-button size="small" @click="handleCancelReply">取消</el-button>
-          <el-button type="primary" size="small" :disabled="!replyContent.trim() || isReplying" :loading="isReplying" @click="handleReply">发送</el-button>
+          <el-button type="primary" size="small" :disabled="!replyContent.trim() || props.replyLoading" :loading="props.replyLoading" @click="handleReply">发送</el-button>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@
         :key="child.id"
         :comment="child"
         :depth="depth + 1"
-        :replying-id="props.replyingId"
+        :reply-loading="props.replyLoading"
         @reply="$emit('reply', $event)"
         @like="$emit('like', $event)"
       />
@@ -102,7 +102,7 @@ const MAX_DEPTH = 10
 const props = defineProps({
   comment: { type: Object, required: true },
   depth: { type: Number, default: 0 },
-  replyingId: { type: [Number, String], default: null }
+  replyLoading: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['reply', 'like'])
@@ -110,7 +110,7 @@ const emit = defineEmits(['reply', 'like'])
 const showReply = ref(false)
 const showChildren = ref(true)
 const replyContent = ref('')
-const liked = ref(props.comment.isLiked ?? false)
+const liked = ref(false)
 
 const hasChildren = computed(() => props.comment.children && props.comment.children.length > 0)
 const childrenCount = computed(() => props.comment.children?.length || 0)
@@ -122,9 +122,6 @@ const displayName = computed(() => {
 })
 
 const replyPlaceholder = computed(() => `回复 ${props.comment.isAnonymous ? '匿名用户' : (props.comment.authorName || props.comment.userName || '未知')}…`)
-
-const likeBtnLabel = computed(() => liked.value ? '取消点赞' : '点赞')
-const isReplying = computed(() => props.replyingId != null && String(props.comment.id) === String(props.replyingId))
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''

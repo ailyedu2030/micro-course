@@ -574,14 +574,13 @@ function handleGrade(row) {
 
 // 确认提交成绩
 async function confirmGrade() {
-  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   // 双击保护：正在提交中，跳过
   if (savingGrade.value) return
   // enrollmentId 缺失时不发请求
   if (!currentStudent.value?.enrollmentId) {
+    savingGrade.value = false
     return
   }
-  savingGrade.value = true
   if (gradeFormRef.value) {
     try {
       const valid = await gradeFormRef.value.validate()
@@ -591,10 +590,10 @@ async function confirmGrade() {
         return
       }
     } catch {
-      savingGrade.value = false
       return // 校验失败时 el-form-item 已显示错误消息
     }
   }
+  savingGrade.value = true
   try {
     await submitGrade({
       enrollmentId: currentStudent.value.enrollmentId,
