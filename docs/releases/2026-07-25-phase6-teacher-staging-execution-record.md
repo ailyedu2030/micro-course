@@ -22,10 +22,7 @@
 ### 1.1 执行前命令快照
 
 ```bash
-git fetch origin --prune
-git rev-parse origin/main
-git log --oneline -1 origin/main
-date "+%Y-%m-%d %H:%M:%S %Z"
+bash scripts/prepare-staging-context.sh --format markdown
 ```
 
 ### 1.2 本次执行标签
