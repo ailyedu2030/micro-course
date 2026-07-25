@@ -196,7 +196,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void autoSave(Long proposalId, Long userId, StorageApplicationSaveRequest request) {
+    public void autoSave(Long proposalId, Long userId, StorageApplicationAutoSaveRequest request) {
         // 限流检查：1 秒内最多一次 autoSave
         long now = System.currentTimeMillis();
         Long lastTs = lastAutoSaveTime.get(proposalId);
