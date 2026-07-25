@@ -973,3 +973,31 @@
 
 > 审核提交说明：
 > 本报告已完成遗留任务闭环清单、分阶段推进计划、周跟踪机制、清零台账与执行时间表补充，现可作为项目负责人审核底稿使用。
+
+## 十四、项目总控接入（2026-07-25 新增）
+
+为避免教师模块收口后再次回到“单任务推进”模式，本轮已将项目推进接入项目级总控机制。当前新增治理入口如下：
+
+- 项目总控运行机制：
+  - [docs/governance/2026-07-25-project-control-tower.md](file:///Users/jackie/微课平台/docs/governance/2026-07-25-project-control-tower.md)
+- 本周项目总控周报：
+  - [docs/weekly/2026-w30-project-control-status.md](file:///Users/jackie/微课平台/docs/weekly/2026-w30-project-control-status.md)
+- W30 阶段复盘：
+  - [docs/复盘/2026-w30-phase6-teacher-module-retro.md](file:///Users/jackie/微课平台/docs/复盘/2026-w30-phase6-teacher-module-retro.md)
+- 发布门禁决策单：
+  - [docs/decisions/DECISION-2026-07-25-phase6-release-gate.md](file:///Users/jackie/微课平台/docs/decisions/DECISION-2026-07-25-phase6-release-gate.md)
+- staging 执行与回传材料：
+  - [docs/releases/2026-07-25-phase6-teacher-staging-checklist.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-staging-checklist.md)
+  - [docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md)
+
+### 14.1 当前项目级结论
+
+- Phase 6 教师模块的开发、测试、文档、PR、CI、主线合并闭环已完成
+- 当前项目已进入“发布准备与总控跟进”阶段
+- 当前建议动作是继续执行发布门禁检查，而不是直接跳过门禁发生产
+
+### 14.2 下一个总控节点
+
+- 2026-07-28：汇总 `deploy-gate` 与发布材料核对结论
+- 2026-07-29：根据授权决定 `staging` 或 `production gray` 路径
+- 2026-07-31：输出 W31 周状态更新与发布准备结论
