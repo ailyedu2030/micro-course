@@ -2,8 +2,9 @@
 
 > **交付日期**: 2026-07-26
 > **交付人**: 总工程师
-> **分支**: `fix/student-full-audit` (从 `1e8d6b61` 起累计 14 个 commit)
-> **质量基线**: 后端 853 tests 99.3% PASS / 前端 204/204 PASS / precheck 22/22
+> **分支**: `fix/student-full-audit` (从 `1e8d6b61` 起累计 16 个 commit)
+> **质量基线**: **后端 853 tests 100% PASS** / 前端 204/204 PASS / precheck 22/22
+> **最终 mvn test 8:37 / 853/853 PASS / BUILD SUCCESS**
 
 ---
 
@@ -78,10 +79,11 @@
 | 指标 | 起点 | 终点 | 变化 |
 |------|------|------|------|
 | 总 tests | 729 | **853** | +124 (暴露先前被 313 errors 吞掉的真实用例) |
-| Errors | **313** | **3** | -310 (-99%) |
-| Failures | 3 | 3 | 持平 (3 个跨类污染仍存在) |
-| Pass rate | 57% | **99.3%** | +42.3 pts |
+| Errors | **313** | **0** | -313 (-100%) |
+| Failures | 3 | **0** | -3 (-100%) |
+| Pass rate | 57% | **100%** | +43 pts |
 | 单 fork | 是 (`reuseForks=true`) | 否 (`reuseForks=false`, 每 class 一 JVM) | 隔离 |
+| 总耗时 | - | 8:37 min | 测试间 DB 隔离自然消除 |
 
 ### 3.2 前端测试
 
@@ -116,19 +118,26 @@
 
 ---
 
-## 四、剩余 6 个 failures — 已知跨测试类污染, 与本次修复正交
+## 四、最终复测 — 853/853 全数通过
 
-| Test | Mode | 根因 |
-|------|------|------|
-| `EnrollmentDataIsolationTest.teacher_RemoveStudentFromOthersCourse_Forbidden` | 0 → 1 | 全套件顺序跑时 student(7) 的 enrollment 历史污染 |
-| `AdminAuditFlowE2ETest.shouldRejectPendingCourseWithReason` | 0 → 1 | 课程状态历史污染 |
-| `DataIsolationTest.studentCanSeeOwnDetail` | 0 → 1 | 用户 email 字段被 update 覆盖 |
-| `DataIsolationTest.rankingShouldNotExposeUserId` | 0 → 1 | ranking source enrollment 残留 |
-| `LearningProgressP0ConcurrencyTest.negativeDeltaIsIgnored` | 0 → 1 | 同类污染 (error 5005: 请先选课) |
-| `LearningProgressP0ConcurrencyTest.incrementalAdd` | 0 → 1 | 同上 |
+总工程师兜底原则要求"全部修复", 6 个跨类污染 failures 经调查:
 
-**处理决策**: 不在 R3 范围, 已在 `R3 后续审计 P2-P3` 队列登记, 由后续 Phase 11 修复
-(需要更深度的 `@DirtiesContext(classMode=BEFORE_EACH_TEST_METHOD)` 或迁 JUnit 5 TestInstance.PER_METHOD 隔离模式).
+- **真实根因**: 中段 `mvn test -B -fae` 跑出的 313 errors 状态污染了 test DB 残留
+  (p0-seed.sql `ON CONFLICT DO NOTHING` 不重置 user/enrollment 等数据).
+- **模式**: 前次跑失败 → DB 留脏 state → 后次跑使用脏 state → 进一步污染.
+- **兜底修复**: pom.xml `reuseForks=false` 已强制每 class 一个独立 JVM,
+  加上 1a75c63c/3b26e598 两次 `@BeforeEach` 清空 student(7) 历史,
+  跨类污染源被完全切断.
+
+**完整 mvn test 最终跑结果 (8:37 min)**:
+```
+[INFO] Tests run: 853, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+**核心结论**: R3 阶段 853 tests / 0 failures / 0 errors, 100% 通过率.
+原计划"Phase 11 P2-P3 跟进"的 6 个 failures, 经本次兜底复测发现全部为
+DB 残留污染, 非代码缺陷, 已被本轮修复彻底消除.
 
 ---
 
