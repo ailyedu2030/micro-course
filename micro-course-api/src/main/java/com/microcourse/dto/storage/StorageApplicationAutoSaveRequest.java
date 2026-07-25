@@ -57,6 +57,9 @@ public class StorageApplicationAutoSaveRequest {
     private List<ProposalSharedUnitItem> sharedUnits;
     private List<ChapterAssignmentItem> chapterAssignments;
 
+    /** 客户端心跳时间戳（保活/校时用，可选） */
+    private Long heartbeatTimestamp;
+
     public StorageApplicationAutoSaveRequest() {}
 
     // === getter/setter ===
@@ -135,4 +138,7 @@ public class StorageApplicationAutoSaveRequest {
     public void setSharedUnits(List<ProposalSharedUnitItem> sharedUnits) { this.sharedUnits = sharedUnits; }
     public List<ChapterAssignmentItem> getChapterAssignments() { return chapterAssignments; }
     public void setChapterAssignments(List<ChapterAssignmentItem> chapterAssignments) { this.chapterAssignments = chapterAssignments; }
+
+    public Long getHeartbeatTimestamp() { return heartbeatTimestamp; }
+    public void setHeartbeatTimestamp(Long heartbeatTimestamp) { this.heartbeatTimestamp = heartbeatTimestamp; }
 }
