@@ -3,7 +3,7 @@
 > 决策日期：2026-07-25
 > 决策角色：AI 总工程师 / 项目执行负责人
 > 适用范围：Phase 6 教师模块候选发布
-> 关联主线提交：`812269c4`
+> 关联主线提交：`9b025a3b`
 
 ---
 
@@ -19,9 +19,10 @@
 
 ### 2.1 代码与主线状态
 
-- PR #123 已 squash merge 到 `main`
-- 当前主线提交：`812269c4`
-- 本地 `main` 与 `origin/main` 已同步
+- PR #123 已完成教师模块功能收口并 squash merge 到 `main`
+- PR #124 已完成发布交接包与 staging 材料回写并 squash merge 到 `main`
+- 当前主线提交：`9b025a3b`
+- 本地 `main` 与 `origin/main` 已同步，发布交接分支已清理
 
 ### 2.2 质量门禁证据
 
@@ -110,5 +111,6 @@
 
 - `可继续`：staging
 - `不可继续`：直接 production
+- `当前等待`：项目负责人 / 运维人工执行 staging，并回填 `docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md`
 
 这不是保守拖延，而是基于当前证据链做出的有效放行判断。
