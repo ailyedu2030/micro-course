@@ -187,6 +187,46 @@
 - [TeacherCourseCoverIntegrationTest.java](file:///Users/jackie/微课平台/micro-course-api/src/test/java/com/microcourse/controller/TeacherCourseCoverIntegrationTest.java)
   - 验证 `GET /api/teachers/courses` 会保留并标准化站内封面地址
 
+### 12. 成绩明细只读语义收口（本轮新增）
+
+本轮继续收敛 [StudentGrades.vue](file:///Users/jackie/微课平台/micro-course-admin/src/views/teacher/StudentGrades.vue) 在教务处只读场景下的交互一致性问题：
+
+- 现象：
+  - `ACADEMIC` 角色打开未批改成绩时，操作按钮已显示“查看”
+  - 输入框也已禁用
+  - 但弹窗标题仍为“批改成绩”，页面语义不一致
+- 根因：
+  - 只读态判断分散在标题、表单禁用、提交按钮 3 处，未统一抽象
+- 修复：
+  - 新增 `isReadOnlyGradeView` 统一表达“已批改或 ACADEMIC 只读”状态
+  - 新增 `gradeDialogTitle` 统一弹窗标题来源
+  - 分数输入、评语输入与提交按钮全部改为依赖同一只读判断
+- 结果：
+  - `ACADEMIC` 角色即使查看待批改记录，也统一展示“查看成绩”
+  - 弹窗标题、表单状态与操作文案已完全一致
+
+本轮新增回归测试：
+
+- [TeacherIdentityConsistency.test.js](file:///Users/jackie/微课平台/micro-course-admin/src/__tests__/TeacherIdentityConsistency.test.js)
+  - 验证 `ACADEMIC` 角色在待批改成绩场景下仍进入只读视图
+  - 验证弹窗标题统一为“查看成绩”
+  - 验证提交按钮不会渲染
+
+### 13. 本地隔离部署复跑稳定性修复（本轮新增）
+
+本轮在执行 `bash scripts/local-dev-deploy.sh --skip-build --keep` 时，发现隔离部署脚本存在一个影响复跑稳定性的本地问题：
+
+- 现象：
+  - 上一次 `--keep` 保留的 `microcourse-pg-test` / `microcourse-redis-test` 已退出容器，会在下一次复跑时触发同名冲突
+- 根因：
+  - [local-dev-deploy.sh](file:///Users/jackie/微课平台/scripts/local-dev-deploy.sh) 启动前只检查“运行中”的容器，未清理“已退出”的同名容器
+- 修复：
+  - 启动 DB / Redis 前的容器检查改为 `docker ps -a`
+  - 确保无论容器运行中还是已退出，都会先 stop/rm 再启动
+- 结果：
+  - 本轮复跑 `bash scripts/local-dev-deploy.sh --skip-build --keep` 已恢复稳定
+  - 本地隔离部署验证再次达到 `15/15` 全通过
+
 ## 二、当前剩余任务清单
 
 ### P0 / P1-C 优先级
@@ -273,8 +313,8 @@
 
 - 新一轮补充后：
   - `TeacherDashboard.test.js` 3/3 通过
-  - `TeacherIdentityConsistency.test.js` 7/7 通过
-  - 合计 10/10 通过
+  - `TeacherIdentityConsistency.test.js` 8/8 通过
+  - 合计 11/11 通过
 
 - 本轮新增上传与课件回归：
   - `npm run test:unit -- src/__tests__/SlideUploadZone.test.js`
@@ -296,7 +336,7 @@
 - 全量前端单测回归：
   - `npm run test:unit`
 
-结果：`38` 个测试文件、`103/103` 用例全部通过，本轮新增改动未引入前端回归失败
+结果：`38` 个测试文件、`104/104` 用例全部通过，本轮新增改动未引入前端回归失败
 
 ### 构建验证
 
@@ -324,6 +364,18 @@
 - 结果仍为 `15/15` 全通过，说明本轮课程视频管理改动未破坏本地联调基线
 - 本轮在教师看板课程封面链路修复后，再次执行 `bash scripts/local-dev-deploy.sh --skip-build --keep`
 - 结果仍为 `15/15` 全通过，说明本轮教师看板与教师课程接口改动未破坏本地联调基线
+- 本轮在修复 `StudentGrades` 只读语义与隔离部署脚本复跑冲突后，再次执行 `bash scripts/local-dev-deploy.sh --skip-build --keep`
+- 结果仍为 `15/15` 全通过，说明本轮成绩明细交互收口与部署脚本稳定性修复未破坏本地隔离验证基线
+
+### 轻量性能烟测
+
+基于本地隔离环境，按验证清单的时间阈值补充了 3 组轻量性能烟测：
+
+- `frontend_home`：20/20 样本满足 `< 3s`，p95 = `0.003108s`
+- `api_health_get`：20/20 样本满足 `< 200ms`，p95 = `0.022176s`
+- `api_login_post`：20/20 样本满足 `< 500ms`，p95 = `0.023815s`
+
+结果：本轮已采样的 `60/60` 个本地性能样本全部达标，达标率 `100%`
 
 ### 本地浏览器走查
 
@@ -392,6 +444,11 @@
    - 现象：教师看板课程卡片在课程已有站内封面时仍展示占位图
    - 根因：教师课程接口只保留 `https://` 封面地址，导致相对路径封面被置空
    - 修复：统一教师课程封面地址标准化逻辑，并增加前后端回归测试
+
+10. 成绩明细只读语义不一致（已修复）
+   - 现象：`ACADEMIC` 角色查看待批改记录时，按钮显示“查看”，但弹窗标题仍是“批改成绩”
+   - 根因：只读态判断散落在多个 UI 分支中，标题逻辑未与表单禁用逻辑统一
+   - 修复：抽出统一的 `isReadOnlyGradeView` 与 `gradeDialogTitle`，同步驱动标题、禁用态与提交按钮
 
 ## 七、下一步推进计划
 

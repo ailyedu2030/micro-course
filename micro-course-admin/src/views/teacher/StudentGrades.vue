@@ -191,7 +191,7 @@
     <!-- 批改/查看弹窗 -->
     <el-dialog
       v-model="gradeVisible"
-      :title="isGraded ? '查看成绩' : '批改成绩'"
+      :title="gradeDialogTitle"
       width="500px"
       destroy-on-close
      :close-on-press-escape="true"
@@ -209,7 +209,7 @@
             :min="0"
             :max="100"
             :step="0.1"
-            :disabled="isGraded || userStore.role === 'ACADEMIC'"
+            :disabled="isReadOnlyGradeView"
             controls-position="right"
             class="score-input"
           />
@@ -219,7 +219,7 @@
             v-model="gradeForm.comment"
             type="textarea"
             :rows="3"
-            :disabled="isGraded || userStore.role === 'ACADEMIC'"
+            :disabled="isReadOnlyGradeView"
             placeholder="请输入评语（选填）"
             maxlength="200"
             show-word-limit
@@ -228,7 +228,7 @@
       </el-form>
       <template #footer>
         <el-button @click="gradeVisible = false">关闭</el-button>
-        <el-button v-if="!isGraded && userStore.role !== 'ACADEMIC'" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
+        <el-button v-if="!isReadOnlyGradeView" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
           提交成绩
         </el-button>
       </template>
@@ -310,6 +310,8 @@ const gradeRules = {
 
 // 是否已批改
 const isGraded = computed(() => currentStudent.value?.score != null)
+const isReadOnlyGradeView = computed(() => isGraded.value || userStore.role === 'ACADEMIC')
+const gradeDialogTitle = computed(() => (isReadOnlyGradeView.value ? '查看成绩' : '批改成绩'))
 
 // 获取课程列表（初始加载小批量）
 async function fetchCourses() {

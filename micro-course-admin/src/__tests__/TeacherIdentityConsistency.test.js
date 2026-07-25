@@ -339,4 +339,45 @@ describe('teacher identity consistency', () => {
     expect(wrapper.text()).toContain('当前还没有课件，可直接上传或按课程筛选。')
     expect(wrapper.text()).not.toContain('已选课程尚未上传课件')
   })
+
+  it('uses a read-only view title for ACADEMIC users even when the grade is pending', async () => {
+    mockStore.role = 'ACADEMIC'
+    routeState.query = { courseId: '99' }
+    courseApiMocks.getCourses.mockResolvedValue({
+      data: {
+        items: [{ id: 99, title: '测试课程' }],
+      },
+    })
+    gradeApiMocks.getGrades.mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: 1,
+            realName: '张三',
+            courseName: '测试课程',
+            score: null,
+            comment: '',
+            gradedAt: null,
+            enrollmentId: 11,
+          },
+        ],
+        totalElements: 1,
+      },
+    })
+
+    const wrapper = mount(StudentGrades, {
+      global: {
+        stubs,
+      },
+    })
+
+    await flushPromises()
+    wrapper.vm.handleGrade(wrapper.vm.tableData[0])
+    await flushPromises()
+
+    expect(wrapper.vm.gradeDialogTitle).toBe('查看成绩')
+    expect(wrapper.vm.isReadOnlyGradeView).toBe(true)
+    expect(wrapper.text()).not.toContain('提交成绩')
+    expect(wrapper.vm.userStore.role).toBe('ACADEMIC')
+  })
 })
