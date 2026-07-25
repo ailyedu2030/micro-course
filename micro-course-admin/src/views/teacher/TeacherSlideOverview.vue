@@ -218,6 +218,12 @@ async function loadData() {
     } catch { /* ignore */ }
     initialized.value = true
   }
+  if (!userStore.userId) {
+    courses.value = []
+    slides.value = []
+    ElMessage.error('无法获取当前教师信息')
+    return
+  }
   loading.value = true
   try {
     const { data } = await getCourses({ size: 1000, teacherId: userStore.userId })

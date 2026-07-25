@@ -543,10 +543,8 @@ function handleDeptChange() {
   // 切换院系后重置课程选择并重新搜索课程
   searchForm.courseId = ''
   courseOptions.value = []
-  // 重新加载该院系下的课程
-  if (searchForm.departmentId) {
-    searchCourses('')
-  }
+  // 无论是切换到新院系还是清空院系，都恢复当前筛选条件下的课程列表
+  fetchCourses()
   page.value = 1
   fetchData()
 }

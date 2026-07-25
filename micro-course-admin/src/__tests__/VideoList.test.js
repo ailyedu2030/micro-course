@@ -72,7 +72,7 @@ vi.mock('element-plus', async (importOriginal) => {
   return {
     ...actual,
     ElMessage: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
-    ElMessageBox: { confirm: vi.fn(), alert: vi.fn() },
+    ElMessageBox: { confirm: vi.fn(() => Promise.resolve()), alert: vi.fn() },
   }
 })
 
@@ -296,6 +296,32 @@ describe('VideoList.vue batch upload queue', () => {
     )
   })
 
+  it('keeps the locked chapter filter when reset is triggered in chapter context', async () => {
+    routeState.params = { courseId: '12', chapterId: '8' }
+
+    const wrapper = mount(VideoList, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+      },
+    })
+
+    await flushPromises()
+    videoApiMocks.getVideos.mockClear()
+
+    wrapper.vm.searchForm.chapterId = ''
+    wrapper.vm.handleReset()
+    await flushPromises()
+
+    expect(wrapper.vm.searchForm.chapterId).toBe(8)
+    expect(videoApiMocks.getVideos).toHaveBeenCalledWith(expect.objectContaining({
+      courseId: 12,
+      chapterId: 8,
+    }))
+  })
+
   it('releases the previous cover preview blob when selecting a new image and closing the dialog', async () => {
     global.URL.createObjectURL = vi
       .fn()
@@ -362,5 +388,28 @@ describe('VideoList.vue batch upload queue', () => {
     expect(wrapper.vm.coverFile).toBe(null)
     expect(wrapper.vm.currentVideoId).toBe(null)
     expect(global.URL.revokeObjectURL).toHaveBeenCalledWith('blob:cover-preview')
+  })
+
+  it('retries transcoding for failed videos and refreshes the list', async () => {
+    videoApiMocks.retryVideoTranscode.mockResolvedValueOnce({})
+
+    const wrapper = mount(VideoList, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+      },
+    })
+
+    await flushPromises()
+    const initialFetchCalls = videoApiMocks.getVideos.mock.calls.length
+
+    await wrapper.vm.handleRetry({ id: 27, status: 3, errorMessage: '转码失败' })
+    await flushPromises()
+
+    expect(videoApiMocks.retryVideoTranscode).toHaveBeenCalledWith(27)
+    expect(videoApiMocks.getVideos.mock.calls.length).toBeGreaterThan(initialFetchCalls)
+    expect(wrapper.vm.retryingId).toBe(null)
   })
 })

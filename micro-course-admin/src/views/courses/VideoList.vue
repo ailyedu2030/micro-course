@@ -368,14 +368,17 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.courseId = courseIdFromRoute.value ? Number(courseIdFromRoute.value) : ''
-  searchForm.chapterId = ''
+  const contextualChapterId = lockedChapterId.value || ''
+  searchForm.chapterId = contextualChapterId
   chapterOptions.value = []
   page.value = 1
   tableData.value = []
   totalElements.value = 0
   if (searchForm.courseId) {
-    handleCourseChange(searchForm.courseId)
-    fetchData()
+    handleCourseChange(searchForm.courseId).finally(() => {
+      searchForm.chapterId = contextualChapterId
+      fetchData()
+    })
   }
 }
 
