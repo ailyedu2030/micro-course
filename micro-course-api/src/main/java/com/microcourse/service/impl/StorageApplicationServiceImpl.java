@@ -305,6 +305,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         proposal.setStatus("PENDING_REVIEW");
+        proposal.setValidationPassed(true);
         proposal.setUpdatedAt(LocalDateTime.now());
         if (proposalRepository.updateById(proposal) == 0) {
             throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据已被其他操作修改，请刷新后重试");

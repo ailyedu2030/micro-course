@@ -131,7 +131,7 @@ public class MicroSpecialtyController {
 
     /** 更新基本信息 */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<MicroSpecialtyVO> update(@PathVariable Long id,
                                        @Valid @RequestBody MicroSpecialtyUpdateRequest request) {
         MicroSpecialtyVO vo = microSpecialtyService.update(id, request);
