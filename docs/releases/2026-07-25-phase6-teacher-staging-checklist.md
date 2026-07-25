@@ -57,6 +57,9 @@
 - [x] `docs/deferred-items.md` 已登记允许延期项
 - [x] 当前候选发布无新的 Flyway schema 变更
 - [x] 当前候选发布已明确：先 staging，后决定是否 gray
+- [x] `docker-compose.staging.yml` 已提供独立 staging compose 覆盖层
+- [x] `scripts/staging-deploy.sh` / `scripts/staging-verify.sh` 已提供最小部署与验证入口
+- [x] 若目标机已具备本地构建产物，可使用 `bash scripts/staging-deploy.sh --env-file .env.staging --use-local-artifacts`
 
 ### 2.3 staging 执行前备份
 
@@ -102,6 +105,7 @@ eval "$(bash scripts/prepare-staging-context.sh --format env)"
 4. 优雅重启应用 / reload nginx
 5. 记录启动日志中的 `Started`、`ERROR`、`Exception`
 6. 保持至少 5 分钟监控窗口
+7. 执行 `bash scripts/staging-verify.sh --env-file .env.staging` 完成最小可用验证
 
 ### 3.3 推荐取证内容
 
