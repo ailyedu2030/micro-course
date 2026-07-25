@@ -33,6 +33,13 @@ public abstract class BaseIntegrationTest {
     private String cachedAdminToken;
 
     /**
+     * P0 种子用户共享密码（admin/student/p0_teacher/invite_teacher/academic_user 共用）。
+     * 集中定义以避免散落在各测试文件中，种子密码变更时只需改此处。
+     * 仅用于集成测试场景，禁止在生产代码中引用。
+     */
+    protected static final String P0_PASSWORD = "student123";
+
+    /**
      * 登录并返回 accessToken
      */
     protected String loginAs(String username, String password) throws Exception {

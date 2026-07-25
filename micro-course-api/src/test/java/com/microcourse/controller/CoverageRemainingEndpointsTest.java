@@ -54,8 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("收尾覆盖 — 剩余 API 模块全端点测试")
 class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
 
-    /** p0_teacher & student 共用 bcrypt hash 对应的明文密码 */
-    private static final String P0_PASSWORD = "student123";
+    // P0_PASSWORD 常量继承自 BaseIntegrationTest（p0_teacher/student/invite_teacher/academic_user 共用）
 
     @Autowired
     private JdbcTemplate jdbc;

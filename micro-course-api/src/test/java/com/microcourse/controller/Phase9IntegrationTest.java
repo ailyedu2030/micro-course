@@ -50,7 +50,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
      executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class Phase9IntegrationTest extends BaseIntegrationTest {
 
-    private static final String P0_PASSWORD = "student123";
+    // P0_PASSWORD 常量继承自 BaseIntegrationTest
 
     @Autowired
     private JdbcTemplate jdbc;
