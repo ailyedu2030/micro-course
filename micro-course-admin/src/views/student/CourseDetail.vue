@@ -754,7 +754,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .detail-breadcrumb {
   padding: var(--space-4) 0 0;
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
 }
 .detail-breadcrumb a {
   color: var(--el-text-color-secondary);
@@ -999,7 +999,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 }
 .section-count {
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
   margin-left: auto;
 }
 .section-body { padding: 0; }
@@ -1010,7 +1010,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   margin: 0;
   text-wrap: pretty;
 }
-.desc-text--empty { color: var(--el-text-color-placeholder); }
+.desc-text--empty { color: var(--el-text-color-secondary); }
 
 /* ====== Outline / Slides ====== */
 .outline-idx {
@@ -1032,7 +1032,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 }
 .outline-duration {
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
   margin-left: var(--space-3);
 }
 .outline-desc {

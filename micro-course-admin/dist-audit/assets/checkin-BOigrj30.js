@@ -1,0 +1,1 @@
+import{r as e}from"./vendor-video-player-Dct-RoXs.js";function n(r){return e({method:"GET",url:"/check-ins/my",params:r})}function c(){return e({method:"GET",url:"/check-ins/streak"})}function s(){return e({method:"POST",url:"/check-ins"})}export{n as a,s as c,c as g};

@@ -109,10 +109,16 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
 />
+        <div class="page-size-wrap">
+          <label for="page-size-select-video" class="sr-only">每页条数</label>
+          <el-select id="page-size-select-video" :model-value="size" class="page-size-select" @change="handleSizeChange" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
     </el-card>
 
@@ -222,14 +228,14 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
 import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { useVideoUploadQueue } from '@/composables/useVideoUploadQueue'
 import { useUserStore } from '@/store/user'
-import { getVideos, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode } from '@/api/video'
+import { getVideos, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode, getVideoStatus, getVideoStatusBatch } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
 
@@ -354,6 +360,7 @@ const fetchData = async () => {
     const { data } = await getVideos(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
+    startPollingIfNeeded()
   } catch {
     ElMessage.error('获取视频列表失败')
   } finally {
@@ -466,11 +473,12 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   if (submitLoading.value) return
   if (!formRef.value) return
+  submitLoading.value = true
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
+    if (!valid) { submitLoading.value = false; return }
     try {
       if (isEdit.value) {
         await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
@@ -491,9 +499,11 @@ const handleSubmit = async () => {
           ElMessage.success(result.successCount > 1 ? `批量上传成功，共 ${result.successCount} 个视频` : '创建成功')
           dialogVisible.value = false
           fetchData()
+          nextTick(() => startPollingIfNeeded())
         } else if (result.successCount > 0) {
           ElMessage.warning(`已上传 ${result.successCount} 个视频，失败 ${result.failureCount} 个，请处理后重试`)
           fetchData()
+          nextTick(() => startPollingIfNeeded())
         } else {
           ElMessage.error('上传失败，请检查文件或网络后重试')
         }
@@ -622,6 +632,63 @@ const formatQueueStatus = (item) => {
   return '待上传'
 }
 
+/* ================================================================
+   P1-C 修复: 转码进度轮询
+   检测表格内未完成(0=上传中/1=转码中)的视频, 每 5s 拉取状态。
+   确认全部完成或组件卸载时停止。
+   ================================================================ */
+let pollTimer = null
+
+async function pollTranscodeProgress() {
+  const pending = tableData.value.filter(r => r.status === 0 || r.status === 1)
+  if (pending.length === 0) {
+    stopPolling()
+    return
+  }
+  try {
+    const ids = pending.map(r => r.id)
+    const { data } = await getVideoStatusBatch(ids)
+    if (Array.isArray(data)) {
+      const statusMap = {}
+      data.forEach(vo => { statusMap[vo.videoId] = vo })
+      pending.forEach(row => {
+        const vo = statusMap[row.id]
+        if (vo) {
+          Object.assign(row, {
+            status: vo.status,
+            progress: vo.progress,
+            errorMessage: vo.errorMessage
+          })
+        }
+      })
+    }
+    const stillPending = tableData.value.filter(r => r.status === 0 || r.status === 1)
+    if (stillPending.length === 0) {
+      stopPolling()
+      fetchData()
+    }
+  } catch (e) {
+    console.warn('[VideoList] pollTranscodeProgress error', e?.message)
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(pollTranscodeProgress, 5000)
+}
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPollingIfNeeded() {
+  const hasPending = tableData.value.some(r => r.status === 0 || r.status === 1)
+  if (hasPending) startPolling()
+}
+
 onMounted(() => {
   fetchCourses().then(async () => {
     const cid = courseIdFromRoute.value
@@ -649,7 +716,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 清理未释放的封面预览 blob URL
+  stopPolling()
   revokeCoverPreviewUrl()
 })
 </script>

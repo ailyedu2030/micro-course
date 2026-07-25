@@ -147,7 +147,7 @@ public class AuthController {
         User user = userRepository.selectById(currentUserId);
         if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         if (user.getApiKey() == null) {
-            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "未配置 API Key");
+            return R.ok(null);
         }
         return R.ok(UserApiKeyResponse.maskedOnly(
                 UserApiKeyResponse.mask(user.getApiKey()),

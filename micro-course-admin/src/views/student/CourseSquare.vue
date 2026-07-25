@@ -43,20 +43,20 @@
     <!-- ============ 分类 + 筛选 ============ -->
     <div class="filter-bar">
       <div class="filter-row">
-        <el-select
-          v-model="searchForm.difficulty" placeholder="全部难度" clearable
-          class="difficulty-select" aria-label="难度筛选" @change="handleSearch"
-        >
-          <el-option label="全部难度" value="" />
-          <el-option label="初级" :value="1" />
-          <el-option label="中级" :value="2" />
-          <el-option label="高级" :value="3" />
-        </el-select>
-        <!-- P1C-004: 学院维度筛选 -->
-        <el-select
-          v-model="searchForm.offerDepartmentId" placeholder="全部学院" clearable
-          class="dept-select" aria-label="学院筛选" @change="handleSearch"
-        >
+          <el-select
+            v-model="searchForm.difficulty" placeholder="全部难度" clearable title="难度筛选"
+            class="difficulty-select" aria-label="难度筛选" @change="handleSearch"
+          >
+            <el-option label="全部难度" value="" />
+            <el-option label="初级" :value="1" />
+            <el-option label="中级" :value="2" />
+            <el-option label="高级" :value="3" />
+          </el-select>
+          <!-- P1C-004: 学院维度筛选 -->
+          <el-select
+            v-model="searchForm.offerDepartmentId" placeholder="全部学院" clearable title="学院筛选"
+            class="dept-select" aria-label="学院筛选" @change="handleSearch"
+          >
           <el-option label="全部学院" value="" />
           <el-option v-for="dept in departmentList" :key="dept.id" :label="dept.name" :value="dept.id" />
         </el-select>
@@ -82,7 +82,7 @@
       </header>
       <div class="rec-scroll-wrap">
         <div class="rec-scroll">
-          <article
+          <div
             v-for="(course, rIndex) in recommendedCourses" :key="'rec-'+course.id"
             class="rec-card" role="button" tabindex="0"
             :aria-label="`推荐课程 ${course.title}`"
@@ -102,7 +102,7 @@
                 <span class="rec-price" :class="{ 'rec-price--free': !displayPrice(course) }">{{ displayPrice(course) ? `¥${displayPrice(course)}` : '免费' }}</span>
               </div>
             </div>
-          </article>
+          </div>
         </div>
       </div>
     </section>
@@ -189,7 +189,7 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
       <div v-else class="course-grid">
         <el-row :gutter="24">
           <el-col v-for="(course, cIndex) in courseList" :key="course.id" :xs="24" :sm="12" :md="8" :lg="8">
-            <article
+            <div
 class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="0"
               :aria-label="`课程 ${course.title}，教师 ${course.teacherName || '未知'}，${course.studentCount || 0} 人学习`"
               @click="handleCourseClick(course)" @keydown.enter="handleCourseClick(course)" @keydown.space.prevent="handleCourseClick(course)"
@@ -224,7 +224,7 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
                   </div>
                 </div>
               </div>
-            </article>
+            </div>
           </el-col>
         </el-row>
         <div v-if="totalElements > 0" class="pagination-wrap">
@@ -849,7 +849,7 @@ onMounted(async () => {
   transition: all var(--duration-base) var(--ease-out);
 }
 .category-chip-group :deep(.el-radio-button__inner:hover) { background: var(--role-primary-light-9); border-color: var(--role-primary-light-5) !important; color: var(--role-primary); }
-.category-chip-group :deep(.el-radio-button.is-active .el-radio-button__inner) { background: var(--role-primary) !important; border-color: var(--role-primary) !important; color: #fff !important; }
+.category-chip-group :deep(.el-radio-button.is-active .el-radio-button__inner) { background: var(--role-primary-dark) !important; border-color: var(--role-primary-dark) !important; color: #fff !important; }
 .reset-btn { flex-shrink: 0; }
 
 /* ==========================================================================
@@ -883,8 +883,8 @@ onMounted(async () => {
   transition: all var(--duration-base) var(--ease-out);
 }
 .sort-tabs :deep(.el-radio-button.is-active .el-radio-button__inner) {
-  background: var(--role-primary) !important;
-  border-color: var(--role-primary) !important;
+  background: var(--role-primary-dark) !important;
+  border-color: var(--role-primary-dark) !important;
   color: #fff !important;
 }
 
@@ -941,7 +941,7 @@ onMounted(async () => {
   z-index: 2;
 }
 
-.course-info { padding: var(--space-4); }
+.course-info { padding: var(--space-4); background: var(--el-bg-color-overlay); }
 .course-title {
   margin: 0 0 var(--space-2); font-size: var(--text-md); font-weight: var(--weight-semibold);
   color: var(--el-text-color-primary); line-height: var(--leading-snug); height: 2.75em;
@@ -962,7 +962,7 @@ onMounted(async () => {
 .rating-star { color: var(--el-color-warning); font-size: var(--text-md); }
 .rating-value { color: var(--el-text-color-primary); font-weight: var(--weight-semibold); }
 .rating-count { color: var(--el-text-color-secondary); font-size: var(--text-xs); }
-.rating-none { color: var(--el-text-color-placeholder); font-size: var(--text-xs); }
+.rating-none { color: var(--el-text-color-secondary); font-size: var(--text-xs); }
 .price { font-size: var(--text-lg); font-weight: var(--weight-semibold); color: var(--role-primary); }
 .price--free { font-size: var(--text-md); color: var(--el-color-success); font-weight: var(--weight-medium); }
 

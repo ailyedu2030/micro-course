@@ -645,6 +645,7 @@ const answers = reactive({})     // questionId → answer string | string[]
 const multipleAnswers = reactive({}) // questionId → string[] (多选用)
 const timeLeft = ref(0)
 let timerInterval = null
+let autoStartTimer = null
 const elapsedTime = ref(0)
 let elapsedTimerInterval = null
 
@@ -743,6 +744,7 @@ onMounted(async () => {
 onUnmounted(() => {
   clearTimer()
   clearElapsedTimer()
+  if (autoStartTimer) { clearTimeout(autoStartTimer); autoStartTimer = null }
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -792,7 +794,7 @@ async function fetchExerciseList() {
       )
       if (autoExam) {
         // 延时确保组件渲染完成后自动开始
-        setTimeout(() => startExercise(autoExam), 300)
+        autoStartTimer = setTimeout(() => startExercise(autoExam), 300)
       }
     }
   } catch {

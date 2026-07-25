@@ -76,10 +76,14 @@ public abstract class BaseIntegrationTest {
             }
             // 清空 JWT 黑名单和 refresh token 缓存，防止跨测试污染
             clearRedisPattern("mc:jwt:blacklist:*");
+            clearRedisPattern("mc:jwt:user-blacklist:*");
             clearRedisPattern("mc:refresh:*");
             // 清空课程详情/统计缓存，避免共享 Redis 下旧课程缓存污染集成测试读路径
             clearRedisPattern("mc:course:detail:*");
             clearRedisPattern("mc:course:stats:*");
+            // 清空用户状态缓存（UserStatusCheckFilter TTL 30s），避免先前测试缓存
+            // 的"DELETED"/"DISABLED"在用户恢复后继续生效导致 401
+            clearRedisPattern("mc:user:status:*");
             applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }

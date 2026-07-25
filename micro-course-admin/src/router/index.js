@@ -131,7 +131,7 @@ const routes = [
   // /student/training 保留为隐藏路由（训练中心），不显示在导航标签页
   { path: '/student/training', name: 'StudentTraining', component: () => import('../views/student/TrainingCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Fix P1: /student/learning 路由 - 无 courseId 时显示学习中心，使用查询参数 ?courseId= 传递
-  { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'], menuTab: true, menuLabel: '学习', menuIcon: 'DataLine', menuOrder: 3 } },
+    { path: '/student/learning', name: 'StudentLearning', component: () => import('../views/student/LearningView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '学习', menuIcon: 'DataLine', menuOrder: 3 } },
   { path: '/student/learning-stats', name: 'StudentLearningStats', component: () => import('../views/student/LearningCenter.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/notifications', name: 'StudentNotifications', component: () => import('../views/notifications/NotificationList.vue'), meta: { requiresAuth: true, roles: ['STUDENT'], menuTab: true, menuLabel: '消息', menuIcon: 'Bell', menuOrder: 4 } },
   { path: '/student/announcements', redirect: '/student/notifications' },
@@ -168,22 +168,19 @@ const routes = [
   { path: '/student/settings', name: 'StudentSettings', component: () => import('../views/student/Settings.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/achievements', name: 'StudentAchievements', component: () => import('../views/student/AchievementWall.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'ADMIN'] } },
   // P0-1: SlidePlayer 学生端 PPT 播放路由
-  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
+  { path: '/student/courses/:courseId/slides/player', name: 'StudentSlidePlayer', component: () => import('../views/student/SlidePlayer.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/chapters/:chapterId/offline', name: 'StudentOfflineSession', component: () => import('../views/student/StudentOfflineSession.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   // P1-4: 404 通配路由 — 根据角色重定向到对应首页
   { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../views/NotFound.vue'), beforeEnter: (to, from, next) => {
     // 客户体验修复 v1.7.0: 未知路径不再静默重定向,先弹 toast 提示再重定向
     // 旧逻辑: 用户输错 URL → 静默跳首页 → 不知道发生了什么 → 困惑
-    // 新逻辑: 显示"页面不存在" 2s → 然后回到角色首页 (体验更可理解)
+    // 新逻辑: 显示"页面不存在" 2.5s → 然后回到角色首页 (体验更可理解)
     try {
       const userStore = useUserStore()
       if (userStore.role) {
-        // 动态 import 避免循环依赖
-        import('element-plus').then(({ ElMessage }) => {
-          ElMessage.warning({
-            message: `页面 "${to.path}" 不存在,已为您跳转到首页`,
-            duration: 2000
-          })
+        ElMessage.warning({
+          message: `页面 "${to.path}" 不存在,正在跳转到首页`,
+          duration: 2500
         })
         return next(getRoleHomePage(userStore.role))
       }
@@ -226,6 +223,7 @@ router.beforeEach(async (to, from, next) => {
   // 优先从 store 获取角色，store 为空则调用 /api/auth/me
   const userStore = useUserStore()
   let userRole = userStore.role || ''
+  let refreshed = false
   if (!userRole && isAuthenticated()) {
     try {
       await userStore.getInfo()
@@ -236,19 +234,28 @@ router.beforeEach(async (to, from, next) => {
         if (userStore.refreshToken) {
           const newToken = await userStore.refreshAccessToken()
           if (newToken) {
-            await userStore.getInfo()
-            userRole = userStore.role || ''
-            return
+            try {
+              await userStore.getInfo()
+              userRole = userStore.role || ''
+              refreshed = true
+            } catch (networkError) {
+              // refresh 成功但 getInfo 网络失败 → 保留 token，中断导航
+              console.warn('[router] 刷新后获取用户信息仍失败（网络瞬断），保留 token', networkError)
+              NProgress.done()
+              return next(false)
+            }
           }
         }
       } catch (refreshError) {
         console.warn('[router] 静默刷新失败, 清除登录态', refreshError)
       }
-      removeToken()
-      localStorage.removeItem('micro_course_refresh_token')
-      userStore.token = ''
-      userStore.userInfo = null
-      return next({ path: '/login', query: { redirect: to.fullPath } })
+      if (!refreshed) {
+        removeToken()
+        localStorage.removeItem('micro_course_refresh_token')
+        userStore.token = ''
+        userStore.userInfo = null
+        return next({ path: '/login', query: { redirect: to.fullPath } })
+      }
     }
   }
 
@@ -273,6 +280,10 @@ router.beforeEach(async (to, from, next) => {
   // 微专业负责人限定页面：先做角色粗筛（TEACHER），再通过 my-role API 细粒度校验是否为该微专业 LEAD
   // 若 API 调用失败（网络/服务异常），放行导航——后端 requireLeadOf() 提供最终防护
   if (to.meta.requiresLead) {
+    // _readonly 短回路：已在只读模式，跳过 LEAD 校验防止无限重定向
+    if (to.query._readonly === '1') {
+      return next()
+    }
     if (userRole !== 'TEACHER') {
       ElMessage.warning('该页面仅限微专业负责人（教师角色）访问')
       return next(getRoleHomePage(userRole))

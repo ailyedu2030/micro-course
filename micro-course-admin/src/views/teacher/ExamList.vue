@@ -369,11 +369,14 @@ function resetCreateForm() {
 }
 
 async function handleGenerate() {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (generating.value) return
   if (!createFormRef.value) return
+  generating.value = true
   try {
     const valid = await createFormRef.value.validate()
-    if (!valid) return
-  } catch { return }
+    if (!valid) { generating.value = false; return }
+  } catch { generating.value = false; return }
 
   const counts = {}
   let totalNeeded = 0
@@ -381,11 +384,11 @@ async function handleGenerate() {
     if (tc.count > 0) { counts[tc.type] = tc.count; totalNeeded += tc.count }
   }
   if (totalNeeded === 0) {
+    generating.value = false
     ElMessage.warning('请至少选择一道题')
     return
   }
 
-  generating.value = true
   try {
     const examReq = {
       title: createForm.title,

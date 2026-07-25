@@ -483,6 +483,7 @@ function handleMenuSelect(index) {
 
 // 保存修改
 async function handleSave(menu) {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   // P2: 防止重复提交
   if (saving.value) return
 
@@ -494,15 +495,20 @@ async function handleSave(menu) {
     cas: casFormRef
   }
   const currentFormRef = formRefMap[menu]
+  saving.value = true
   if (currentFormRef?.value) {
     try {
-      await currentFormRef.value.validate()
+      const valid = await currentFormRef.value.validate()
+      if (!valid) {
+        saving.value = false
+        return
+      }
     } catch {
+      saving.value = false
       return
     }
   }
 
-  saving.value = true
   try {
     if (menu === 'cas') {
       const casPayload = {

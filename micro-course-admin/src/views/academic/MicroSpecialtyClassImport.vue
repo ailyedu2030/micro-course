@@ -144,8 +144,14 @@ const onDepartmentFilterChange = () => {
 }
 
 const handleImport = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (importing.value) return
   if (!formRef.value) return
-  try { await formRef.value.validate() } catch { return }
+  importing.value = true
+  try {
+    const valid = await formRef.value.validate()
+    if (!valid) { importing.value = false; return }
+  } catch { importing.value = false; return }
   // 二次确认
   try {
     await ElMessageBox.confirm(
@@ -153,8 +159,7 @@ const handleImport = async () => {
       '确认导入',
       { type: 'warning', confirmButtonText: '确认导入', cancelButtonText: '取消' }
     )
-  } catch { return }
-  importing.value = true
+  } catch { importing.value = false; return }
   try {
     const { data } = await classImport({ microSpecialtyId: form.value.microSpecialtyId, classIds: form.value.classIds })
     result.value = data

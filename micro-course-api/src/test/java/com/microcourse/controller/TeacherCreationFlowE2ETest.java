@@ -470,8 +470,8 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     /** 直接入库一门已完成状态的测试视频 (可绑定到 chapterId 以满足 S1 守卫要求) */
     private void insertDummyCompletedVideo(long courseId, Long chapterId) {
         jdbc.update(
-            "INSERT INTO videos(course_id, chapter_id, title, url, status, duration, version, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())",
+            "INSERT INTO videos(course_id, chapter_id, title, url, status, duration, version, created_at, updated_at, original_name) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, now(), now(), '')",
             courseId, chapterId, "测试视频_" + System.nanoTime(),
             "/data/videos/dummy.mp4", 2, 120, 0);
     }

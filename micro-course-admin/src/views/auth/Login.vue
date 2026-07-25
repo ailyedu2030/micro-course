@@ -236,9 +236,11 @@ const handleLogin = async () => {
 
 const handleRegister = async () => {
   if (!registerFormRef.value) return
+  // P1 幂等修复: validate 回调是异步的, 必须在 await 前置位 loading 防连点重复注册
+  if (registerLoading.value) return
+  registerLoading.value = true
   await registerFormRef.value.validate(async (valid) => {
-    if (!valid) return
-    registerLoading.value = true
+    if (!valid) { registerLoading.value = false; return }
     try {
       const res = await registerApi({
         username: registerForm.username,

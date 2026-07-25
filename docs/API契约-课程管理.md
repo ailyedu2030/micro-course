@@ -116,8 +116,13 @@
 - **请求体**: `RejectRequest { reason*: String (min=10) }` (S2 修复)
 - **响应**: `R<Void>`
 
+### 1.8a POST /api/courses/{id}/reject-to-draft (REJECTED → DRAFT)
+- **权限**: TEACHER (本人课程) / ADMIN
+- **说明**: 审核驳回后由教师退回草稿重新编辑  [v1.3 补录, 端点早已上线]
+- **响应**: `R<Void>`
+
 ### 1.9 POST /api/courses/{id}/publish (APPROVED/CLOSED → PUBLISHED)
-- **权限**: ADMIN
+- **权限**: TEACHER (本人课程, Service 层 owner 校验) / ADMIN  [v1.3 同步: 与代码及 §2 权限矩阵决议 A2-修订一致, 教师自主上架为既定产品功能]
 - **守卫**:
   - 自审批阻断
   - 定价审批通过 (非免费)
@@ -126,11 +131,11 @@
 - **响应**: `R<Void>`
 
 ### 1.10 POST /api/courses/{id}/unpublish (PUBLISHED → CLOSED)
-- **权限**: ADMIN
+- **权限**: TEACHER (本人课程) / ADMIN  [v1.3 同步]
 - **响应**: `R<Void>`
 
 ### 1.11 PUT /api/courses/{id}/status
-- **权限**: ADMIN
+- **权限**: TEACHER (本人课程) / ADMIN / ACADEMIC  [v1.3 同步]
 - **守卫**: 拒绝 status=1 (PENDING_REVIEW) 和 status=4 (PUBLISHED) (S4 修复, 必须用专用端点)
 - **响应**: `R<Void>`
 

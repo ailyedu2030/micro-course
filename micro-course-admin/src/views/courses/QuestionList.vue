@@ -16,7 +16,7 @@
     <el-card class="course-select-card" shadow="never">
       <div class="course-select-header">
         <span class="course-select-label">选择课程</span>
-        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" @change="onCourseChange">
+        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" aria-label="选择课程" @change="onCourseChange">
           <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
         </el-select>
       </div>
@@ -612,11 +612,12 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   if (submitLoading.value) return
   if (!formRef.value || !selectedCourse.value) return
+  submitLoading.value = true
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
+    if (!valid) { submitLoading.value = false; return }
     try {
       if (formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE') {
         // P2-14: 仅在 options 为对象时才 JSON.stringify，避免双重序列化

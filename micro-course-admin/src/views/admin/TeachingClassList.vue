@@ -36,7 +36,7 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">教学班列表</span>
-          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">新增教学班</el-button>
+          <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">新增教学班</el-button>
         </div>
       </template>
       <!-- 骨架屏 -->
@@ -404,9 +404,11 @@ async function handleSubmit() {
     ElMessage.warning('请至少添加一条完整的排课时间段（星期、节次）')
     return
   }
+  // P1 幂等修复: validate 回调是异步的, 必须在 await 前置位 loading 防连点重复提交
+  if (submitLoading.value) return
+  submitLoading.value = true
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
+    if (!valid) { submitLoading.value = false; return }
     try {
       if (isEdit.value) {
         await updateTeachingClass(currentId.value, formData)

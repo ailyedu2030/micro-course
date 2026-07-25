@@ -1,0 +1,1 @@
+import{r as t}from"./vendor-video-player-Dct-RoXs.js";function o(e){return t({method:"GET",url:"/certificates/my",params:e})}function i(e){return t({method:"GET",url:`/certificates/${e}/download`,responseType:"blob"})}export{i as d,o as g};

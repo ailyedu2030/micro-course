@@ -16,7 +16,7 @@
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" :disabled="courseOptions.length <= 1" @change="handleSearch">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" :disabled="courseOptions.length <= 1" @change="handleSearch" aria-label="课程">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
@@ -45,7 +45,7 @@
       <el-empty v-else-if="!searchForm.courseId" description="请先选择课程" />
       <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
       <el-table v-else :data="tableData" stripe border class="data-table" row-key="id">
-        <el-table-column type="expand" width="40">
+        <el-table-column type="expand" width="40" label="展开">
           <template #default="{ row }">
             <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
               <div v-loading="sectionLoading[row.id]">
@@ -86,10 +86,16 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
 />
+        <div class="page-size-wrap">
+          <label for="ch-page-size" class="sr-only">每页条数</label>
+          <el-select id="ch-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
     </el-card>
 
@@ -105,24 +111,24 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" @change="onCourseChange" placeholder="请选择课程" class="full-width">
+          <el-select v-model="formData.courseId" @change="onCourseChange" placeholder="请选择课程" class="full-width" aria-label="课程">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入章节标题" />
+          <el-input v-model="formData.title" placeholder="请输入章节标题" aria-label="章节标题" />
         </el-form-item>
         <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
           章节类型已迁移到「课时」管理。创建章节后，可在课程详情页添加不同类型的课时。
         </div>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" aria-label="排序" />
         </el-form-item>
         <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="formData.duration" :min="0" class="full-width" />
+          <el-input-number v-model="formData.duration" :min="0" class="full-width" aria-label="时长" />
         </el-form-item>
         <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" />
+          <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" aria-label="描述" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -352,12 +358,14 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   if (submitLoading.value) return
   if (!formRef.value) return
-  try {
-    await formRef.value.validate()
-  } catch { return }
   submitLoading.value = true
+  try {
+    const valid = await formRef.value.validate()
+    if (!valid) { submitLoading.value = false; return }
+  } catch { submitLoading.value = false; return }
   try {
     if (isEdit.value) {
       await updateChapter(currentId.value, formData)

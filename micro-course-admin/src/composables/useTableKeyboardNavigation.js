@@ -45,7 +45,9 @@ export function useTableKeyboardNavigation(options) {
     nextTbody.querySelectorAll('tr').forEach((rowElement, index) => {
       const row = tableData.value?.[index]
       rowElement.setAttribute('tabindex', '0')
-      rowElement.setAttribute('role', 'button')
+      // P1-C 修复(axe nested-interactive): 行内已含真实按钮(查看/发消息等),
+      // 再给 <tr> 加 role="button" 会形成交互元素嵌套, 屏幕阅读器无法正确播报。
+      // 保持隐式 role="row" + tabindex + keydown 激活, 键盘可达性不变。
       rowElement.setAttribute('aria-label', getAriaLabel?.(row, index) || '')
     })
   }

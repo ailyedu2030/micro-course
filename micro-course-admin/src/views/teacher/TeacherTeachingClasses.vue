@@ -17,6 +17,10 @@
           <div v-if="loadingCourses" class="loading-wrap">
             <el-skeleton :rows="6" animated />
           </div>
+          <div v-else-if="coursesError" class="error-state">
+            <el-empty description="课程加载失败" :image-size="80" />
+            <el-button type="primary" size="small" @click="fetchCourses">重新加载</el-button>
+          </div>
           <el-empty v-else-if="courseOptions.length === 0" description="暂无课程" :image-size="80" />
           <div v-else class="course-list">
             <div
@@ -55,6 +59,11 @@
             <el-skeleton :rows="6" animated />
           </div>
 
+          <div v-else-if="classesError" class="error-state">
+            <el-empty description="教学班加载失败" :image-size="80" />
+            <el-button type="primary" size="small" @click="fetchClasses">重新加载</el-button>
+          </div>
+
           <div v-else-if="groupedClasses.length === 0" class="empty-tip">
             <el-empty description="该课程暂无教学班" :image-size="100" />
           </div>
@@ -81,7 +90,7 @@
                       </el-tag>
                     </div>
                     <div class="class-meta">
-                      <span>容量 {{ cls.currentStudents || 0 }}/{{ cls.maxStudents }}</span>
+                      <span>容量 {{ cls.studentCount ?? 0 }}{{ cls.maxStudents ? '/' + cls.maxStudents : ' 人' }}</span>
                       <span class="expand-icon">
                         <el-icon><ArrowRight v-if="expandedClassId !== cls.id" /><ArrowDown v-else /></el-icon>
                       </span>
@@ -216,6 +225,8 @@ const userRole = computed(() => userStore.role)
 // 加载状态
 const loadingCourses = ref(false)
 const loadingClasses = ref(false)
+const coursesError = ref(false)
+const classesError = ref(false)
 const studentLoading = reactive({})
 const addingStudent = ref(false)
 const changingStatus = ref(false)
@@ -283,6 +294,7 @@ const groupedClasses = computed(() => {
 // 获取课程列表
 async function fetchCourses() {
   loadingCourses.value = true
+  coursesError.value = false
   try {
     const teacherId = userStore.userId
     if (!teacherId) {
@@ -293,7 +305,7 @@ async function fetchCourses() {
     courseOptions.value = data.items || []
   } catch (error) {
     console.error('[TeacherTeachingClasses] 获取课程列表失败', error)
-    ElMessage.error('获取课程列表失败')
+    coursesError.value = true
   } finally {
     loadingCourses.value = false
   }
@@ -310,6 +322,7 @@ async function handleSelectCourse(course) {
 async function fetchClasses() {
   if (!selectedCourseId.value) return
   loadingClasses.value = true
+  classesError.value = false
   try {
     const params = {
       page: page.value - 1,
@@ -321,7 +334,7 @@ async function fetchClasses() {
     totalElements.value = data.totalElements || 0
   } catch (error) {
     console.error('[TeacherTeachingClasses] 获取教学班列表失败', error)
-    ElMessage.error('获取教学班列表失败')
+    classesError.value = true
   } finally {
     loadingClasses.value = false
   }

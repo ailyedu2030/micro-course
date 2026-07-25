@@ -94,6 +94,7 @@ class VideoP0ConcurrencyTest extends BaseIntegrationTest {
         String dummyPath = "/tmp/dummy.mp4";
         ensureDummyVideoFile(dummyPath);
         v.setOriginalPath(dummyPath);
+        v.setFileName("test.mp4");
         v.setCreatedAt(java.time.LocalDateTime.now());
         v.setUpdatedAt(java.time.LocalDateTime.now());
         svc.createEntity(v);

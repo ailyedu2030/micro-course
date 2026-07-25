@@ -1094,10 +1094,9 @@ async function doCheckIn() {
     await createCheckIn()
     checkedInToday.value = true
     ElMessage.success('打卡成功！')
-  } catch (e) {
+    } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.error('打卡失败，请稍后重试')
-  } finally {
+    } finally {
     checkInLoading.value = false
   }
 }

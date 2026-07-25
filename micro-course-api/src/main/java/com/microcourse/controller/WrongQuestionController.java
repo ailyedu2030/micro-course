@@ -20,7 +20,7 @@ public class WrongQuestionController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<List<WrongQuestionVO>> getMyWrongQuestions(
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long chapterId,

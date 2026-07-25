@@ -56,7 +56,8 @@ describe('useTableKeyboardNavigation', () => {
 
     const rows = wrapper.findAll('tr')
     expect(rows[0].attributes('tabindex')).toBe('0')
-    expect(rows[0].attributes('role')).toBe('button')
+    // axe nested-interactive 修复: 不再设置 role="button", 保持隐式 row 角色
+    expect(rows[0].attributes('role')).toBeUndefined()
     expect(rows[0].attributes('aria-label')).toBe('选择 第一行')
 
     await rows[1].trigger('keydown', { key: 'Enter' })

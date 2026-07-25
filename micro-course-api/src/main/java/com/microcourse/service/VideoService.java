@@ -65,6 +65,14 @@ public interface VideoService {
     VideoStatusVO getStatus(Long id);
 
     /**
+     * 批量获取视频转码状态（替代 N 次单点轮询）
+     *
+     * @param ids 视频ID列表
+     * @return List&lt;VideoStatusVO&gt;
+     */
+    java.util.List<VideoStatusVO> getStatusBatch(java.util.List<Long> ids);
+
+    /**
      * 更新视频状态(0=UPLOADING,1=TRANSCODING,2=COMPLETED,3=FAILED)。
      * 用于异步上传/转码失败时将卡住的状态推进,避免脏数据。
      */

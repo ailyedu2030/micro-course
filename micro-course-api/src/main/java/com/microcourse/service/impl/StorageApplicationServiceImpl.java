@@ -47,6 +47,9 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private static final String MODULE_LEAD_COURSES = "leadCourses";
     private static final String MODULE_TEAM_MEMBERS = "teamMembers";
     private static final String MODULE_SIGNATURES = "signatures";
+
+    /** 固定签字级别（不可重置，对齐 spec §7.2#11：保留 3 固定行） */
+    private static final java.util.Set<String> FIXED_SIGN_LEVELS = java.util.Set.of("LEAD", "DEPT", "SCHOOL");
     private static final String MODULE_SHARED_UNITS = "sharedUnits";
 
     private final MicroSpecialtyProposalRepository proposalRepository;
@@ -196,7 +199,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void autoSave(Long proposalId, Long userId, StorageApplicationSaveRequest request) {
+    public void autoSave(Long proposalId, Long userId, StorageApplicationAutoSaveRequest request) {
         // 限流检查：1 秒内最多一次 autoSave
         long now = System.currentTimeMillis();
         Long lastTs = lastAutoSaveTime.get(proposalId);
@@ -305,6 +308,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
 
         proposal.setStatus("PENDING_REVIEW");
+        proposal.setValidationPassed(true);
         proposal.setUpdatedAt(LocalDateTime.now());
         if (proposalRepository.updateById(proposal) == 0) {
             throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据已被其他操作修改，请刷新后重试");
@@ -354,8 +358,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
                         .eq(ProposalTeamMember::getProposalId, proposalId));
                 break;
             case MODULE_SIGNATURES:
+                // P1-2 修复：对齐 spec §7.2#11 — 仅清空非固定签字（SHARED_UNIT），
+                // 固定 LEAD/DEPT/SCHOOL 三行保留但清空签字内容（图片/文字/日期）
                 signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                        .eq(ProposalSignature::getProposalId, proposalId));
+                        .eq(ProposalSignature::getProposalId, proposalId)
+                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
+                resetFixedSignatureContents(proposalId);
                 break;
             case MODULE_SHARED_UNITS:
                 sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
@@ -393,34 +401,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿和已驳回状态的申请表可重置");
         }
 
-        // 重置主表字段
-        proposal.setTitle("");
-        proposal.setMicroSpecialtyName(null);
-        proposal.setTargetAudience(null);
-        proposal.setTargetDisciplines(null);
-        proposal.setTotalCredits(null);
-        proposal.setCourseCount(null);
-        proposal.setCoBuildUniversities(null);
-        proposal.setPlannedShareUniversities(null);
-        proposal.setEnrollmentQuota(null);
-        proposal.setClassSize(null);
-        proposal.setStartDate(null);
-        proposal.setDuration(null);
-        proposal.setIsIndustryAcademic(null);
-        proposal.setIndustryPartners(null);
-        proposal.setIntroduction(null);
-        proposal.setMarketDemandAnalysis(null);
-        proposal.setSpecialtyOverview(null);
-        proposal.setCurriculumDesign(null);
-        proposal.setConstructionGuarantee(null);
-        proposal.setLeadName(null);
-        proposal.setLeadTitle(null);
-        proposal.setLeadPosition(null);
-        proposal.setLeadPhone(null);
-        proposal.setLeadResearchDirection(null);
-        proposal.setLeadMainTasks(null);
-        proposal.setContactPhone(null);
-        proposal.setApplyDate(null);
+        // P1-3 修复：对齐 spec §7.2#12 — resetAll 只清空子表，
+        // 主表基础信息(title/proposer/department)保留，避免教师误操作丢失工作
         proposal.setUpdatedAt(LocalDateTime.now());
         proposalRepository.updateById(proposal);
 
@@ -436,7 +418,48 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
                 .eq(ProposalSharedUnit::getProposalId, proposalId));
 
+        // P1-3 修复：对齐 spec §7.2#12 — resetAll 后必须重新初始化 3 行固定签字
+        initFixedSignatures(proposalId);
+
         log.info("resetAll: proposalId={}", proposalId);
+    }
+
+    /**
+     * 重新初始化 3 行固定签字（LEAD/DEPT/SCHOOL）。
+     * 在 resetAll 后调用，确保主签字位永不丢失。
+     */
+    private void initFixedSignatures(Long proposalId) {
+        String[] fixedLevels = {"LEAD", "DEPT", "SCHOOL"};
+        for (int i = 0; i < fixedLevels.length; i++) {
+            ProposalSignature sig = new ProposalSignature();
+            sig.setProposalId(proposalId);
+            sig.setSignLevel(fixedLevels[i]);
+            sig.setUnitSeq(i);
+            signatureRepository.insert(sig);
+        }
+    }
+
+    /**
+     * 清空固定签字行（LEAD/DEPT/SCHOOL）的内容（图片/文字/日期），
+     * 保留签字位本身。
+     */
+    private void resetFixedSignatureContents(Long proposalId) {
+        for (String level : FIXED_SIGN_LEVELS) {
+            ProposalSignature sig = signatureRepository.selectOne(
+                    new LambdaQueryWrapper<ProposalSignature>()
+                            .eq(ProposalSignature::getProposalId, proposalId)
+                            .eq(ProposalSignature::getSignLevel, level));
+            if (sig != null) {
+                sig.setOpinionText(null);
+                sig.setSignatureType(null);
+                sig.setSignatureText(null);
+                sig.setSignatureImageUrl(null);
+                sig.setSealImageUrl(null);
+                sig.setSignDate(null);
+                sig.setRemark(null);
+                signatureRepository.updateById(sig);
+            }
+        }
     }
 
     // ================================================================

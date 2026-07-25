@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { onBeforeUnmount, ref } from 'vue'
 
 export function useVideoBufferingWatchdog(options = {}) {
   const {
@@ -67,6 +67,10 @@ export function useVideoBufferingWatchdog(options = {}) {
     isBuffering.value = false
     stopWatchdog()
   }
+
+  onBeforeUnmount(() => {
+    clearTimers()
+  })
 
   return {
     isBuffering,

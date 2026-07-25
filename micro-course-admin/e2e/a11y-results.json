@@ -1,0 +1,1034 @@
+{
+  "config": {
+    "argv": [
+      "/opt/homebrew/Cellar/node/26.4.0/bin/node",
+      "/Users/jackie/微课平台/micro-course-admin/node_modules/.bin/playwright",
+      "test",
+      "--config=e2e/a11y.config.js",
+      "--grep",
+      "@smoke"
+    ],
+    "configFile": "/Users/jackie/微课平台/micro-course-admin/e2e/a11y.config.js",
+    "rootDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": [
+      {}
+    ],
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/jackie/微课平台/micro-course-admin/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-desktop",
+        "name": "chromium-desktop",
+        "testDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+        "testIgnore": [
+          "**/*.test.mjs",
+          "**/*.test.js",
+          "**/*.test.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "/Users/jackie/微课平台/micro-course-admin/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox-desktop",
+        "name": "firefox-desktop",
+        "testDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+        "testIgnore": [
+          "**/*.test.mjs",
+          "**/*.test.js",
+          "**/*.test.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "/Users/jackie/微课平台/micro-course-admin/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "browserLabel": "Safari兼容代理",
+          "note": "⚠ Playwright WebKit ≈ Safari 渲染引擎，非真实 Safari 浏览器。真实 Safari 行为差异（字体渲染、表单控件等）需在 macOS Safari 上手工验证（参见 ego-browser 交互式走查）。"
+        },
+        "id": "webkit-desktop",
+        "name": "webkit-desktop",
+        "testDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+        "testIgnore": [
+          "**/*.test.mjs",
+          "**/*.test.js",
+          "**/*.test.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "/Users/jackie/微课平台/micro-course-admin/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-tablet",
+        "name": "chromium-tablet",
+        "testDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+        "testIgnore": [
+          "**/*.test.mjs",
+          "**/*.test.js",
+          "**/*.test.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      },
+      {
+        "outputDir": "/Users/jackie/微课平台/micro-course-admin/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium-mobile",
+        "name": "chromium-mobile",
+        "testDir": "/Users/jackie/微课平台/micro-course-admin/e2e",
+        "testIgnore": [
+          "**/*.test.mjs",
+          "**/*.test.js",
+          "**/*.test.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "test-results/a11y-html"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFolder": "test-results",
+          "outputFile": "a11y-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "teacher-audit.spec.js",
+      "file": "teacher-audit.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "教师端 - 核心页面 a11y",
+          "file": "teacher-audit.spec.js",
+          "line": 119,
+          "column": 6,
+          "specs": [
+            {
+              "title": "@a11y @smoke 教师看板 - axe 扫描",
+              "ok": true,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [
+                    {
+                      "type": "a11y-raw",
+                      "description": "0 violations total"
+                    },
+                    {
+                      "type": "a11y-exempted",
+                      "description": "0 exempted"
+                    },
+                    {
+                      "type": "a11y-blocking",
+                      "description": "0 blocking (critical+serious)"
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4440,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n[axe] chromium-desktop /teacher/dashboard: 0 违规 (基线豁免 0, 实计 0)\n"
+                        },
+                        {
+                          "text": "   [门禁] critical=0 serious=0 moderate=0 minor=0 | 阻断=false\n"
+                        },
+                        {
+                          "text": "   ✅ 无不可豁免违规\n"
+                        },
+                        {
+                          "text": "   [axe] 通过项: 39, 不完全项: 2\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:03:59.269Z",
+                      "annotations": [
+                        {
+                          "type": "a11y-raw",
+                          "description": "0 violations total"
+                        },
+                        {
+                          "type": "a11y-exempted",
+                          "description": "0 exempted"
+                        },
+                        {
+                          "type": "a11y-blocking",
+                          "description": "0 blocking (critical+serious)"
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-dc18dd076dc145454cd6",
+              "file": "teacher-audit.spec.js",
+              "line": 124,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师课程列表 - axe 扫描",
+              "ok": true,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [
+                    {
+                      "type": "a11y-raw",
+                      "description": "1 violations total"
+                    },
+                    {
+                      "type": "a11y-exempted",
+                      "description": "1 exempted"
+                    },
+                    {
+                      "type": "a11y-blocking",
+                      "description": "0 blocking (critical+serious)"
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3987,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n[axe] chromium-desktop /teacher/courses: 1 违规 (基线豁免 1, 实计 0)\n"
+                        },
+                        {
+                          "text": "   ↩ 豁免: landmark-unique[moderate] — Element Plus el-breadcrumb 自动添加 aria-label='Breadcrumb' + role='navigation'，是上游默认行为。项目中每页仅一个面包屑，不构成地标冲突。\n"
+                        },
+                        {
+                          "text": "   [门禁] critical=0 serious=0 moderate=0 minor=0 | 阻断=false\n"
+                        },
+                        {
+                          "text": "   ✅ 无不可豁免违规\n"
+                        },
+                        {
+                          "text": "   [axe] 通过项: 39, 不完全项: 2\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:03.977Z",
+                      "annotations": [
+                        {
+                          "type": "a11y-raw",
+                          "description": "1 violations total"
+                        },
+                        {
+                          "type": "a11y-exempted",
+                          "description": "1 exempted"
+                        },
+                        {
+                          "type": "a11y-blocking",
+                          "description": "0 blocking (critical+serious)"
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-e9f6aa70119752cbbd38",
+              "file": "teacher-audit.spec.js",
+              "line": 138,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 视频管理 - axe 扫描",
+              "ok": true,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [
+                    {
+                      "type": "a11y-raw",
+                      "description": "0 violations total"
+                    },
+                    {
+                      "type": "a11y-exempted",
+                      "description": "0 exempted"
+                    },
+                    {
+                      "type": "a11y-blocking",
+                      "description": "0 blocking (critical+serious)"
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-desktop",
+                  "projectName": "chromium-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3875,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n[axe] chromium-desktop /teacher/videos: 0 违规 (基线豁免 0, 实计 0)\n"
+                        },
+                        {
+                          "text": "   [门禁] critical=0 serious=0 moderate=0 minor=0 | 阻断=false\n"
+                        },
+                        {
+                          "text": "   ✅ 无不可豁免违规\n"
+                        },
+                        {
+                          "text": "   [axe] 通过项: 45, 不完全项: 4\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:07.971Z",
+                      "annotations": [
+                        {
+                          "type": "a11y-raw",
+                          "description": "0 violations total"
+                        },
+                        {
+                          "type": "a11y-exempted",
+                          "description": "0 exempted"
+                        },
+                        {
+                          "type": "a11y-blocking",
+                          "description": "0 blocking (critical+serious)"
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-e336a42f8d901f4216aa",
+              "file": "teacher-audit.spec.js",
+              "line": 150,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师看板 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-desktop",
+                  "projectName": "firefox-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\n<launched> pid=66578\n[pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=66578] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=66578\u001b[22m\n\u001b[2m  - [pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=66578] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=66578] <kill>\u001b[22m\n\u001b[2m  - [pid=66578] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=66578] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\n<launched> pid=66578\n[pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=66578] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=66578\u001b[22m\n\u001b[2m  - [pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=66578] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=66578] <kill>\u001b[22m\n\u001b[2m  - [pid=66578] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=66578] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\n<launched> pid=66578\n[pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=66578] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-dLR3Oq -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=66578\u001b[22m\n\u001b[2m  - [pid=66578] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=66578] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=66578] <kill>\u001b[22m\n\u001b[2m  - [pid=66578] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=66578] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=66578] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:12.118Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师看板---axe-扫描-firefox-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-3d0c49a86d45acd93075",
+              "file": "teacher-audit.spec.js",
+              "line": 124,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师课程列表 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-desktop",
+                  "projectName": "firefox-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\n<launched> pid=67295\n[pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67295] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67295\u001b[22m\n\u001b[2m  - [pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67295] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67295] <kill>\u001b[22m\n\u001b[2m  - [pid=67295] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67295] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\n<launched> pid=67295\n[pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67295] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67295\u001b[22m\n\u001b[2m  - [pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67295] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67295] <kill>\u001b[22m\n\u001b[2m  - [pid=67295] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67295] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\n<launched> pid=67295\n[pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67295] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-WEIS6w -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67295\u001b[22m\n\u001b[2m  - [pid=67295] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67295] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67295] <kill>\u001b[22m\n\u001b[2m  - [pid=67295] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67295] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67295] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:12.408Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师课程列表---axe-扫描-firefox-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-e396631b0acfef4b5e32",
+              "file": "teacher-audit.spec.js",
+              "line": 138,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 视频管理 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "firefox-desktop",
+                  "projectName": "firefox-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 4,
+                      "error": {
+                        "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\n<launched> pid=67737\n[pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67737] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67737\u001b[22m\n\u001b[2m  - [pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67737] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67737] <kill>\u001b[22m\n\u001b[2m  - [pid=67737] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67737] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\n<launched> pid=67737\n[pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67737] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67737\u001b[22m\n\u001b[2m  - [pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67737] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67737] <kill>\u001b[22m\n\u001b[2m  - [pid=67737] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67737] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Failed to launch the browser process.\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\n<launched> pid=67737\n[pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\n[pid=67737] starting temporary directories cleanup\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/firefox-1532/firefox/Nightly.app/Contents/MacOS/firefox -no-remote -headless -profile /var/folders/mf/1qqfslgx769g7n0k1t92x_l00000gn/T/playwright_firefoxdev_profile-uAR75P -juggler-pipe -silent\u001b[22m\n\u001b[2m  - <launched> pid=67737\u001b[22m\n\u001b[2m  - [pid=67737] <process did exit: exitCode=null, signal=SIGKILL>\u001b[22m\n\u001b[2m  - [pid=67737] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=67737] <kill>\u001b[22m\n\u001b[2m  - [pid=67737] <skipped force kill spawnedProcess.killed=false processClosed=true>\u001b[22m\n\u001b[2m  - [pid=67737] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=67737] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:12.665Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-视频管理---axe-扫描-firefox-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-04c3f16bcbac81ffdeda",
+              "file": "teacher-audit.spec.js",
+              "line": 150,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师看板 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-desktop",
+                  "projectName": "webkit-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=68223\n[pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=68223\u001b[22m\n\u001b[2m  - [pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=68223] <kill>\u001b[22m\n\u001b[2m  - [pid=68223] <will force kill>\u001b[22m\n\u001b[2m  - [pid=68223] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=68223] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=68223] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=68223\n[pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=68223\u001b[22m\n\u001b[2m  - [pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=68223] <kill>\u001b[22m\n\u001b[2m  - [pid=68223] <will force kill>\u001b[22m\n\u001b[2m  - [pid=68223] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=68223] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=68223] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=68223\n[pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=68223\u001b[22m\n\u001b[2m  - [pid=68223][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 68470 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=68223] <kill>\u001b[22m\n\u001b[2m  - [pid=68223] <will force kill>\u001b[22m\n\u001b[2m  - [pid=68223] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=68223] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=68223] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=68223] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:12.934Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师看板---axe-扫描-webkit-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-5f8701757540b40ab197",
+              "file": "teacher-audit.spec.js",
+              "line": 124,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师课程列表 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-desktop",
+                  "projectName": "webkit-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69021\n[pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69021\u001b[22m\n\u001b[2m  - [pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69021] <kill>\u001b[22m\n\u001b[2m  - [pid=69021] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69021] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69021] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69021] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69021\n[pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69021\u001b[22m\n\u001b[2m  - [pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69021] <kill>\u001b[22m\n\u001b[2m  - [pid=69021] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69021] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69021] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69021] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69021\n[pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69021\u001b[22m\n\u001b[2m  - [pid=69021][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69049 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69021] <kill>\u001b[22m\n\u001b[2m  - [pid=69021] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69021] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69021] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69021] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69021] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:13.362Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师课程列表---axe-扫描-webkit-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-234a2cdce6502b9f995c",
+              "file": "teacher-audit.spec.js",
+              "line": 138,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 视频管理 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "webkit-desktop",
+                  "projectName": "webkit-desktop",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69557\n[pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69557\u001b[22m\n\u001b[2m  - [pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69557] <kill>\u001b[22m\n\u001b[2m  - [pid=69557] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69557] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69557] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69557] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69557\n[pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69557\u001b[22m\n\u001b[2m  - [pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69557] <kill>\u001b[22m\n\u001b[2m  - [pid=69557] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69557] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69557] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69557] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=69557\n[pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=69557\u001b[22m\n\u001b[2m  - [pid=69557][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 69584 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=69557] <kill>\u001b[22m\n\u001b[2m  - [pid=69557] <will force kill>\u001b[22m\n\u001b[2m  - [pid=69557] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=69557] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=69557] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=69557] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:13.626Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-视频管理---axe-扫描-webkit-desktop/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-a94a62a243611b332dec",
+              "file": "teacher-audit.spec.js",
+              "line": 150,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师看板 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-tablet",
+                  "projectName": "chromium-tablet",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70030\n[pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70030\u001b[22m\n\u001b[2m  - [pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70030] <kill>\u001b[22m\n\u001b[2m  - [pid=70030] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70030] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70030] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70030] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70030\n[pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70030\u001b[22m\n\u001b[2m  - [pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70030] <kill>\u001b[22m\n\u001b[2m  - [pid=70030] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70030] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70030] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70030] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70030\n[pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70030\u001b[22m\n\u001b[2m  - [pid=70030][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70057 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70030] <kill>\u001b[22m\n\u001b[2m  - [pid=70030] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70030] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70030] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70030] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70030] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:13.929Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师看板---axe-扫描-chromium-tablet/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-4d46e430b6de1002b655",
+              "file": "teacher-audit.spec.js",
+              "line": 124,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师课程列表 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-tablet",
+                  "projectName": "chromium-tablet",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70565\n[pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70565\u001b[22m\n\u001b[2m  - [pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70565] <kill>\u001b[22m\n\u001b[2m  - [pid=70565] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70565] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70565] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70565] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70565\n[pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70565\u001b[22m\n\u001b[2m  - [pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70565] <kill>\u001b[22m\n\u001b[2m  - [pid=70565] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70565] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70565] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70565] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=70565\n[pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=70565\u001b[22m\n\u001b[2m  - [pid=70565][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 70592 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=70565] <kill>\u001b[22m\n\u001b[2m  - [pid=70565] <will force kill>\u001b[22m\n\u001b[2m  - [pid=70565] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=70565] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=70565] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=70565] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:14.216Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师课程列表---axe-扫描-chromium-tablet/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-eccb4fff86ef5e2374d8",
+              "file": "teacher-audit.spec.js",
+              "line": 138,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 视频管理 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-tablet",
+                  "projectName": "chromium-tablet",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71056\n[pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71056\u001b[22m\n\u001b[2m  - [pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71056] <kill>\u001b[22m\n\u001b[2m  - [pid=71056] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71056] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71056] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71056] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71056\n[pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71056\u001b[22m\n\u001b[2m  - [pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71056] <kill>\u001b[22m\n\u001b[2m  - [pid=71056] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71056] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71056] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71056] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71056\n[pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71056\u001b[22m\n\u001b[2m  - [pid=71056][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71127 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71056] <kill>\u001b[22m\n\u001b[2m  - [pid=71056] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71056] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71056] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71056] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71056] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:14.495Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-视频管理---axe-扫描-chromium-tablet/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-b542cb132c848dac55d8",
+              "file": "teacher-audit.spec.js",
+              "line": 150,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师看板 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-mobile",
+                  "projectName": "chromium-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 10,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71591\n[pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71591\u001b[22m\n\u001b[2m  - [pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71591] <kill>\u001b[22m\n\u001b[2m  - [pid=71591] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71591] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71591] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71591] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71591\n[pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71591\u001b[22m\n\u001b[2m  - [pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71591] <kill>\u001b[22m\n\u001b[2m  - [pid=71591] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71591] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71591] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71591] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=71591\n[pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=71591\u001b[22m\n\u001b[2m  - [pid=71591][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 71618 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=71591] <kill>\u001b[22m\n\u001b[2m  - [pid=71591] <will force kill>\u001b[22m\n\u001b[2m  - [pid=71591] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=71591] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=71591] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=71591] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:14.763Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师看板---axe-扫描-chromium-mobile/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-7bbe6c7c2476631d5c5c",
+              "file": "teacher-audit.spec.js",
+              "line": 124,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 教师课程列表 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-mobile",
+                  "projectName": "chromium-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 11,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72142\n[pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72142\u001b[22m\n\u001b[2m  - [pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72142] <kill>\u001b[22m\n\u001b[2m  - [pid=72142] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72142] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72142] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72142] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72142\n[pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72142\u001b[22m\n\u001b[2m  - [pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72142] <kill>\u001b[22m\n\u001b[2m  - [pid=72142] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72142] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72142] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72142] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72142\n[pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72142\u001b[22m\n\u001b[2m  - [pid=72142][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72175 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72142] <kill>\u001b[22m\n\u001b[2m  - [pid=72142] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72142] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72142] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72142] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72142] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:15.039Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-教师课程列表---axe-扫描-chromium-mobile/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-c51fe97390f76e92e2fd",
+              "file": "teacher-audit.spec.js",
+              "line": 138,
+              "column": 3
+            },
+            {
+              "title": "@a11y @smoke 视频管理 - axe 扫描",
+              "ok": false,
+              "tags": [
+                "a11y",
+                "smoke"
+              ],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium-mobile",
+                  "projectName": "chromium-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 12,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72617\n[pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72617\u001b[22m\n\u001b[2m  - [pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72617] <kill>\u001b[22m\n\u001b[2m  - [pid=72617] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72617] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72617] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72617] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close end>\u001b[22m\n",
+                        "stack": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72617\n[pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72617\u001b[22m\n\u001b[2m  - [pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72617] <kill>\u001b[22m\n\u001b[2m  - [pid=72617] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72617] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72617] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72617] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close end>\u001b[22m\n"
+                      },
+                      "errors": [
+                        {
+                          "message": "Error: browserType.launch: Target page, context or browser has been closed\nBrowser logs:\n\n<launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\n<launched> pid=72617\n[pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\nCall log:\n\u001b[2m  - <launching> /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh --inspector-pipe --headless --no-startup-window\u001b[22m\n\u001b[2m  - <launched> pid=72617\u001b[22m\n\u001b[2m  - [pid=72617][err] /Users/jackie/Library/Caches/ms-playwright/webkit-2311/pw_run.sh: line 7: 72644 Killed: 9                  DYLD_FRAMEWORK_PATH=\"$DYLIB_PATH\" DYLD_LIBRARY_PATH=\"$DYLIB_PATH\" \"$PLAYWRIGHT\" \"$@\"\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close start>\u001b[22m\n\u001b[2m  - [pid=72617] <kill>\u001b[22m\n\u001b[2m  - [pid=72617] <will force kill>\u001b[22m\n\u001b[2m  - [pid=72617] exception while trying to kill process: Error: kill ESRCH\u001b[22m\n\u001b[2m  - [pid=72617] <process did exit: exitCode=137, signal=null>\u001b[22m\n\u001b[2m  - [pid=72617] starting temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] finished temporary directories cleanup\u001b[22m\n\u001b[2m  - [pid=72617] <gracefully close end>\u001b[22m\n"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-07-25T10:04:15.310Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/jackie/微课平台/micro-course-admin/test-results/teacher-audit-教师端---核心页面-a11y-a11y-smoke-视频管理---axe-扫描-chromium-mobile/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c80745089a28e0cae490-b83b9a38828c9c023bd3",
+              "file": "teacher-audit.spec.js",
+              "line": 150,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-07-25T10:03:59.003Z",
+    "duration": 16346.600999999999,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 12,
+    "flaky": 0
+  }
+}

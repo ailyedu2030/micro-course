@@ -5,6 +5,8 @@
 -->
 <template>
   <div class="video-player-root role-video">
+    <main class="player-main-area">
+      <h1 class="sr-only">{{ videoData.title || '视频播放' }}</h1>
     <!-- Loading State -->
     <div v-if="loading" class="player-loading">
       <div class="skeleton-video">
@@ -570,6 +572,7 @@
     <transition name="toast-fade">
       <div v-if="speedToastVisible" class="speed-toast">{{ playbackRate }}x</div>
     </transition>
+    </main>
   </div>
 </template>
 

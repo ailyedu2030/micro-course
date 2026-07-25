@@ -1,0 +1,24 @@
+-- =============================================================================
+-- V316 回滚 - 删除 chk_tcs_status CHECK 约束
+-- -----------------------------------------------------------------------------
+-- 对应迁移：V316__teaching_class_students_status_fix.sql
+--
+-- ⚠️ 数据归一不可逆 —— 本回滚只删除 CHECK 约束，不恢复历史脏值。
+--
+-- V316 迁移将 APPROVED、ACTIVE、CANCELLED、DISABLED、SUSPENDED 等非法值
+-- 归一为数据字典唯一词汇 ENROLLED / DROPPED / COMPLETED。此数据清洗操作
+-- 是破坏性不可逆的（脏值被覆盖后无法区分原始状态）。因此：
+--   - ALTER TABLE ... DROP CONSTRAINT — 删除约束即可解除写入限制
+--   - UPDATE … — 不还原数据，保留合法三值状态
+--
+-- 如需回退到 V316 前的宽松校验状态，手动执行：
+--   ALTER TABLE teaching_class_students DROP CONSTRAINT IF EXISTS chk_tcs_status;
+-- （即本文件的全部内容）
+--
+-- 如需恢复到 V316 前的数据分布（含脏值），必须从 V316 执行前的备份恢复。
+--
+-- 语句幂等：使用 IF EXISTS，可重复执行。
+-- =============================================================================
+
+-- 删除 CHECK 约束（幂等：不存在则跳过）
+ALTER TABLE teaching_class_students DROP CONSTRAINT IF EXISTS chk_tcs_status;

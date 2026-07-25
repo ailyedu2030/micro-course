@@ -57,8 +57,10 @@ public class GradeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    @PreAuthorize("isAuthenticated()")
     public R<GradeVO> getById(@PathVariable Long id) {
+        // 角色级 → 对象级权限由 Service 层 getById() 校验：
+        //   ADMIN/ACADEMIC 无限制;TEACHER 必须为课程 owner;STUDENT 仅本人
         return R.ok(gradeService.getById(id));
     }
 

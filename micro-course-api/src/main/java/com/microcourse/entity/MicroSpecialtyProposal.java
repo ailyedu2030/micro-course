@@ -121,6 +121,39 @@ public class MicroSpecialtyProposal {
     /** P2-02: 最近一次自动保存时间 */
     private LocalDateTime lastAutoSavedAt;
 
+    /** 联系人姓名（V120） */
+    private String contactPersonName;
+
+    /** 联系人邮箱（V120） */
+    private String contactEmail;
+
+    /** 建设起始年份（V120） */
+    private Integer constructionStartYear;
+
+    /** 建设结束年份（V120） */
+    private Integer constructionEndYear;
+
+    /** 总学时（V120） */
+    private Integer totalHours;
+
+    /** 建设背景与意义（V120） */
+    private String backgroundSignificance;
+
+    /** 培训特色（V120） */
+    private String trainingFeatures;
+
+    /** 质量保障措施（V120） */
+    private String qualityAssurance;
+
+    /** 预期成效（V120） */
+    private String expectedOutcomes;
+
+    /** 补充说明（V120） */
+    private String additionalNotes;
+
+    /** 校验是否通过（V120） */
+    private Boolean validationPassed;
+
     public MicroSpecialtyProposal() {}
 
     public Long getId() { return id; }
@@ -227,4 +260,28 @@ public class MicroSpecialtyProposal {
     // P2-03
     public String getUniversityFullName() { return universityFullName; }
     public void setUniversityFullName(String universityFullName) { this.universityFullName = universityFullName; }
+
+    // V120 缺失字段
+    public String getContactPersonName() { return contactPersonName; }
+    public void setContactPersonName(String contactPersonName) { this.contactPersonName = contactPersonName; }
+    public String getContactEmail() { return contactEmail; }
+    public void setContactEmail(String contactEmail) { this.contactEmail = contactEmail; }
+    public Integer getConstructionStartYear() { return constructionStartYear; }
+    public void setConstructionStartYear(Integer constructionStartYear) { this.constructionStartYear = constructionStartYear; }
+    public Integer getConstructionEndYear() { return constructionEndYear; }
+    public void setConstructionEndYear(Integer constructionEndYear) { this.constructionEndYear = constructionEndYear; }
+    public Integer getTotalHours() { return totalHours; }
+    public void setTotalHours(Integer totalHours) { this.totalHours = totalHours; }
+    public String getBackgroundSignificance() { return backgroundSignificance; }
+    public void setBackgroundSignificance(String backgroundSignificance) { this.backgroundSignificance = backgroundSignificance; }
+    public String getTrainingFeatures() { return trainingFeatures; }
+    public void setTrainingFeatures(String trainingFeatures) { this.trainingFeatures = trainingFeatures; }
+    public String getQualityAssurance() { return qualityAssurance; }
+    public void setQualityAssurance(String qualityAssurance) { this.qualityAssurance = qualityAssurance; }
+    public String getExpectedOutcomes() { return expectedOutcomes; }
+    public void setExpectedOutcomes(String expectedOutcomes) { this.expectedOutcomes = expectedOutcomes; }
+    public String getAdditionalNotes() { return additionalNotes; }
+    public void setAdditionalNotes(String additionalNotes) { this.additionalNotes = additionalNotes; }
+    public Boolean getValidationPassed() { return validationPassed; }
+    public void setValidationPassed(Boolean validationPassed) { this.validationPassed = validationPassed; }
 }

@@ -118,7 +118,61 @@ onMounted(async () => {
       console.error('[App] 获取用户信息失败', err)
     }
   }
+  // P1-C: 修复 QuillEditor 工具栏按钮缺少 aria-label（aria-command-name）
+  fixQuillToolbarAria()
 })
+
+// P1-C: 为 QuillEditor 工具栏按钮添加中文 aria-label
+// axe-core 会把无文本内容的 icon-only <button> 标记为 aria-command-name 违规
+function fixQuillToolbarAria() {
+  const QUILL_LABELS = {
+    'ql-bold': '粗体',
+    'ql-italic': '斜体',
+    'ql-underline': '下划线',
+    'ql-strike': '删除线',
+    'ql-link': '插入链接',
+    'ql-clean': '清除格式',
+    'ql-blockquote': '引用',
+    'ql-code-block': '代码块',
+    'ql-image': '插入图片',
+    'ql-video': '插入视频',
+    'ql-formula': '公式',
+    'ql-list': '有序列表',
+    'ql-bullet': '无序列表',
+    'ql-indent': '增加缩进',
+    'ql-outdent': '减少缩进',
+    'ql-align': '对齐',
+    'ql-direction': '文字方向',
+    'ql-size': '字号',
+    'ql-header': '标题',
+    'ql-color': '文字颜色',
+    'ql-background': '背景色',
+    'ql-font': '字体',
+    'ql-script': '上标/下标'
+  }
+  const applyAriaLabels = () => {
+    document.querySelectorAll('.ql-toolbar button, .ql-picker-label').forEach(btn => {
+      if (btn.hasAttribute('aria-label')) return
+      const cls = Array.from(btn.classList).find(c => c.startsWith('ql-'))
+      if (cls && QUILL_LABELS[cls]) {
+        btn.setAttribute('aria-label', QUILL_LABELS[cls])
+      } else if (cls) {
+        btn.setAttribute('aria-label', cls.replace('ql-', '').replace('-', ' '))
+      } else if (btn.classList.contains('ql-picker-label')) {
+        // Picker label 本身没有 ql- class，父元素有
+        const parentCls = btn.parentElement && Array.from(btn.parentElement.classList).find(c => c.startsWith('ql-'))
+        if (parentCls && QUILL_LABELS[parentCls]) {
+          btn.setAttribute('aria-label', QUILL_LABELS[parentCls])
+        }
+      }
+    })
+  }
+  applyAriaLabels()
+  const obs = new MutationObserver(applyAriaLabels)
+  obs.observe(document.body, { childList: true, subtree: true })
+  // 存入 window 以便调试/清理
+  window.__quillObserver = obs
+}
 
 onBeforeUnmount(() => {
   unregisterGlobalListeners()

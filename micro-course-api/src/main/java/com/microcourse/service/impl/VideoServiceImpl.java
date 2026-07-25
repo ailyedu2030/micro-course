@@ -648,7 +648,24 @@ public class VideoServiceImpl implements VideoService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+        assertCourseOwnership(video.getCourseId());
         return new VideoStatusVO(video.getId(), video.getStatus(), video.getProgress(), video.getErrorMessage());
+    }
+
+    @Override
+    public java.util.List<VideoStatusVO> getStatusBatch(java.util.List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return java.util.Collections.emptyList();
+        java.util.List<Video> videos = videoRepository.selectBatchIds(ids);
+        java.util.Map<Long, VideoStatusVO> map = new java.util.HashMap<>();
+        for (Video v : videos) {
+            map.put(v.getId(), new VideoStatusVO(v.getId(), v.getStatus(), v.getProgress(), v.getErrorMessage()));
+        }
+        java.util.List<VideoStatusVO> result = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            VideoStatusVO vo = map.get(id);
+            if (vo != null) result.add(vo);
+        }
+        return result;
     }
 
     /* ================================================================

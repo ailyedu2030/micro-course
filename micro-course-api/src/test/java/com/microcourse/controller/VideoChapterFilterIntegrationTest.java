@@ -58,8 +58,8 @@ class VideoChapterFilterIntegrationTest extends BaseIntegrationTest {
 
     private long insertVideo(long courseId, long chapterId, String title, int sortOrder) {
         Long id = jdbc.queryForObject(
-                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, 2, '/api/videos/stream/test/index.m3u8', 100, ?, 0, now(), now()) RETURNING id",
+                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at, original_name) " +
+                        "VALUES (?, ?, ?, 2, '/api/videos/stream/test/index.m3u8', 100, ?, 0, now(), now(), '') RETURNING id",
                 Long.class,
                 courseId,
                 chapterId,

@@ -16,18 +16,18 @@
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" />
+          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" aria-label="关键字" />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">
+          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160" aria-label="分类">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="教师">
-          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" />
+          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" aria-label="教师" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-input-w120">
+          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-input-w120" aria-label="状态">
             <el-option label="草稿" :value="0" />
             <el-option label="待审核" :value="1" />
             <el-option label="通过" :value="2" />
@@ -38,7 +38,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程类型">
-          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" @change="handleSearch">
+          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" @change="handleSearch" aria-label="课程类型">
             <el-option label="视频课程" value="VIDEO" />
             <el-option label="互动课程" value="INTERACTIVE" />
             <el-option label="线下课程" value="OFFLINE" />
@@ -78,7 +78,7 @@
           <el-button type="primary" @click="handleReset">清除筛选</el-button>
         </template>
       </el-empty>
-      <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef" @row-click="handleRowClick">
+      <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="封面" width="80" align="center">
           <template #default="{ row }">
@@ -138,10 +138,17 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
 />
+        <div class="page-size-wrap">
+          <span class="el-pagination__total">共 {{ totalElements }} 条</span>
+          <label for="page-size-select" class="sr-only">每页条数</label>
+          <el-select id="page-size-select" :model-value="size" class="page-size-select" @change="onPageSizeChange" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
     </el-card>
 
@@ -149,10 +156,10 @@
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
         <el-form-item label="课程标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入课程标题" />
+          <el-input v-model="formData.title" placeholder="请输入课程标题" aria-label="课程标题" />
         </el-form-item>
         <el-form-item label="课程类型" prop="courseType">
-          <el-select v-model="formData.courseType" class="full-width">
+          <el-select v-model="formData.courseType" class="full-width" aria-label="课程类型">
             <el-option label="视频课程" value="VIDEO" />
             <el-option label="互动课程" value="INTERACTIVE" />
             <el-option label="线下课程" value="OFFLINE" />
@@ -161,14 +168,14 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="分类" prop="categoryId">
-              <el-select v-model="formData.categoryId" placeholder="请选择" class="full-width">
+              <el-select v-model="formData.categoryId" placeholder="请选择" class="full-width" aria-label="课程分类">
                 <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="授课教师" prop="teacherId">
-              <el-select v-model="formData.teacherId" placeholder="请选择" class="full-width" filterable :disabled="userStore.role === 'TEACHER'">
+              <el-select v-model="formData.teacherId" placeholder="请选择" class="full-width" filterable :disabled="userStore.role === 'TEACHER'" aria-label="授课教师">
                 <el-option v-for="t in teacherOptions" :key="t.id" :label="t.realName || t.username" :value="t.id" />
               </el-select>
             </el-form-item>
@@ -182,19 +189,19 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="学分">
-              <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" />
+              <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" aria-label="学分" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="学期">
-              <el-input v-model="formData.semester" placeholder="如：2024春季" />
+              <el-input v-model="formData.semester" placeholder="如：2024春季" aria-label="学期" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="难度">
-              <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable>
+              <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable aria-label="难度">
                 <el-option label="初级" :value="1" />
                 <el-option label="中级" :value="2" />
                 <el-option label="高级" :value="3" />
@@ -203,7 +210,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="价格(¥)">
-              <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" />
+              <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" aria-label="价格" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -211,7 +218,7 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="免费范围">
-              <el-select v-model="formData.freeAccessScope" class="full-width">
+              <el-select v-model="formData.freeAccessScope" class="full-width" aria-label="免费范围">
                 <el-option label="无" value="none" />
                 <el-option label="同院系" value="same_department" />
                 <el-option label="同学院" value="same_college" />
@@ -221,7 +228,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="优惠范围">
-              <el-select v-model="formData.discountScope" class="full-width">
+              <el-select v-model="formData.discountScope" class="full-width" aria-label="优惠范围">
                 <el-option label="无" value="none" />
                 <el-option label="同学院" value="same_college" />
                 <el-option label="同学校" value="same_school" />
@@ -230,7 +237,7 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="优惠比例">
-              <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" />%
+              <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" aria-label="优惠比例" />%
             </el-form-item>
           </el-col>
         </el-row>
@@ -238,7 +245,7 @@
           <el-col :span="12">
             <el-form-item label="课程封面">
               <template v-if="!coverPreviewUrl">
-                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange">
+                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange" aria-label="上传课程封面">
                   <el-button size="small" type="primary"><el-icon><Plus /></el-icon>选择图片</el-button>
                 </el-upload>
                 <div class="form-tip">1200×628px，JPG/PNG/GIF/WebP，≤2MB</div>
@@ -261,36 +268,36 @@
     <el-dialog v-model="showOfflineDialog" title="新增线下安排" width="500px" @close="resetOfflineForm">
       <el-form ref="offlineFormRef" :model="offlineForm" :rules="offlineRules" label-width="100px">
         <el-form-item label="课程">
-          <el-select v-model="offlineForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onOfflineCourseChange">
+          <el-select v-model="offlineForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onOfflineCourseChange" aria-label="线下课程">
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId || offlineChapterOptions.length === 0">
+          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId || offlineChapterOptions.length === 0" aria-label="线下章节">
             <el-option v-for="ch in offlineChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
           <div v-if="offlineForm.courseId && offlineChapterOptions.length === 0" class="form-tip" style="color:var(--el-color-danger);margin-top:4px">该课程暂无线下章节，请先在课程详情页添加 OFFLINE 类型的章节</div>
         </el-form-item>
         <el-form-item label="日期" prop="sessionDate">
-          <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" />
+          <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" aria-label="线下日期" />
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="开始时间" prop="startTime">
-              <el-time-picker v-model="offlineForm.startTime" placeholder="开始" value-format="HH:mm:ss" class="full-width" />
+              <el-time-picker v-model="offlineForm.startTime" placeholder="开始" value-format="HH:mm:ss" class="full-width" aria-label="开始时间" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="结束时间" prop="endTime">
-              <el-time-picker v-model="offlineForm.endTime" placeholder="结束" value-format="HH:mm:ss" class="full-width" />
+              <el-time-picker v-model="offlineForm.endTime" placeholder="结束" value-format="HH:mm:ss" class="full-width" aria-label="结束时间" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-form-item label="地点" prop="location">
-          <el-input v-model="offlineForm.location" placeholder="如：教学楼 A-101" />
+          <el-input v-model="offlineForm.location" placeholder="如：教学楼 A-101" aria-label="地点" />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" placeholder="选填" />
+          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" placeholder="选填" aria-label="备注" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -304,7 +311,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useTableKeyboardNavigation } from '@/composables/useTableKeyboardNavigation'
 import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
@@ -482,18 +488,7 @@ const handlePageChange = () => {
   fetchData()
 }
 
-const handleRowClick = (row) => {
-  // 预留：可点击行查看详情
-}
-
 const tableRef = ref(null)
-const { refreshTableKeyboard } = useTableKeyboardNavigation({
-  tableRef,
-  tableData,
-  onActivate: handleRowClick,
-  getAriaLabel: (row) => `选择课程 ${row?.title || ''}`
-})
-onMounted(() => refreshTableKeyboard())
 
 const handleCreate = () => {
   dialogTitle.value = '新增课程'
@@ -685,13 +680,16 @@ const handleBackToFullList = () => {
 const handleSubmit = async () => {
   if (submitLoading.value) return
   if (!formRef.value) return
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位,
+  // 否则快速连点会全部穿过守卫并发提交, 产生重复课程
+  submitLoading.value = true
   try {
     const valid = await formRef.value.validate()
-    if (!valid) return
+    if (!valid) { submitLoading.value = false; return }
   } catch {
+    submitLoading.value = false
     return
   }
-  submitLoading.value = true
   try {
     const res = await createCourse({
       title: formData.title,
