@@ -339,4 +339,141 @@ describe('teacher identity consistency', () => {
     expect(wrapper.text()).toContain('当前还没有课件，可直接上传或按课程筛选。')
     expect(wrapper.text()).not.toContain('已选课程尚未上传课件')
   })
+
+  it('shows an error and stops loading slide data when teacher identity is unavailable', async () => {
+    mockStore.userId = null
+    mockStore.getInfo.mockRejectedValueOnce(new Error('auth failed'))
+
+    mount(TeacherSlideOverview, {
+      global: {
+        stubs,
+      },
+    })
+
+    await flushPromises()
+
+    expect(mockStore.getInfo).toHaveBeenCalledTimes(1)
+    expect(elementPlusMocks.error).toHaveBeenCalledWith('无法获取当前教师信息')
+    expect(courseApiMocks.getCourses).not.toHaveBeenCalled()
+  })
+
+  it('adds keyboard accessibility to teaching class course items', async () => {
+    courseApiMocks.getCourses.mockResolvedValueOnce({
+      data: {
+        items: [{ id: 100, title: '键盘课程', code: 'C100' }],
+      },
+    })
+    teachingClassApiMocks.getTeachingClasses.mockResolvedValueOnce({
+      data: {
+        items: [],
+        totalElements: 0,
+      },
+    })
+
+    const wrapper = mount(TeacherTeachingClasses, {
+      global: {
+        stubs,
+      },
+    })
+
+    await flushPromises()
+
+    const courseItem = wrapper.find('.course-item')
+    expect(courseItem.attributes('role')).toBe('button')
+    expect(courseItem.attributes('tabindex')).toBe('0')
+    expect(courseItem.attributes('aria-label')).toContain('键盘课程')
+
+    await courseItem.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(teachingClassApiMocks.getTeachingClasses).toHaveBeenCalledWith(expect.objectContaining({
+      courseId: 100,
+    }))
+  })
+
+  it('uses a read-only view title for ACADEMIC users even when the grade is pending', async () => {
+    mockStore.role = 'ACADEMIC'
+    routeState.query = { courseId: '99' }
+    courseApiMocks.getCourses.mockResolvedValue({
+      data: {
+        items: [{ id: 99, title: '测试课程' }],
+      },
+    })
+    gradeApiMocks.getGrades.mockResolvedValue({
+      data: {
+        items: [
+          {
+            id: 1,
+            realName: '张三',
+            courseName: '测试课程',
+            score: null,
+            comment: '',
+            gradedAt: null,
+            enrollmentId: 11,
+          },
+        ],
+        totalElements: 1,
+      },
+    })
+
+    const wrapper = mount(StudentGrades, {
+      global: {
+        stubs,
+      },
+    })
+
+    await flushPromises()
+    wrapper.vm.handleGrade(wrapper.vm.tableData[0])
+    await flushPromises()
+
+    expect(wrapper.vm.gradeDialogTitle).toBe('查看成绩')
+    expect(wrapper.vm.isReadOnlyGradeView).toBe(true)
+    expect(wrapper.text()).not.toContain('提交成绩')
+    expect(wrapper.vm.userStore.role).toBe('ACADEMIC')
+  })
+
+  it('reloads teacher courses when the department filter is cleared', async () => {
+    mockStore.role = 'ACADEMIC'
+    courseApiMocks.getCourses
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 1, title: '院系课程 A' }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 11, title: '院系课程 B' }],
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ id: 2, title: '全部课程 B' }],
+        },
+      })
+
+    const wrapper = mount(StudentGrades, {
+      global: {
+        stubs,
+      },
+    })
+
+    await flushPromises()
+
+    wrapper.vm.searchForm.departmentId = 7
+    wrapper.vm.handleDeptChange()
+    await flushPromises()
+
+    expect(courseApiMocks.getCourses).toHaveBeenLastCalledWith(expect.objectContaining({
+      offerDepartmentId: 7,
+    }))
+
+    wrapper.vm.searchForm.departmentId = ''
+    wrapper.vm.handleDeptChange()
+    await flushPromises()
+
+    expect(courseApiMocks.getCourses).toHaveBeenLastCalledWith(expect.not.objectContaining({
+      offerDepartmentId: expect.anything(),
+    }))
+    expect(wrapper.vm.courseOptions).toEqual([{ id: 2, title: '全部课程 B' }])
+  })
 })

@@ -109,6 +109,44 @@ describe('TeacherDashboard.vue', () => {
     wrapper.unmount()
   })
 
+  it('renders teacher dashboard stats from the backend payload', async () => {
+    teacherApiMocks.getStats.mockResolvedValueOnce({
+      data: {
+        courseCount: 6,
+        studentCount: 128,
+        pendingHomework: 9,
+        pendingQuestions: 4,
+        completionRate: 87.5,
+        avgScore: 91.2,
+      },
+    })
+
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('6')
+    expect(wrapper.text()).toContain('128')
+    expect(wrapper.text()).toContain('9')
+    expect(wrapper.text()).toContain('4')
+    expect(wrapper.text()).toContain('87.5%')
+    expect(wrapper.text()).toContain('91.2 分')
+
+    wrapper.unmount()
+  })
+
   it('exposes teacher quick actions for grades and discussion routes', async () => {
     const wrapper = mount(TeacherDashboard, {
       global: {
@@ -174,6 +212,39 @@ describe('TeacherDashboard.vue', () => {
 
     await card.trigger('keydown.space')
     expect(push).toHaveBeenCalledWith('/teacher/courses/7')
+
+    wrapper.unmount()
+  })
+
+  it('renders the course cover image when the teacher course has a cover URL', async () => {
+    teacherApiMocks.getMyCourses.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 11, title: '有封面的课程', studentCount: 18, rating: 4.8, cover: '/api/files/covers/course-11.jpg' },
+        ],
+      },
+    })
+
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const image = wrapper.find('.course-cover-img')
+    expect(image.exists()).toBe(true)
+    expect(image.attributes('src')).toBe('/api/files/covers/course-11.jpg')
+    expect(image.attributes('alt')).toBe('有封面的课程')
 
     wrapper.unmount()
   })

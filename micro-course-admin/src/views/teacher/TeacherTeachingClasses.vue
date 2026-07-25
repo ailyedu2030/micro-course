@@ -24,7 +24,12 @@
               :key="course.id"
               class="course-item"
               :class="{ 'is-active': selectedCourseId === course.id }"
+              role="button"
+              tabindex="0"
+              :aria-label="`查看课程 ${course.title} 的教学班`"
               @click="handleSelectCourse(course)"
+              @keydown.enter="handleSelectCourse(course)"
+              @keydown.space.prevent="handleSelectCourse(course)"
             >
               <div class="course-title">{{ course.title }}</div>
               <div class="course-info">{{ course.code || '' }}</div>
