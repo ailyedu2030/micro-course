@@ -71,7 +71,7 @@
         />
         <div class="reply-actions">
           <el-button size="small" @click="handleCancelReply">取消</el-button>
-          <el-button type="primary" size="small" :disabled="!replyContent.trim() || props.replyLoading" :loading="props.replyLoading" @click="handleReply">发送</el-button>
+          <el-button type="primary" size="small" :disabled="!replyContent.trim() || isReplying" :loading="isReplying" @click="handleReply">发送</el-button>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@
         :key="child.id"
         :comment="child"
         :depth="depth + 1"
-        :reply-loading="props.replyLoading"
+        :replying-id="props.replyingId"
         @reply="$emit('reply', $event)"
         @like="$emit('like', $event)"
       />
@@ -102,7 +102,8 @@ const MAX_DEPTH = 10
 const props = defineProps({
   comment: { type: Object, required: true },
   depth: { type: Number, default: 0 },
-  replyLoading: { type: Boolean, default: false }
+  replyLoading: { type: Boolean, default: false },
+  replyingId: { type: [Number, String], default: null }
 })
 
 const emit = defineEmits(['reply', 'like'])
@@ -124,6 +125,7 @@ const displayName = computed(() => {
 const replyPlaceholder = computed(() => `回复 ${props.comment.isAnonymous ? '匿名用户' : (props.comment.authorName || props.comment.userName || '未知')}…`)
 
 const likeBtnLabel = computed(() => liked.value ? '取消点赞' : '点赞')
+const isReplying = computed(() => props.replyingId != null && String(props.comment.id) === String(props.replyingId))
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
