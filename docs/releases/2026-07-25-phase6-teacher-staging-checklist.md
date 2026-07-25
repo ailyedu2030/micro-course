@@ -2,7 +2,7 @@
 
 > 日期：2026-07-25
 > 适用版本：Phase 6 教师模块候选发布
-> 关联主线提交：`812269c4`
+> 关联主线提交：`9b025a3b`
 > 负责人：项目负责人人工执行，AI 提供执行包与验收口径
 > 结论前提：本地验证、CI、`deploy-gate`、`deploy-dryrun` 已完成；当前允许进入 staging，**不允许跳过 staging 直接生产**
 
@@ -14,6 +14,8 @@
 
 - `local-dev-deploy.sh --keep`：`16/16` 通过
 - GitHub CI：`backend / frontend / e2e / docker / monitoring-lint` 全绿
+- Bot 审批：`microcourse-pr-bot` 已对 PR #124 自动 approve
+- 发布交接包：PR #124 已 squash merge 到 `main`
 - `bash scripts/deploy-gate.sh check`：已通过，门禁窗口有效
 - `bash scripts/deploy-dryrun.sh --env=staging`：`0 fail / 10 warn`
 - `bash scripts/deploy-dryrun.sh --env=prod`：`0 fail / 10 warn`
@@ -156,5 +158,7 @@
 ## 八、交接结论
 
 当前候选发布已经具备进入 staging 的条件，但尚未具备直接生产部署的条件。
+
+当前仓库侧发布准备已闭环，剩余动作仅为人工执行 staging 并回填执行记录。
 
 本文件作为 staging 人工执行与验收的正式交接清单使用。
