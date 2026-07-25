@@ -12,6 +12,7 @@
           <el-select
             v-model="searchForm.courseId"
             placeholder="请选择课程"
+            aria-label="选择课程"
             clearable
             class="course-select"
             @change="handleCourseChange"
@@ -137,6 +138,7 @@
                 :percentage="row.progress || 0"
                 :stroke-width="8"
                 :color="getProgressColor(row.progress)"
+                :aria-label="`学习进度 ${row.progress || 0}%`"
               />
               <span class="progress-text">{{ row.progress || 0 }}%</span>
             </div>
@@ -197,7 +199,7 @@
         <el-descriptions-item label="手机">{{ currentStudent.phone || '-' }}</el-descriptions-item>
         <el-descriptions-item label="选课时间" :span="2">{{ formatDate(currentStudent.enrolledAt) }}</el-descriptions-item>
         <el-descriptions-item label="学习进度" :span="2">
-          <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" />
+          <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" :aria-label="`学习进度 ${currentStudent.progress || 0}%`" />
         </el-descriptions-item>
         <el-descriptions-item label="最近活跃" :span="2">{{ formatDate(currentStudent.lastWatchAt) }}</el-descriptions-item>
       </el-descriptions>

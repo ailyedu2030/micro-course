@@ -234,9 +234,14 @@ const resetCreateForm = () => {
   createFormRef.value?.clearValidate()
 }
 const handleCreate = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (creating.value) return
   if (!createFormRef.value) return
-  try { await createFormRef.value.validate() } catch { return }
   creating.value = true
+  try {
+    const valid = await createFormRef.value.validate()
+    if (!valid) { creating.value = false; return }
+  } catch { creating.value = false; return }
   try { await createMicroSpecialty(createForm.value); ElMessage.success('创建成功'); createVisible.value = false; fetchList(activeTab.value) }
   catch (e) { ElMessage.error(e?.response?.data?.message || '创建失败') }
   finally { creating.value = false }

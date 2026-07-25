@@ -105,12 +105,14 @@ watch(
 )
 
 const handleUpdateProfile = async () => {
-  try {
-    await profileFormRef.value.validate()
-  } catch {
-    return
-  }
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (profileLoading.value) return
+  if (!profileFormRef.value) return
   profileLoading.value = true
+  try {
+    const valid = await profileFormRef.value.validate()
+    if (!valid) { profileLoading.value = false; return }
+  } catch { profileLoading.value = false; return }
   try {
     await updateProfile(profileForm.value)
     // P0-2: 后端已更新成功,但前端 store 需刷新才能显示新数据

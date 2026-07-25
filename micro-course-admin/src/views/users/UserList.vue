@@ -876,10 +876,15 @@ const handleDialogClose = () => {
 }
 
 const handleDialogSave = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (dialogLoading.value) return
   if (!formRef.value) return
+  dialogLoading.value = true
   try {
-    await formRef.value.validate()
-    dialogLoading.value = true
+    const valid = await formRef.value.validate()
+    if (!valid) { dialogLoading.value = false; return }
+  } catch { dialogLoading.value = false; return }
+  try {
     // 组装提交数据：剔除空字符串，转换为数字类型
     const submitData = {}
     const fields = ['realName', 'email', 'phone', 'gender', 'politicalStatus',

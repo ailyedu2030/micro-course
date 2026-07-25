@@ -229,9 +229,14 @@ const fetchProgress = async () => {
 }
 
 const handleSave = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (saving.value) return
   if (!formRef.value) return
-  try { await formRef.value.validate() } catch { return }
   saving.value = true
+  try {
+    const valid = await formRef.value.validate()
+    if (!valid) { saving.value = false; return }
+  } catch { saving.value = false; return }
   try { await updateMicroSpecialty(msId.value, form.value); ElMessage.success('保存成功'); fetchDetail() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { saving.value = false }

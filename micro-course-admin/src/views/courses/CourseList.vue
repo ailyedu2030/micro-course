@@ -680,13 +680,16 @@ const handleBackToFullList = () => {
 const handleSubmit = async () => {
   if (submitLoading.value) return
   if (!formRef.value) return
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位,
+  // 否则快速连点会全部穿过守卫并发提交, 产生重复课程
+  submitLoading.value = true
   try {
     const valid = await formRef.value.validate()
-    if (!valid) return
+    if (!valid) { submitLoading.value = false; return }
   } catch {
+    submitLoading.value = false
     return
   }
-  submitLoading.value = true
   try {
     const res = await createCourse({
       title: formData.title,

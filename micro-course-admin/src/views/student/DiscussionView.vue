@@ -333,12 +333,14 @@ const resetPostForm = () => {
 }
 
 const handleSubmitPost = async () => {
-  try {
-    await postFormRef.value.validate()
-  } catch {
-    return
-  }
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (submitting.value) return
+  if (!postFormRef.value) return
   submitting.value = true
+  try {
+    const valid = await postFormRef.value.validate()
+    if (!valid) { submitting.value = false; return }
+  } catch { submitting.value = false; return }
   try {
     // P0-1: 确保 courseId 可用——若未预加载则实时查询章节获取
     let courseId = currentCourseId.value ? Number(currentCourseId.value) : undefined
