@@ -148,6 +148,13 @@ vi.mock('@/composables/useUrlPagination', () => ({
 // —— CommentNode tests (mount, minimal stubs) ——
 // ============================================================
 describe('CommentNode.vue accessibility', () => {
+  let CommentNode
+  beforeAll(async () => {
+    // 总工程师 2026-07-26 兜底: hoist dynamic import to suite level
+    // (原每个 it() 重新 import @/components/CommentNode.vue 触发 SFC 重新编译,
+    // 4 个连续测试叠加 ~4s, 在 vitest 5s 默认 timeout 下随机超时)
+    CommentNode = (await import('@/components/CommentNode.vue')).default
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -169,7 +176,6 @@ describe('CommentNode.vue accessibility', () => {
   })
 
   it('renders like button with aria-label="点赞"', async () => {
-    const CommentNode = (await import('@/components/CommentNode.vue')).default
     const wrapper = mount(CommentNode, {
       props: { comment: makeComment(), depth: 0, replyLoading: false },
       global: { stubs: commentStubs },
@@ -181,7 +187,6 @@ describe('CommentNode.vue accessibility', () => {
   })
 
   it('renders reply button with aria-label="回复"', async () => {
-    const CommentNode = (await import('@/components/CommentNode.vue')).default
     const wrapper = mount(CommentNode, {
       props: { comment: makeComment(), depth: 0, replyLoading: false },
       global: { stubs: commentStubs },
@@ -193,7 +198,6 @@ describe('CommentNode.vue accessibility', () => {
   })
 
   it('renders collapse button with dynamic aria-label', async () => {
-    const CommentNode = (await import('@/components/CommentNode.vue')).default
     const wrapper = mount(CommentNode, {
       props: {
         comment: makeComment({
@@ -215,7 +219,6 @@ describe('CommentNode.vue accessibility', () => {
   })
 
   it('renders reply textarea with aria-label="回复内容"', async () => {
-    const CommentNode = (await import('@/components/CommentNode.vue')).default
     const wrapper = mount(CommentNode, {
       props: { comment: makeComment(), depth: 0, replyLoading: false },
       global: { stubs: commentStubs },
