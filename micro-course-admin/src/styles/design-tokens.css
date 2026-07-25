@@ -399,7 +399,11 @@
   transform: scale(0.97);
 }
 
-:root .el-button--primary {
+/* P1-C 修复(axe color-contrast): 该覆盖原作用于全部 primary 按钮,
+   把 is-plain/is-text/is-link 变体的浅底(#eff6ff)也改成实心底,
+   而文字色仍是深色 token, 导致「编辑」等朴素按钮对比度仅 1.3:1。
+   用 :not() 排除变体, 实心主按钮样式不变。 */
+:root .el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
   --el-button-bg-color: var(--el-color-primary);
   --el-button-border-color: var(--el-color-primary);
   --el-button-hover-bg-color: var(--el-color-primary-dark-2);

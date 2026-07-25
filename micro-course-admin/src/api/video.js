@@ -56,3 +56,11 @@ export function deleteVideoBookmark(videoId, bookmarkId) {
 export function retryVideoTranscode(videoId) {
   return request({ method: 'POST', url: `/videos/${videoId}/retry` })
 }
+
+export function getVideoStatus(videoId) {
+  return request({ method: 'GET', url: `/videos/${videoId}/status` })
+}
+
+export function getVideoStatusBatch(ids) {
+  return request({ method: 'GET', url: '/videos/status/batch', params: { ids: ids.join(',') } })
+}

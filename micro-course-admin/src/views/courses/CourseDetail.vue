@@ -9,7 +9,7 @@
       <el-breadcrumb separator="→">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
         <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
-        <el-breadcrumb-item>{{ isEditMode ? '编辑课程' : (courseData.title || '课程详情') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ isCreateMode ? '创建课程' : (isEditMode ? '编辑课程' : (courseData.title || '课程详情')) }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
 
@@ -296,7 +296,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
 
       <!-- 操作按钮 -->
       <div class="submit-bar">
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">保存</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ isCreateMode ? '创建课程' : '保存' }}</el-button>
         <el-button @click="switchToView">取消</el-button>
       </div>
     </template>
@@ -346,7 +346,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
 import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
-import { getCourseById, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
+import { getCourseById, createCourse, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 import { View } from '@element-plus/icons-vue'
@@ -378,7 +378,10 @@ const isOwner = computed(() => {
   return userStore.role === 'ADMIN' ||
     (userStore.role === 'TEACHER' && courseData.value?.teacherId === userStore.userId)
 })
-const isEditMode = computed(() => route.path.includes('/edit'))
+// P0 修复: /courses/create 创建模式 — 复用编辑表单渲染空白表单,
+// 否则 isEditMode=false + loading 永不复位, 页面永久卡在「加载课程信息...」
+const isCreateMode = computed(() => route.name === 'CourseCreate')
+const isEditMode = computed(() => route.path.includes('/edit') || isCreateMode.value)
 
 const loading = ref(true)
 const submitLoading = ref(false)
@@ -463,7 +466,8 @@ const fetchCategories = async () => {
 }
 
 const fetchCourse = async () => {
-  if (!courseId.value) return
+  // 创建模式无 courseId: 直接结束 loading, 使用表单默认值渲染空白创建表单
+  if (!courseId.value) { loading.value = false; return }
   loading.value = true
   try {
     const { data } = await getCourseById(courseId.value)
@@ -543,7 +547,11 @@ const switchToEdit = () => {
   }
   router.push(courseEditPath(courseId.value))
 }
-const switchToView = () => router.push(courseDetailPath(courseId.value))
+const switchToView = () => {
+  // 创建模式取消: 无 courseId, 返回课程列表; 编辑模式取消: 回课程详情
+  if (isCreateMode.value) { router.push(userRole.value === 'TEACHER' ? '/teacher/courses' : '/courses'); return }
+  router.push(courseDetailPath(courseId.value))
+}
 
 const handleSubmitForReview = async () => {
   if (submitLoading.value) return
@@ -614,13 +622,15 @@ const handleRemoveCover = () => {
 const handleSubmit = async () => {
   if (submitLoading.value) return
   if (!formRef.value) return
-  try {
-    const valid = await formRef.value.validate()
-    if (!valid) return
-  } catch { return }
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位,
+  // 否则快速连点会全部穿过守卫并发提交, 产生重复课程 (审计实测 3 连击建 3 门课)
   submitLoading.value = true
   try {
-    await updateCourse(courseId.value, {
+    const valid = await formRef.value.validate()
+    if (!valid) { submitLoading.value = false; return }
+  } catch { submitLoading.value = false; return }
+  try {
+    const payload = {
       title: formData.title, categoryId: formData.categoryId, teacherId: formData.teacherId,
       description: formData.description,
       creditHours: formData.creditHours, semester: formData.semester || undefined,
@@ -630,7 +640,20 @@ const handleSubmit = async () => {
       freeDeptIds: formData.freeDeptIds,
       discountScope: formData.discountScope,
       discountPercent: formData.discountPercent
-    })
+    }
+    if (isCreateMode.value) {
+      // 创建模式: 走 createCourse, 成功后跳新课程详情页; teacherId 为空时后端默认当前登录教师
+      const res = await createCourse({ ...payload, teacherId: formData.teacherId || undefined })
+      const newCourseId = res?.data?.id
+      if (newCourseId && coverFile.value) {
+        try { await updateCourseCover(newCourseId, coverFile.value) }
+        catch { ElMessage.warning('课程已创建，封面上传失败，请稍后到编辑页重试') }
+      }
+      ElMessage.success('创建成功')
+      if (newCourseId) router.push(courseDetailPath(newCourseId))
+      return
+    }
+    await updateCourse(courseId.value, payload)
     if (coverFile.value) {
       try { await updateCourseCover(courseId.value, coverFile.value) }
       catch { ElMessage.warning('信息已保存，封面上传失败') }
@@ -750,7 +773,10 @@ const handleChapterDialogClose = () => { chapterFormRef.value?.resetFields() }
 
 onMounted(() => {
   // P1C-075: ACADEMIC 角色从编辑模式重定向到查看模式
+  // P0 修复补充: 创建模式下无 courseId, ACADEMIC(后端仅 TEACHER/ADMIN 可创建)直接回课程列表,
+  // 避免 router.replace(courseDetailPath(undefined)) 产生非法路由
   if (userRole.value === 'ACADEMIC' && isEditMode.value) {
+    if (isCreateMode.value) { router.replace('/courses'); return }
     router.replace(courseDetailPath(courseId.value))
     return
   }
