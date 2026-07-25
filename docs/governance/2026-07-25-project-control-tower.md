@@ -40,8 +40,8 @@
 ### 2.1 当前阶段
 
 - 当前主线阶段：Phase 6 教师端模块收口
-- 当前代码状态：PR #123（功能收口）与 PR #124（发布交接包）均已合并至 `main`
-- 当前主线提交：`9b025a3b` `docs(release): prepare phase6 staging handoff (#124)`
+- 当前代码状态：PR #123（功能收口）、PR #124（发布交接包）与 PR #125（发布状态同步）均已合并至 `main`
+- 当前主线提交：`041d1042` `docs(release): sync phase6 staging handoff status (#125)`
 - 当前交付结论：开发、测试、文档、PR、CI、Bot 审批、合并、主线同步与分支清理闭环已完成
 
 ### 2.2 当前未完成的项目级事项
