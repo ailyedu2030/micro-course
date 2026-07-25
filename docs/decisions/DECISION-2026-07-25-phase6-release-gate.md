@@ -4,6 +4,7 @@
 > 决策角色：AI 总工程师 / 项目执行负责人
 > 适用范围：Phase 6 教师模块候选发布
 > 关联主线提交：执行时以 `origin/main` HEAD 为准
+> 状态更新：2026-07-25 14:53 CST 已在项目负责人明确授权后完成 production 发布，详见 [production 执行记录](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-production-execution-record.md)
 
 ---
 
@@ -115,3 +116,24 @@
 - `当前等待`：项目负责人 / 运维人工执行 staging，并回填 `docs/releases/2026-07-25-phase6-teacher-staging-execution-record.md`
 
 这不是保守拖延，而是基于当前证据链做出的有效放行判断。
+
+---
+
+## 八、授权后的生产执行补记
+
+本决策单记录的是 2026-07-25 当时的门禁判断，原始结论保持不变。其后在项目负责人明确授权 production 发布后，已完成正式上线执行，补记如下：
+
+- 实际部署提交：`d3c39bd70995f397672a3e111b4f31c526872701`
+- 后端与前端均已完成生产切换
+- 生产站点 `https://microcourse.ailyedu.cn/` 返回 `HTTP/2 200`
+- 生产容器最终状态：
+  - `micro-course-micro-course-api-1`: `running + healthy`
+  - `micro-course-micro-course-admin-1`: `running + healthy`
+- 本次发布未执行生产 DB 写操作，也未引入 schema 变更
+- 发布过程中发现并修复 2 个部署侧问题：
+  1. 首次上传前端镜像架构错误（`arm64` -> `amd64`）
+  2. 前端容器健康检查使用 `localhost` 导致误判，已改为 `127.0.0.1`
+
+最终执行证据见：
+
+- [docs/releases/2026-07-25-phase6-teacher-production-execution-record.md](file:///Users/jackie/微课平台/docs/releases/2026-07-25-phase6-teacher-production-execution-record.md)
