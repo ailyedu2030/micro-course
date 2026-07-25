@@ -241,6 +241,7 @@ router.beforeEach(async (to, from, next) => {
             } catch (networkError) {
               // refresh 成功但 getInfo 网络失败 → 保留 token，中断导航
               console.warn('[router] 刷新后获取用户信息仍失败（网络瞬断），保留 token', networkError)
+              NProgress.done()
               return next(false)
             }
           }
