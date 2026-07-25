@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
 
+import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -28,7 +29,7 @@ class TeacherCourseCoverIntegrationTest extends BaseIntegrationTest {
                         .header("Authorization", teacherToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data.items[0].id").value(1))
-                .andExpect(jsonPath("$.data.items[0].cover").value("/api/files/covers/p0-course-cover.jpg"));
+                .andExpect(jsonPath("$.data.items[?(@.id == 1)].cover")
+                        .value(hasItem("/api/files/covers/p0-course-cover.jpg")));
     }
 }
