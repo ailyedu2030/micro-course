@@ -1044,7 +1044,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     @DisplayName("[WrongQ] GET /api/wrong-questions/my — 已登录可查询")
     void wrongQuestionsMy_Authenticated() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());
@@ -1062,7 +1062,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     void wrongQuestionsMy_ByCourse() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
                         .param("courseId", "1")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());
@@ -1073,7 +1073,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     void wrongQuestionsMy_ByChapter() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
                         .param("chapterId", "1")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());

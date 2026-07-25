@@ -30,7 +30,7 @@ public class EnrollmentIntegrationTest extends BaseIntegrationTest {
     @DisplayName("获取错题集200")
     void getWrongQuestions() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
-                .header("Authorization", bearerAdmin()))
+                .header("Authorization", "Bearer " + loginAs("student", "student123")))
                 .andExpect(status().isOk());
     }
 }
