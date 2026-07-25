@@ -86,6 +86,18 @@ public class VideoController {
         return R.ok(videoService.getStatus(id));
     }
 
+    /**
+     * GET /api/videos/status/batch?ids=1,2,3
+     * 批量查询视频转码状态（单次 API 替代 N 次轮询）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     */
+    @GetMapping("/status/batch")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<java.util.List<VideoStatusVO>> getStatusBatch(
+            @RequestParam("ids") java.util.List<@jakarta.validation.constraints.Positive Long> ids) {
+        return R.ok(videoService.getStatusBatch(ids));
+    }
+
     @PostMapping
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<VideoVO> create(@Valid @RequestBody VideoCreateRequest request) {
