@@ -35,6 +35,13 @@ class VideoAccessControlTest extends BaseIntegrationTest {
 
     private final List<Long> createdVideoIds = new ArrayList<>();
 
+    @org.junit.jupiter.api.BeforeEach
+    void clearStudentEnrollments() {
+        // P1-1 修复：强制清空 student(id=7) 的所有选课记录，
+        // 避免前序测试（如 EnrollmentDataIsolationTest）创建遗留污染导致用例相互干扰
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7"); } catch (Exception ignored) {}
+    }
+
     @AfterEach
     void cleanup() {
         // 清理选课（student id=7）+ 本类创建的视频，保证用例相互隔离
