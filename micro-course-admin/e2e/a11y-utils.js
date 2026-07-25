@@ -102,12 +102,19 @@ export function isExempted(violation, baseline) {
       return { exempted: true, reason: ex.reason };
     }
 
-    // 检查违规节点的 target 是否命中任一个豁免选择器
+    // 检查违规节点的 target 或 html 是否命中任一个豁免选择器
     if (violation.nodes && violation.nodes.length > 0) {
       for (const node of violation.nodes) {
         const targets = node.target || [];
         for (const t of targets) {
-          if (ex.selectors.some(sel => t.startsWith(sel) || t === sel)) {
+          if (ex.selectors.some(sel => t.includes(sel) || t === sel)) {
+            return { exempted: true, reason: ex.reason };
+          }
+        }
+        // 部分 EP 组件使用动态 id 作为 target（如 #el-id-xxx），
+        // 补充检查 node.html 是否包含豁免选择器中的子串
+        if (node.html) {
+          if (ex.selectors.some(sel => node.html.includes(sel))) {
             return { exempted: true, reason: ex.reason };
           }
         }
