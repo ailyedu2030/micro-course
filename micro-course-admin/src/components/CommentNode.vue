@@ -102,7 +102,6 @@ const MAX_DEPTH = 10
 const props = defineProps({
   comment: { type: Object, required: true },
   depth: { type: Number, default: 0 },
-  replyLoading: { type: Boolean, default: false },
   replyingId: { type: [Number, String], default: null }
 })
 
