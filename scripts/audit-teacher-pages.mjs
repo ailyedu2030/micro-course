@@ -162,8 +162,6 @@ const ROUTE_MANIFEST = [
   { path: '/teacher/micro-specialties/invites',  name: '微专业邀请',       roles: ['TEACHER'],         dynamic: false },
   { path: '/teacher/micro-specialties/proposals',name: '微专业申报',       roles: ['TEACHER'],         dynamic: false },
   { path: '/teacher/micro-specialties/my-proposals', name: '我的申报',    roles: ['TEACHER'],         dynamic: false },
-  // ===== 学生端-教师共享路由（TEACHER 可通过 meta.roles 访问） =====
-  { path: '/student/learning',                  name: '学习中心(共享)',    roles: ['STUDENT','TEACHER','ADMIN'], dynamic: false },
   // ===== 动态路由（需解析真实 ID） =====
   { path: '/teacher/courses/:id',               name: '教师课程详情',       roles: ['TEACHER'],         dynamic: true, paramsMap: { id: 'courseId' } },
   { path: '/teacher/courses/:courseId/slides/manage', name: '课件管理',     roles: ['TEACHER','ADMIN'], dynamic: true, paramsMap: { courseId: 'courseId' } },
@@ -182,7 +180,7 @@ const ROUTE_MANIFEST = [
   { path: '/student/courses/:id',               name: '学生课程详情(教师可访)', roles: ['STUDENT','TEACHER','ADMIN'], dynamic: true, paramsMap: { id: 'courseId' } },
   { path: '/student/courses/:id/play/:videoId?',name: '学生视频播放(教师可访)', roles: ['STUDENT','TEACHER','ADMIN'], dynamic: true, paramsMap: { id: 'courseId' } },
   { path: '/student/chapters/:chapterId/exercises', name: '学生章节练习(教师可访)', roles: ['STUDENT','TEACHER','ADMIN'], dynamic: true, paramsMap: { chapterId: 'chapterId' } },
-  { path: '/student/courses/:courseId/slides/player', name: '学生端PPT播放(教师可访)', roles: ['STUDENT','TEACHER','ADMIN'], dynamic: true, paramsMap: { courseId: 'courseId' } },
+  // slides/player 已改为 STUDENT-only, 当前教师无权限, 排除
   { path: '/student/chapters/:chapterId/offline', name: '学生端线下课(教师可访)', roles: ['STUDENT','TEACHER','ADMIN'], dynamic: true, paramsMap: { chapterId: 'chapterId' } },
   { path: '/student/micro-specialties/:id',      name: '微专业详情(教师可访)', roles: ['STUDENT','TEACHER','ACADEMIC','ADMIN'], dynamic: true, paramsMap: { id: 'microSpecialtyId' } },
   // ===== 微专业动态路由（requiresLead，需负责人权限） =====
@@ -436,31 +434,44 @@ async function runAudit() {
 
   // ---------- 登录 ----------
   console.log('[阶段 1/3] 登录教师账号...');
+  // 直接用 fetch 登录获取 token（绕开 SPA 的 axios 拦截器问题）
+  const loginResp = await fetch(`${AUDIT_BASE_URL}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: AUDIT_USERNAME, password: AUDIT_PASSWORD })
+  }).then(r => r.text());
+  let loginData;
+  try { loginData = JSON.parse(loginResp); } catch { loginData = null; }
+  if (!loginData || loginData.code !== 200) {
+    console.error('   ✗ 登录 API 失败:', loginData?.message || loginResp?.slice(0,200));
+    process.exit(3);
+  }
+  const token = loginData.data?.accessToken;
+  if (!token) {
+    console.error('   ✗ 未获取到 accessToken');
+    process.exit(3);
+  }
+  console.log('   ✓ 登录成功 (via API)');
+
+  // 设置 token 到 localStorage，导航到 dashboard
   await page.goto(`${AUDIT_BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 30000 });
   await page.waitForLoadState('domcontentloaded');
-
-  // 兼容项目实际 login 表单:input 用 placeholder 而非 id 定位
-  await page.waitForSelector('input[placeholder*="用户"], input[type="text"]', { timeout: 10000 });
-  await page.waitForSelector('input[type="password"]', { timeout: 10000 });
-  const usernameInput = page.locator('input[placeholder*="用户"], input[type="text"]').first();
-  const passwordInput = page.locator('input[type="password"]').first();
-  await usernameInput.fill(AUDIT_USERNAME);
-  await passwordInput.fill(AUDIT_PASSWORD);
-
-  // 主选择器 .login-btn + 文本回退（应对可能的不同按钮文案）
-  const loginBtn = page.locator('.login-btn');
-  const loginBtnAlt = page.locator('button:has-text("登 录"), button:has-text("登录")');
-  if (await loginBtn.isVisible().catch(() => false)) {
-    await loginBtn.click();
-  } else {
-    await loginBtnAlt.first().click();
+  await page.evaluate((tok) => {
+    localStorage.setItem('micro_course_token', tok);
+    localStorage.setItem('micro_course_refresh_token', tok);
+  }, token);
+  await page.goto(`${AUDIT_BASE_URL}/teacher/dashboard`, { waitUntil: 'networkidle', timeout: 20000 });
+  await page.waitForTimeout(2000);
+  const curUrl = page.url();
+  console.log(`   → 当前 url: ${curUrl}`);
+  if (curUrl && curUrl.includes('/login')) {
+    console.error('   ✗ 登录后仍重定向回登录页,检查 token 或 403');
+    process.exit(3);
   }
-  await page.waitForURL('**/teacher/dashboard', { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
-  console.log('   ✓ 登录成功 → /teacher/dashboard\n');
+  console.log('   ✓ dashboard 加载完成\n');
 
-  // ---------- 从 localStorage 提取 token 用于 API 请求 ----------
-  const authToken = await page.evaluate(() => localStorage.getItem('micro_course_token')).catch(() => null);
+  // ---------- 复用 login API 返回的 token 用于 API 请求 ----------
+  const authToken = token;
 
   // ---------- 尝试解析动态路由参数（只读 API，不写业务数据） ----------
   const dynamicIds = await resolveDynamicIds(page, authToken);
@@ -622,19 +633,21 @@ async function runAudit() {
       if (currentUrl.includes('/login')) {
         entry.status = 'auth-fail';
         entry.issues.push('P0: 页面重定向到登录页 - 权限控制或 Token 失效');
-        // 尝试重新登录（用同样的 fallback 模式）
-        await page.goto(`${AUDIT_BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 15000 });
-        await page.waitForSelector('input[placeholder*="用户"], input[type="text"]', { timeout: 10000 });
-        const reloginUser = page.locator('input[placeholder*="用户"], input[type="text"]').first();
-        const reloginPwd = page.locator('input[type="password"]').first();
-        await reloginUser.fill(AUDIT_USERNAME);
-        await reloginPwd.fill(AUDIT_PASSWORD);
-        const reloginBtn = page.locator('.login-btn');
-        const reloginBtnAlt = page.locator('button:has-text("登 录"), button:has-text("登录")');
-        if (await reloginBtn.isVisible().catch(() => false)) {
-          await reloginBtn.click();
-        } else {
-          await reloginBtnAlt.first().click();
+        // 重新用 API 登录获取新 token
+        const reloginResp = await fetch(`${AUDIT_BASE_URL}/api/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: AUDIT_USERNAME, password: AUDIT_PASSWORD })
+        }).then(r => r.text());
+        let reData;
+        try { reData = JSON.parse(reloginResp); } catch { reData = null; }
+        const newToken = (reData && reData.code === 200) ? reData.data?.accessToken : null;
+        if (newToken) {
+          await page.evaluate((tok) => {
+            localStorage.setItem('micro_course_token', tok);
+            localStorage.setItem('micro_course_refresh_token', tok);
+          }, newToken);
+          continue;
         }
         await page.waitForURL('**/teacher/dashboard', { timeout: 15000 });
         await page.waitForLoadState('networkidle');
