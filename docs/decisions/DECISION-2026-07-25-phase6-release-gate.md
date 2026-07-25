@@ -3,7 +3,7 @@
 > 决策日期：2026-07-25
 > 决策角色：AI 总工程师 / 项目执行负责人
 > 适用范围：Phase 6 教师模块候选发布
-> 关联主线提交：`041d1042`
+> 关联主线提交：执行时以 `origin/main` HEAD 为准
 
 ---
 
@@ -22,7 +22,7 @@
 - PR #123 已完成教师模块功能收口并 squash merge 到 `main`
 - PR #124 已完成发布交接包与 staging 材料回写并 squash merge 到 `main`
 - PR #125 已完成发布状态同步并 squash merge 到 `main`
-- 当前主线提交：`041d1042`
+- 当前主线提交：执行 staging 前以 `origin/main` HEAD 为准，并在 execution record 中回填实际部署提交
 - 本地 `main` 与 `origin/main` 已同步，发布交接分支已清理
 
 ### 2.2 质量门禁证据
