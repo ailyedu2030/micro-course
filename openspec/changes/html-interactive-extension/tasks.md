@@ -162,58 +162,72 @@
 
 ### 5.1 5 维交叉验证
 
-- [ ] **5.1.1 R1 接口契约**：后端 API 与 OpenAPI 一致
-- [ ] **5.1.2 R2 数据契约**：DB 字段类型/长度/约束与数据字典 v0.7 一致
-- [ ] **5.1.3 R3 权限契约**：HTML 上传权限与权限矩阵 v4.1 一致
-- [ ] **5.1.4 R4 状态机契约**：slide.status 转换与状态机设计.md 一致
-- [ ] **5.1.5 R5 业务规则契约**：HTML 上传业务规则与 docs/开发规范.md v1.5 一致
+- [x] **5.1.1 R1 接口契约**：后端 API 与 OpenAPI 一致
+  - **状态**: ✅ Round 1.4 完成(POST /api/courses/{id}/slides/upload html 分支已实现 + 7.2 docs/API契约-Phase1.md v1.2 同步)
+- [x] **5.1.2 R2 数据契约**：DB 字段类型/长度/约束与数据字典 v0.7 一致
+  - **状态**: ✅ Round 1.4 完成(7.1 docs/数据字典.md slide_pages.content_type + html_content 已登记)
+- [x] **5.1.3 R3 权限契约**：HTML 上传权限与权限矩阵 v4.1 一致
+  - **状态**: ✅ Round 1.4 完成(7.3 docs/权限矩阵.md v4.1 含 HTML 上传权限位)
+- [x] **5.1.4 R4 状态机契约**：slide.status 转换与状态机设计.md 一致
+  - **状态**: ✅ Round 3a 完成(7.4 docs/状态机设计.md §7.6 HTML 课时内容类型说明)
+- [x] **5.1.5 R5 业务规则契约**：HTML 上传业务规则与 docs/开发规范.md v1.5 一致
+  - **状态**: ✅ Round 3a 完成(7.6 docs/开发规范.md v1.7 §16 HTML 课时内容规则)
 
 ### 5.2 XSS 渗透测试（10 种 payload）
 
-- [ ] **5.2.1 `<script>alert(1)</script>`**
-  - **验收**: sanitize 移除，前端 sandbox 拦截
-- [ ] **5.2.2 `<img src=x onerror=alert(1)>`**
-  - **验收**: sanitize 移除 onerror
-- [ ] **5.2.3 `<a href="javascript:alert(1)">click</a>`**
-  - **验收**: sanitize 移除 javascript: URL
-- [ ] **5.2.4 `<svg onload=alert(1)>`**
-  - **验收**: sanitize 移除 onload
-- [ ] **5.2.5 `<iframe src=javascript:alert(1)>`**
-  - **验收**: sanitize 移除嵌套 iframe
-- [ ] **5.2.6 `<body onload=alert(1)>`**
-  - **验收**: sanitize 移除 body onload
-- [ ] **5.2.7 `<style>body{background:url(javascript:alert(1))}</style>`**
-  - **验收**: sanitize 移除 CSS 注入
-- [ ] **5.2.8 `<meta http-equiv=refresh content=0;url=javascript:alert(1)>`**
-  - **验收**: sanitize 移除 meta refresh
-- [ ] **5.2.9 `<form action=javascript:alert(1)>`**
-  - **验收**: sanitize 移除 form
-- [ ] **5.2.10 `<base href=javascript:alert(1)>`**
-  - **验收**: sanitize 移除 base
+- [x] **5.2.1 `<script>alert(1)</script>`**
+  - **状态**: ✅ Round 3b 完成(HtmlCoursewareXssPenetrationTest + html-courseware-xss.spec.js 10/10 PASS)
+- [x] **5.2.2 `<img src=x onerror=alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.3 `<a href="javascript:alert(1)">click</a>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.4 `<svg onload=alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.5 `<iframe src=javascript:alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.6 `<body onload=alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.7 `<style>body{background:url(javascript:alert(1))}</style>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.8 `<meta http-equiv=refresh content=0;url=javascript:alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.9 `<form action=javascript:alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
+- [x] **5.2.10 `<base href=javascript:alert(1)>`**
+  - **状态**: ✅ Round 3b 完成
 
 ### 5.3 移动端测试
 
 - [ ] **5.3.1 iOS Safari iframe 渲染**
   - **验收**: HTML 课时在 iPhone Safari 显示正常
+  - **状态**: ⏳ backlog(需真机/模拟器测试,本地 Playwright Chrome 无法覆盖 iOS Safari WebKit 行为)
 - [ ] **5.3.2 微信内置浏览器 iframe 渲染**
   - **验收**: 微信中打开正常
+  - **状态**: ⏳ backlog(需真机+微信内置浏览器测试)
 - [ ] **5.3.3 iframe sandbox 移动端生效**
   - **验收**: 移动端 JS 不执行（即使 payload 漏过）
+  - **状态**: ⏳ backlog(同 5.3.1,需真机测试;sandbox 属性在所有现代浏览器均生效,理论已覆盖)
 
 ---
 
 ## 6. 阶段 5 — 灰度发布
 
-- [ ] **6.1 配置白名单教师 ID（101, 205）**
+- [x] **6.1 配置白名单教师 ID（101, 205）**
   - **验收**: application.yml 同步
-- [ ] **6.2 监控指标接入**
+  - **状态**: ✅ Round 4 完成(`plugin.interactive.html-content.whitelist-teachers: ${SLIDES_HTML_WHITELIST:101,205}`)
+- [x] **6.2 监控指标接入**
   - **验收**: Grafana 看到 `interactive_html_load_total` / `interactive_html_xss_blocked_total`
+  - **状态**: ✅ Round 4 完成(SlideServiceImpl 注入 MeterRegistry + 2 个 Counter;Prometheus 通过 /actuator/prometheus 自动暴露)
 - [ ] **6.3 白名单教师验证（2-3 位）**
   - **验收**: 上传 HTML → 学生播放 → 自动播放正常
+  - **状态**: ⏳ backlog(需真实白名单教师账号验证;目前只有测试账号 teacher1/password123)
 - [ ] **6.4 1 周稳定观察**
   - **验收**: HTML 加载成功率 ≥99.5%，XSS 拦截 100%
+  - **状态**: ⏳ backlog(需生产部署后观察监控指标)
 - [ ] **6.5 白名单扩大到 10 位**
+  - **状态**: ⏳ backlog(依赖 6.4 稳定观察结果)
 - [ ] **6.6 全量发布**
+  - **状态**: ⏳ backlog(依赖 6.5 灰度结果)
 
 ---
 
@@ -226,11 +240,12 @@
   - **触发**: 新增 POST /api/courses/{id}/slides/upload html 分支
 - [x] **7.3 docs/权限矩阵.md v4.0 → v4.1**
   - **触发**: HTML 上传权限位
-- [ ] **7.4 docs/状态机设计.md 更新**
-  - **触发**: slide.status 新增 HTML_GENERATED 状态（如果实现 PPT→HTML）
+- [x] **7.4 docs/状态机设计.md 更新**
+  - **状态**: ✅ Round 3a 完成(§7.6 HTML 课时内容类型说明 + PPT_RENDERED → HTML_DIRECT 不改变 slide.status)
 - [x] **7.5 CHANGELOG.md 记录本次变更**
-- [ ] **7.6 docs/开发规范.md v1.5 → v1.6**
-  - **触发**: 新增"HTML 课时内容规则"禁止项
+  - **状态**: ✅ pre-existing
+- [x] **7.6 docs/开发规范.md v1.5 → v1.6**
+  - **状态**: ✅ Round 3a 完成(v1.7 §16 HTML 课时内容规则 + iframe sandbox 强制规范 + 6 条强制规则 + 7 条安全禁止项)
 
 ---
 
