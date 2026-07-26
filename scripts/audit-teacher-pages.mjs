@@ -204,7 +204,7 @@ function extractDynamicParams(path) {
   const segments = path.split('/');
   for (const seg of segments) {
     if (seg.startsWith(':')) {
-      params.push(seg.slice(1).replace(/\?$/, ''));
+      params.push(seg.slice(1)); // 保留 ? 后缀以识别可选参数
     }
   }
   return params;
@@ -263,18 +263,23 @@ if (!existsSync(AUDIT_DIR)) {
 /**
  * 从 API 尝试解析动态路由所需的各类 ID（只读，不写业务数据）
  *
- * v5 变更: 修正 API 路径
- *   - /api/discussions → /api/discussions/posts
- *   - /api/micro-specialties/storage-applications → /api/storage-applications/my-drafts
- * @returns {Promise<{courseId: string|null, chapterId: string|null, discussionId: string|null, microSpecialtyId: string|null, storageAppId: string|null}>}
+ * v6 变更: 添加 authToken 参数，从 localStorage 提取后将 token 注入 Authorization header
+ *   因为 page.request API 上下文无法读取 localStorage 中的 JWT token（仅共享 cookie）
+ *   而本项目使用 localStorage('micro_course_token') 存储 token（见 src/utils/auth.js）
+ * @param {import('playwright').Page} page
+ * @param {string|null} authToken localStorage 中提取的 JWT token
+ * @returns {Promise<{courseId: string|null, chapterId: string|null, discussionId: string|null, microSpecialtyId: string|null, storageAppId: string|null, videoId: string|null}>}
  */
-async function resolveDynamicIds(page) {
+async function resolveDynamicIds(page, authToken) {
   /** @type {{courseId: string|null, chapterId: string|null, discussionId: string|null, microSpecialtyId: string|null, storageAppId: string|null}} */
-  const ids = { courseId: null, chapterId: null, discussionId: null, microSpecialtyId: null, storageAppId: null };
+  const ids = { courseId: null, chapterId: null, discussionId: null, microSpecialtyId: null, storageAppId: null, videoId: null };
+
+  // ---- 构造 auth headers ----
+  const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
 
   // ---- Course ID ----
   try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/courses?page=0&size=1`);
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/courses?page=0&size=1`, { headers: authHeaders });
     if (resp.ok()) {
       const body = await resp.json();
       const items = body.data?.items || body.items || [];
@@ -285,7 +290,7 @@ async function resolveDynamicIds(page) {
   // ---- Chapter ID（从第一门课程获取章节列表） ----
   if (ids.courseId) {
     try {
-      const resp = await page.request.get(`${AUDIT_BASE_URL}/api/courses/${ids.courseId}/chapters?page=0&size=1`);
+      const resp = await page.request.get(`${AUDIT_BASE_URL}/api/courses/${ids.courseId}/chapters?page=0&size=1`, { headers: authHeaders });
       if (resp.ok()) {
         const body = await resp.json();
         const items = body.data?.items || body.items || [];
@@ -297,7 +302,7 @@ async function resolveDynamicIds(page) {
   // ---- Discussion ID ----
   // 修正路径: 实际端点 /api/discussions/posts（非 /api/discussions）
   try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/discussions/posts?page=0&size=1`);
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/discussions/posts?page=0&size=1`, { headers: authHeaders });
     if (resp.ok()) {
       const body = await resp.json();
       const items = body.data?.items || body.items || [];
@@ -307,7 +312,7 @@ async function resolveDynamicIds(page) {
 
   // ---- Micro-specialty ID（任意） ----
   try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties?page=0&size=1`);
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties?page=0&size=1`, { headers: authHeaders });
     if (resp.ok()) {
       const body = await resp.json();
       const items = body.data?.items || body.items || [];
@@ -318,7 +323,7 @@ async function resolveDynamicIds(page) {
   // ---- Storage Application ID ----
   // 修正路径: 实际端点 /api/storage-applications/my-drafts（非 /api/micro-specialties/storage-applications）
   try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/storage-applications/my-drafts?page=0&size=1`);
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/storage-applications/my-drafts?page=0&size=1`, { headers: authHeaders });
     if (resp.ok()) {
       const body = await resp.json();
       const items = body.data?.items || body.items || [];
@@ -326,41 +331,62 @@ async function resolveDynamicIds(page) {
     }
   } catch { /* 静默 */ }
 
+  // ---- Video ID（从第一门课程的视频列表获取） ----
+  if (ids.courseId) {
+    try {
+      const resp = await page.request.get(`${AUDIT_BASE_URL}/api/videos?courseId=${ids.courseId}&page=0&size=1`, { headers: authHeaders });
+      if (resp.ok()) {
+        const body = await resp.json();
+        const items = body.data?.items || body.items || [];
+        if (items.length > 0) ids.videoId = String(items[0].id);
+      }
+    } catch { /* 静默 */ }
+  }
+
   return ids;
 }
 
 /**
  * 从 API 尝试解析当前用户为 LEAD 的微专业 ID（只读）
  * 用于 requiresLead 路由的实际访问
+ *
+ * v6 变更: 移除不存在的 /api/micro-specialties/lead 端点调用（Controller 中无此映射）
+ *   改用以下策略：
+ *   方案 1: 调用微专业列表（status=RECRUITING，教师可见范围），遍历检查 my-role = LEAD
+ *   方案 2: 若方案 1 无结果，额外尝试 role=leading 参数过滤（见 MicroSpecialtyQueryServiceImpl 中 role 参数用法）
+ * @param {import('playwright').Page} page
+ * @param {string|null} authToken
  * @returns {Promise<string|null>}
  */
-async function resolveLeadMicroSpecialtyId(page) {
-  // 方案 1: 直接查询 LEAD 专用端点
-  try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties/lead`);
-    if (resp.ok()) {
-      const body = await resp.json();
-      const items = body.data?.items || body.items || [];
-      if (items.length > 0) return String(items[0].id);
-    }
-  } catch { /* 静默 */ }
+async function resolveLeadMicroSpecialtyId(page, authToken) {
+  const authHeaders = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
 
-  // 方案 2: 遍历微专业列表检查 my-role
+  // 方案 1: 遍历微专业列表检查 my-role（RECRUITING 状态的 MS，教师可见）
   try {
-    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties?page=0&size=20`);
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties?page=0&size=20`, { headers: authHeaders });
     if (resp.ok()) {
       const body = await resp.json();
       const items = body.data?.items || body.items || [];
       for (const ms of items) {
         if (!ms.id) continue;
         try {
-          const roleResp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties/${ms.id}/my-role`);
+          const roleResp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties/${ms.id}/my-role`, { headers: authHeaders });
           if (roleResp.ok()) {
             const roleBody = await roleResp.json();
             if (roleBody.data?.role === 'LEAD') return String(ms.id);
           }
         } catch { /* 单条失败跳过 */ }
       }
+    }
+  } catch { /* 静默 */ }
+
+  // 方案 2: 尝试用 role=leading 参数过滤（后端支持此参数，见 MicroSpecialtyQueryServiceImpl）
+  try {
+    const resp = await page.request.get(`${AUDIT_BASE_URL}/api/micro-specialties?page=0&size=20&role=leading`, { headers: authHeaders });
+    if (resp.ok()) {
+      const body = await resp.json();
+      const items = body.data?.items || body.items || [];
+      if (items.length > 0) return String(items[0].id);
     }
   } catch { /* 静默 */ }
 
@@ -433,17 +459,21 @@ async function runAudit() {
   await page.waitForLoadState('networkidle');
   console.log('   ✓ 登录成功 → /teacher/dashboard\n');
 
+  // ---------- 从 localStorage 提取 token 用于 API 请求 ----------
+  const authToken = await page.evaluate(() => localStorage.getItem('micro_course_token')).catch(() => null);
+
   // ---------- 尝试解析动态路由参数（只读 API，不写业务数据） ----------
-  const dynamicIds = await resolveDynamicIds(page);
+  const dynamicIds = await resolveDynamicIds(page, authToken);
   console.log(`   [信息] 动态 ID 解析结果:`);
   console.log(`      courseId:       ${dynamicIds.courseId || '未获取'}`);
   console.log(`      chapterId:      ${dynamicIds.chapterId || '未获取'}`);
   console.log(`      discussionId:   ${dynamicIds.discussionId || '未获取'}`);
   console.log(`      microSpecialtyId: ${dynamicIds.microSpecialtyId || '未获取'}`);
   console.log(`      storageAppId:   ${dynamicIds.storageAppId || '未获取'}`);
+  console.log(`      videoId:        ${dynamicIds.videoId || '未获取'}`);
 
   // ---------- 尝试解析当前用户的 LEAD 微专业 ID（用于 requiresLead 路由） ----------
-  const leadMsId = await resolveLeadMicroSpecialtyId(page);
+  const leadMsId = await resolveLeadMicroSpecialtyId(page, authToken);
   if (leadMsId) {
     console.log(`   [信息] 当前用户有 LEAD 微专业 ID: ${leadMsId}`);
   } else {
@@ -514,6 +544,7 @@ async function runAudit() {
         fillValues.discussionId = dynamicIds.discussionId || '';
         fillValues.microSpecialtyId = dynamicIds.microSpecialtyId || '';
         fillValues.storageAppId = dynamicIds.storageAppId || '';
+        fillValues.videoId = dynamicIds.videoId || '';
         // paramsMap 覆盖
         if (route.paramsMap) {
           for (const [rp, src] of Object.entries(route.paramsMap)) {
