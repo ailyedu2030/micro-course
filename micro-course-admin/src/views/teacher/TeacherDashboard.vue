@@ -326,10 +326,17 @@
         <div class="qa-icon qa-icon-warning"><el-icon :size="22"><User /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">学员管理</div>
-          <div class="qa-desc">学员成绩、批改作业</div>
+          <div class="qa-desc">查看学员、学习进度与课程归属</div>
         </div>
       </router-link>
-      <router-link to="/teacher/questions" class="quick-action-card" aria-label="回复学员提问">
+      <router-link to="/teacher/grades" class="quick-action-card" aria-label="查看成绩明细">
+        <div class="qa-icon qa-icon-danger"><el-icon :size="22"><DataAnalysis /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">成绩明细</div>
+          <div class="qa-desc">查看成绩、筛选课程并处理批改</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/discussions" class="quick-action-card" aria-label="回复学员提问">
         <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">学员提问</div>
@@ -455,7 +462,17 @@
             <span>暂无课程</span>
           </div>
           <div v-else class="course-grid">
-            <div v-for="course in courses" :key="course.id" class="course-card-item" @click="$router.push(`/teacher/courses/${course.id}`)" style="cursor:pointer">
+            <div
+              v-for="course in courses"
+              :key="course.id"
+              class="course-card-item"
+              role="button"
+              tabindex="0"
+              :aria-label="`打开课程 ${course.title}`"
+              @click="$router.push(`/teacher/courses/${course.id}`)"
+              @keydown.enter.prevent="$router.push(`/teacher/courses/${course.id}`)"
+              @keydown.space.prevent="$router.push(`/teacher/courses/${course.id}`)"
+            >
               <div class="course-cover">
                 <img v-if="course.cover" :src="course.cover" :alt="course.title" class="course-cover-img" />
                 <div v-else class="course-cover-placeholder">
@@ -482,7 +499,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
-import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts, CircleCheckFilled, CircleCloseFilled, InfoFilled, Tickets } from '@element-plus/icons-vue'
+import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts, CircleCheckFilled, CircleCloseFilled, InfoFilled, Tickets, DataAnalysis } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
@@ -985,6 +1002,7 @@ onBeforeUnmount(() => {
 .qa-icon-primary { background: var(--el-color-primary-light-9); color: var(--el-color-primary); }
 .qa-icon-success { background: var(--el-color-success-light-9); color: var(--el-color-success); }
 .qa-icon-warning { background: var(--el-color-warning-light-9); color: var(--el-color-warning); }
+.qa-icon-danger { background: var(--el-color-danger-light-9); color: var(--el-color-danger); }
 .qa-icon-info { background: var(--el-color-info-light-9); color: var(--el-color-info); }
 .qa-info { min-width: 0; }
 .qa-title { font-size: var(--text-base); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin-bottom: 2px; }

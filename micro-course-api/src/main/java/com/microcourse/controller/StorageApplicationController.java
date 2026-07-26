@@ -102,12 +102,14 @@ public class StorageApplicationController {
      *
      * 注意：autoSave 不使用 @Valid 注解，因为自动保存是部分保存，
      * 允许发送不完整的表单数据。完整校验在 submit() 时执行。
+     *
+     * 响应 R<AutoSaveResult> 含 serverTime 供客户端校时。
      */
     @PatchMapping("/{id}/auto-save")
     @PreAuthorize("hasRole('TEACHER')")
-    public R<Void> autoSave(
+    public R<AutoSaveResult> autoSave(
             @PathVariable Long id,
-            @RequestBody StorageApplicationSaveRequest request) {  // 不使用 @Valid：autoSave 是部分保存，允许不完整数据
+            @RequestBody StorageApplicationAutoSaveRequest request) {  // 不使用 @Valid：autoSave 是部分保存，允许不完整数据
         // P2-10: 捕获反序列化及业务异常，静默跳过避免前台反复 400
         try {
             Long userId = SecurityUtil.getCurrentUserId();
@@ -115,7 +117,7 @@ public class StorageApplicationController {
         } catch (Exception e) {
             log.warn("[autoSave] 自动保存失败，静默跳过: proposalId={}, error={}", id, e.getMessage());
         }
-        return R.ok();
+        return R.ok(AutoSaveResult.ok());
     }
 
     /**

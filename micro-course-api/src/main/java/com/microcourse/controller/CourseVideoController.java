@@ -34,9 +34,10 @@ public class CourseVideoController {
     @Operation(summary = "获取课程下视频列表")
     public R<PageResult<VideoVO>> listByCourse(
             @PathVariable Long courseId,
+            @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
-        return R.ok(videoService.page(courseId, page, size));
+        return R.ok(videoService.page(courseId, chapterId, page, size));
     }
 
     @GetMapping("/{id}")

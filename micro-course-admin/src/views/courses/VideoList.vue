@@ -9,12 +9,12 @@
     <!-- 课程上下文头部 -->
     <div v-if="courseIdFromRoute && courseTitle" class="course-context">
       <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: '/courses' }">课程管理</el-breadcrumb-item>
-        <el-breadcrumb-item :to="{ path: `/courses/${courseIdFromRoute}` }">{{ courseTitle }}</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: courseListPath }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: courseDetailPath(courseIdFromRoute) }">{{ courseTitle }}</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
         <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
-          <el-link type="primary" :underline="'never'" :to="{ path: isTeacherRole ? `/teacher/courses/${courseIdFromRoute}` : `/courses/${courseIdFromRoute}` }">
+          <el-link type="primary" :underline="'never'" :to="{ path: courseDetailPath(courseIdFromRoute) }">
             ← 返回课程
           </el-link>
         </el-breadcrumb-item>
@@ -109,10 +109,16 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
 />
+        <div class="page-size-wrap">
+          <label for="page-size-select-video" class="sr-only">每页条数</label>
+          <el-select id="page-size-select-video" :model-value="size" class="page-size-select" @change="handleSizeChange" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
     </el-card>
 
@@ -121,9 +127,9 @@
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
         <el-form-item v-if="!isEdit" label="视频文件" prop="file">
           <el-upload
-            ref="dialogUploadRef"
             :auto-upload="false"
-            :limit="1"
+            :limit="20"
+            multiple
             accept="video/*"
             :on-change="handleDialogFileChange"
             :on-remove="handleDialogFileRemove"
@@ -139,8 +145,28 @@
             </template>
           </el-upload>
         </el-form-item>
+        <div v-if="!isEdit && uploadQueueItems.length > 0" class="upload-queue" aria-live="polite">
+          <div class="queue-title">{{ uploadQueueSummary }}</div>
+          <div v-for="item in uploadQueueItems" :key="item.id" class="queue-item">
+            <span class="queue-name">{{ item.name }}</span>
+            <el-progress
+              class="queue-progress"
+              :percentage="item.progress"
+              :stroke-width="6"
+              :status="item.status === 'error' ? 'exception' : item.status === 'success' ? 'success' : ''"
+            />
+            <span class="queue-status" :class="`queue-status-${item.status}`">{{ formatQueueStatus(item) }}</span>
+          </div>
+          <div class="queue-summary">
+            {{ isBatchUpload ? '批量上传会沿用当前课程与章节，默认以文件名作为视频标题。' : '上传完成后可继续编辑标题、排序与封面。' }}
+          </div>
+        </div>
         <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="选完文件后自动填充，或手动输入" />
+          <el-input
+            v-model="formData.title"
+            :disabled="isBatchUpload"
+            :placeholder="isBatchUpload ? '批量上传默认使用文件名作为标题' : '选完文件后自动填充，或手动输入'"
+          />
         </el-form-item>
         <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
           <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit" @change="handleDialogCourseChange">
@@ -153,7 +179,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" :disabled="isBatchUpload" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -174,13 +200,12 @@
     </el-dialog>
 
     <!-- 封面设置弹窗 -->
-    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true">
+    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true" @close="handleCoverDialogClose">
       <div class="cover-preview">
         <el-image v-if="currentCoverUrl" :src="currentCoverUrl" fit="contain" class="cover-img" />
         <span v-else class="no-cover">暂无封面</span>
       </div>
       <el-upload
-        ref="coverUploadRef"
         :auto-upload="false"
         :limit="1"
         accept="image/*"
@@ -189,7 +214,7 @@
         <el-button type="primary" size="small">选择图片</el-button>
       </el-upload>
       <template #footer>
-        <el-button @click="coverDialogVisible = false">取消</el-button>
+        <el-button @click="handleCoverDialogClose">取消</el-button>
         <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
       </template>
     </el-dialog>
@@ -203,20 +228,20 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
+import { useVideoUploadQueue } from '@/composables/useVideoUploadQueue'
 import { useUserStore } from '@/store/user'
-import { getVideos, createVideo, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode } from '@/api/video'
+import { getVideos, updateVideo, deleteVideo, uploadVideoCover, uploadVideo, retryVideoTranscode, getVideoStatus, getVideoStatusBatch } from '@/api/video'
 import { getCourses, getCourseById } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
-import { getToken } from '@/utils/auth'
 
 const route = useRoute()
 const userStore = useUserStore()
 const courseIdFromRoute = computed(() => route.params.courseId)
-const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
 const lockedChapterId = computed(() => {
   const id = route.params.chapterId || route.query.chapterId
   if (id === undefined || id === null || id === '') return null
@@ -225,7 +250,12 @@ const lockedChapterId = computed(() => {
 })
 const isContextualMode = computed(() => lockedChapterId.value !== null)
 const userRole = computed(() => userStore.role)
-const isTeacherRole = computed(() => userStore.role === 'TEACHER')
+const {
+  courseListPath,
+  courseDetailPath
+} = useCourseWorkspaceRoutes({
+  userRoleRef: userRole
+})
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -260,13 +290,26 @@ const formData = reactive({
 })
 
 const formRules = computed(() => ({
-  title: courseIdFromRoute.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
+  title: courseIdFromRoute.value || isBatchUpload.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
   courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
   chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }],
   file: isEdit.value ? [] : [{ required: true, message: '请选择视频文件', trigger: 'change' }]
 }))
 
-const dialogUploadRef = ref(null)
+const videoUploadQueue = useVideoUploadQueue({
+  uploader: ({ file, courseId, chapterId, onProgress }) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('courseId', courseId)
+    if (chapterId !== null && chapterId !== undefined && chapterId !== '') {
+      fd.append('chapterId', chapterId)
+    }
+    return uploadVideo(fd, onProgress)
+  }
+})
+const uploadQueueItems = videoUploadQueue.queue
+const uploadQueueSummary = videoUploadQueue.summaryText
+const isBatchUpload = computed(() => videoUploadQueue.isBatchMode.value)
 
 const coverDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
@@ -275,7 +318,19 @@ const currentVideoId = ref(null)
 const currentCoverUrl = ref('')
 const previewCoverUrl = ref('')
 const coverFile = ref(null)
-const coverUploadRef = ref(null)
+
+const revokeCoverPreviewUrl = () => {
+  if (currentCoverUrl.value && currentCoverUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(currentCoverUrl.value)
+  }
+}
+
+const resetCoverDialogState = () => {
+  revokeCoverPreviewUrl()
+  currentCoverUrl.value = ''
+  coverFile.value = null
+  currentVideoId.value = null
+}
 
 const fetchCourses = async () => {
   try {
@@ -298,12 +353,14 @@ const fetchData = async () => {
   try {
     const params = {
       courseId: searchForm.courseId,
+      chapterId: searchForm.chapterId || undefined,
       page: page.value - 1,
       size: size.value
     }
     const { data } = await getVideos(params)
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
+    startPollingIfNeeded()
   } catch {
     ElMessage.error('获取视频列表失败')
   } finally {
@@ -318,14 +375,17 @@ const handleSearch = () => {
 
 const handleReset = () => {
   searchForm.courseId = courseIdFromRoute.value ? Number(courseIdFromRoute.value) : ''
-  searchForm.chapterId = ''
+  const contextualChapterId = lockedChapterId.value || ''
+  searchForm.chapterId = contextualChapterId
   chapterOptions.value = []
   page.value = 1
   tableData.value = []
   totalElements.value = 0
   if (searchForm.courseId) {
-    handleCourseChange(searchForm.courseId)
-    fetchData()
+    handleCourseChange(searchForm.courseId).finally(() => {
+      searchForm.chapterId = contextualChapterId
+      fetchData()
+    })
   }
 }
 
@@ -368,6 +428,7 @@ const handleCreate = () => {
     : (searchForm.courseId ? Number(searchForm.courseId) : null)
   formData.chapterId = lockedChapterId.value || (searchForm.chapterId ? Number(searchForm.chapterId) : null)
   formData.sortOrder = 0
+  videoUploadQueue.clearQueue()
   submitProgress.value = 0
   if (formData.courseId) handleDialogCourseChange(formData.courseId)
   dialogVisible.value = true
@@ -412,11 +473,12 @@ const handleDelete = async (row) => {
 }
 
 const handleSubmit = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   if (submitLoading.value) return
   if (!formRef.value) return
+  submitLoading.value = true
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
+    if (!valid) { submitLoading.value = false; return }
     try {
       if (isEdit.value) {
         await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
@@ -424,22 +486,27 @@ const handleSubmit = async () => {
         dialogVisible.value = false
         fetchData()
       } else {
-        // P1-C 修复: 新增视频 = 选文件+创建记录,调用 /api/videos/upload 一次完成
-        const fd = new FormData()
-        fd.append('file', formData.file)
-        fd.append('courseId', formData.courseId)
-        fd.append('chapterId', formData.chapterId)
-        const onProgress = (progressEvent) => {
-          if (progressEvent.total) {
-            submitProgress.value = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          }
+        const result = await videoUploadQueue.uploadAll({
+          courseId: formData.courseId,
+          chapterId: formData.chapterId
+        })
+        submitProgress.value = result.successCount > 0
+          ? Math.round((result.successCount * 100) / (result.successCount + result.failureCount))
+          : 0
+
+        if (result.failureCount === 0) {
+          await new Promise((resolve) => setTimeout(resolve, 500))
+          ElMessage.success(result.successCount > 1 ? `批量上传成功，共 ${result.successCount} 个视频` : '创建成功')
+          dialogVisible.value = false
+          fetchData()
+          nextTick(() => startPollingIfNeeded())
+        } else if (result.successCount > 0) {
+          ElMessage.warning(`已上传 ${result.successCount} 个视频，失败 ${result.failureCount} 个，请处理后重试`)
+          fetchData()
+          nextTick(() => startPollingIfNeeded())
+        } else {
+          ElMessage.error('上传失败，请检查文件或网络后重试')
         }
-        await uploadVideo(fd, onProgress)
-        // 让用户看到 100% 完成状态再关闭
-        await new Promise(r => setTimeout(r, 800))
-        ElMessage.success('创建成功')
-        dialogVisible.value = false
-        fetchData()
       }
     } catch (e) {
       // P1-C 修复: 显示真实错误而不是通用"创建失败"
@@ -452,26 +519,62 @@ const handleSubmit = async () => {
   })
 }
 
-const handleDialogFileChange = (uploadFile) => {
-  if (uploadFile && uploadFile.raw) {
-    formData.file = uploadFile.raw
-    if (!formData.title) {
-      // 默认用文件名（去掉扩展名）作为标题
-      const nameWithoutExt = uploadFile.name.replace(/\.[^.]+$/, '')
-      formData.title = nameWithoutExt
-    }
+const getFileTitle = (file) => file?.name?.replace(/\.[^.]+$/, '') || ''
+
+const syncSelectedFiles = (selectedFiles = []) => {
+  videoUploadQueue.replaceQueue(selectedFiles)
+  formData.file = selectedFiles[0] || null
+
+  if (selectedFiles.length === 0) {
+    formData.title = ''
+    formRef.value?.clearValidate?.(['file', 'title'])
+    return
   }
+
+  if (selectedFiles.length === 1) {
+    if (!formData.title) {
+      formData.title = getFileTitle(selectedFiles[0])
+    }
+    formRef.value?.clearValidate?.(['file', 'title'])
+    return
+  }
+
+  formData.title = ''
+  formData.sortOrder = 0
+  formRef.value?.clearValidate?.(['file', 'title'])
 }
 
-const handleDialogFileRemove = () => {
-  formData.file = null
+const handleDialogFileChange = (uploadFile, uploadFiles = []) => {
+  const selectedFiles = uploadFiles
+    .map((item) => item?.raw)
+    .filter(Boolean)
+
+  if (selectedFiles.length === 0 && uploadFile?.raw) {
+    selectedFiles.push(uploadFile.raw)
+  }
+
+  syncSelectedFiles(selectedFiles)
+}
+
+const handleDialogFileRemove = (...args) => {
+  const uploadFiles = args[1] || []
+  const selectedFiles = uploadFiles
+    .map((item) => item?.raw)
+    .filter(Boolean)
+
+  syncSelectedFiles(selectedFiles)
 }
 
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  videoUploadQueue.clearQueue()
+  formData.file = null
+  formData.title = ''
+  formData.sortOrder = 0
 }
 
 const handleSetCover = (row) => {
+  resetCoverDialogState()
   currentVideoId.value = row.id
   currentCoverUrl.value = row.coverUrl || ''
   coverFile.value = null
@@ -479,8 +582,15 @@ const handleSetCover = (row) => {
 }
 
 const handleCoverChange = (file) => {
+  if (!file?.raw) return
+  revokeCoverPreviewUrl()
   coverFile.value = file.raw
   currentCoverUrl.value = URL.createObjectURL(file.raw)
+}
+
+const handleCoverDialogClose = () => {
+  coverDialogVisible.value = false
+  resetCoverDialogState()
 }
 
 const handleSubmitCover = async () => {
@@ -492,8 +602,8 @@ const handleSubmitCover = async () => {
   try {
     await uploadVideoCover(currentVideoId.value, coverFile.value)
     ElMessage.success('封面上传成功')
-    coverDialogVisible.value = false
-    fetchData()
+    await fetchData()
+    handleCoverDialogClose()
   } catch {
     ElMessage.error('上传失败')
   } finally {
@@ -513,6 +623,70 @@ const handlePreviewCover = (row) => {
   if (!row.coverUrl) return
   previewCoverUrl.value = row.coverUrl
   previewDialogVisible.value = true
+}
+
+const formatQueueStatus = (item) => {
+  if (item.status === 'success') return '完成'
+  if (item.status === 'error') return '失败'
+  if (item.status === 'uploading') return `${item.progress}%`
+  return '待上传'
+}
+
+/* ================================================================
+   P1-C 修复: 转码进度轮询
+   检测表格内未完成(0=上传中/1=转码中)的视频, 每 5s 拉取状态。
+   确认全部完成或组件卸载时停止。
+   ================================================================ */
+let pollTimer = null
+
+async function pollTranscodeProgress() {
+  const pending = tableData.value.filter(r => r.status === 0 || r.status === 1)
+  if (pending.length === 0) {
+    stopPolling()
+    return
+  }
+  try {
+    const ids = pending.map(r => r.id)
+    const { data } = await getVideoStatusBatch(ids)
+    if (Array.isArray(data)) {
+      const statusMap = {}
+      data.forEach(vo => { statusMap[vo.videoId] = vo })
+      pending.forEach(row => {
+        const vo = statusMap[row.id]
+        if (vo) {
+          Object.assign(row, {
+            status: vo.status,
+            progress: vo.progress,
+            errorMessage: vo.errorMessage
+          })
+        }
+      })
+    }
+    const stillPending = tableData.value.filter(r => r.status === 0 || r.status === 1)
+    if (stillPending.length === 0) {
+      stopPolling()
+      fetchData()
+    }
+  } catch (e) {
+    console.warn('[VideoList] pollTranscodeProgress error', e?.message)
+  }
+}
+
+function startPolling() {
+  stopPolling()
+  pollTimer = setInterval(pollTranscodeProgress, 5000)
+}
+
+function stopPolling() {
+  if (pollTimer !== null) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+}
+
+function startPollingIfNeeded() {
+  const hasPending = tableData.value.some(r => r.status === 0 || r.status === 1)
+  if (hasPending) startPolling()
 }
 
 onMounted(() => {
@@ -542,10 +716,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // 清理未释放的封面预览 blob URL
-  if (currentCoverUrl.value && currentCoverUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(currentCoverUrl.value)
-  }
+  stopPolling()
+  revokeCoverPreviewUrl()
 })
 </script>
 

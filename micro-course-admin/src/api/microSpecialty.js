@@ -223,7 +223,6 @@ export function unsetFeatured(id) {
 
 /**
  * 重新开课：将 COMPLETED 状态重置为 RECRUITING
- * TODO: 后端 MicroSpecialtyController 需新增 @PostMapping("/{id}/reopen") 端点
  */
 export function reopenMicroSpecialty(id) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/reopen` })

@@ -36,10 +36,11 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setQueueCapacity(200);
         executor.setKeepAliveSeconds(60);
         executor.setThreadNamePrefix("microcourse-async-");
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(true);
-        executor.setAwaitTerminationSeconds(30);
+        executor.setAwaitTerminationSeconds(60);
         executor.initialize();
+        log.info("[AsyncConfig] videoUploadExecutor initialized: core=2, max=8, queue=50, reject=AbortPolicy");
         return executor;
     }
 

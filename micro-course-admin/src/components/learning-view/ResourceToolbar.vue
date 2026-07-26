@@ -16,7 +16,7 @@
     </div>
     <div class="header-right">
       <!-- 总体进度 (UX-NEW-5:加载完成前隐藏,防 0% 闪烁) -->
-      <div v-if="!loading" class="progress-indicator" role="button" tabindex="0" aria-label="查看课程进度" @click="$emit('show-notes')" @keydown.enter="$emit('show-notes')" title="查看课程进度">
+      <div v-if="!loading" class="progress-indicator" role="button" tabindex="0" aria-label="打开笔记面板" @click="$emit('show-notes')" @keydown.enter="$emit('show-notes')" title="打开笔记面板">
         <span class="progress-dots">
           <span
             v-for="i in 10"
@@ -28,12 +28,12 @@
         <span class="progress-text">{{ totalProgress }}%</span>
       </div>
       <!-- 笔记按钮 -->
-      <el-button text class="header-btn" @click="$emit('show-notes')" title="笔记">
+      <el-button text class="header-btn" @click="$emit('show-notes')" title="笔记" aria-label="打开笔记面板">
         <el-icon><Edit /></el-icon>
         <span>笔记</span>
       </el-button>
       <!-- 收藏按钮 -->
-      <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="$emit('toggle-favorite')" :title="isFavorited ? '取消收藏' : '收藏课程'">
+      <el-button text class="header-btn" :class="{ 'is-favorited': isFavorited }" @click="$emit('toggle-favorite')" :title="isFavorited ? '取消收藏' : '收藏课程'" :aria-label="isFavorited ? '取消收藏' : '收藏课程'">
         <el-icon><Star /></el-icon>
         <span>{{ isFavorited ? '已收藏' : '收藏' }}</span>
       </el-button>

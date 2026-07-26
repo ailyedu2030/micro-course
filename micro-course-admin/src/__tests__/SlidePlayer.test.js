@@ -184,4 +184,67 @@ describe('SlidePlayer.vue iframe branch', () => {
     expect(wrapper.vm.current).toBe(1)
     vi.useRealTimers()
   })
+
+  it('renders an accessible button for ready audio playback', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    await wrapper.vm.$nextTick()
+    wrapper.vm.pageLoading = false
+    wrapper.vm.pages = [{ pageNumber: 1, contentType: 'HTML_DIRECT', htmlContent: '<div>demo</div>' }]
+    wrapper.vm.audioStatus = 'ready'
+    await wrapper.vm.$nextTick()
+
+    const readyButton = wrapper.find('button.status-ready')
+    expect(readyButton.exists()).toBe(true)
+  })
+
+  it('exposes the audio progress track as a keyboard slider', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    await wrapper.vm.$nextTick()
+    wrapper.vm.pageLoading = false
+    wrapper.vm.pages = [{ pageNumber: 1, contentType: 'PPT_RENDERED' }]
+    wrapper.vm.audioStatus = 'ready'
+    wrapper.vm.audioDuration = 120
+    wrapper.vm.audioProgress = 25
+    await wrapper.vm.$nextTick()
+
+    const slider = wrapper.find('.progress-track[role="slider"]')
+    expect(slider.exists()).toBe(true)
+    expect(slider.attributes('tabindex')).toBe('0')
+  })
+
+  it('shows a dedicated dismiss button for the keyboard hint overlay', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+
+    await wrapper.vm.$nextTick()
+    wrapper.vm.showKeyboardHint = true
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('button.keyboard-hint-dismiss').exists()).toBe(true)
+  })
 })

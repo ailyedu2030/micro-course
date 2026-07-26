@@ -65,6 +65,7 @@ class VideoUploadP0ErrorTest extends BaseIntegrationTest {
         v.setTitle("P0-ERR-001-test");
         v.setStatus(0);
         v.setOriginalPath("/tmp/dummy.mp4");
+        v.setFileName("test.mp4");
         v.setCreatedAt(java.time.LocalDateTime.now());
         v.setUpdatedAt(java.time.LocalDateTime.now());
         svc.createEntity(v);

@@ -55,7 +55,7 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+        if (!SecurityUtil.isAdminOrAcademic() && !SecurityUtil.getCurrentUserId().equals(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         User student = userRepository.selectById(studentId);
@@ -92,7 +92,7 @@ public class CourseStudentServiceImpl implements CourseStudentService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+        if (!SecurityUtil.isAdminOrAcademic() && !SecurityUtil.getCurrentUserId().equals(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
         Enrollment enrollment = enrollmentRepository.selectOne(

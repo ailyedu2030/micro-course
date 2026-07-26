@@ -64,7 +64,7 @@
           <div class="controls-left">
             <!-- 播放/暂停 -->
             <button class="ctrl-btn play-btn" @click="togglePlay">
-              <el-icon size="22"><component :is="isPlaying ? 'VideoPause' : 'VideoPlay'" /></el-icon>
+              <el-icon size="22"><component :is="isPlaying ? VideoPause : VideoPlay" /></el-icon>
             </button>
             <!-- 时间显示 -->
             <span class="time-display">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
@@ -317,7 +317,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--el-text-color-primary);
+  background: var(--el-fill-color-light);
   position: relative;
   overflow: hidden;
 }
@@ -342,7 +342,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  background: linear-gradient(145deg, var(--el-text-color-primary), #0F172A);
+  background: var(--el-fill-color-light);
   color: var(--el-text-color-secondary);
 }
 
@@ -355,7 +355,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
-  background: linear-gradient(145deg, var(--el-text-color-primary), #0F172A);
+  background: var(--el-fill-color-light);
   color: var(--el-color-danger);
 }
 .video-error p {

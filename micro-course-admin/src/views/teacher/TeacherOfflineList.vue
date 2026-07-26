@@ -305,9 +305,11 @@ const handleEdit = (row) => {
 }
 
 const handleSubmit = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (submitLoading.value) return
   if (!formRef.value) return
-  try { const v = await formRef.value.validate(); if (!v) return } catch { return }
   submitLoading.value = true
+  try { const v = await formRef.value.validate(); if (!v) { submitLoading.value = false; return } } catch { submitLoading.value = false; return }
   try {
     if (isEdit.value) {
       await updateOfflineSession(editingId.value, {

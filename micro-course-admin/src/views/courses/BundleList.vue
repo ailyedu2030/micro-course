@@ -6,7 +6,7 @@
       <template #header>
         <div class="card-header">
           <span>套件列表</span>
-          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="showCreateDialog">新增套件</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" aria-label="新增套件" @click="showCreateDialog">新增套件</el-button>
         </div>
       </template>
 
@@ -47,10 +47,17 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
+          layout="total, prev, pager, next"
           @size-change="fetchBundles"
           @current-change="fetchBundles"
+          aria-label="分页导航"
         />
+        <div class="page-size-wrap">
+          <label for="bundle-page-size" class="sr-only">每页条数</label>
+          <el-select id="bundle-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; fetchBundles() }" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
     </el-card>
 
@@ -58,13 +65,13 @@
     <el-dialog v-model="dialogVisible" :title="editingBundle ? '编辑套件' : '新增套件'" width="500px" @closed="resetForm">
       <el-form ref="bundleFormRef" :model="formData" :rules="bundleRules" label-width="80px">
         <el-form-item label="名称" prop="title">
-          <el-input v-model="formData.title" placeholder="如：英语四级通关" />
+          <el-input v-model="formData.title" placeholder="如：英语四级通关" aria-label="套件名称" />
         </el-form-item>
         <el-form-item label="描述">
-          <el-input v-model="formData.description" type="textarea" :rows="2" />
+          <el-input v-model="formData.description" type="textarea" :rows="2" aria-label="套件描述" />
         </el-form-item>
         <el-form-item label="价格(¥)">
-          <el-input-number v-model="formData.price" :min="0" :precision="2" />
+          <el-input-number v-model="formData.price" :min="0" :precision="2" aria-label="套件价格" />
           <span class="form-tip">建议参考课程原价之和定价</span>
         </el-form-item>
       </el-form>
@@ -100,7 +107,7 @@
       </el-table>
 
       <div class="add-course-section mg-top-12">
-        <el-select v-model="selectedCourseId" filterable placeholder="搜索并添加课程" class="course-select" clearable>
+        <el-select v-model="selectedCourseId" filterable placeholder="搜索并添加课程" class="course-select" clearable aria-label="搜索并添加课程">
           <el-option v-for="c in availableCourses" :key="c.id" :label="c.title" :value="c.id" />
         </el-select>
         <el-input-number v-model="newSortOrder" :min="0" placeholder="顺序" class="sort-input" />
@@ -126,6 +133,7 @@ const page = ref(1)
 const size = ref(20)
 const totalElements = ref(0)
 
+const userRole = computed(() => userStore.role)
 const canManage = (row) => {
   // ADMIN 可管理所有，TEACHER 只可管理自己创建的
   return userStore.role === 'ADMIN' || (userStore.role === 'TEACHER' && row.creatorId === userStore.userId)
@@ -187,13 +195,14 @@ const resetForm = () => {
 }
 
 const handleSave = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (saving.value) return
   if (!bundleFormRef.value) return
-  try {
-    await bundleFormRef.value.validate()
-  } catch {
-    return
-  }
   saving.value = true
+  try {
+    const valid = await bundleFormRef.value.validate()
+    if (!valid) { saving.value = false; return }
+  } catch { saving.value = false; return }
   try {
     if (editingBundle.value) {
       await updateBundle(editingBundle.value.id, { title: formData.value.title, description: formData.value.description, price: formData.value.price })

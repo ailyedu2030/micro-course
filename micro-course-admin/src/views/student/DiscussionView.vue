@@ -14,10 +14,10 @@
           <div class="left-info">
             <h3 class="page-title">章节讨论</h3>
             <div v-if="!chapterId" class="chapter-selector">
-              <el-select v-model="selectedCourseId" placeholder="选择课程" clearable size="small" style="width:200px;margin-right:8px" @change="handleCourseChange">
+              <el-select v-model="selectedCourseId" placeholder="选择课程" clearable size="small" style="width:200px;margin-right:8px" aria-label="选择课程" @change="handleCourseChange">
                 <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
               </el-select>
-              <el-select v-model="routeQuery.chapterId" placeholder="选择章节" clearable size="small" style="width:200px" :disabled="!selectedCourseId" @change="handleChapterSelect">
+              <el-select v-model="routeQuery.chapterId" placeholder="选择章节" clearable size="small" style="width:200px" :disabled="!selectedCourseId" aria-label="选择章节" @change="handleChapterSelect">
                 <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
               </el-select>
             </div>
@@ -53,10 +53,16 @@
             v-model:page-size="size"
             :total="totalElements"
             :page-sizes="[10, 20, 50]"
-            layout="total,sizes,prev,pager,next"
+            layout="total,prev,pager,next"
             @size-change="handleSizeChange"
             @current-change="handlePageChange" aria-label="分页导航"
 />
+          <div class="page-size-wrap">
+            <label for="disc-pc-page-size" class="sr-only">每页条数</label>
+            <el-select id="disc-pc-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
+              <el-option v-for="s in [10, 20, 50]" :key="s" :label="`${s}条/页`" :value="s" />
+            </el-select>
+          </div>
         </div>
       </el-card>
     </template>
@@ -110,7 +116,7 @@
     <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm" :close-on-press-escape="true">
       <el-form :model="postForm" :rules="postRules" ref="postFormRef" label-width="80px">
         <el-form-item label="标题" prop="title">
-          <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="200" show-word-limit />
+          <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="200" show-word-limit aria-label="帖子标题" />
         </el-form-item>
         <el-form-item label="内容" prop="content">
           <el-input
@@ -120,6 +126,7 @@
             placeholder="请输入帖子内容"
             maxlength="5000"
             show-word-limit
+            aria-label="帖子内容"
           />
         </el-form-item>
         <el-form-item>
@@ -159,7 +166,7 @@
             :key="comment.id"
             :comment="comment"
             :depth="0"
-            :reply-loading="replyingCommentId === comment.id"
+            :replying-id="replyingCommentId"
             @reply="handleReply"
             @like="handleLikeComment"
           />
@@ -173,6 +180,7 @@
             type="textarea"
             :rows="3"
             placeholder="写下你的回复... (Ctrl+Enter 发送)"
+            aria-label="回复内容"
             @keyup.enter.ctrl="handleSubmitReply"
           />
           <div class="reply-input-footer">
@@ -325,12 +333,14 @@ const resetPostForm = () => {
 }
 
 const handleSubmitPost = async () => {
-  try {
-    await postFormRef.value.validate()
-  } catch {
-    return
-  }
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (submitting.value) return
+  if (!postFormRef.value) return
   submitting.value = true
+  try {
+    const valid = await postFormRef.value.validate()
+    if (!valid) { submitting.value = false; return }
+  } catch { submitting.value = false; return }
   try {
     // P0-1: 确保 courseId 可用——若未预加载则实时查询章节获取
     let courseId = currentCourseId.value ? Number(currentCourseId.value) : undefined

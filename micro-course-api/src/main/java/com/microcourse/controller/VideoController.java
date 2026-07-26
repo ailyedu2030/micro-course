@@ -58,12 +58,13 @@ public class VideoController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<VideoVO>> page(
             @RequestParam(required = false) Long courseId,
+            @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         if (courseId == null) {
             return R.ok(PageResult.of(List.of(), 0L, page, size));
         }
-        PageResult<VideoVO> result = videoService.page(courseId, page, size);
+        PageResult<VideoVO> result = videoService.page(courseId, chapterId, page, size);
         return R.ok(result);
     }
 
@@ -83,6 +84,18 @@ public class VideoController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<VideoStatusVO> getStatus(@PathVariable Long id) {
         return R.ok(videoService.getStatus(id));
+    }
+
+    /**
+     * GET /api/videos/status/batch?ids=1,2,3
+     * 批量查询视频转码状态（单次 API 替代 N 次轮询）
+     * 权限：TEACHER（课程创建者）/ ADMIN
+     */
+    @GetMapping("/status/batch")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<java.util.List<VideoStatusVO>> getStatusBatch(
+            @RequestParam("ids") java.util.List<@jakarta.validation.constraints.Positive Long> ids) {
+        return R.ok(videoService.getStatusBatch(ids));
     }
 
     @PostMapping

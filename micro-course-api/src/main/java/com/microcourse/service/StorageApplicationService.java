@@ -25,7 +25,7 @@ public interface StorageApplicationService {
     StorageApplicationVO save(Long proposalId, Long userId, StorageApplicationSaveRequest request);
 
     /** 5. 自动保存（轻量级，只保存变更字段） */
-    void autoSave(Long proposalId, Long userId, StorageApplicationSaveRequest request);
+    void autoSave(Long proposalId, Long userId, StorageApplicationAutoSaveRequest request);
 
     /** 6. 上传签名/公章图片 */
     UploadResultVO uploadImage(Long proposalId, Long userId, MultipartFile file, String type);

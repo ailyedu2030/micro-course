@@ -1,0 +1,1 @@
+import{r}from"./vendor-video-player-Dct-RoXs.js";function c(e){return r({method:"GET",url:"/exercise-records/my/accuracy-trend",params:e})}function o(e){return r({method:"GET",url:`/exercise-records/my/${e}/attempt-count`})}export{o as a,c as g};

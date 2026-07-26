@@ -923,8 +923,11 @@ async function performAutoSave() {
   pendingSave.value = true
   saveStatus.value = '保存中'
   try {
-    await autoSaveStorageApplication(draftId.value, buildSavePayload())
-    saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
+    const res = await autoSaveStorageApplication(draftId.value, buildSavePayload())
+    // P1-UX: 使用服务器时间戳显示"已保存 HH:MM:SS"，避免客户端时钟偏差
+    const serverTime = res?.data?.serverTime
+    const displayTime = serverTime ? new Date(serverTime).toLocaleTimeString() : new Date().toLocaleTimeString()
+    saveStatus.value = '已保存 ' + displayTime
     dirty.value = false  // 仅成功时清除 dirty；失败保留让用户被警告，避免数据丢失
   } catch {
     saveStatus.value = '⚠ 保存失败'

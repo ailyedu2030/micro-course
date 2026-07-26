@@ -1,0 +1,1 @@
+import{r as t}from"./vendor-video-player-Dct-RoXs.js";function a(r){return t({method:"GET",url:"/favorites",params:r})}function n(r){return t({method:"POST",url:"/favorites",data:r})}function e(r){return t({method:"DELETE",url:`/favorites/${r}`})}function i(r){return e(r)}function u(){return t({method:"GET",url:"/favorites/my"})}export{u as a,n as b,i as c,a as g,e as r};

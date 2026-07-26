@@ -5,9 +5,11 @@ export function initStorageDraft() {
   return request({ method: 'POST', url: '/storage-applications/init' })
 }
 
-// 2. 我的申请列表
+// 2. 我的申请列表（支持 status 过滤：可选 DRAFT/PENDING_REVIEW/APPROVED/REJECTED）
 export function getMyStorageDrafts(params) {
-  return request({ method: 'GET', url: '/storage-applications/my-drafts', params: { page: params?.page || 0, size: params?.size || 20 } })
+  const query = { page: params?.page || 0, size: params?.size || 20 }
+  if (params?.status) query.status = params.status
+  return request({ method: 'GET', url: '/storage-applications/my-drafts', params: query })
 }
 
 // 3. 获取详情

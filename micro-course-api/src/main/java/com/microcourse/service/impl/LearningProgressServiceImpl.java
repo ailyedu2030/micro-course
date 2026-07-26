@@ -460,8 +460,8 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(readOnly = true)
     public List<LearningProgressVO> getProgressWithGuard(Long currentUserId, Long targetUserId, Long courseId) {
-        // IDOR 防护：非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
-        if (!currentUserId.equals(targetUserId) && !SecurityUtil.isAdmin()) {
+        // IDOR 防护：非本人且非 ADMIN/ACADEMIC 时，TEACHER 需校验课程归属，否则拒绝
+        if (!currentUserId.equals(targetUserId) && !SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
             if (SecurityUtil.hasRole("TEACHER")) {
                 assertTeacherOwnsCourse(currentUserId, courseId);
             } else {
@@ -474,8 +474,8 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     @Override
     @Transactional(readOnly = true)
     public Map<String, Object> getCourseCompletionWithGuard(Long currentUserId, Long userId, Long courseId) {
-        // IDOR 防护：非本人且非 ADMIN 时，TEACHER 需校验课程归属，否则拒绝
-        if (!currentUserId.equals(userId) && !SecurityUtil.isAdmin()) {
+        // IDOR 防护：非本人且非 ADMIN/ACADEMIC 时，TEACHER 需校验课程归属，否则拒绝
+        if (!currentUserId.equals(userId) && !SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
             if (SecurityUtil.hasRole("TEACHER") && courseId != null) {
                 assertTeacherOwnsCourse(currentUserId, courseId);
             } else {

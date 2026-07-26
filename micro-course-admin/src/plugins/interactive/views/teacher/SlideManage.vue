@@ -16,8 +16,9 @@
         active-text="新版课件 (四面板)"
         inactive-text="旧版"
         @change="setCoursewareV2"
+        aria-label="新版课件开关"
       />
-      <span class="v2-hint">默认旧版; 开启新版可体验 PPT/HTML 双类型 + 四面板 + 状态聚合视图</span>
+      <span class="v2-hint" style="color: var(--el-text-color-secondary)">默认旧版; 开启新版可体验 PPT/HTML 双类型 + 四面板 + 状态聚合视图</span>
     </div>
 
     <!-- 新版工作台 (W36 入口) -->
@@ -285,6 +286,7 @@ v-if="page.hasAnimation || page.hasEmbeddedMedia"
           v-model="editingScript" type="textarea" :rows="16"
           placeholder="点击「AI 生成」自动生成讲述稿，或手动输入..."
           resize="vertical"
+          aria-label="编辑讲述稿"
         />
       </div>
       <template #footer>
@@ -733,7 +735,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 }
 .header-info { flex: 1; display: flex; align-items: center; gap: var(--space-3); min-width: 0; }
 .page-title { font-size: var(--text-lg); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); margin: 0; }
-.page-subtitle { font-size: var(--text-xs); color: var(--el-text-color-placeholder); }
+.page-subtitle { font-size: var(--text-xs); color: var(--el-text-color-secondary); }
 .context-tags { display: flex; gap: 6px; margin: 4px 0; }
 .status-chip { flex-shrink: 0; }
 .header-actions { display: flex; gap: var(--space-2); flex-shrink: 0; }
@@ -748,7 +750,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
   background: var(--el-color-primary-light-9); color: var(--el-color-primary); margin-bottom: var(--space-5);
 }
 .upload-title { font-size: var(--text-2xl); font-weight: var(--weight-bold); color: var(--el-text-color-primary); margin: 0 0 var(--space-2); }
-.upload-desc { font-size: var(--text-sm); color: var(--el-text-color-placeholder); margin: 0 0 var(--space-6); line-height: 1.6; }
+.upload-desc { font-size: var(--text-sm); color: var(--el-text-color-secondary); margin: 0 0 var(--space-6); line-height: 1.6; }
 .upload-dragger { width: 100%; }
 .upload-dragger :deep(.el-upload-dragger) {
   border: 2px dashed var(--el-border-color); border-radius: var(--radius-xl);
@@ -768,7 +770,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 .processing-content h3 { font-size: var(--text-base); color: var(--el-text-color-primary); margin: 0 0 var(--space-4); }
-.processing-hint { font-size: var(--text-xs); color: var(--el-text-color-placeholder); margin-top: var(--space-3); }
+.processing-hint { font-size: var(--text-xs); color: var(--el-text-color-secondary); margin-top: var(--space-3); }
 
 /* === ERROR === */
 .error-card { display: flex; align-items: center; justify-content: center; min-height: 400px; }
@@ -877,7 +879,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 .guide-step {
   display: flex; align-items: center; gap: 6px;
   padding: 6px 12px; border-radius: 20px;
-  background: var(--el-fill-color-light); color: var(--el-text-color-placeholder);
+  background: var(--el-fill-color-light); color: var(--el-text-color-secondary);
   font-size: 12px; transition: all var(--duration-fast) var(--ease-out);
 }
 .guide-step.active {
@@ -887,7 +889,7 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 .step-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 18px; height: 18px; border-radius: 50%;
-  background: var(--el-text-color-placeholder); color: #fff; font-size: 10px; font-weight: var(--weight-bold);
+  background: var(--el-color-info); color: #fff; font-size: 10px; font-weight: var(--weight-bold);
 }
 .guide-step.active .step-num { background: var(--el-color-primary); }
 .guide-step.done { background: var(--el-color-success-light-9); color: var(--el-color-success); }

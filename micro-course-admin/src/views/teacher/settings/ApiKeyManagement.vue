@@ -204,17 +204,17 @@ onMounted(() => {
   font-size: 15px;
 }
 .api-key-desc {
-  color: #666;
+  color: var(--el-text-color-regular);
   font-size: 13px;
   line-height: 1.6;
   margin-bottom: 16px;
 }
 .api-key-desc code {
-  background: #f4f4f5;
+  background: var(--el-fill-color-light);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
-  color: #d63384;
+  color: var(--el-color-danger-dark-2);
 }
 .api-key-empty {
   text-align: center;
@@ -237,10 +237,10 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   font-size: 12px;
-  color: #999;
+  color: var(--el-text-color-secondary);
 }
 .api-key-warn {
-  color: #e6a23c;
+  color: var(--el-color-warning);
 }
 .api-key-actions {
   display: flex;
@@ -255,7 +255,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #999;
+  color: var(--el-text-color-secondary);
   padding: 16px 0;
 }
 </style>

@@ -29,6 +29,7 @@ import com.microcourse.repository.GradeRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.service.GradeService;
+import com.microcourse.service.ManualGradingService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.service.ScoreHistoryService;
 import com.microcourse.util.SecurityUtil;
@@ -57,6 +58,7 @@ public class GradeServiceImpl implements GradeService {
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final ScoreHistoryService scoreHistoryService;
+    private final ManualGradingService manualGradingService;
 
     public GradeServiceImpl(
             GradeRepository gradeRepository,
@@ -67,7 +69,8 @@ public class GradeServiceImpl implements GradeService {
             ExerciseRecordRepository exerciseRecordRepository,
             NotificationService notificationService,
             ObjectMapper objectMapper,
-            ScoreHistoryService scoreHistoryService) {
+            ScoreHistoryService scoreHistoryService,
+            ManualGradingService manualGradingService) {
         this.gradeRepository = gradeRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
@@ -77,6 +80,7 @@ public class GradeServiceImpl implements GradeService {
         this.notificationService = notificationService;
         this.objectMapper = objectMapper;
         this.scoreHistoryService = scoreHistoryService;
+        this.manualGradingService = manualGradingService;
     }
 
     @Override
@@ -137,10 +141,11 @@ public class GradeServiceImpl implements GradeService {
         if (grade == null) {
             throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
-        // SECURITY: 只有课程教师、学生本人或 ADMIN 可查看成绩
+        // SECURITY: 只有课程教师、学生本人、ADMIN 或 ACADEMIC 可查看成绩
         if (grade.getCourseId() != null) {
             Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())
+            if (course != null && !SecurityUtil.isAdminOrAcademic()
+                    && !SecurityUtil.getCurrentUserId().equals(course.getTeacherId())
                     && !SecurityUtil.getCurrentUserId().equals(grade.getUserId())) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
             }
@@ -256,7 +261,10 @@ public class GradeServiceImpl implements GradeService {
         grade.setGradedAt(LocalDateTime.now());
         grade.setUpdatedAt(LocalDateTime.now());
 
-        gradeRepository.updateById(grade);
+        // P0: 乐观锁影响行=0 → 抛 CONCURRENT_MODIFICATION
+        if (gradeRepository.updateById(grade) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "成绩已被其他操作修改，请刷新后重试");
+        }
 
         // Phase E: 成绩变更审计追踪
         try {
@@ -336,7 +344,10 @@ public class GradeServiceImpl implements GradeService {
             grade.setGradedBy(teacherId);
             grade.setGradedAt(LocalDateTime.now());
             grade.setUpdatedAt(LocalDateTime.now());
-            gradeRepository.updateById(grade);
+            // P0: 乐观锁影响行=0 → 抛 CONCURRENT_MODIFICATION
+            if (gradeRepository.updateById(grade) == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "成绩已被其他操作修改，请刷新后重试");
+            }
         } else {
             // 新建记录
             // CON-004 修复: 使用 saveOrUpdate 原子操作替代 selectOne + insert, 防止并发重复插入
@@ -422,152 +433,20 @@ public class GradeServiceImpl implements GradeService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void manualGrade(Long recordId, Long questionId, Double score, String comment, Long teacherId) {
-        ExerciseRecord record = exerciseRecordRepository.selectById(recordId);
-        if (record == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题记录不存在");
+        // Phase 14: manualGrade 已提取到 ManualGradingServiceImpl
+        // GradeServiceImpl.manualGrade 仅做参数校验与委托，
+        // 完整业务实现（含答案 JSON 解析、score 合并、grade 同步、审计与通知）
+        // 全部在 ManualGradingServiceImpl.manualGrade() 中
+        if (recordId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "recordId 不能为空");
         }
-
-        Exercise exercise = exerciseRepository.selectById(record.getExerciseId());
-        if (exercise == null) {
-            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
-        }
-
-        // SECURITY: 仅课程授课教师或 ADMIN 可批改
-        if (exercise.getCourseId() != null) {
-            Course course = courseRepository.selectById(exercise.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权批改该课程练习");
-            }
-        }
-
         if (questionId == null) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "questionId 不能为空");
         }
         if (score == null || score < 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "score 非法");
         }
-        String safeComment = sanitizeComment(comment);
-
-        // 解析 answers JSON
-        List<Map<String, Object>> items;
-        String answers = record.getAnswers();
-        if (answers == null || answers.isBlank()) {
-            items = new ArrayList<>();
-        } else {
-            try {
-                items = objectMapper.readValue(answers, new TypeReference<List<Map<String, Object>>>() {});
-            } catch (JsonProcessingException e) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题数据解析失败");
-            }
-        }
-
-        // 定位目标题目
-        Map<String, Object> target = null;
-        for (Map<String, Object> item : items) {
-            Long qid = toLong(item.get("questionId"));
-            if (qid != null && qid.equals(questionId)) {
-                target = item;
-                break;
-            }
-        }
-        if (target == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该题目不在此答题记录中");
-        }
-
-        // 校验不超过该题满分
-        Integer fullScore = toInteger(target.get("fullScore"));
-        if (fullScore != null && score > fullScore) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "得分不能超过该题满分");
-        }
-
-        // 写回单题 score / comment / 标记已批改
-        target.put("score", score);
-        target.put("comment", safeComment);
-        target.put("isCorrect", score > 0);
-        target.put("needsManualGrading", false);
-
-        // 重算记录总得分
-        int total = 0;
-        for (Map<String, Object> item : items) {
-            Integer s = toInteger(item.get("score"));
-            if (s != null) {
-                total += s;
-            }
-        }
-
-        // P0 修复: 检查是否所有主观题已批改完毕，若全部已批改则更新 needsManualGrading = false
-        boolean allGraded = items.stream().noneMatch(i -> Boolean.TRUE.equals(i.get("needsManualGrading")));
-
-        String newAnswers;
-        try {
-            newAnswers = objectMapper.writeValueAsString(items);
-        } catch (JsonProcessingException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "答题数据序列化失败");
-        }
-
-        boolean passed = exercise.getPassScore() != null && total >= exercise.getPassScore();
-        record.setAnswers(newAnswers);
-        record.setScore(total);
-        record.setPassed(passed);
-        record.setNeedsManualGrading(!allGraded);
-        exerciseRecordRepository.updateById(record);
-
-        // 同步更新 grades 表对应记录（优先按 attemptNo 精确匹配本次作答）
-        Grade grade = findGradeForRecord(record, exercise.getCourseId());
-        // Phase E: 捕获修改前的原成绩值用于审计
-        String manualOldScore = grade != null && grade.getScore() != null ? grade.getScore().toString() : null;
-        if (grade != null) {
-            grade.setScore(BigDecimal.valueOf(total));
-            grade.setTotalScore(record.getTotalScore() != null ? BigDecimal.valueOf(record.getTotalScore()) : null);
-            grade.setPassed(passed);
-            grade.setAttemptNo(record.getAttemptNo());
-            grade.setDuration(record.getDuration());
-            grade.setSubmittedAt(record.getSubmittedAt());
-            grade.setComment(comment);
-            grade.setGradedBy(teacherId);
-            grade.setGradedAt(LocalDateTime.now());
-            grade.setUpdatedAt(LocalDateTime.now());
-            gradeRepository.updateById(grade);
-        } else {
-            Grade ng = new Grade();
-            ng.setUserId(record.getUserId());
-            ng.setExerciseId(record.getExerciseId());
-            ng.setCourseId(exercise.getCourseId());
-            ng.setScore(BigDecimal.valueOf(total));
-            ng.setTotalScore(record.getTotalScore() != null ? BigDecimal.valueOf(record.getTotalScore()) : null);
-            ng.setPassed(passed);
-            ng.setAttemptNo(record.getAttemptNo());
-            ng.setComment(comment);
-            ng.setGradedBy(teacherId);
-            ng.setGradedAt(LocalDateTime.now());
-            ng.setSubmittedAt(record.getSubmittedAt());
-            ng.setCreatedAt(LocalDateTime.now());
-            ng.setUpdatedAt(LocalDateTime.now());
-            gradeRepository.insert(ng);
-        }
-
-        // Phase E: 成绩变更审计追踪
-        try {
-            Long enrollmentId = findEnrollmentId(exercise.getCourseId(), record.getUserId());
-            if (enrollmentId != null) {
-                scoreHistoryService.recordChange(enrollmentId, "score",
-                    manualOldScore,
-                    String.valueOf(total),
-                    "MANUAL_GRADE", "手动批改", teacherId);
-            }
-        } catch (Exception e) {
-            log.warn("[Grade] 记录成绩审计失败, 不影响主流程", e);
-        }
-
-        // R8 P0-5: 批改后通知学生
-        try {
-            notificationService.notifyAsync(record.getUserId(), NotificationType.EXERCISE_GRADED,
-                    "作业已批改",
-                    "教师在练习《" + (exercise != null ? exercise.getTitle() : "") + "》中对您的作答进行了批改，请查看。",
-                    exercise.getCourseId());
-        } catch (Exception e) {
-            log.warn("[Grade] 通知学生练习批改失败 userId={} exerciseId={}", record.getUserId(), record.getExerciseId(), e);
-        }
+        manualGradingService.manualGrade(recordId, questionId, score, comment, teacherId);
     }
 
     /**
@@ -691,6 +570,19 @@ public class GradeServiceImpl implements GradeService {
                 : exerciseRepository.selectBatchIds(exerciseIds).stream()
                         .collect(Collectors.toMap(Exercise::getId, e -> e));
 
+        // Phase 6 P0: 批量查询选课（courseId, userId）→ enrollmentId
+        Map<Long, Map<Long, Long>> enrollmentIdMap = new HashMap<>();
+        if (!courseIds.isEmpty() && !userIds.isEmpty()) {
+            LambdaQueryWrapper<Enrollment> ew = new LambdaQueryWrapper<>();
+            ew.in(Enrollment::getCourseId, courseIds)
+              .in(Enrollment::getUserId, userIds)
+              .isNull(Enrollment::getDeletedAt);
+            for (Enrollment e : enrollmentRepository.selectList(ew)) {
+                enrollmentIdMap.computeIfAbsent(e.getCourseId(), k -> new HashMap<>())
+                               .put(e.getUserId(), e.getId());
+            }
+        }
+
         return grades.stream().map(grade -> {
             GradeVO vo = new GradeVO();
             vo.setId(grade.getId());
@@ -723,6 +615,16 @@ public class GradeServiceImpl implements GradeService {
             User grader = userMap.get(grade.getGradedBy());
             if (grader != null) {
                 vo.setGradedByName(grader.getRealName() != null ? grader.getRealName() : grader.getUsername());
+            }
+            // Phase 6 P0: 填充 enrollmentId（从批量预加载的选课映射）
+            if (grade.getCourseId() != null && grade.getUserId() != null) {
+                Map<Long, Long> byCourse = enrollmentIdMap.get(grade.getCourseId());
+                if (byCourse != null) {
+                    Long eid = byCourse.get(grade.getUserId());
+                    if (eid != null) {
+                        vo.setEnrollmentId(eid);
+                    }
+                }
             }
             return vo;
         }).collect(Collectors.toList());
