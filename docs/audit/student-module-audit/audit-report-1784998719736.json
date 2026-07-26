@@ -1,0 +1,541 @@
+{
+  "timestamp": "2026-07-25T16:58:39.735Z",
+  "environment": {
+    "baseUrl": "http://localhost:8088",
+    "browser": "chromium",
+    "headless": true,
+    "user": "student",
+    "os": "Darwin 25.5.0",
+    "arch": "arm64",
+    "node": "v26.4.0"
+  },
+  "summary": {
+    "total": 24,
+    "ok": 0,
+    "p0": 17,
+    "p1c": 0,
+    "skipped": 7,
+    "coverage": "71%"
+  },
+  "routes": [
+    {
+      "path": "/student/courses",
+      "name": "课程广场",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_courses_1784998671863.png"
+    },
+    {
+      "path": "/student/my-courses",
+      "name": "我的课程",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_my-courses_1784998674667.png"
+    },
+    {
+      "path": "/student/learning",
+      "name": "学习视图",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_learning_1784998677386.png"
+    },
+    {
+      "path": "/student/learning-stats",
+      "name": "学习中心",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_learning-stats_1784998680247.png"
+    },
+    {
+      "path": "/student/notifications",
+      "name": "通知中心",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_notifications_1784998682960.png"
+    },
+    {
+      "path": "/student/profile",
+      "name": "个人中心",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_profile_1784998685670.png"
+    },
+    {
+      "path": "/student/favorites",
+      "name": "收藏",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_favorites_1784998688350.png"
+    },
+    {
+      "path": "/student/discussions",
+      "name": "讨论区",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_discussions_1784998691056.png"
+    },
+    {
+      "path": "/student/exams",
+      "name": "考试列表",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_exams_1784998693743.png"
+    },
+    {
+      "path": "/student/training",
+      "name": "训练中心",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_training_1784998696458.png"
+    },
+    {
+      "path": "/student/settings",
+      "name": "设置",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_settings_1784998699174.png"
+    },
+    {
+      "path": "/student/achievements",
+      "name": "成就墙",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_achievements_1784998701878.png"
+    },
+    {
+      "path": "/student/orders",
+      "name": "订单列表",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_orders_1784998704752.png"
+    },
+    {
+      "path": "/student/report",
+      "name": "周报",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_report_1784998707504.png"
+    },
+    {
+      "path": "/student/reviews",
+      "name": "我的评价",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_reviews_1784998710195.png"
+    },
+    {
+      "path": "/student/bundles",
+      "name": "课程套件广场",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_bundles_1784998712896.png"
+    },
+    {
+      "path": "/student/my-micro-specialties",
+      "name": "我的微专业",
+      "status": "P0",
+      "skipReason": null,
+      "error": null,
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "description": "Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds"
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "description": "Ensure every form element has a label"
+        }
+      ],
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()",
+        "Failed to load resource: the server responded with a status of 401 ()"
+      ],
+      "screenshot": "_student_my-micro-specialties_1784998715553.png"
+    },
+    {
+      "path": "/student/courses/:id",
+      "name": "课程详情",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 id(courseId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/courses/:id/play/:videoId?",
+      "name": "视频播放器",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 id(courseId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/courses/:courseId/slides/player",
+      "name": "课件播放",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 courseId(courseId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/chapters/:chapterId/exercises",
+      "name": "随堂练习",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 chapterId(chapterId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/chapters/:chapterId/offline",
+      "name": "线下课",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 chapterId(chapterId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/micro-specialties/:id",
+      "name": "微专业详情",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 id(microSpecialtyId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    },
+    {
+      "path": "/student/bundles/:id",
+      "name": "课程套件详情",
+      "status": "SKIPPED",
+      "skipReason": "无法解析动态参数 id(bundleId)",
+      "error": null,
+      "violations": [],
+      "consoleErrors": [],
+      "screenshot": null
+    }
+  ]
+}

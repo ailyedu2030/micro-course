@@ -426,6 +426,8 @@ public class TeacherServiceImpl implements TeacherService {
                 exerciseRecordRepository.selectPage(recordPage,
                     new LambdaQueryWrapper<ExerciseRecord>()
                         .in(ExerciseRecord::getExerciseId, exerciseIds)
+                        .isNull(ExerciseRecord::getScore)
+                        .isNotNull(ExerciseRecord::getSubmittedAt)
                         .isNull(ExerciseRecord::getDeletedAt)
                         .orderByDesc(ExerciseRecord::getSubmittedAt));
                 records = recordPage.getRecords();
@@ -443,10 +445,28 @@ public class TeacherServiceImpl implements TeacherService {
 
         // 未回复的讨论帖
         if (!courseIds.isEmpty()) {
+            List<Long> postIds = discussionPostRepository.selectList(
+                new LambdaQueryWrapper<DiscussionPost>()
+                    .in(DiscussionPost::getCourseId, courseIds)
+                    .isNull(DiscussionPost::getDeletedAt)
+                    .select(DiscussionPost::getId))
+                .stream().map(DiscussionPost::getId).collect(Collectors.toList());
+
+            Set<Long> repliedPostIds = postIds.isEmpty() ? Collections.emptySet() :
+                discussionCommentRepository.selectList(
+                    new LambdaQueryWrapper<DiscussionComment>()
+                        .in(DiscussionComment::getPostId, postIds)
+                        .eq(DiscussionComment::getIsTeacherReply, true)
+                        .isNull(DiscussionComment::getDeletedAt))
+                .stream()
+                .map(DiscussionComment::getPostId)
+                .collect(Collectors.toSet());
+
             Page<DiscussionPost> postPage = new Page<>(1, internalLimit);
             discussionPostRepository.selectPage(postPage,
                 new LambdaQueryWrapper<DiscussionPost>()
                     .in(DiscussionPost::getCourseId, courseIds)
+                    .notIn(!repliedPostIds.isEmpty(), DiscussionPost::getId, repliedPostIds)
                     .isNull(DiscussionPost::getDeletedAt)
                     .orderByDesc(DiscussionPost::getCreatedAt));
             List<DiscussionPost> posts = postPage.getRecords();
@@ -504,8 +524,7 @@ public class TeacherServiceImpl implements TeacherService {
             TeacherCourseVO vo = new TeacherCourseVO();
             vo.setId(c.getId());
             vo.setTitle(c.getTitle());
-            String coverUrl = c.getCoverUrl();
-            vo.setCover(coverUrl != null && coverUrl.startsWith("https://") ? coverUrl : null);
+            vo.setCover(normalizeCourseCoverUrl(c.getCoverUrl()));
             vo.setStudentCount(c.getStudentCount());
             vo.setRating(c.getAvgRating());
             vo.setStatus(c.getStatus());
@@ -513,6 +532,13 @@ public class TeacherServiceImpl implements TeacherService {
         }).collect(Collectors.toList());
 
         return PageResult.of(vos, coursePage.getTotal(), page, size);
+    }
+
+    private String normalizeCourseCoverUrl(String coverUrl) {
+        if (coverUrl != null && !coverUrl.startsWith("http") && !coverUrl.startsWith("/api/files/")) {
+            return "/api/files/" + coverUrl;
+        }
+        return coverUrl;
     }
 
     // getPlatformShareRate 已被 PlatformShareRateResolver 取代 (修复 P0-1)

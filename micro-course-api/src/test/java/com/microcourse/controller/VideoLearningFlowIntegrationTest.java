@@ -75,8 +75,8 @@ class VideoLearningFlowIntegrationTest extends BaseIntegrationTest {
     /** 插入视频：status 2=COMPLETED 可播放（带 m3u8）；1=TRANSCODING 不可播放（m3u8=null） */
     private Long insertVideo(int status, String m3u8Url) {
         Long id = jdbc.queryForObject(
-                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at) " +
-                        "VALUES (1, 1, ?, ?, ?, 100, 0, 0, now(), now()) RETURNING id",
+                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at, original_name) " +
+                        "VALUES (1, 1, ?, ?, ?, 100, 0, 0, now(), now(), '') RETURNING id",
                 Long.class, "vid-" + System.nanoTime(), status, m3u8Url);
         createdVideoIds.add(id);
         return id;

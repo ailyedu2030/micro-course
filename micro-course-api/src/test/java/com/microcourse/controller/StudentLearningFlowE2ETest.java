@@ -155,8 +155,8 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
     /** 插入可播放视频：status=2(COMPLETED)+m3u8；status=1(TRANSCODING)+null */
     private Long insertVideo(int status, String m3u8Url) {
         Long id = jdbc.queryForObject(
-                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, 100, 0, 0, now(), now()) RETURNING id",
+                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at, original_name) "
+                        + "VALUES (?, ?, ?, ?, ?, 100, 0, 0, now(), now(), '') RETURNING id",
                 Long.class, COURSE_ID, CHAPTER_ID, "e2e-vid-" + System.nanoTime(), status, m3u8Url);
         createdVideoIds.add(id);
         return id;

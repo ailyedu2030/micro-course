@@ -77,19 +77,19 @@
         </h4>
         <div class="stats-grid">
           <div class="stat-item">
-            <span class="stat-value">{{ statsData.videoCompleted }}/{{ statsData.videoTotal }}</span>
+            <span class="stat-value">{{ safeStats.videoCompleted }}/{{ safeStats.videoTotal }}</span>
             <span class="stat-label">视频完成</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">{{ statsData.exerciseCompleted }}/{{ statsData.exerciseTotal }}</span>
+            <span class="stat-value">{{ safeStats.exerciseCompleted }}/{{ safeStats.exerciseTotal }}</span>
             <span class="stat-label">练习完成</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">{{ statsData.totalTime }}</span>
+            <span class="stat-value">{{ safeStats.totalTime }}</span>
             <span class="stat-label">累计学习</span>
           </div>
           <div class="stat-item">
-            <span class="stat-value">{{ statsData.streakDays }}</span>
+            <span class="stat-value">{{ safeStats.streakDays }}</span>
             <span class="stat-label">连续打卡</span>
           </div>
         </div>
@@ -116,7 +116,7 @@ const props = defineProps({
   chapters: { type: Array, default: () => [] },
   currentLessonId: { type: [Number, String], default: null },
   expandedChapters: { type: Array, default: () => [] },
-  statsData: { type: Object, default: () => ({}) },
+  statsData: { type: Object, default: () => ({ videoCompleted: 0, videoTotal: 0, exerciseCompleted: 0, exerciseTotal: 0, totalTime: '0h', streakDays: 0 }) },
   isMobile: { type: Boolean, default: false },
   drawerOpen: { type: Boolean, default: false }
 })
@@ -128,6 +128,15 @@ const emit = defineEmits([
   'update:expandedChapters',
   'update:drawerOpen'
 ])
+
+const safeStats = computed(() => ({
+  videoCompleted: props.statsData?.videoCompleted ?? 0,
+  videoTotal: props.statsData?.videoTotal ?? 0,
+  exerciseCompleted: props.statsData?.exerciseCompleted ?? 0,
+  exerciseTotal: props.statsData?.exerciseTotal ?? 0,
+  totalTime: props.statsData?.totalTime ?? '0h',
+  streakDays: props.statsData?.streakDays ?? 0,
+}))
 
 // el-collapse v-model 桥接：读 props，写 emit
 const expandedModel = computed({

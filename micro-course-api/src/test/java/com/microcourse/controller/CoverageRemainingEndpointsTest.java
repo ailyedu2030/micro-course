@@ -54,8 +54,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @DisplayName("收尾覆盖 — 剩余 API 模块全端点测试")
 class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
 
-    /** p0_teacher & student 共用 bcrypt hash 对应的明文密码 */
-    private static final String P0_PASSWORD = "student123";
+    // P0_PASSWORD 常量继承自 BaseIntegrationTest（p0_teacher/student/invite_teacher/academic_user 共用）
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -1044,7 +1043,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     @DisplayName("[WrongQ] GET /api/wrong-questions/my — 已登录可查询")
     void wrongQuestionsMy_Authenticated() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());
@@ -1062,7 +1061,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     void wrongQuestionsMy_ByCourse() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
                         .param("courseId", "1")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());
@@ -1073,7 +1072,7 @@ class CoverageRemainingEndpointsTest extends BaseIntegrationTest {
     void wrongQuestionsMy_ByChapter() throws Exception {
         mockMvc.perform(get("/api/wrong-questions/my")
                         .param("chapterId", "1")
-                        .header("Authorization", bearerAdmin()))
+                        .header("Authorization", bearerStudent()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data").isArray());

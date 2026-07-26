@@ -74,7 +74,7 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     /** p0-seed.sql 种子分类 id（courses.category_id NOT NULL FK）。 */
     private static final long P0_CATEGORY_ID = 1L;
     private static final String P0_TEACHER_USERNAME = "p0_teacher";
-    private static final String P0_TEACHER_PASSWORD = "student123";
+    // P0_TEACHER_PASSWORD 继承自 BaseIntegrationTest.P0_PASSWORD
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -430,7 +430,7 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
 
     /** p0_teacher Bearer Token（真实登录，口令 student123）。 */
     private String teacherBearer() throws Exception {
-        return "Bearer " + loginAs(P0_TEACHER_USERNAME, P0_TEACHER_PASSWORD);
+        return "Bearer " + loginAs(P0_TEACHER_USERNAME, P0_PASSWORD);
     }
 
     /** 构造一个独立的第二教师账号并签发其 Bearer Token（用于 IDOR 越权验证）。 */
@@ -470,8 +470,8 @@ class TeacherCreationFlowE2ETest extends BaseIntegrationTest {
     /** 直接入库一门已完成状态的测试视频 (可绑定到 chapterId 以满足 S1 守卫要求) */
     private void insertDummyCompletedVideo(long courseId, Long chapterId) {
         jdbc.update(
-            "INSERT INTO videos(course_id, chapter_id, title, url, status, duration, version, created_at, updated_at) " +
-            "VALUES (?, ?, ?, ?, ?, ?, ?, now(), now())",
+            "INSERT INTO videos(course_id, chapter_id, title, url, status, duration, version, created_at, updated_at, original_name) " +
+            "VALUES (?, ?, ?, ?, ?, ?, ?, now(), now(), '')",
             courseId, chapterId, "测试视频_" + System.nanoTime(),
             "/data/videos/dummy.mp4", 2, 120, 0);
     }

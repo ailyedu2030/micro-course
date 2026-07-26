@@ -35,6 +35,25 @@ vi.mock('@element-plus/icons-vue', async (importOriginal) => {
 import SlideUploadZone from '@/plugins/interactive/components/SlideUploadZone.vue'
 
 describe('SlideUploadZone.vue', () => {
+  it('mounts without unresolved icon warnings', () => {
+    const handleUpload = vi.fn()
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mount(SlideUploadZone, {
+      props: {
+        uploading: false,
+        handleUpload,
+        chapterId: null,
+      },
+    })
+
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('Failed to resolve component: UploadFilled')
+    )
+
+    warnSpy.mockRestore()
+  })
+
   // 3.2.1 (tasks.md 3.5.3): accept 属性应有 .html
   it('accepts .html files via the accept attribute', () => {
     const handleUpload = vi.fn()

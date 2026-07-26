@@ -5,6 +5,8 @@
 -->
 <template>
   <div class="video-player-root role-video">
+    <main class="player-main-area">
+      <h1 class="sr-only">{{ videoData.title || '视频播放' }}</h1>
     <!-- Loading State -->
     <div v-if="loading" class="player-loading">
       <div class="skeleton-video">
@@ -75,7 +77,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button link @click="showChapterList = !showChapterList" aria-label="章节列表">
+          <el-button link @click="toggleChapterList" aria-label="章节列表">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
@@ -83,12 +85,6 @@
               <line x1="3" y1="6" x2="3.01" y2="6" />
               <line x1="3" y1="12" x2="3.01" y2="12" />
               <line x1="3" y1="18" x2="3.01" y2="18" />
-            </svg>
-          </el-button>
-          <el-button link @click="toggleSettings" aria-label="设置">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </el-button>
         </div>
@@ -133,6 +129,7 @@
               ref="videoRef"
               class="video-element"
               :poster="videoData.thumbnail"
+              @loadedmetadata="syncSubtitleTrack"
               @canplay="onCanPlay"
               @timeupdate="onTimeUpdate"
               @ended="onEnded"
@@ -141,7 +138,16 @@
               @playing="onBufferingEnd"
               @progress="onProgress"
               @dblclick="togglePlay"
-            ></video>
+            >
+              <track
+                v-if="videoData.subtitleUrl"
+                :src="videoData.subtitleUrl"
+                kind="subtitles"
+                srclang="zh-CN"
+                label="中文字幕"
+                @load="syncSubtitleTrack"
+              />
+            </video>
 
             <!-- Buffering Spinner -->
             <div v-if="isBuffering" class="video-buffering">
@@ -411,7 +417,7 @@
         </div>
 
         <!-- Right Sidebar (PC >= 769px) -->
-        <aside class="player-sidebar pc-sidebar">
+        <aside v-show="showChapterList" class="player-sidebar pc-sidebar">
           <el-tabs v-model="activeTab" class="sidebar-tabs">
             <el-tab-pane label="章节" name="chapters">
               <div class="tab-content chapters-tab">
@@ -456,10 +462,11 @@
                   v-for="note in notes"
                   :key="note.id"
                   class="note-item"
+                  :class="{ 'is-highlighted': highlightedNoteTime === note.time }"
                   @mouseenter="highlightTime(note.time)"
                   @mouseleave="highlightTime(null)"
                 >
-                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                   <el-button link size="small" @click="deleteNote(note.id)">删除</el-button>
                 </div>
@@ -531,8 +538,9 @@
                   v-for="note in notes"
                   :key="note.id"
                   class="note-item h5-note-item"
+                  :class="{ 'is-highlighted': highlightedNoteTime === note.time }"
                 >
-                  <span class="note-time" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                 </div>
               </div>
@@ -564,21 +572,38 @@
     <transition name="toast-fade">
       <div v-if="speedToastVisible" class="speed-toast">{{ playbackRate }}x</div>
     </transition>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import Hls from 'hls.js'
-import { getVideoById } from '@/api/video'
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
-import { getToken } from '@/utils/auth'
-import { getChapters } from '@/api/chapter'
-import { getLearningProgress, updateLearningProgress, createLearningProgress } from '@/api/learning-progress'
-import { getPosts } from '@/api/discussion'
+import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
+import { useVideoBufferingWatchdog } from '@/composables/useVideoBufferingWatchdog'
+import { useVideoChapterScroller } from '@/composables/useVideoChapterScroller'
+import { useVideoCompletionFlow } from '@/composables/useVideoCompletionFlow'
+import { useVideoDisplayFormatters } from '@/composables/useVideoDisplayFormatters'
+import { useVideoDisplayState } from '@/composables/useVideoDisplayState'
+import { useVideoLearningData } from '@/composables/useVideoLearningData'
+import { useVideoLoadOrchestrator } from '@/composables/useVideoLoadOrchestrator'
+import { useVideoLocalState } from '@/composables/useVideoLocalState'
+import { useVideoModuleState } from '@/composables/useVideoModuleState'
+import { useVideoNoteActions } from '@/composables/useVideoNoteActions'
+import { useVideoPageActions } from '@/composables/useVideoPageActions'
+import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
+import { useVideoPageViewState } from '@/composables/useVideoPageViewState'
+import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
+import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
+import { useVideoRouteContext } from '@/composables/useVideoRouteContext'
+import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
+import { useVideoSourceLifecycle } from '@/composables/useVideoSourceLifecycle'
+import { useVideoSubtitles } from '@/composables/useVideoSubtitles'
+import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
+import { useVideoUiState } from '@/composables/useVideoUiState'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -590,1029 +615,367 @@ const videoRef = ref(null)
 const videoContainerRef = ref(null)
 const progressTrack = ref(null)
 
-// Route params
-const videoId = computed(() => route.params.videoId || route.query.videoId)
-const courseId = computed(() => route.params.id || route.query.courseId)
-const chapterId = computed(() => route.query.chapterId)
-
-// State
-const loading = ref(true)
-const errorMsg = ref('')
-const videoData = ref({})
-const chapters = ref([])
-const notes = ref([])
-const discussions = ref([])
-const activeTab = ref('chapters')
-const showChapterList = ref(false)
-const isMobile = ref(window.innerWidth <= 768)
-
-// Playback state
-const isPlaying = ref(false)
-const isBuffering = ref(false)
-const isMuted = ref(false)
-
-// P1-3: 视频缓冲超时提示 - 客户体验第一原则
-// 根因: 之前只显示 spinner,网差时用户不知道要等多久,容易误以为卡死退出
-// 修复: 缓冲 > 15s 提示网络问题,> 30s 提示重试
-let bufferingWatchdogTimer = null
-let bufferingToastShown = false
-function onBufferingStart() {
-  isBuffering.value = true
-  startBufferingWatchdog()
-}
-function onBufferingEnd() {
-  isBuffering.value = false
-  stopBufferingWatchdog()
-}
-// P1I-013: 第二个超时定时器（30s）句柄也需保留以便销毁时清理
-let bufferingLongTimer = null
-function startBufferingWatchdog() {
-  stopBufferingWatchdog()
-  bufferingToastShown = false
-  bufferingWatchdogTimer = setTimeout(() => {
-    // 15s 仍在缓冲
-    if (isBuffering.value) {
-      ElMessage.warning({ message: '视频缓冲中,网络可能较慢,请稍候...', duration: 5000 })
-      bufferingToastShown = true
-    }
-  }, 15000)
-  bufferingLongTimer = setTimeout(() => {
-    // 30s 仍在缓冲 - 提供重试入口
-    if (isBuffering.value) {
-      ElMessageBox.confirm('视频缓冲超过 30 秒,可能是网络问题。是否重试?', '缓冲超时', {
-        confirmButtonText: '重试',
-        cancelButtonText: '继续等待',
-        type: 'warning'
-      }).then(() => {
-        retryHls()
-      }).catch(() => {
-        // 用户选择继续等待,不做处理
-      })
-    }
-  }, 30000)
-}
-function stopBufferingWatchdog() {
-  if (bufferingWatchdogTimer) {
-    clearTimeout(bufferingWatchdogTimer)
-    bufferingWatchdogTimer = null
-  }
-  if (bufferingLongTimer) {
-    clearTimeout(bufferingLongTimer)
-    bufferingLongTimer = null
-  }
-}
-const isFullscreen = ref(false)
-const isPip = ref(false)
-const isPipSupported = ref(false)
-const subtitlesEnabled = ref(false)
-const currentSubtitle = ref('')
-const playbackRate = ref(1)
-const volumePercent = ref(100)
-const volume = computed(() => volumePercent.value / 100)
-const currentTime = ref(0)
-const duration = ref(0)
-const bufferedPercent = ref(0)
-const lastPosition = ref(0)
-const currentChapterIndex = ref(0)
-const currentChapter = computed(() => chapters.value[currentChapterIndex.value])
-
-// Chapter item refs for smooth scroll
-const chapterItemRefs = ref({})
-const setChapterItemRef = (el, index) => {
-  if (el) {
-    chapterItemRefs.value[index] = el
-  }
-}
-const scrollToActiveChapter = () => {
-  nextTick(() => {
-    const el = chapterItemRefs.value[currentChapterIndex.value]
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }
-  })
-}
-
-// Progress reporting
-const progressId = ref(null)
-let lastReportedProgress = 0
-let lastFailedProgress = null // P0-L01: track failed progress for retry
-let progressReportTimer = null
-let hideControlsTimer = null
-const controlsVisible = ref(true)
-let creatingProgress = false // P1-4: mutex for ensureProgressRecord
-let isComponentUnmounted = false // P1-2: prevent state updates after unmount
-
-// Notes storage key
-const NOTES_STORAGE_KEY = computed(() => {
-  const id = videoId.value
-  if (!id || typeof id !== 'string' && typeof id !== 'number') return null
-  return `video_notes_${id}`
+const {
+  videoId,
+  courseId,
+  chapterId,
+  userId
+} = useVideoRouteContext({
+  route,
+  userStore
 })
 
-// HLS
-const hlsInstance = ref(null)
-const hlsFatal = ref(false)
+const {
+  loading,
+  errorMsg,
+  videoData,
+  chapters,
+  discussions,
+  isPipSupported,
+  currentChapterIndex,
+  isComponentUnmounted,
+  setErrorMessage
+} = useVideoModuleState()
 
-// Learning objectives overlay
-const showObjectives = ref(false)
-let objectivesTimer = null
-
-// P1-13: 前端提示性水印（用户ID+时间戳）
-const watermarkText = computed(() => {
-  const uid = userStore.userInfo?.id || 'unknown'
-  const now = new Date()
-  const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')} ${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
-  return `用户 ${uid} · ${ts}`
+const {
+  setChapterItemRef,
+  scrollToActiveChapter
+} = useVideoChapterScroller({
+  currentChapterIndexRef: currentChapterIndex,
+  nextTickFn: nextTick
 })
 
-// Mobile touch gestures
-let touchStartX = 0
-let touchStartY = 0
-let touchStartTime = 0
-let touchStartVolume = 100
-let touchStartBrightness = 100
-const lastTapTime = 0
-let tapCount = 0
-let tapTimer = null
-let isSwiping = false
-let swipeType = null // 'volume' | 'brightness' | 'seek'
+const {
+  isMobile,
+  showObjectives,
+  syncViewportMode,
+  handleResize,
+  showObjectivesOverlay
+} = useVideoUiState()
 
-// Gesture indicators
-const volumeIndicatorVisible = ref(false)
-const brightnessIndicatorVisible = ref(false)
-const volumeIndicatorValue = ref(100)
-const brightnessIndicatorValue = ref(100)
-const gestureIndicatorX = ref(0) // for positioning
-const gestureIndicatorY = ref(0)
-const showSeekIndicator = ref(false)
-const seekIndicatorDir = ref('')
-const seekIndicatorSeconds = ref(10)
-let seekIndicatorTimer = null
-let speedToastTimer = null
-const showObjectivesOverlay = () => {
-  showObjectives.value = true
-  if (objectivesTimer) clearTimeout(objectivesTimer)
-  objectivesTimer = setTimeout(() => {
-    showObjectives.value = false
-  }, 3000)
-}
+const {
+  formatTime,
+  formatDateTime
+} = useVideoDisplayFormatters()
 
-// Local storage key (P1-5: validated id)
-const STORAGE_KEY = computed(() => {
-  const id = videoId.value
-  if (!id || (typeof id !== 'string' && typeof id !== 'number')) return null
-  return `video_progress_${id}`
+const {
+  isPlaying,
+  isMuted,
+  isFullscreen,
+  isPip,
+  playbackRate,
+  volumePercent,
+  currentTime,
+  duration,
+  bufferedPercent,
+  controlsVisible,
+  speedToastVisible,
+  togglePlay,
+  skipBackward,
+  skipForward,
+  seekRelative,
+  toggleMute,
+  changeVolume,
+  changeSpeed,
+  toggleFullscreen,
+  togglePictureInPicture,
+  handlePipEnter,
+  handlePipLeave,
+  seekVideo,
+  showControls,
+  hideControlsDelayed,
+  onCanPlay,
+  onTimeUpdate,
+  onProgress,
+  handleFullscreenChange
+} = useVideoPlaybackControls({
+  videoRef,
+  videoContainerRef,
+  progressTrackRef: progressTrack,
+  getLastPosition: () => lastPosition.value
 })
 
-// Computed
-const progressPercent = computed(() => {
-  if (!duration.value) return 0
-  return (currentTime.value / duration.value) * 100
+const {
+  subtitlesEnabled,
+  currentSubtitle,
+  toggleSubtitles,
+  syncSubtitleTrack
+} = useVideoSubtitles({
+  videoRef,
+  subtitleUrlRef: computed(() => videoData.value.subtitleUrl || '')
 })
 
-// Utils
-const formatTime = (seconds) => {
-  if (!seconds || isNaN(seconds)) return '00:00'
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  if (h > 0) {
-    return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  }
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
+const {
+  activeTab,
+  showChapterList,
+  currentChapter,
+  volume,
+  toggleChapterList
+} = useVideoPageViewState({
+  chaptersRef: chapters,
+  currentChapterIndexRef: currentChapterIndex,
+  volumePercentRef: volumePercent
+})
 
-const formatDateTime = (isoString) => {
-  if (!isoString) return ''
-  const d = new Date(isoString)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const {
+  progressPercent,
+  watermarkText
+} = useVideoDisplayState({
+  currentTimeRef: currentTime,
+  durationRef: duration,
+  userIdRef: userId
+})
 
-// Video load
-const loadVideo = async () => {
-  try {
-    loading.value = true
-    errorMsg.value = ''
-    const res = await getVideoById(videoId.value)
-    if (isComponentUnmounted) return
-    videoData.value = res.data || res
+const {
+  handleKeydown
+} = useVideoKeyboardShortcuts({
+  videoRef,
+  volumePercent,
+  togglePlay,
+  skipBackward,
+  skipForward,
+  changeVolume,
+  toggleFullscreen,
+  toggleMute,
+  showControls
+})
 
-    await nextTick()
-    initPlayer()
-    await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
-    loadLocalPosition()
-    loadNotesFromStorage()
-    showObjectivesOverlay()
-  } catch (e) {
-    if (isComponentUnmounted) return
-    console.warn('[VideoPlayer] loadVideo 加载视频失败', e)
-    errorMsg.value = '无法加载视频，请检查网络连接'
-  } finally {
-    loading.value = false
-  }
-}
+const {
+  volumeIndicatorVisible,
+  brightnessIndicatorVisible,
+  volumeIndicatorValue,
+  brightnessIndicatorValue,
+  gestureIndicatorX,
+  gestureIndicatorY,
+  showSeekIndicator,
+  seekIndicatorDir,
+  seekIndicatorSeconds,
+  handleTouchStart,
+  handleTouchMove,
+  handleTouchEnd
+} = useVideoTouchGestures({
+  isMobile,
+  videoRef,
+  changeVolume,
+  skipBackward,
+  skipForward
+})
 
-const initPlayer = () => {
-  const video = videoRef.value
-  const url = videoData.value.hlsUrl || videoData.value.url
+const {
+  isBuffering,
+  onBufferingStart,
+  onBufferingEnd,
+  stopWatchdog: stopBufferingWatchdog
+} = useVideoBufferingWatchdog({
+  showWarning: (options) => {
+    ElMessage.warning(options)
+  },
+  showRetryConfirm: ({ message, title, options }) => ElMessageBox.confirm(message, title, options),
+  onRetry: () => retryHls()
+})
 
-  if (!url) {
-    errorMsg.value = '视频地址无效'
-    return
-  }
+const {
+  hlsFatal,
+  initPlayer,
+  retryLoad,
+  retryHls,
+  destroyPlayer
+} = useVideoSourceLifecycle({
+  videoRef,
+  isPipSupported,
+  handlePipEnter,
+  handlePipLeave,
+  getVideoUrl: () => videoData.value.hlsUrl || videoData.value.url,
+  loadVideo: () => loadVideo(),
+  setErrorMessage,
+  scheduleRetryInit: () => nextTick()
+})
 
-  // P0-6: Register PiP event listeners (remove first to prevent stacking)
-  if (video && isPipSupported.value) {
-    video.removeEventListener('enterpictureinpicture', handlePipEnter)
-    video.removeEventListener('leavepictureinpicture', handlePipLeave)
-    video.addEventListener('enterpictureinpicture', handlePipEnter)
-    video.addEventListener('leavepictureinpicture', handlePipLeave)
-  }
-
-  if (isHLS(url)) {
-    if (Hls.isSupported()) {
-      const token = getToken()
-      hlsInstance.value = new Hls({
-        xhrSetup: (xhr) => {
-          if (token) {
-            xhr.setRequestHeader('Authorization', 'Bearer ' + token)
-          }
-        }
-      })
-      hlsInstance.value.loadSource(url)
-      hlsInstance.value.attachMedia(video)
-      hlsInstance.value.on(Hls.Events.MANIFEST_PARSED, () => {
-        video.play().catch(() => {})
-      })
-      hlsInstance.value.on(Hls.Events.ERROR, (event, data) => {
-        if (data.fatal) {
-          hlsFatal.value = true
-          errorMsg.value = '视频播放出错'
-        }
-      })
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = url
-      video.play().catch(() => {})
-    }
-  } else {
-    video.src = url
-    video.load()
-  }
-}
-
-const isHLS = (url) => {
-  return url && (url.endsWith('.m3u8') || url.includes('.m3u8'))
-}
-
-const retryLoad = () => {
-  hlsFatal.value = false
-  loadVideo()
-}
-
-// P1-1: 重试 HLS 播放（仅重新初始化播放器，不重新加载数据）
-const retryHls = () => {
-  hlsFatal.value = false
-  errorMsg.value = ''
-  if (hlsInstance.value) {
-    hlsInstance.value.destroy()
-    hlsInstance.value = null
-  }
-  const video = videoRef.value
-  if (video) {
-    video.pause()
-    video.removeAttribute('src')
-    video.load()
-  }
-  nextTick(() => initPlayer())
-}
-
-// Chapters
-const loadChapters = async () => {
-  if (isComponentUnmounted) return
-  if (!courseId.value) return
-  try {
-    const res = await getChapters({ courseId: courseId.value })
-    if (isComponentUnmounted) return
-    const list = res.data?.items || res.data || []
-    chapters.value = list.map((c, i) => ({
-      ...c,
-      isCompleted: false
-    })).filter(ch => ch.sectionType === 'VIDEO')
-    // Mark current chapter
-    const idx = chapters.value.findIndex(c => Number(c.id) === Number(chapterId.value))
-    if (idx >= 0) currentChapterIndex.value = idx
-    scrollToActiveChapter()
-  } catch (e) {
-    console.warn('[VideoPlayer] loadChapters 加载章节失败', e)
-    chapters.value = []
-    ElMessage.warning('章节列表加载失败，部分功能不可用')
-  }
-}
-
-// Progress
-const loadProgress = async () => {
-  if (isComponentUnmounted) return
-  if (!userStore.userInfo?.id || !courseId.value) return
-  try {
-    const res = await getLearningProgress({
-      userId: userStore.userInfo.id,
-      courseId: courseId.value
-    })
-    if (isComponentUnmounted) return
-    const rawData = res.data || []
-    // P2: handle both array and single-object response shapes
-    let progressData = null
-    if (Array.isArray(rawData)) {
-      progressData = rawData.find(p => Number(p.chapterId) === Number(chapterId.value))
-    } else if (rawData && typeof rawData === 'object' && rawData.id) {
-      // Single object response - check if it matches current chapter
-      if (Number(rawData.chapterId) === Number(chapterId.value)) {
-        progressData = rawData
-      }
-    }
-    if (progressData?.id) {
-      progressId.value = progressData.id
-    }
-    if (progressData?.videoPosition > 0) {
-      lastPosition.value = progressData.videoPosition
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadProgress 加载学习进度失败', e)
-    ElMessage.warning('学习进度加载失败，进度记忆不可用')
-  }
-}
-
-// P1-4: mutex to prevent concurrent createLearningProgress calls
-const ensureProgressRecord = async () => {
-  if (progressId.value) return true
-  if (creatingProgress) return false
-  if (!userStore.userInfo?.id || !courseId.value) return false
-  creatingProgress = true
-  try {
-    const res = await createLearningProgress({
-      userId: userStore.userInfo.id,
-      courseId: courseId.value,
-      chapterId: chapterId.value,
-      videoPosition: 0,
-      videoProgress: 0
-    })
-    const data = res.data || res
-    if (data && data.id) {
-      progressId.value = data.id
-    }
-    return !!progressId.value
-  } catch (e) {
-    console.warn('[VideoPlayer] ensureProgressRecord 创建进度记录失败', e)
-    ElMessage.warning('学习进度保存失败')
-    return false
-  } finally {
-    creatingProgress = false
-  }
-}
-
-const reportProgress = async (force = false) => {
-  if (!force && isComponentUnmounted) return
-  const video = videoRef.value
-  if (!video || !video.duration || video.paused) return
-  const current = video.currentTime
-  const total = video.duration
-  const progressPercentVal = (current / total) * 100
-  // P0-L01: 差异不足 1% 且无待重试的失败记录 → 跳过；失败重试不受此限
-  if (Math.abs(progressPercentVal - lastReportedProgress) < 1 && lastFailedProgress === null) return
-
-  // P2-003: sessionStorage dedup — 5 秒内同 videoId 不上报，防双倍请求
-  const dedupKey = `progress_dedup_video_${videoId.value}`
-  const lastReport = sessionStorage.getItem(dedupKey)
-  if (lastReport && (Date.now() - parseInt(lastReport, 10)) < 5000) return
-  sessionStorage.setItem(dedupKey, String(Date.now()))
-  try {
-    const hasRecord = await ensureProgressRecord()
-    if (!hasRecord || (!force && isComponentUnmounted)) return
-    await updateLearningProgress(progressId.value, {
-      videoPosition: Math.floor(current),
-      videoProgress: Math.round(progressPercentVal)
-    })
-    // P0-L01: API 成功后再更新 lastReportedProgress，失败后下一轮定时器自动重试
-    lastReportedProgress = progressPercentVal
-    lastFailedProgress = null
-    saveLocalPosition(current)
-  } catch (e) {
-    // P0-L01: 记录失败值，确保下次定时器（差异不足 1% 时）仍能重试
-    lastFailedProgress = progressPercentVal
-    // 同一会话只弹一次 warning
-    if (!sessionStorage.getItem(`progress_error_${videoId.value}`)) {
-      sessionStorage.setItem(`progress_error_${videoId.value}`, '1')
-      ElMessage.warning('进度上报失败,请检查网络')
-    }
-    console.warn('[进度上报]', e)
-  }
-}
-
-// P1-1: Progress reporting only when playing
-const startProgressReporting = () => {
-  if (progressReportTimer) return // already running
-  progressReportTimer = setInterval(() => {
-    reportProgress()
-  }, 10000) // 10 seconds
-}
-
-const stopProgressReporting = () => {
-  if (progressReportTimer) {
-    clearInterval(progressReportTimer)
-    progressReportTimer = null
-  }
-}
-
-// Local position
-const saveLocalPosition = (time) => {
-  if (!STORAGE_KEY.value) return
-  localStorage.setItem(STORAGE_KEY.value, JSON.stringify({ time, updatedAt: Date.now() }))
-}
-
-// P1I-012: 优先使用服务端进度，仅在无网络或服务端无进度时使用本地存储
-const loadLocalPosition = () => {
-  try {
-    // 如果服务端已有有效进度，不再用本地存储覆盖
-    if (lastPosition.value > 0) return
-    if (!STORAGE_KEY.value) return
-    const saved = localStorage.getItem(STORAGE_KEY.value)
-    if (saved) {
-      const { time } = JSON.parse(saved)
-      if (time > 0) {
-        lastPosition.value = time
-      }
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', e)
-  }
-}
-
-// Discussions
-const loadDiscussions = async () => {
-  if (isComponentUnmounted) return
-  if (!chapterId.value) return
-  try {
-    const res = await getPosts({ chapterId: chapterId.value, page: 0, size: 20 })
-    if (isComponentUnmounted) return
-    discussions.value = res.data?.items || res.data || []
-  } catch (e) {
-    console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', e)
-    discussions.value = []
-  }
-}
-
-// Notes
-const noteText = ref('')
-
-// P0-5: Persist notes to localStorage
-const saveNotesToStorage = () => {
-  if (!NOTES_STORAGE_KEY.value) return
-  try {
-    localStorage.setItem(NOTES_STORAGE_KEY.value, JSON.stringify(notes.value))
-  } catch (e) {
-    console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', e)
-    ElMessage.warning('笔记保存失败')
-  }
-}
-
-const loadNotesFromStorage = () => {
-  if (!NOTES_STORAGE_KEY.value) return
-  try {
-    const saved = localStorage.getItem(NOTES_STORAGE_KEY.value)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed)) {
-        notes.value = parsed
-      }
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] loadNotesFromStorage 加载笔记失败', e)
-  }
-}
-
-const addNote = () => {
-  if (!noteText.value.trim()) return
-  const note = {
-    id: Date.now(),
-    time: currentTime.value,
-    content: noteText.value.trim(),
-    createdAt: new Date().toISOString()
-  }
-  notes.value.unshift(note)
-  noteText.value = ''
-  saveNotesToStorage()
-  ElMessage.success('笔记已添加')
-}
-
-const deleteNote = async (id) => {
-  try {
+const {
+  lastPosition,
+  notes,
+  noteText,
+  saveLocalPosition,
+  loadLocalPosition,
+  loadNotesFromStorage,
+  addNote: addStoredNote,
+  deleteNote: deleteStoredNote,
+  insertNoteAtCurrentTime: insertStoredNoteAtCurrentTime
+} = useVideoLocalState({
+  videoId,
+  currentTime,
+  formatTime,
+  confirmDelete: async () => {
     await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
       type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
     })
-    notes.value = notes.value.filter(n => n.id !== id)
-    saveNotesToStorage()
-    ElMessage.success('笔记已删除')
-  } catch {
-    // 已取消,不做操作
-  }
-}
-
-// P1-3: Insert timestamp prefix at current time
-const insertNoteAtCurrentTime = () => {
-  noteText.value = `[${formatTime(currentTime.value)}] ${noteText.value}`
-}
-
-const highlightTime = (time) => {
-  // Could emit event to highlight in video if needed
-}
-
-const seekToTime = (time) => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = time
-  }
-}
-
-// Chapter switching
-// P0-4: Chapter switching - await router.push, pass explicit chapterId
-const switchChapter = async (id) => {
-  // Save current progress before switching
-  await reportProgress()
-  await router.push({
-    query: {
-      ...route.query,
-      chapterId: id
+  },
+  onStorageError: ({ type, error }) => {
+    if (type === 'notes_save') {
+      ElMessage.warning('笔记保存失败')
     }
-  })
-  // Reload video data for new chapter
-  const idx = chapters.value.findIndex(c => Number(c.id) === Number(id))
-  if (idx >= 0) {
-    currentChapterIndex.value = idx
-    chapters.value[idx].isCompleted = false
+    if (type === 'position_load') {
+      console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', error)
+    } else if (type === 'notes_load') {
+      console.warn('[VideoPlayer] loadNotesFromStorage 加载笔记失败', error)
+    } else if (type === 'notes_save') {
+      console.warn('[VideoPlayer] saveNotesToStorage 保存笔记失败', error)
+    } else if (type === 'position_save') {
+      console.warn('[VideoPlayer] saveLocalPosition 保存播放位置失败', error)
+    }
+  }
+})
+
+const {
+  progressId,
+  reportProgress,
+  resetProgressReporter: resetVideoProgressReporter
+} = useVideoProgressFlow({
+  videoRef,
+  videoId,
+  courseId,
+  chapterId,
+  userId,
+  isComponentUnmounted: () => isComponentUnmounted.value,
+  saveLocalPosition,
+  showWarning: (message) => {
+    ElMessage.warning(message)
+  }
+})
+
+const {
+  loadChapters,
+  loadProgress,
+  loadDiscussions,
+  switchChapter
+} = useVideoLearningData({
+  courseId,
+  chapterId,
+  userId,
+  chaptersRef: chapters,
+  discussionsRef: discussions,
+  currentChapterIndexRef: currentChapterIndex,
+  progressIdRef: progressId,
+  lastPositionRef: lastPosition,
+  route,
+  router,
+  reportProgress: () => reportProgress(),
+  reloadVideo: () => loadVideo(),
+  isComponentUnmounted: () => isComponentUnmounted.value,
+  onActiveChapterChange: () => {
     scrollToActiveChapter()
-  }
-  // Reset position for new chapter
-  lastPosition.value = 0
-  progressId.value = null
-  await loadVideo()
-}
-
-// Playback controls
-const togglePlay = () => {
-  const video = videoRef.value
-  if (!video) return
-  if (video.paused) {
-    video.play().catch(() => {})
-    isPlaying.value = true
-  } else {
-    video.pause()
-    isPlaying.value = false
-  }
-}
-
-const skipBackward = () => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = Math.max(video.currentTime - 10, 0)
-  }
-}
-
-const skipForward = () => {
-  const video = videoRef.value
-  if (video) {
-    video.currentTime = Math.min(video.currentTime + 10, video.duration)
-  }
-}
-
-const showSeekIndicatorHelper = (dir, seconds) => {
-  seekIndicatorDir.value = dir
-  seekIndicatorSeconds.value = seconds
-  showSeekIndicator.value = true
-  if (seekIndicatorTimer) clearTimeout(seekIndicatorTimer)
-  seekIndicatorTimer = setTimeout(() => {
-    showSeekIndicator.value = false
-  }, 600)
-}
-
-// P0-3: seekRelative for keyboard arrow controls on progress bar
-const seekRelative = (delta) => {
-  if (videoRef.value) {
-    videoRef.value.currentTime = Math.max(0, Math.min(videoRef.value.duration || 0, videoRef.value.currentTime + delta))
-  }
-}
-
-const toggleMute = () => {
-  const video = videoRef.value
-  if (!video) return
-  video.muted = !video.muted
-  isMuted.value = video.muted
-}
-
-const changeVolume = (val) => {
-  const video = videoRef.value
-  if (video) {
-    video.volume = val / 100
-    volumePercent.value = val
-    isMuted.value = val === 0
-  }
-}
-
-const changeSpeed = (speed) => {
-  playbackRate.value = speed
-  const video = videoRef.value
-  if (video) {
-    video.playbackRate = speed
-  }
-  speedToastVisible.value = true
-  if (speedToastTimer) clearTimeout(speedToastTimer)
-  speedToastTimer = setTimeout(() => {
-    speedToastVisible.value = false
-  }, 1500)
-}
-
-const toggleSubtitles = () => {
-  subtitlesEnabled.value = !subtitlesEnabled.value
-}
-
-// P0-2: Fullscreen on container (not video element) so custom controls are visible
-const toggleFullscreen = async () => {
-  const container = videoContainerRef.value
-  if (!container) return
-  try {
-    if (!document.fullscreenElement) {
-      await container.requestFullscreen?.()
-      isFullscreen.value = true
-    } else {
-      await document.exitFullscreen?.()
-      isFullscreen.value = false
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] toggleFullscreen 全屏切换失败', e)
-    isFullscreen.value = false
-  }
-}
-
-const togglePictureInPicture = async () => {
-  const video = videoRef.value
-  if (!video) return
-  try {
-    if (document.pictureInPictureElement) {
-      await document.exitPictureInPicture()
-    } else {
-      await video.requestPictureInPicture()
-    }
-  } catch (e) {
-    console.warn('[VideoPlayer] togglePictureInPicture 画中画切换失败', e)
-  }
-}
-
-const handlePipEnter = () => { isPip.value = true }
-const handlePipLeave = () => { isPip.value = false }
-
-const seekVideo = (e) => {
-  const video = videoRef.value
-  const track = progressTrack.value
-  if (!video || !track) return
-  const rect = track.getBoundingClientRect()
-  const percent = (e.clientX - rect.left) / rect.width
-  video.currentTime = percent * video.duration
-}
-
-// Controls visibility
-const showControls = () => {
-  controlsVisible.value = true
-  if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer)
-    hideControlsTimer = null
-  }
-}
-
-const hideControlsDelayed = () => {
-  hideControlsTimer = setTimeout(() => {
-    if (isPlaying.value) {
-      controlsVisible.value = false
-    }
-  }, 3000)
-}
-
-const speedToastVisible = ref(false)
-
-// Event handlers
-const onCanPlay = () => {
-  const video = videoRef.value
-  if (video) {
-    duration.value = video.duration
-    video.playbackRate = playbackRate.value
-    video.volume = volumePercent.value / 100
-
-    // P0-1: Restore saved position now that duration is known
-    if (lastPosition.value > 0 && lastPosition.value < video.duration - 10) {
-      video.currentTime = lastPosition.value
-    }
-  }
-}
-
-const onTimeUpdate = () => {
-  const video = videoRef.value
-  if (video) {
-    currentTime.value = video.currentTime
-  }
-}
-
-const onProgress = () => {
-  const video = videoRef.value
-  if (video && video.buffered.length > 0) {
-    bufferedPercent.value = (video.buffered.end(video.buffered.length - 1) / video.duration) * 100
-  }
-}
-
-const onEnded = async () => {
-  isPlaying.value = false
-  if (chapters.value[currentChapterIndex.value]) {
-    chapters.value[currentChapterIndex.value].isCompleted = true
-  }
-  await reportProgress()
-  const chapter = chapters.value[currentChapterIndex.value]
-  if (chapter && chapter.exerciseCount > 0) {
-    ElMessageBox.confirm(
-      `「${chapter.title}」的视频已看完，是否开始本节练习？`,
-      '视频播放完成',
-      { confirmButtonText: '开始练习', cancelButtonText: '继续看下一节', type: 'success' }
-    ).then(() => {
-      router.push(`/student/chapters/${chapter.id}/exercises`)
-    }).catch(() => {})
-  } else {
-    ElMessage.success('视频播放完成')
-  }
-}
-
-const onVideoError = () => {
-  errorMsg.value = '视频播放出错，请尝试刷新页面'
-}
-
-// Keyboard shortcuts
-const handleKeydown = (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-  const video = videoRef.value
-  switch (e.code) {
-    case 'Space':
-      e.preventDefault()
-      togglePlay()
-      showControls()
-      break
-    case 'ArrowLeft':
-      e.preventDefault()
-      skipBackward()
-      showControls()
-      break
-    case 'ArrowRight':
-      e.preventDefault()
-      skipForward()
-      showControls()
-      break
-    case 'ArrowUp':
-      e.preventDefault()
-      if (video) {
-        const newVol = Math.min(100, volumePercent.value + 10)
-        changeVolume(newVol)
-        showControls()
-      }
-      break
-    case 'ArrowDown':
-      e.preventDefault()
-      if (video) {
-        const newVol = Math.max(0, volumePercent.value - 10)
-        changeVolume(newVol)
-        showControls()
-      }
-      break
-    case 'KeyF':
-      e.preventDefault()
-      toggleFullscreen()
-      break
-    case 'KeyM':
-      e.preventDefault()
-      toggleMute()
-      showControls()
-      break
-  }
-}
-
-// Fullscreen change handler
-const handleFullscreenChange = () => {
-  isFullscreen.value = !!document.fullscreenElement
-}
-
-// Navigation
-const goBack = () => {
-  router.back()
-}
-
-const toggleSettings = () => {
-  // Could show settings panel
-}
-
-// Lifecycle
-let resizeTimer = null
-const handleResize = () => {
-  if (resizeTimer) clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
-    isMobile.value = window.innerWidth <= 768
-  }, 200)
-}
-
-// Mobile touch handlers
-const handleTouchStart = (e) => {
-  if (!isMobile.value) return
-  const touch = e.touches[0]
-  touchStartX = touch.clientX
-  touchStartY = touch.clientY
-  touchStartTime = Date.now()
-  const video = videoRef.value
-  if (video) {
-    touchStartVolume = video.volume * 100
-    touchStartBrightness = 100
-  }
-  isSwiping = false
-  swipeType = null
-}
-
-const handleTouchMove = (e) => {
-  if (!isMobile.value) return
-  const touch = e.touches[0]
-  const deltaX = touch.clientX - touchStartX
-  const deltaY = touch.clientY - touchStartY
-  const video = videoRef.value
-  if (!video) return
-  const rect = e.target.closest('.video-container')?.getBoundingClientRect()
-  if (!rect) return
-
-  // Determine swipe type on first significant move
-  if (!isSwiping && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
-    const relativeX = touchStartX - rect.left
-    const isRightSide = relativeX > rect.width / 2
-
-    if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Horizontal swipe - seeking
-      swipeType = 'seek'
-    } else {
-      // Vertical swipe - volume/brightness
-      swipeType = isRightSide ? 'volume' : 'brightness'
-      isSwiping = true
-      gestureIndicatorY.value = touch.clientY
-      gestureIndicatorX.value = touch.clientX
-    }
-  }
-
-  if (swipeType === 'volume') {
-    // Left side vertical: volume
-    const sensitivity = 0.4
-    const delta = -deltaY * sensitivity
-    const newVol = Math.min(100, Math.max(0, touchStartVolume + delta))
-    video.volume = newVol / 100
-    volumePercent.value = newVol
-    volumeIndicatorValue.value = Math.round(newVol)
-    isMuted.value = newVol === 0
-    volumeIndicatorVisible.value = true
-  } else if (swipeType === 'brightness') {
-    // Right side vertical: brightness
-    const sensitivity = 0.4
-    const delta = -deltaY * sensitivity
-    const newBri = Math.min(100, Math.max(20, touchStartBrightness + delta))
-    brightnessIndicatorValue.value = Math.round(newBri)
-    brightnessIndicatorVisible.value = true
-    // Apply brightness via CSS filter on video element
-    const brightness = newBri / 100
-    video.style.filter = `brightness(${brightness})`
-  }
-}
-
-const handleTouchEnd = (e) => {
-  if (!isMobile.value) return
-  const touch = e.changedTouches[0]
-  const elapsed = Date.now() - touchStartTime
-  const deltaX = Math.abs(touch.clientX - touchStartX)
-  const deltaY = Math.abs(touch.clientY - touchStartY)
-
-  // Hide gesture indicators after a delay
-  if (volumeIndicatorVisible.value || brightnessIndicatorVisible.value) {
-    setTimeout(() => {
-      volumeIndicatorVisible.value = false
-      brightnessIndicatorVisible.value = false
-    }, 500)
-  }
-
-  // Reset brightness on touch end (keep it for video session)
-  swipeType = null
-  isSwiping = false
-
-  // Double tap detection for seek (quick tap without significant move)
-  if (elapsed < 300 && deltaX < 30 && deltaY < 30 && !isSwiping) {
-    const rect = e.target.closest('.video-container')?.getBoundingClientRect()
-    if (!rect) return
-    const tapX = touch.clientX - rect.left
-    const tapRegion = tapX / rect.width
-
-    tapCount++
-    if (tapTimer) clearTimeout(tapTimer)
-
-    if (tapCount === 2) {
-      // Double tap detected
-      tapCount = 0
-      if (tapRegion < 1 / 3) {
-        // Left 1/3: seek backward
-        skipBackward()
-        showSeekIndicatorHelper('backward', 10)
-      } else if (tapRegion > 2 / 3) {
-        // Right 1/3: seek forward
-        skipForward()
-        showSeekIndicatorHelper('forward', 10)
-      }
-    } else {
-      tapTimer = setTimeout(() => {
-        tapCount = 0
-      }, 300)
-    }
-  }
-}
-
-onMounted(async () => {
-  isMobile.value = window.innerWidth <= 768
-  isPipSupported.value = document.pictureInPictureEnabled && typeof HTMLVideoElement.prototype.requestPictureInPicture === 'function'
-  await nextTick()
-  loadVideo()
-  // P1-1: Progress reporting controlled by play state via watch (no immediate start)
-  document.addEventListener('keydown', handleKeydown)
-  document.addEventListener('fullscreenchange', handleFullscreenChange)
-  window.addEventListener('resize', handleResize)
-  // Scroll to initial active chapter
-  scrollToActiveChapter()
-})
-
-// P1-1: Watch isPlaying to start/stop progress timer
-watch(isPlaying, (playing) => {
-  if (playing) {
-    startProgressReporting()
-  } else {
-    stopProgressReporting()
+  },
+  onChaptersError: (error) => {
+    console.warn('[VideoPlayer] loadChapters 加载章节失败', error)
+    ElMessage.warning('章节列表加载失败，部分功能不可用')
+  },
+  onProgressError: (error) => {
+    console.warn('[VideoPlayer] loadProgress 加载学习进度失败', error)
+    ElMessage.warning('学习进度加载失败，进度记忆不可用')
+  },
+  onDiscussionsError: (error) => {
+    console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', error)
   }
 })
 
-onBeforeUnmount(async () => {
-  // P1-C #7: 先保存本地进度 → 上报服务端 → 最后标记卸载，避免竞态
-  const video = videoRef.value
+const {
+  loadVideo
+} = useVideoLoadOrchestrator({
+  loadingRef: loading,
+  errorMsgRef: errorMsg,
+  videoDataRef: videoData,
+  videoId,
+  nextTickFn: nextTick,
+  initPlayer,
+  loadChapters,
+  loadProgress,
+  loadDiscussions,
+  loadLocalPosition,
+  loadNotesFromStorage,
+  showObjectivesOverlay,
+  isComponentUnmounted: () => isComponentUnmounted.value,
+  onLoadError: (error) => {
+    console.warn('[VideoPlayer] loadVideo 加载视频失败', error)
+  }
+})
 
-  // 1. 先保存本地（同步，最快）
-  if (video) {
-    saveLocalPosition(video.currentTime)
-  }
+const {
+  startHeartbeat: startVideoProgressHeartbeat,
+  stopHeartbeat: stopVideoProgressHeartbeat
+} = useLearningProgressHeartbeat({
+  onInterval: reportProgress,
+  onBeforeUnmountPersist: async () => {
+    const video = videoRef.value
 
-  // 2. 上报服务端（force=true 跳过 isComponentUnmounted 检查，等待完成）
-  try {
-    await reportProgress(true)
-  } catch (e) {
-    console.warn('[VideoPlayer] final progress report failed:', e)
-  }
+    if (video) {
+      saveLocalPosition(video.currentTime)
+    }
 
-  // 3. 标记卸载（在此之后所有异步尝试都会短路）
-  isComponentUnmounted = true
+    try {
+      await reportProgress(true)
+    } catch (e) {
+      console.warn('[VideoPlayer] final progress report failed:', e)
+    }
+  }
+})
 
-  // 4. 清理定时器和资源
-  stopProgressReporting()
-  if (video) {
-    video.removeEventListener('enterpictureinpicture', handlePipEnter)
-    video.removeEventListener('leavepictureinpicture', handlePipLeave)
+const {
+  handleEnded: onEnded
+} = useVideoCompletionFlow({
+  isPlayingRef: isPlaying,
+  chaptersRef: chapters,
+  currentChapterIndexRef: currentChapterIndex,
+  reportProgress: () => reportProgress(),
+  confirmExerciseStart: ({ message, title, options }) => ElMessageBox.confirm(message, title, options),
+  navigateToExercise: (path) => {
+    router.push(path)
+  },
+  showSuccessMessage: (message) => {
+    ElMessage.success(message)
   }
-  if (hlsInstance.value) {
-    hlsInstance.value.destroy()
-    hlsInstance.value = null
+})
+
+const {
+  addNote,
+  deleteNote,
+  insertNoteAtCurrentTime,
+  seekToTime
+} = useVideoNoteActions({
+  addStoredNote,
+  deleteStoredNote,
+  insertStoredNoteAtCurrentTime,
+  videoRef,
+  showSuccessMessage: (message) => {
+    ElMessage.success(message)
   }
-  // P1-3: 清理缓冲 watchdog,避免内存泄漏
-  stopBufferingWatchdog()
-  if (hideControlsTimer) {
-    clearTimeout(hideControlsTimer)
-    hideControlsTimer = null
-  }
-  if (seekIndicatorTimer) {
-    clearTimeout(seekIndicatorTimer)
-    seekIndicatorTimer = null
-  }
-  if (objectivesTimer) {
-    clearTimeout(objectivesTimer)
-    objectivesTimer = null
-  }
-  if (tapTimer) {
-    clearTimeout(tapTimer)
-    tapTimer = null
-  }
-  if (speedToastTimer) {
-    clearTimeout(speedToastTimer)
-    speedToastTimer = null
-  }
-  document.removeEventListener('keydown', handleKeydown)
-  document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  window.removeEventListener('resize', handleResize)
-  if (resizeTimer) clearTimeout(resizeTimer)
+})
+
+const {
+  highlightedNoteTime,
+  highlightTime,
+  onVideoError,
+  goBack
+} = useVideoPageActions({
+  router,
+  errorMsgRef: errorMsg
+})
+
+useVideoPageLifecycle({
+  isPlayingRef: isPlaying,
+  componentUnmountedRef: isComponentUnmounted,
+  isPipSupportedRef: isPipSupported,
+  syncViewportMode,
+  resetVideoProgressReporter,
+  nextTickFn: nextTick,
+  loadVideo,
+  handleKeydown,
+  handleFullscreenChange,
+  handleResize,
+  scrollToActiveChapter,
+  startVideoProgressHeartbeat,
+  stopVideoProgressHeartbeat,
+  destroyPlayer,
+  stopBufferingWatchdog
 })
 </script>
 
@@ -2502,6 +1865,10 @@ onBeforeUnmount(async () => {
   background: rgba(255, 255, 255, 0.05);
 }
 
+.note-item.is-highlighted {
+  background: rgba(99, 102, 241, 0.12);
+}
+
 .note-time {
   font-size: var(--text-xs);
   color: var(--vp-accent);
@@ -2510,6 +1877,11 @@ onBeforeUnmount(async () => {
   padding: 2px 6px;
   background: rgba(99, 102, 241, 0.1);
   border-radius: var(--radius-sm);
+}
+
+.note-time.is-highlighted {
+  background: rgba(99, 102, 241, 0.22);
+  color: #c7d2fe;
 }
 
 .note-content {

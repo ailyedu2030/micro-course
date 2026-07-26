@@ -253,9 +253,11 @@ const handleDelete = async (row) => {
 
 const handleSubmit = async () => {
   if (!formRef.value) return
+  // P1 幂等修复: validate 回调是异步的, 必须在 await 前置位 loading 防连点重复提交
+  if (submitLoading.value) return
+  submitLoading.value = true
   await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitLoading.value = true
+    if (!valid) { submitLoading.value = false; return }
     try {
       if (isEdit.value) {
         await updateClass(currentId.value, formData)

@@ -1,0 +1,1 @@
+import{r as e}from"./vendor-video-player-Dct-RoXs.js";function a(t){return e({method:"GET",url:"/departments",params:t})}function u(t){return e({method:"POST",url:"/departments",data:t})}function m(t,r){return e({method:"PUT",url:`/departments/${t}`,data:r})}function d(t){return e({method:"DELETE",url:`/departments/${t}`})}export{u as c,d,a as g,m as u};

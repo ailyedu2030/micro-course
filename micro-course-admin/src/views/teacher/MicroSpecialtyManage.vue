@@ -133,6 +133,38 @@ const route = useRoute()
 const userStore = useUserStore()
 const msId = computed(() => route.params.id)
 const loading = ref(true)
+
+// P1-C: 修复 QuillEditor 工具栏按钮缺少 aria-label
+const QUILL_LABELS = {
+  'ql-bold': '粗体', 'ql-italic': '斜体', 'ql-underline': '下划线',
+  'ql-strike': '删除线', 'ql-link': '插入链接', 'ql-clean': '清除格式',
+  'ql-blockquote': '引用', 'ql-code-block': '代码块',
+  'ql-image': '插入图片', 'ql-list': '有序列表', 'ql-bullet': '无序列表',
+  'ql-header': '标题', 'ql-indent': '增加缩进', 'ql-outdent': '减少缩进',
+  'ql-align': '对齐', 'ql-direction': '文字方向', 'ql-size': '字号',
+  'ql-color': '文字颜色', 'ql-background': '背景色', 'ql-font': '字体',
+  'ql-script': '上标/下标', 'ql-formula': '公式', 'ql-video': '插入视频'
+}
+function fixQuillAria() {
+  setTimeout(() => {
+    document.querySelectorAll('.ql-toolbar button').forEach(btn => {
+      if (btn.hasAttribute('aria-label')) return
+      const cls = Array.from(btn.classList).find(c => c.startsWith('ql-'))
+      if (cls && QUILL_LABELS[cls]) btn.setAttribute('aria-label', QUILL_LABELS[cls])
+      else if (cls) btn.setAttribute('aria-label', cls.replace('ql-', '').replace('-', ' '))
+    })
+    // 二次检查：Quill 的 header 下拉中的 button 也会被创建
+    document.querySelectorAll('.ql-picker').forEach(picker => {
+      if (!picker.hasAttribute('aria-label') && picker.classList.contains('ql-header')) {
+        // ql-header picker trigger 本身是个 button
+        const labelBtn = picker.querySelector('.ql-picker-label')
+        if (labelBtn && !labelBtn.getAttribute('aria-label')) {
+          labelBtn.setAttribute('aria-label', '标题')
+        }
+      }
+    })
+  }, 500)
+}
 const error = ref(false)
 const saving = ref(false)
 const submitting = ref(false)
@@ -197,9 +229,14 @@ const fetchProgress = async () => {
 }
 
 const handleSave = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (saving.value) return
   if (!formRef.value) return
-  try { await formRef.value.validate() } catch { return }
   saving.value = true
+  try {
+    const valid = await formRef.value.validate()
+    if (!valid) { saving.value = false; return }
+  } catch { saving.value = false; return }
   try { await updateMicroSpecialty(msId.value, form.value); ElMessage.success('保存成功'); fetchDetail() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
   finally { saving.value = false }
@@ -272,7 +309,10 @@ const handleUnsetFeatured = async () => {
   finally { unfeaturing.value = false }
 }
 
-onMounted(fetchDetail)
+onMounted(async () => {
+  await fetchDetail()
+  fixQuillAria()
+})
 </script>
 
 <style scoped>
@@ -285,7 +325,7 @@ onMounted(fetchDetail)
 .stat-card { text-align: center; }
 .toolbar { display: flex; gap: var(--space-2); margin-bottom: var(--space-4); }
 .section-card { margin-bottom: var(--space-4); }
-.card-title { font-size: 16px; font-weight: 600; color: #303133; }
+.card-title { font-size: 16px; font-weight: 600; color: var(--el-text-color-primary); }
 .info-form { max-width: 100%; }
 .form-actions { display: flex; justify-content: flex-end; padding-top: var(--space-4); border-top: 1px solid var(--el-border-color-lighter); }
 .quill-wrapper { width: 100%; border-radius: 4px; }

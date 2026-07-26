@@ -200,6 +200,26 @@ CI 5/5 自动运行
 
 ---
 
+## 浏览器验证默认规则
+
+> 目标：统一本地/开发环境下的浏览器联调方式，避免每次重复选择工具。
+
+### 默认工具选择
+
+- **本地/开发环境的页面联调、交互验证、截图取证，默认优先使用 `ego-browser`**
+- **Playwright 默认用于自动化测试、CI 门禁、脚本化断言与批量回归**
+- 二者职责分离：`ego-browser` 不替代单元测试、构建验证、后端集成测试；Playwright 也不等同于人工式联调走查
+
+### AI 执行约束
+
+- ✅ 教师端/学生端页面的本地流程走查，优先使用 `ego-browser`
+- ✅ 需要截图、手工式点选、真实浏览器态验证时，优先使用 `ego-browser`
+- ✅ 需要纳入 CI 或可重复脚本回归的场景，继续使用 Playwright
+- ❌ 禁止因为 `ego-browser` 可用，就跳过 `npm run test`、`npm run build`、`bash scripts/local-dev-deploy.sh` 等质量门禁
+- ❌ 禁止对生产 URL 使用 `ego-browser`、Playwright 或任何浏览器调试方式
+
+---
+
 ## 🚨 生产安全快速检查
 
 > **2026-07-01 事故教训**: DatePickerYM 修复时直接 ssh 到生产服务器改代码 → Playwright 在生产 URL 验证 → 创建了 proposal 41-53 真实脏数据。**绝不可重演**。

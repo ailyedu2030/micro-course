@@ -33,13 +33,14 @@
           size="small"
           :type="liked ? 'primary' : 'default'"
           class="action-btn"
+          :aria-label="likeBtnLabel"
           @click="handleLike"
         >
           <el-icon class="action-icon"><Select /></el-icon>
           <span class="action-count">{{ comment.likeCount || 0 }}</span>
         </el-button>
 
-        <el-button link size="small" class="action-btn" @click="handleToggleReply">
+        <el-button link size="small" class="action-btn" aria-label="回复" @click="handleToggleReply">
           <el-icon class="action-icon"><ChatLineRound /></el-icon>
           <span class="action-label">回复</span>
         </el-button>
@@ -49,6 +50,7 @@
           link
           size="small"
           class="action-btn collapse-btn"
+          :aria-label="showChildren ? '收起' : '展开'"
           @click="showChildren = !showChildren"
         >
           <el-icon class="action-icon"><ArrowUp v-if="showChildren" /><ArrowDown v-else /></el-icon>
@@ -64,11 +66,12 @@
           type="textarea"
           :rows="2"
           class="reply-input"
+          aria-label="回复内容"
           @keyup.enter.ctrl="handleReply"
         />
         <div class="reply-actions">
           <el-button size="small" @click="handleCancelReply">取消</el-button>
-          <el-button type="primary" size="small" :disabled="!replyContent.trim() || props.replyLoading" :loading="props.replyLoading" @click="handleReply">发送</el-button>
+          <el-button type="primary" size="small" :disabled="!replyContent.trim() || isReplying" :loading="isReplying" @click="handleReply">发送</el-button>
         </div>
       </div>
     </div>
@@ -80,7 +83,7 @@
         :key="child.id"
         :comment="child"
         :depth="depth + 1"
-        :reply-loading="props.replyLoading"
+        :replying-id="props.replyingId"
         @reply="$emit('reply', $event)"
         @like="$emit('like', $event)"
       />
@@ -99,7 +102,7 @@ const MAX_DEPTH = 10
 const props = defineProps({
   comment: { type: Object, required: true },
   depth: { type: Number, default: 0 },
-  replyLoading: { type: Boolean, default: false }
+  replyingId: { type: [Number, String], default: null }
 })
 
 const emit = defineEmits(['reply', 'like'])
@@ -107,7 +110,7 @@ const emit = defineEmits(['reply', 'like'])
 const showReply = ref(false)
 const showChildren = ref(true)
 const replyContent = ref('')
-const liked = ref(false)
+const liked = ref(props.comment.isLiked ?? false)
 
 const hasChildren = computed(() => props.comment.children && props.comment.children.length > 0)
 const childrenCount = computed(() => props.comment.children?.length || 0)
@@ -119,6 +122,9 @@ const displayName = computed(() => {
 })
 
 const replyPlaceholder = computed(() => `回复 ${props.comment.isAnonymous ? '匿名用户' : (props.comment.authorName || props.comment.userName || '未知')}…`)
+
+const likeBtnLabel = computed(() => liked.value ? '取消点赞' : '点赞')
+const isReplying = computed(() => props.replyingId != null && String(props.comment.id) === String(props.replyingId))
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''

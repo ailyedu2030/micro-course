@@ -4,9 +4,12 @@ import com.microcourse.BaseIntegrationTest;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -32,8 +35,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
 class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
 
+    @Autowired
+    private JdbcTemplate jdbc;
+
     private Long progressId1;
     private Long progressId2;
+
+    private String studentToken() throws Exception {
+        return "Bearer " + loginAs("student", "student123");
+    }
+
+    @BeforeEach
+    void enrollStudent() {
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, enrolled_at, updated_at, version) " +
+                "VALUES (7, 1, 'APPROVED', NOW(), NOW(), 0) ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
+        jdbc.update("INSERT INTO enrollments (user_id, course_id, enrollment_status, enrolled_at, updated_at, version) " +
+                "VALUES (7, 2, 'APPROVED', NOW(), NOW(), 0) ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
+    }
 
     @AfterEach
     void cleanup() {
@@ -43,6 +61,7 @@ class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
                 stmt.execute("TRUNCATE learning_progress CASCADE");
             }
         } catch (Exception ignored) {}
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id IN (1, 2)"); } catch (Exception ignored) {}
         progressId1 = null;
         progressId2 = null;
     }
@@ -50,7 +69,7 @@ class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
     @Test
     @DisplayName("RED→GREEN: 并发两个 watchDelta=30 与 watchDelta=45,最终 totalWatchTime=75")
     void incrementalAdd() throws Exception {
-        String token = bearerAdmin();
+        String token = studentToken();
         progressId1 = createTestProgress(1L, 1L);
         Long progressId = progressId1;
         int before = readTotalWatchTime(token, progressId, 1L);
@@ -89,7 +108,7 @@ class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
     @Test
     @DisplayName("BOUNDARY: watchDelta=0 或负数 → totalWatchTime 不变")
     void negativeDeltaIsIgnored() throws Exception {
-        String token = bearerAdmin();
+        String token = studentToken();
         // 使用与该类第一个测试不同的 course/chapter 避免 UNIQUE 冲突
         progressId2 = createTestProgress(2L, 5L);
         Long progressId = progressId2;
@@ -107,8 +126,8 @@ class LearningProgressP0ConcurrencyTest extends BaseIntegrationTest {
     }
 
     private Long createTestProgress(Long courseId, Long chapterId) throws Exception {
-        String token = bearerAdmin();
-        String body = String.format("{\"userId\":1,\"courseId\":%d,\"chapterId\":%d}", courseId, chapterId);
+        String token = studentToken();
+        String body = String.format("{\"userId\":7,\"courseId\":%d,\"chapterId\":%d}", courseId, chapterId);
         MvcResult res = mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                     .post("/api/learning-progress/progress")
