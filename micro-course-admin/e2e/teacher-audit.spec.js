@@ -1,7 +1,6 @@
 /**
  * 教师端 a11y + 回归最小测试集
- * ==============================
- *
+ * ======================= *
  * 职责对齐 (AGENTS.md §浏览器验证默认规则):
  *   - ego-browser: 真实用户式交互走查/截图/手工点选（主审查工具）
  *   - Playwright:  可重复回归、CI 门禁、批量自动化断言（本文件）
@@ -39,10 +38,7 @@ async function loginAsTeacher(page) {
   await page.waitForTimeout(2000);
   await page.fill('input[id="username"]', AUTH_USER);
   await page.fill('input[id="password"]', AUTH_PASS);
-<<<<<<< Updated upstream
   // Press Enter to submit (reliable across all Element Plus login form variants)
-=======
->>>>>>> Stashed changes
   await page.keyboard.press('Enter');
   await page.waitForTimeout(3000);
 }
@@ -109,10 +105,8 @@ async function runA11yGate(page, pageName, projectName, testInfo) {
   console.log(`   [axe] 通过项: ${results.passes.length}, 不完全项: ${results.incomplete.length}`);
 }
 
-// ================================================================
-// 1. 教师看板 a11y 扫描（smoke）
-// ================================================================
-test.describe('教师端 - 核心页面 a11y', () => {
+// =========================================================// 1. 教师看板 a11y 扫描（smoke）
+// =========================================================test.describe('教师端 - 核心页面 a11y', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsTeacher(page);
   });
@@ -156,21 +150,16 @@ test.describe('教师端 - 核心页面 a11y', () => {
   });
 });
 
-// ================================================================
-// 2. 登录流程验证（不依赖 @a11y 标签）
-// ================================================================
-test.describe('教师端 - 登录流程', () => {
+// =========================================================// 2. 登录流程验证（不依赖 @a11y 标签）
+// =========================================================test.describe('教师端 - 登录流程', () => {
   test('教师登录成功并跳转到看板', async ({ page }) => {
     await loginAsTeacher(page);
-<<<<<<< Updated upstream
     // 导航到看板
     await page.goto(`${BASE_URL}/teacher/dashboard`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
     // 验证页面成功渲染（非白屏）
-=======
     await page.goto(`${BASE_URL}/teacher/dashboard`, { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2000);
->>>>>>> Stashed changes
     const content = await page.content();
     expect(content.length).toBeGreaterThan(500);
   });
