@@ -33,7 +33,7 @@
           size="small"
           :type="liked ? 'primary' : 'default'"
           class="action-btn"
-          aria-label="点赞"
+          :aria-label="likeBtnLabel"
           @click="handleLike"
         >
           <el-icon class="action-icon"><Select /></el-icon>
@@ -110,7 +110,7 @@ const emit = defineEmits(['reply', 'like'])
 const showReply = ref(false)
 const showChildren = ref(true)
 const replyContent = ref('')
-const liked = ref(false)
+const liked = ref(props.comment.isLiked ?? false)
 
 const hasChildren = computed(() => props.comment.children && props.comment.children.length > 0)
 const childrenCount = computed(() => props.comment.children?.length || 0)
@@ -122,6 +122,8 @@ const displayName = computed(() => {
 })
 
 const replyPlaceholder = computed(() => `回复 ${props.comment.isAnonymous ? '匿名用户' : (props.comment.authorName || props.comment.userName || '未知')}…`)
+
+const likeBtnLabel = computed(() => liked.value ? '取消点赞' : '点赞')
 
 const formatTime = (timeStr) => {
   if (!timeStr) return ''
