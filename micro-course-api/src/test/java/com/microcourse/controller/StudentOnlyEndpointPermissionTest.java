@@ -59,12 +59,6 @@ class StudentOnlyEndpointPermissionTest extends BaseIntegrationTest {
             "ON CONFLICT (user_id, course_id) WHERE deleted_at IS NULL DO NOTHING");
     }
 
-    @AfterEach
-    void tearDown() {
-        jdbc.update("DELETE FROM check_ins WHERE id = 999001");
-        jdbc.update("DELETE FROM enrollments WHERE user_id = 7 AND course_id = 1");
-    }
-
     // ================================================================
     // CheckInController — 学生打卡
     // ================================================================
