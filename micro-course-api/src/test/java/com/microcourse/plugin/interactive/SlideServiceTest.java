@@ -388,5 +388,36 @@ class SlideServiceTest {
                 SecurityContextHolder.clearContext();
             }
         }
+
+        @Test
+        @DisplayName("仅含 <script> 的 HTML 上传成功（课件模式允许 script，XSS 由 iframe sandbox 兜底）")
+        void uploadHtmlFile_ScriptContentPreserved() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
+                    CourseSlide s = inv.getArgument(0);
+                    s.setId(44L);
+                    return 1;
+                });
+                when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                MockMultipartFile xssFile = new MockMultipartFile(
+                        "file", "xss.html", "text/html", "<script>alert(1)</script>".getBytes());
+
+                // HtmlSanitizer.sanitizeForCourseware() 是宽松模式，
+                // 允许 script 标签（安全由前端 iframe sandbox 兜底），
+                // 因此上传应成功，不抛异常
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, xssFile, null, null);
+                assertNotNull(resp);
+                assertEquals(44L, resp.getSlideId().longValue());
+                verify(courseSlideMapper).insert(any(CourseSlide.class));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
     }
 }
