@@ -26,7 +26,7 @@
 ### 2.1 依赖与配置
 
 - [x] **2.1.1 pom.xml**: Jsoup 1.18.3 已安装（替代 OWASP，性能更优，功能等价）
-  - **验收**: mvn dependency:tree 看到 `owasp-java-html-sanitizer:20240325.1`
+  - **验收**: mvn dependency:tree 看到 `org.jsoup:jsoup:1.18.3`
 - [x] **2.1.2 application.yml**: plugin.interactive.html-content 配置完整（max-file-size + whitelist-teachers）
   - **验收**: 启动日志显示 `html-content.enabled=true`
 
@@ -59,10 +59,10 @@
   - **验收**: 处理 .html 上传 + sanitize + 存储
 - [x] **2.4.2 HtmlSanitizer**: 已实现（含快速拒绝 containsDisallowedContent + sanitize 完整流程）
   - **验收**: 单元测试覆盖 10+ XSS payload
-- [x] **2.4.3 (Phase 1 Defer) SlideRenderService.tryConvertPptxToHtml() 方法**
-  - **状态**: 当前仅占位 log，不实际实现转换。Phase 1 仅保证 API 存在，调用不报错。
-  - **验收**: PPT 上传时调用不报错，HTML_DIRECT 类型可独立于 PPT 渲染路径工作
-  - **后续**: Phase 2 用 Apache POI + Jsoup 实现基础转换（见 2.4.4）
+- [x] **2.4.3 (Phase 1) SlideRenderService.tryConvertPptxToHtml() 方法**
+  - **状态**: 已实现基于 Jsoup 的基础 PPT→HTML 转换，上传 PPT 时自动生成 HTML 副本。
+  - **验收**: PPT 上传时调用 tryConvertPptxToHtml，即使失败也不阻塞主渲染路径
+  - **后续**: Phase 2 可用 Apache POI + Jsoup 增强转换质量（见 2.4.4）
 - [ ] **2.4.4 (Phase 2 Defer) PptxToHtmlConverter 工具类**
   - **状态**: 推迟到 Phase 2 实现
   - **验收**: 用 Apache POI + Jsoup 实现基础转换
@@ -84,11 +84,11 @@
 ### 2.7 后端单测
 
 - [x] **2.7.1 SlideServiceTest**: uploadHtmlFile_Success() ✅
-  - **验收**: 5KB HTML 上传成功，DB 写入正确
+  - **验收**: MockMultipartFile("<p>File Upload Test</p>") 上传成功，status=2，slideId=43
 - [x] **2.7.2 SlideServiceTest**: uploadHtmlFile_TooLarge() ✅
-  - **验收**: 6MB HTML 抛 16010
-- [x] **2.7.3 SlideServiceTest**: XSS 内容抛 HTML_SANITIZE_REMOVED_ALL ✅
-  - **验收**: 含 `<script>alert(1)</script>` 的 HTML 被 sanitize
+  - **验收**: 5MB+1 字节 HTML 抛 HTML_TOO_LARGE (16010)
+- [x] **2.7.3 SlideServiceTest**: uploadHtmlFile_XssRemoved() ✅
+  - **验收**: 仅含 `<script>alert(1)</script>` 的 HTML 抛 HTML_SANITIZE_REMOVED_ALL (16011)
 - [ ] **2.7.4 SlideServiceTest.uploadPptx_withAutoConvert()**
   - **验收**: PPT 上传成功，HTML 副本生成（即使失败也不抛错）
 - [ ] **2.7.5 SlidePageTest.checkConstraint()**
@@ -102,47 +102,47 @@
 
 ### 3.1 SlidePlayer.vue
 
-- [ ] **3.1.1 template 加 iframe 分支**
+- [x] **3.1.1 template 加 iframe 分支**
   - **验收**: `v-if="currentPage?.contentType === 'HTML_DIRECT'"` 渲染 `<iframe sandbox srcdoc>`
-- [ ] **3.1.2 script 加 loadHtmlPage() 方法**
+- [x] **3.1.2 script 加 loadHtmlPage() 方法**
   - **验收**: HTML 课时无需图片预加载，直接显示 htmlContent
-- [ ] **3.1.3 style 加 .slide-iframe 样式**
+- [x] **3.1.3 style 加 .slide-iframe 样式**
   - **验收**: iframe 100% 宽高，与 .slide-image 视觉一致
 
 ### 3.2 SlideUploadZone.vue
 
-- [ ] **3.2.1 accept 属性加 .html**
+- [x] **3.2.1 accept 属性加 .html**
   - **验收**: 文件选择对话框可过滤 .html
-- [ ] **3.2.2 前端校验文件类型**
+- [x] **3.2.2 前端校验文件类型**
   - **验收**: 非 .html/.pptx 拒绝 + 友好提示
-- [ ] **3.2.3 大小校验（前端 5MB）**
+- [x] **3.2.3 大小校验（前端 5MB）**
   - **验收**: >5MB 拒绝 + 提示
 
 ### 3.3 plugins/interactive/api/slide.js
 
-- [ ] **3.3.1 新增 uploadHtml() 函数**
+- [x] **3.3.1 新增 uploadHtml() 函数**
   - **验收**: 60s timeout（HTML 比 PPT 快）
-- [ ] **3.3.2 修改 uploadSlide() 加 contentType 参数**
+- [x] **3.3.2 修改 uploadSlide() 加 contentType 参数**
   - **验收**: 默认 'auto'，可显式传 'html' 或 'pptx'
 
 ### 3.4 SlideManage.vue
 
-- [ ] **3.4.1 HTML 课时显示"HTML"徽标**
+- [x] **3.4.1 HTML 课时显示"HTML"徽标**
   - **验收**: 缩略图右上角蓝色"HTML"角标
-- [ ] **3.4.2 上传按钮文案更新**
+- [x] **3.4.2 上传按钮文案更新**
   - **验收**: "上传 PPT / HTML" 提示
 
 ### 3.5 前端单测
 
-- [ ] **3.5.1 SlidePlayer.test.js iframe 渲染**
+- [x] **3.5.1 SlidePlayer.test.js iframe 渲染**
   - **验收**: contentType='HTML_DIRECT' 时渲染 iframe 而非 img
-- [ ] **3.5.2 SlidePlayer.test.js 自动播放 HTML 课时**
+- [x] **3.5.2 SlidePlayer.test.js 自动播放 HTML 课时**
   - **验收**: 音频 ended 触发 goTo(next)，iframe 内容保持
-- [ ] **3.5.3 SlideUploadZone.test.js 接受 .html**
+- [x] **3.5.3 SlideUploadZone.test.js 接受 .html**
   - **验收**: .html 文件可上传
-- [ ] **3.5.4 slide.test.js uploadHtml API**
+- [x] **3.5.4 slide.test.js uploadHtml API**
   - **验收**: POST 正确，参数正确
-- [ ] **3.5.5 SlideManage.test.js HTML 徽标**
+- [x] **3.5.5 SlideManage.test.js HTML 徽标**
   - **验收**: HTML 课时显示角标
 
 ---
@@ -219,16 +219,16 @@
 
 ## 7. 阶段 6 — 文档同步
 
-- [ ] **7.1 docs/数据字典.md v0.6 → v0.7**
+- [x] **7.1 docs/数据字典.md v0.6 → v0.7**
   - **触发**: 新增 content_type + html_content 字段
   - **验收**: slide_pages 表结构完整
-- [ ] **7.2 docs/API契约-Phase1.md 新增 HTML 上传端点**
+- [x] **7.2 docs/API契约-Phase1.md 新增 HTML 上传端点**
   - **触发**: 新增 POST /api/courses/{id}/slides/upload html 分支
-- [ ] **7.3 docs/权限矩阵.md v4.0 → v4.1**
+- [x] **7.3 docs/权限矩阵.md v4.0 → v4.1**
   - **触发**: HTML 上传权限位
 - [ ] **7.4 docs/状态机设计.md 更新**
   - **触发**: slide.status 新增 HTML_GENERATED 状态（如果实现 PPT→HTML）
-- [ ] **7.5 CHANGELOG.md 记录本次变更**
+- [x] **7.5 CHANGELOG.md 记录本次变更**
 - [ ] **7.6 docs/开发规范.md v1.5 → v1.6**
   - **触发**: 新增"HTML 课时内容规则"禁止项
 

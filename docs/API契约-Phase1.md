@@ -1904,16 +1904,31 @@
 
 ---
 
-## 附录 A：预留 API 接口（Phase 2）
+## 附录 A：讨论区 API 接口（已实现 + 权限同步）
 
-以下接口在本 Phase 不实现，仅作框架预留：
+> **v1.8 同步**（2026-07-27）：讨论区端点已在 Phase 1 后实现，路径以权限矩阵 v2.0 §1.10 `discussion` 为准，附录原"Phase 2 预留"声明已废止。
 
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/discussions/posts | 讨论帖列表 (Phase 2) |
-| POST | /api/discussions/posts | 发帖 (Phase 2) |
-| GET | /api/discussions/posts/{id} | 帖子详情 (Phase 2) |
-| POST | /api/discussions/comments | 回复 (Phase 2) |
+| 方法 | 路径 | 说明 | 权限要求（参照权限矩阵 §1.10） |
+|------|------|------|--------------------------------|
+| GET | `/api/chapters/{id}/discussions` | 获取章节讨论区（学生/教师） | `isAuthenticated()` |
+| POST | `/api/chapters/{id}/discussions` | 发布讨论帖（学生/教师） | `hasAnyRole('STUDENT','TEACHER')` |
+| GET | `/api/discussions` | 获取讨论帖列表（分页） | `isAuthenticated()` |
+| GET | `/api/discussions/{id}` | 获取讨论帖详情 | `isAuthenticated()` |
+| POST | `/api/discussions` | 发布讨论帖（学生/教师） | `hasAnyRole('STUDENT','TEACHER')` |
+| PUT | `/api/discussions/{id}` | 更新讨论帖（作者/教师） | `@PreAuthorize("isOwnerOrAdmin(#id)")` |
+| DELETE | `/api/discussions/{id}` | 删除讨论帖（作者/管理员） | `@PreAuthorize("isOwnerOrAdmin(#id)")` |
+| POST | `/api/discussions/{id}/pin` | 置顶讨论帖（教师/管理员） | `hasAnyRole('TEACHER','ADMIN')` |
+| POST | `/api/discussions/{id}/essence` | 标记精华（教师/管理员） | `hasAnyRole('TEACHER','ADMIN')` |
+| POST | `/api/discussions/{id}/like` | 点赞讨论帖 | `isAuthenticated()` |
+| GET | `/api/discussions/{id}/comments` | 获取评论列表（分页） | `isAuthenticated()` |
+| POST | `/api/discussions/{id}/comments` | 发布评论（支持匿名 `isAnonymous`） | `hasAnyRole('STUDENT','TEACHER')` |
+| PUT | `/api/discussions/{id}/comments/{commentId}` | 更新评论（作者/教师） | `@PreAuthorize("isOwnerOrAdmin(#commentId)")` |
+| DELETE | `/api/discussions/{id}/comments/{commentId}` | 删除评论（作者/管理员） | `@PreAuthorize("isOwnerOrAdmin(#commentId)")` |
+| POST | `/api/discussions/{id}/comments/{commentId}/like` | 点赞评论 | `isAuthenticated()` |
+
+**响应格式**：列表分页采用统一 `{ items, total, page, size, totalPages }` 五字段格式（参照 §1.4 通用响应）。
+
+**状态机引用**：DiscussionPost 状态机复用 `enums/DiscussionPostStatus`（PENDING/PUBLISHED/REJECTED/DELETED），由 `DiscussionPostServiceImpl` 维护；DiscussionComment 状态由 `status` Integer 字段控制（0=隐藏/删除, 1=显示）。具体状态流转详见 `docs/状态机设计.md` §8 注（未来扩展时补 §5.X）。
 
 ---
 
@@ -1921,6 +1936,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v1.8 | 2026-07-27 | discussion-domain-drift-fix 同步：附录 A 由"Phase 2 预留"改为"已实现"，讨论区 15 个端点全量补登（路径以权限矩阵 v2.0 §1.10 为准），含权限要求、状态机引用 | 总工程师 |
 | v1.7 | 2026-07-17 | P1 Stage 4-5 增量：路径别名(POST /courses/{cid}/chapters、/sections/{sid}/{html|ppt})、幂等性(GET /courses?hid=xxx)、批量化(POST chapters/batch、sections/batch) | opencode |
 | v1.6 | 2026-07-17 | P1 Stage 3 增量：POST /courses/{cid}/trainings、POST /courses/{cid}/final-project、V200/201 migration(2 张新表) | opencode |
 | v1.5 | 2026-07-17 | P1 Stage 2 增量：新增 3 个 section 资源端点(POST quizzes/tasks/reflections)、V197/198/199 migration(3 张新表) | opencode |

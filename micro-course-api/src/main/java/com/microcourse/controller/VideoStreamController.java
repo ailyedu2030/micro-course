@@ -55,7 +55,7 @@ public class VideoStreamController {
      * filename 可以是 index.m3u8 或 segment0.ts 等
      */
     @GetMapping("/{courseId}/{videoId}/{filename}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('STUDENT','TEACHER','ADMIN','ACADEMIC')")
     public ResponseEntity<Resource> stream(
             @PathVariable Long courseId,
             @PathVariable Long videoId,
@@ -63,22 +63,22 @@ public class VideoStreamController {
             @RequestParam(value = "sign", required = false) String sign) {
 
         // P1I-014: 为所有角色添加签名校验，防止非 STUDENT 角色绕过视频流防护
-        if (SecurityUtil.hasRole("STUDENT")) {
-            // STUDENT: 先选课校验（未选课返回 8005 NOT_ENROLLED，而非 12003 VIDEO_SIGN_INVALID）
-            VideoAccessService.AccessResult access =
-                    videoAccessService.checkVideoAccess(SecurityUtil.getCurrentUserId(), courseId);
-            if (!access.allowed) {
-                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
-            }
-        } else if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            // TEACHER: 校验是否为课程所有者，防止访问他人课程视频
+        Long userId = SecurityUtil.getCurrentUserId();
+        if (!SecurityUtil.isAdminOrAcademic()) {
+            // TEACHER/STUDENT: 校验访问权限
             Course course = courseRepository.selectById(courseId);
             if (course == null) {
                 throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
             }
-            if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "只能访问自己课程的视频");
+            if (!userId.equals(course.getTeacherId())) {
+                // 非课程所有者（STUDENT 或非所有者 TEACHER）→ 必须已选课
+                VideoAccessService.AccessResult access =
+                        videoAccessService.checkVideoAccess(userId, courseId);
+                if (!access.allowed) {
+                    throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再观看视频");
+                }
             }
+            // 课程所有者（TEACHER）→ 允许访问
         }
         // 所有角色都需要验证视频签名，防止直接访问绕过
         if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
