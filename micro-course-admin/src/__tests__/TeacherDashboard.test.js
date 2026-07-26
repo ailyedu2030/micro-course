@@ -57,7 +57,7 @@ vi.mock('element-plus', async (importOriginal) => {
 import TeacherDashboard from '@/views/teacher/TeacherDashboard.vue'
 
 const stubs = {
-  'router-link': { template: '<a><slot /></a>' },
+  'router-link': { props: ['to'], template: '<a :data-to="to"><slot /></a>' },
   'el-row': { template: '<div><slot /></div>' },
   'el-col': { template: '<div><slot /></div>' },
   'el-skeleton': { template: '<div><slot name="default" /></div>' },
@@ -105,6 +105,146 @@ describe('TeacherDashboard.vue', () => {
     expect(teacherRatingMocks.getMyRating).toHaveBeenCalledTimes(1)
     expect(teacherRatingMocks.getMyTierHistory).toHaveBeenCalledTimes(1)
     expect(teacherApiMocks.getTeacherRevenue).toHaveBeenCalledTimes(1)
+
+    wrapper.unmount()
+  })
+
+  it('renders teacher dashboard stats from the backend payload', async () => {
+    teacherApiMocks.getStats.mockResolvedValueOnce({
+      data: {
+        courseCount: 6,
+        studentCount: 128,
+        pendingHomework: 9,
+        pendingQuestions: 4,
+        completionRate: 87.5,
+        avgScore: 91.2,
+      },
+    })
+
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('6')
+    expect(wrapper.text()).toContain('128')
+    expect(wrapper.text()).toContain('9')
+    expect(wrapper.text()).toContain('4')
+    expect(wrapper.text()).toContain('87.5%')
+    expect(wrapper.text()).toContain('91.2 分')
+
+    wrapper.unmount()
+  })
+
+  it('exposes teacher quick actions for grades and discussion routes', async () => {
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const quickLinks = wrapper.findAll('.quick-action-card').map(node => ({
+      text: node.text(),
+      to: node.attributes('data-to'),
+    }))
+
+    expect(quickLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({ text: expect.stringContaining('成绩明细'), to: '/teacher/grades' }),
+      expect.objectContaining({ text: expect.stringContaining('学员提问'), to: '/teacher/discussions' }),
+    ]))
+
+    wrapper.unmount()
+  })
+
+  it('makes course cards keyboard accessible', async () => {
+    teacherApiMocks.getMyCourses.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 7, title: '键盘可达课程', studentCount: 12, rating: 4.5, cover: null },
+        ],
+      },
+    })
+
+    const push = vi.fn()
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: { push },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const card = wrapper.find('.course-card-item')
+    expect(card.exists()).toBe(true)
+    expect(card.attributes('role')).toBe('button')
+    expect(card.attributes('tabindex')).toBe('0')
+    expect(card.attributes('aria-label')).toContain('键盘可达课程')
+
+    await card.trigger('keydown.enter')
+    expect(push).toHaveBeenCalledWith('/teacher/courses/7')
+
+    await card.trigger('keydown.space')
+    expect(push).toHaveBeenCalledWith('/teacher/courses/7')
+
+    wrapper.unmount()
+  })
+
+  it('renders the course cover image when the teacher course has a cover URL', async () => {
+    teacherApiMocks.getMyCourses.mockResolvedValueOnce({
+      data: {
+        items: [
+          { id: 11, title: '有封面的课程', studentCount: 18, rating: 4.8, cover: '/api/files/covers/course-11.jpg' },
+        ],
+      },
+    })
+
+    const wrapper = mount(TeacherDashboard, {
+      global: {
+        stubs,
+        directives: {
+          loading: () => {},
+        },
+        mocks: {
+          $router: {
+            push: vi.fn(),
+          },
+        },
+      },
+    })
+
+    await flushPromises()
+
+    const image = wrapper.find('.course-cover-img')
+    expect(image.exists()).toBe(true)
+    expect(image.attributes('src')).toBe('/api/files/covers/course-11.jpg')
+    expect(image.attributes('alt')).toBe('有封面的课程')
 
     wrapper.unmount()
   })

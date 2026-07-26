@@ -527,7 +527,7 @@ onMounted(loadData)
 }
 
 .empty-text {
-  color: #999;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
   text-align: center;
 }

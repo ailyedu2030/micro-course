@@ -31,14 +31,20 @@
       <div class="hero-card">
         <div class="hero-left">
           <!-- 互动课程: 幻灯片预览 → 播放器 -->
-          <div v-if="course.courseType === 'INTERACTIVE'" class="hero-img-box" @click="handlePlayPreview">
+          <button
+            v-if="course.courseType === 'INTERACTIVE'"
+            type="button"
+            class="hero-img-box hero-preview-trigger"
+            :aria-label="previewButtonLabel"
+            @click="handlePlayPreview"
+          >
             <div class="hero-img-placeholder">
               <el-icon :size="56" color="#ccc"><Present /></el-icon>
             </div>
             <div class="hero-play-btn">
               <el-icon :size="28" color="#fff"><VideoPlay /></el-icon>
             </div>
-          </div>
+          </button>
           <!-- 视频课程: 封面图 或 内嵌播放器 -->
           <div v-else-if="showPlayer" class="hero-img-box hero-player-active">
             <video ref="videoRef" class="hero-video" controls autoplay @click.stop />
@@ -46,7 +52,13 @@
               <el-icon :size="18"><Close /></el-icon>
             </button>
           </div>
-          <div v-else class="hero-img-box" @click="handlePlayPreview">
+          <button
+            v-else
+            type="button"
+            class="hero-img-box hero-preview-trigger"
+            :aria-label="previewButtonLabel"
+            @click="handlePlayPreview"
+          >
             <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" @error="handleCoverError" class="hero-img" />
             <div v-else class="hero-img-placeholder">
               <el-icon :size="56" color="#ccc"><VideoPlay /></el-icon>
@@ -55,7 +67,7 @@
               <el-icon v-if="!videoLoading" :size="28" color="#fff"><VideoPlay /></el-icon>
               <el-icon v-else :size="28" color="#fff" class="loading-icon"><Loading /></el-icon>
             </div>
-          </div>
+          </button>
         </div>
         <div class="hero-right">
           <h1 class="hero-title">{{ course.title }}</h1>
@@ -387,6 +399,10 @@ const difficultyText = computed(() => {
   const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难', BEGINNER: '初级', INTERMEDIATE: '中级', ADVANCED: '高级' }
   return map[course.value.difficulty] || course.value.difficulty || ''
 })
+
+const previewButtonLabel = computed(() => (
+  isInteractive.value ? `预览互动课件：${course.value.title || '当前课程'}` : `播放课程预览：${course.value.title || '当前课程'}`
+))
 
 // 内嵌视频播放
 const showPlayer = ref(false)
@@ -738,7 +754,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 .detail-breadcrumb {
   padding: var(--space-4) 0 0;
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
 }
 .detail-breadcrumb a {
   color: var(--el-text-color-secondary);
@@ -767,9 +783,18 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   position: relative;
   cursor: pointer;
 }
+.hero-preview-trigger {
+  border: none;
+  padding: 0;
+  text-align: left;
+}
 .hero-img-box:hover .hero-play-btn:not(.loading) {
   transform: translate(-50%,-50%) scale(1.1);
   background: var(--role-primary);
+}
+.hero-preview-trigger:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: -3px;
 }
 .hero-player-active { cursor: default; }
 .hero-img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -807,6 +832,11 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   cursor: pointer; transition: background var(--duration-base); z-index: 10;
 }
 .hero-close-player:hover { background: rgba(0,0,0,.8); }
+.hero-close-player:focus-visible,
+.tab-nav button:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
+}
 .loading-icon { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hero-right {
@@ -969,7 +999,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 }
 .section-count {
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
   margin-left: auto;
 }
 .section-body { padding: 0; }
@@ -980,7 +1010,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   margin: 0;
   text-wrap: pretty;
 }
-.desc-text--empty { color: var(--el-text-color-placeholder); }
+.desc-text--empty { color: var(--el-text-color-secondary); }
 
 /* ====== Outline / Slides ====== */
 .outline-idx {
@@ -1002,7 +1032,7 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
 }
 .outline-duration {
   font-size: var(--text-sm);
-  color: var(--el-text-color-placeholder);
+  color: var(--el-text-color-secondary);
   margin-left: var(--space-3);
 }
 .outline-desc {

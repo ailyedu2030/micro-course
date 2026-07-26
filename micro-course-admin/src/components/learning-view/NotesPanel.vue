@@ -6,46 +6,49 @@
 <template>
   <div>
     <!-- 课程 Tab -->
-    <div v-show="activeTab === 'course'" class="tab-panel">
-      <div class="course-content-card">
-        <h3 class="content-title">
-          <el-icon><Document /></el-icon>
-          课程内容
-        </h3>
-        <div class="content-body">
-          <p v-if="currentChapter?.description" class="chapter-desc">{{ currentChapter.description }}</p>
-          <p v-else class="chapter-desc muted">本章节暂无课程内容描述</p>
-          <!-- 关键概念高亮列表 -->
-          <div v-if="currentChapter?.keyConcepts?.length" class="key-concepts">
-            <h4 class="concepts-title">关键概念</h4>
-            <ul class="concepts-list">
-              <li v-for="(concept, idx) in currentChapter.keyConcepts" :key="idx" class="concept-item">
-                {{ concept }}
-              </li>
-            </ul>
+    <transition name="panel-fade">
+      <div v-if="activeTab === 'course'" class="tab-panel" key="course">
+        <div class="course-content-card">
+          <h3 class="content-title">
+            <el-icon><Document /></el-icon>
+            课程内容
+          </h3>
+          <div class="content-body">
+            <p v-if="currentChapter?.description" class="chapter-desc">{{ currentChapter.description }}</p>
+            <p v-else class="chapter-desc muted">本章节暂无课程内容描述</p>
+            <div v-if="currentChapter?.keyConcepts?.length" class="key-concepts">
+              <h4 class="concepts-title">关键概念</h4>
+              <ul class="concepts-list">
+                <li v-for="(concept, idx) in currentChapter.keyConcepts" :key="idx" class="concept-item">
+                  {{ concept }}
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </transition>
 
-    <!-- 公告 Tab -->
-    <div v-show="activeTab === 'announcement'" class="tab-panel">
-      <div class="empty-state-card">
-        <el-icon size="48" color="#CBD5E1"><Bell /></el-icon>
-        <p class="empty-title">暂无公告</p>
-        <p class="empty-desc">课程公告将在此处显示</p>
+    <transition name="panel-fade">
+      <div v-if="activeTab === 'announcement'" class="tab-panel" key="announcement">
+        <div class="empty-state-card">
+          <el-icon size="48" color="#CBD5E1"><Bell /></el-icon>
+          <p class="empty-title">暂无公告</p>
+          <p class="empty-desc">课程公告将在此处显示</p>
+        </div>
       </div>
-    </div>
+    </transition>
 
-    <!-- 讨论 Tab -->
-    <div v-show="activeTab === 'discussion'" class="tab-panel">
-      <div class="empty-state-card">
-        <el-icon size="48" color="#CBD5E1"><ChatDotRound /></el-icon>
-        <p class="empty-title">暂无讨论</p>
-        <p class="empty-desc">点击开始与同学和老师讨论</p>
-        <el-button type="primary" plain size="small" @click="$emit('change-tab', 'course')">返回课程</el-button>
+    <transition name="panel-fade">
+      <div v-if="activeTab === 'discussion'" class="tab-panel" key="discussion">
+        <div class="empty-state-card">
+          <el-icon size="48" color="#CBD5E1"><ChatDotRound /></el-icon>
+          <p class="empty-title">暂无讨论</p>
+          <p class="empty-desc">点击开始与同学和老师讨论</p>
+          <el-button type="primary" plain size="small" @click="$emit('change-tab', 'course')">返回课程</el-button>
+        </div>
       </div>
-    </div>
+    </transition>
   </div>
 </template>
 
@@ -61,7 +64,8 @@ defineEmits(['change-tab'])
 </script>
 
 <style scoped>
-.tab-panel { animation: fadeIn 0.2s ease; }
+.panel-fade-enter-active { animation: fadeIn 0.2s ease; }
+.panel-fade-leave-active { animation: fadeIn 0.15s ease reverse; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
 
 .course-content-card {

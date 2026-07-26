@@ -33,6 +33,13 @@ public abstract class BaseIntegrationTest {
     private String cachedAdminToken;
 
     /**
+     * P0 种子用户共享密码（admin/student/p0_teacher/invite_teacher/academic_user 共用）。
+     * 集中定义以避免散落在各测试文件中，种子密码变更时只需改此处。
+     * 仅用于集成测试场景，禁止在生产代码中引用。
+     */
+    protected static final String P0_PASSWORD = "student123";
+
+    /**
      * 登录并返回 accessToken
      */
     protected String loginAs(String username, String password) throws Exception {
@@ -76,7 +83,14 @@ public abstract class BaseIntegrationTest {
             }
             // 清空 JWT 黑名单和 refresh token 缓存，防止跨测试污染
             clearRedisPattern("mc:jwt:blacklist:*");
+            clearRedisPattern("mc:jwt:user-blacklist:*");
             clearRedisPattern("mc:refresh:*");
+            // 清空课程详情/统计缓存，避免共享 Redis 下旧课程缓存污染集成测试读路径
+            clearRedisPattern("mc:course:detail:*");
+            clearRedisPattern("mc:course:stats:*");
+            // 清空用户状态缓存（UserStatusCheckFilter TTL 30s），避免先前测试缓存
+            // 的"DELETED"/"DISABLED"在用户恢复后继续生效导致 401
+            clearRedisPattern("mc:user:status:*");
             applicationContext.getBean(com.microcourse.service.AuthService.class).resetLoginLockout();
         } catch (Exception ignored) {}
     }

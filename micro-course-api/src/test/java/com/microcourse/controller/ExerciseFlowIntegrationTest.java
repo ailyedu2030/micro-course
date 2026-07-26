@@ -129,11 +129,39 @@ class ExerciseFlowIntegrationTest extends BaseIntegrationTest {
                 .andExpect(jsonPath("$.data.passed").value(true));
     }
 
+    // --------- 回归: 增量挂题总分重算 (教师端审计 P1) ---------
+    @Test
+    @DisplayName("回归·addQuestions/removeQuestion 后 totalScore/questionCount 同步重算")
+    void addThenRemoveQuestion_RecalculatesExerciseStats() throws Exception {
+        Long q1 = insertQuestion("SINGLE_CHOICE", "A");
+        Long q2 = insertQuestion("SINGLE_CHOICE", "B");
+        Long ex = insertExercise(1, 0, 0, 0); // totalScore=0, questionCount=0 起步
+        String token = "Bearer " + loginAs("p0_teacher", "student123");
+
+        // 挂 2 题 (默认每题 10 分) → totalScore=20, questionCount=2
+        mockMvc.perform(post("/api/exercises/" + ex + "/questions").header("Authorization", token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"questionIds\":[" + q1 + "," + q2 + "]}"))
+                .andExpect(status().isOk());
+        Integer total = jdbc.queryForObject("SELECT total_score FROM exercises WHERE id=" + ex, Integer.class);
+        Integer count = jdbc.queryForObject("SELECT question_count FROM exercises WHERE id=" + ex, Integer.class);
+        org.assertj.core.api.Assertions.assertThat(total).isEqualTo(20);
+        org.assertj.core.api.Assertions.assertThat(count).isEqualTo(2);
+
+        // 移除 1 题 → totalScore=10, questionCount=1
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .delete("/api/exercises/" + ex + "/questions/" + q1).header("Authorization", token))
+                .andExpect(status().isOk());
+        Integer total2 = jdbc.queryForObject("SELECT total_score FROM exercises WHERE id=" + ex, Integer.class);
+        Integer count2 = jdbc.queryForObject("SELECT question_count FROM exercises WHERE id=" + ex, Integer.class);
+        org.assertj.core.api.Assertions.assertThat(total2).isEqualTo(10);
+        org.assertj.core.api.Assertions.assertThat(count2).isEqualTo(1);
+    }
+
     // --------- 2 ---------
     @Test
     @DisplayName("2·学生提交多选答案（部分正确）→ 全对才得分规则下判 0 分")
-    void submitMultipleChoicePartial_ScoresZero() throws Exception {
-        Long q = insertQuestion("MULTIPLE_CHOICE", "[\"A\",\"B\"]");
+    void submitMultipleChoicePartial_ScoresZero() throws Exception {        Long q = insertQuestion("MULTIPLE_CHOICE", "[\"A\",\"B\"]");
         Long ex = insertExercise(1, 0, 10, 1);
         linkQuestion(ex, q, 10, 1);
         String token = "Bearer " + loginAs("student", "student123");

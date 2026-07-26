@@ -11,7 +11,7 @@
     </transition>
 
     <!-- 侧边栏 -->
-    <el-aside class="layout-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': isMobile && mobileMenuOpen }">
+    <el-aside class="layout-aside" :class="{ 'is-collapsed': collapsed, 'is-mobile-open': isMobile && mobileMenuOpen }" role="complementary" aria-label="侧边导航">
       <!-- Logo 区域 -->
       <div class="layout-logo">
         <el-icon class="logo-icon"><Microphone /></el-icon>
@@ -44,15 +44,17 @@
 
     <el-container class="layout-body">
       <!-- 顶部 Header -->
-      <el-header class="layout-header">
+      <el-header class="layout-header" role="banner" aria-label="页面顶部栏">
         <!-- 左侧：折叠按钮 + 面包屑 + 移动端汉堡 -->
         <div class="header-left">
-          <el-icon v-if="isMobile" class="header-collapse-btn header-mobile-btn" @click="handleMobileMenuToggle" aria-label="打开菜单">
-            <Menu />
-          </el-icon>
-          <el-icon v-else class="header-collapse-btn" @click="toggleCollapse" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
-            <Fold v-if="!collapsed" /><Expand v-else />
-          </el-icon>
+          <button class="header-collapse-btn header-mobile-btn header-btn-reset" @click="handleMobileMenuToggle">
+            <el-icon aria-hidden="true"><Menu /></el-icon>
+            <span class="sr-only">打开菜单</span>
+          </button>
+          <button class="header-collapse-btn header-btn-reset" @click="toggleCollapse">
+            <el-icon aria-hidden="true"><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
+            <span class="sr-only">{{ collapsed ? '展开侧边栏' : '收起侧边栏' }}</span>
+          </button>
           <el-breadcrumb separator="→">
             <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
             <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
@@ -62,16 +64,19 @@
         <!-- 右侧：主题切换 + 通知 + 用户 -->
         <div class="header-right">
           <el-tooltip :content="isDark ? '切换亮色模式' : '切换深色模式'" placement="bottom">
-            <el-icon class="header-icon theme-toggle-btn" @click="toggleTheme" :aria-label="isDark ? '切换亮色模式' : '切换深色模式'">
-              <Moon v-if="!isDark" />
-              <Sunny v-else />
-            </el-icon>
+            <button class="header-icon theme-toggle-btn header-btn-reset" @click="toggleTheme">
+              <el-icon aria-hidden="true"><Moon v-if="!isDark" /><Sunny v-else /></el-icon>
+              <span class="sr-only">{{ isDark ? '切换亮色模式' : '切换深色模式' }}</span>
+            </button>
           </el-tooltip>
-          <el-icon class="header-icon" @click="$router.push('/notifications')" aria-label="通知中心">
-            <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
-              <Bell />
-            </el-badge>
-          </el-icon>
+          <button class="header-icon header-btn-reset" @click="$router.push('/notifications')">
+            <el-icon aria-hidden="true">
+              <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
+                <Bell />
+              </el-badge>
+            </el-icon>
+            <span class="sr-only">通知中心</span>
+          </button>
 
           <el-dropdown trigger="click" @command="handleCommand">
             <div class="user-avatar-wrapper">
@@ -110,6 +115,8 @@
 
       <!-- 主体内容 -->
       <el-main class="layout-main">
+        <!-- PAGE TITLE: h1 for accessibility (axe page-has-heading-one compliance) -->
+        <h1 v-if="pageTitle" class="sr-only">{{ pageTitle }}</h1>
         <!-- 侧边栏切换时的淡入遮罩（P2-7: 折叠/展开进度指示） -->
         <transition name="sidebar-shade-fade">
           <div v-if="sidebarTransitioning" class="sidebar-shade-overlay" />
@@ -155,7 +162,8 @@ const iconMap = {
 
 // 当前角色菜单（从配置中读取）
 const currentMenu = computed(() => {
-  return menuConfig[userStore.role] || menuConfig.ADMIN
+  if (!userStore.role) return []
+  return menuConfig[userStore.role] || []
 })
 
 // 深色模式状态
@@ -264,6 +272,125 @@ const roleLabel = computed(() => {
     STUDENT: '学生'
   }
   return roleMap[userStore.role] || userStore.role || ''
+})
+
+// 页面标题映射表（axe page-has-heading-one compliance）
+// 优先使用 route.meta.title，未设置时从此映射表获取中文标题
+const routeNameTitleMap = {
+  TeacherDashboard: '教师看板',
+  TeacherCourseList: '课程管理',
+  TeacherVideoList: '视频管理',
+  TeacherExerciseList: '练习管理',
+  TeacherDiscussions: '答疑讨论',
+  TeacherFavorites: '收藏管理',
+  TeacherQuestions: '题库管理',
+  StudentList: '学员管理',
+  StudentGrades: '成绩明细',
+  TeacherTeachingClasses: '教学班管理',
+  TeacherProfile: '个人设置',
+  TeacherOfflineList: '线下课管理',
+  TeacherMicroSpecialtyList: '微专业管理',
+  TeacherMicroSpecialtyInvites: '微专业邀请',
+  TeacherMicroSpecialtyProposal: '微专业申报',
+  TeacherMyProposals: '我的申报',
+  StudentLearning: '学习中心',
+  TeacherSlideManage: '课件管理',
+  CourseEdit: '课程编辑',
+  CourseVideoList: '课程视频',
+  CourseExerciseList: '课程练习',
+  ExerciseForm: '练习表单',
+  DiscussionDetail: '讨论详情',
+  ChapterManageVideos: '章节视频管理',
+  ChapterManageSlides: '章节课件管理',
+  ChapterManageOffline: '章节线下课',
+  ChapterManageExam: '章节考试管理',
+  TeacherOfflineSessions: '线下课场次',
+  StudentVideoPlay: '视频播放',
+  StudentExerciseTake: '章节练习',
+  StudentOfflineSession: '线下课',
+  TeacherMicroSpecialtyManage: '微专业工作台',
+  TeacherMicroSpecialtyCourseEdit: '课程编排',
+  TeacherMicroSpecialtyTeamEdit: '团队管理',
+  // 管理后台/教务处路由
+  AdminDashboard: '管理后台',
+  AdminUserList: '用户管理',
+  OperationLogs: '操作日志',
+  AdminSettings: '系统设置',
+  PlatformShareConfig: '分润配置',
+  TeacherRatingManage: '教师评分管理',
+  AdminRevenueDashboard: '营收看板',
+  BannerList: '轮播图管理',
+  TeachingClassList: '教学班管理',
+  SystemHealth: '系统状态',
+  ReportsManagement: '数据报表',
+  AcademicDashboard: '教务看板',
+  AcademicStats: '学习分析',
+  AcademicEnrollments: '选课数据总览',
+  // 学生端路由（备用）
+  StudentCourseSquare: '课程广场',
+  StudentCourseDetail: '课程详情',
+  StudentBundleSquare: '课程套件',
+  StudentBundleDetail: '套件详情',
+  StudentMyCourses: '我的课程',
+  StudentTraining: '训练中心',
+  StudentLearningStats: '学习统计',
+  StudentNotifications: '消息中心',
+  StudentExams: '考试中心',
+  StudentProfile: '个人中心',
+  StudentWeeklyReport: '周报',
+  StudentFavorites: '我的收藏',
+  StudentOrders: '我的订单',
+  StudentCheckout: '结算',
+  StudentMyMicroSpecialties: '我的微专业',
+  StudentDiscussion: '讨论区',
+  StudentMyReviews: '我的评价',
+  StudentSettings: '设置',
+  StudentAchievements: '成就墙',
+  StudentSlidePlayer: 'PPT播放',
+  // 共享/公共路由
+  MicroSpecialtySquare: '微专业广场',
+  CourseList: '课程列表',
+  CourseView: '课程详情',
+  CourseCreate: '创建课程',
+  ChapterList: '章节管理',
+  VideoList: '视频管理',
+  EnrollmentList: '选课管理',
+  FavoriteList: '收藏管理',
+  QuestionList: '题库管理',
+  ExerciseList: '练习管理',
+  DiscussionList: '讨论管理',
+  NotificationList: '消息管理',
+  BundleList: '课程套件',
+  ReviewManagement: '审核管理',
+  CourseApproval: '课程审核',
+  DepartmentList: '部门管理',
+  MajorList: '专业管理',
+  ClassList: '班级管理',
+  UserCreate: '创建用户',
+  UserEdit: '编辑用户',
+  UserList: '用户管理',
+  TagList: '标签管理',
+  CourseCategoryList: '课程分类',
+  TeacherCourseDetail: '课程详情',
+  TeacherExamList: '试卷管理',
+  TeacherSlideOverview: '课件总览',
+  AcademicMicroSpecialtyReview: '微专业审核',
+  AcademicMicroSpecialtyProposalReview: '申报审批',
+  AcademicMicroSpecialtyFeaturedReview: '置顶审核',
+  AcademicMicroSpecialtyCrossDeptReview: '跨学院审核',
+  AcademicMicroSpecialtyClassImport: '班级导入',
+  AcademicMicroSpecialtyGoldManage: '金标管理',
+  AcademicStorageApplicationReview: '存储申请审批',
+  StoragePreview: '存储申请表预览',
+  StudentMicroSpecialtyDetail: '微专业详情',
+  // 未匹配兜底
+  Home: '首页'
+}
+
+const pageTitle = computed(() => {
+  if (route.meta?.title) return route.meta.title
+  if (route.name && routeNameTitleMap[route.name]) return routeNameTitleMap[route.name]
+  return ''
 })
 
 // 切换折叠（P2-7: 添加过渡状态指示）

@@ -104,7 +104,7 @@ section "1. 启动隔离 db + redis"
 
 docker network create "$NETWORK" 2>/dev/null || true
 
-if docker ps --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
+if docker ps -a --format '{{.Names}}' | grep -q "^${DB_CONTAINER}$"; then
   echo "  停止旧 postgres-test 容器..."
   docker stop "$DB_CONTAINER" > /dev/null 2>&1 || true
   docker rm "$DB_CONTAINER" > /dev/null 2>&1 || true
@@ -127,7 +127,7 @@ for i in 1 2 3 4 5 6 7 8 9 10; do
 done
 ok "postgres-test 已启动 (port $DB_PORT, network=$NETWORK)"
 
-if docker ps --format '{{.Names}}' | grep -q "^${REDIS_CONTAINER}$"; then
+if docker ps -a --format '{{.Names}}' | grep -q "^${REDIS_CONTAINER}$"; then
   echo "  停止旧 redis-test 容器..."
   docker stop "$REDIS_CONTAINER" > /dev/null 2>&1 || true
   docker rm "$REDIS_CONTAINER" > /dev/null 2>&1 || true

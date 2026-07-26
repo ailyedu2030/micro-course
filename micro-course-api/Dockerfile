@@ -1,9 +1,9 @@
 FROM --platform=linux/amd64 maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn -U dependency:go-offline -B
 COPY src ./src
-RUN mvn package -DskipTests -B
+RUN mvn -U package -DskipTests -B
 
 FROM --platform=linux/amd64 eclipse-temurin:17-jre-alpine
 RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig

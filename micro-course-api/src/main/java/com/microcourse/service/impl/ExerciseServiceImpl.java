@@ -692,6 +692,8 @@ public class ExerciseServiceImpl implements ExerciseService {
             eq.setSortOrder(++startOrder);  // 递增排序
             exerciseQuestionRepository.insert(eq);
         }
+        // P1 修复: 增量挂题后重算总分/题目数, 否则学生端「满分 0」且 passed 判定失效 (审计实测)
+        recalcExerciseStats(exerciseId);
     }
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -705,6 +707,25 @@ public class ExerciseServiceImpl implements ExerciseService {
         wrapper.eq(ExerciseQuestion::getExerciseId, exerciseId)
                .eq(ExerciseQuestion::getQuestionId, questionId);
         exerciseQuestionRepository.delete(wrapper);
+        // P1 修复: 移除题目后同步重算总分/题目数
+        recalcExerciseStats(exerciseId);
+    }
+
+    /**
+     * 重算练习总分与题目数 — addQuestions/removeQuestion 增量变更后必须同步,
+     * 否则 totalScore 滞留旧值, 学生端显示「满分 0」且 passed 判定失效 (审计实测)
+     */
+    private void recalcExerciseStats(Long exerciseId) {
+        LambdaQueryWrapper<ExerciseQuestion> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseQuestion::getExerciseId, exerciseId);
+        List<ExerciseQuestion> eqs = exerciseQuestionRepository.selectList(wrapper);
+        int total = eqs.stream().mapToInt(e -> e.getScore() != null ? e.getScore() : 0).sum();
+        Exercise exercise = exerciseRepository.selectById(exerciseId);
+        if (exercise == null) return;
+        exercise.setTotalScore(total);
+        exercise.setQuestionCount(eqs.size());
+        exercise.setUpdatedAt(LocalDateTime.now());
+        exerciseRepository.updateById(exercise);
     }
     @Override
     @Transactional(readOnly = true)

@@ -206,9 +206,14 @@ const showAddDialog = async () => {
 const resetAddForm = () => { addFormRef.value?.clearValidate() }
 
 const handleAdd = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (adding.value) return
   if (!addFormRef.value) return
-  try { await addFormRef.value.validate() } catch { return }
   adding.value = true
+  try {
+    const valid = await addFormRef.value.validate()
+    if (!valid) { adding.value = false; return }
+  } catch { adding.value = false; return }
   try { await addCourse(msId.value, addForm.value); ElMessage.success('添加成功'); addVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '添加失败') }
   finally { adding.value = false }
@@ -256,9 +261,14 @@ function resetAssignForm() {
 }
 
 const handleAssignTeacher = async () => {
+  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
+  if (assigning.value) return
   if (!assignFormRef.value) return
-  try { await assignFormRef.value.validate() } catch { return }
   assigning.value = true
+  try {
+    const valid = await assignFormRef.value.validate()
+    if (!valid) { assigning.value = false; return }
+  } catch { assigning.value = false; return }
   try {
     await inviteTeacher(msId.value, {
       teacherId: assignForm.value.teacherId,

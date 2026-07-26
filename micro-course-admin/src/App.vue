@@ -32,7 +32,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onErrorCaptured, onMounted } from 'vue'
+import { ref, computed, onErrorCaptured, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from './store/user'
@@ -70,19 +70,46 @@ onErrorCaptured((err, instance, info) => {
   return false
 })
 
-// D1: 全局网络状态检测
-function setupNetworkListeners() {
-  window.addEventListener('offline', () => {
-    ElMessage.warning('网络已断开，部分功能暂不可用')
-  })
-  window.addEventListener('online', () => {
-    ElMessage.success('网络已恢复')
-  })
+function handleOffline() {
+  ElMessage.warning('网络已断开，部分功能暂不可用')
+}
+
+function handleOnline() {
+  ElMessage.success('网络已恢复')
+}
+
+function handleStorageChange(e) {
+  if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
+    if (e.newValue !== userStore.token) {
+      userStore.token = e.newValue || ''
+      userStore.userInfo = null
+    }
+  }
+}
+
+function handleTokenRefreshed(e) {
+  userStore.token = e.detail.token
+  if (e.detail.refreshToken) {
+    userStore.refreshToken = e.detail.refreshToken
+  }
+}
+
+function registerGlobalListeners() {
+  window.addEventListener('offline', handleOffline)
+  window.addEventListener('online', handleOnline)
+  window.addEventListener('storage', handleStorageChange)
+  window.addEventListener('token-refreshed', handleTokenRefreshed)
+}
+
+function unregisterGlobalListeners() {
+  window.removeEventListener('offline', handleOffline)
+  window.removeEventListener('online', handleOnline)
+  window.removeEventListener('storage', handleStorageChange)
+  window.removeEventListener('token-refreshed', handleTokenRefreshed)
 }
 
 onMounted(async () => {
-  // D1: 启动离线检测
-  setupNetworkListeners()
+  registerGlobalListeners()
   // 仅在 beforeEach 未填充角色时补充获取（避免冗余 API 调用）
   if (isAuthenticated() && !userStore.role) {
     try {
@@ -91,22 +118,64 @@ onMounted(async () => {
       console.error('[App] 获取用户信息失败', err)
     }
   }
-  // P2: 跨标签页 token 同步 — 另一个标签页登录/登出后，同步 store
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
-      if (e.newValue !== userStore.token) {
-        userStore.token = e.newValue || ''
-        userStore.userInfo = null  // 强制下次路由守卫/API 调用时重新获取
+  // P1-C: 修复 QuillEditor 工具栏按钮缺少 aria-label（aria-command-name）
+  fixQuillToolbarAria()
+})
+
+// P1-C: 为 QuillEditor 工具栏按钮添加中文 aria-label
+// axe-core 会把无文本内容的 icon-only <button> 标记为 aria-command-name 违规
+function fixQuillToolbarAria() {
+  const QUILL_LABELS = {
+    'ql-bold': '粗体',
+    'ql-italic': '斜体',
+    'ql-underline': '下划线',
+    'ql-strike': '删除线',
+    'ql-link': '插入链接',
+    'ql-clean': '清除格式',
+    'ql-blockquote': '引用',
+    'ql-code-block': '代码块',
+    'ql-image': '插入图片',
+    'ql-video': '插入视频',
+    'ql-formula': '公式',
+    'ql-list': '有序列表',
+    'ql-bullet': '无序列表',
+    'ql-indent': '增加缩进',
+    'ql-outdent': '减少缩进',
+    'ql-align': '对齐',
+    'ql-direction': '文字方向',
+    'ql-size': '字号',
+    'ql-header': '标题',
+    'ql-color': '文字颜色',
+    'ql-background': '背景色',
+    'ql-font': '字体',
+    'ql-script': '上标/下标'
+  }
+  const applyAriaLabels = () => {
+    document.querySelectorAll('.ql-toolbar button, .ql-picker-label').forEach(btn => {
+      if (btn.hasAttribute('aria-label')) return
+      const cls = Array.from(btn.classList).find(c => c.startsWith('ql-'))
+      if (cls && QUILL_LABELS[cls]) {
+        btn.setAttribute('aria-label', QUILL_LABELS[cls])
+      } else if (cls) {
+        btn.setAttribute('aria-label', cls.replace('ql-', '').replace('-', ' '))
+      } else if (btn.classList.contains('ql-picker-label')) {
+        // Picker label 本身没有 ql- class，父元素有
+        const parentCls = btn.parentElement && Array.from(btn.parentElement.classList).find(c => c.startsWith('ql-'))
+        if (parentCls && QUILL_LABELS[parentCls]) {
+          btn.setAttribute('aria-label', QUILL_LABELS[parentCls])
+        }
       }
-    }
-  })
-  // P2: Token 刷新同步 — request.js 401 拦截器刷新 token 后更新 store
-  window.addEventListener('token-refreshed', (e) => {
-    userStore.token = e.detail.token
-    if (e.detail.refreshToken) {
-      userStore.refreshToken = e.detail.refreshToken
-    }
-  })
+    })
+  }
+  applyAriaLabels()
+  const obs = new MutationObserver(applyAriaLabels)
+  obs.observe(document.body, { childList: true, subtree: true })
+  // 存入 window 以便调试/清理
+  window.__quillObserver = obs
+}
+
+onBeforeUnmount(() => {
+  unregisterGlobalListeners()
 })
 </script>
 

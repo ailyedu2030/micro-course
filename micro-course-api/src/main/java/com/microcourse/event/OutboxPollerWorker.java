@@ -12,7 +12,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallbackWithoutResult;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,6 +44,7 @@ public class OutboxPollerWorker {
     private final DomainEventDedupRepository dedupRepo;
     private final HermesEventPushClient pushClient;
     private final MeterRegistry meterRegistry;
+    private final TransactionTemplate transactionTemplate;
 
     private final AtomicLong pendingGauge = new AtomicLong(0);
     private final AtomicLong retryGauge = new AtomicLong(0);
@@ -57,12 +60,14 @@ public class OutboxPollerWorker {
                               DomainEventDeadLetterRepository dlqRepo,
                               DomainEventDedupRepository dedupRepo,
                               HermesEventPushClient pushClient,
-                              MeterRegistry meterRegistry) {
+                              MeterRegistry meterRegistry,
+                              TransactionTemplate transactionTemplate) {
         this.outboxRepo = outboxRepo;
         this.dlqRepo = dlqRepo;
         this.dedupRepo = dedupRepo;
         this.pushClient = pushClient;
         this.meterRegistry = meterRegistry;
+        this.transactionTemplate = transactionTemplate;
         registerMetrics();
     }
 
@@ -107,20 +112,31 @@ public class OutboxPollerWorker {
         LOG.info("[Outbox] polling {} pending events", rows.size());
         for (DomainEventOutbox row : rows) {
             try {
-                handleOne(row);
+                handleOneInTransaction(row);
             } catch (Exception e) {
                 LOG.error("[Outbox] handler error eventId={}", row.getEventId(), e);
             }
         }
     }
 
-    @Transactional
-    protected void handleOne(DomainEventOutbox row) {
+    void handleOneInTransaction(DomainEventOutbox row) {
+        transactionTemplate.execute(new TransactionCallbackWithoutResult() {
+            @Override
+            protected void doInTransactionWithoutResult(TransactionStatus status) {
+                handleOne(row);
+            }
+        });
+    }
+
+    private void handleOne(DomainEventOutbox row) {
         DomainEvent event = DomainEvent.fromJsonPayload(row.getPayload());
 
         if (dedupRepo.existsByEventId(event.getEventId())) {
             LOG.info("[Outbox] dedup hit, marking as delivered, eventId={}", event.getEventId());
-            outboxRepo.markDelivered(event.getEventId(), LocalDateTime.now(), LocalDateTime.now());
+            int updated = outboxRepo.markDelivered(event.getEventId(), LocalDateTime.now(), LocalDateTime.now());
+            if (updated != 1) {
+                throw new IllegalStateException("markDelivered affectedRows=" + updated + " eventId=" + event.getEventId());
+            }
             deliveredCounter.increment();
             return;
         }
@@ -128,7 +144,10 @@ public class OutboxPollerWorker {
         try {
             PushResult result = pushClient.push(event);
             if (result.accepted() || result.statusCode() == 409) {
-                outboxRepo.markDelivered(event.getEventId(), LocalDateTime.now(), LocalDateTime.now());
+                int updated = outboxRepo.markDelivered(event.getEventId(), LocalDateTime.now(), LocalDateTime.now());
+                if (updated != 1) {
+                    throw new IllegalStateException("markDelivered affectedRows=" + updated + " eventId=" + event.getEventId());
+                }
                 deliveredCounter.increment();
                 LOG.info("[Outbox] DELIVERED eventId={} status={}", event.getEventId(), result.statusCode());
             } else {
@@ -149,15 +168,21 @@ public class OutboxPollerWorker {
             dlq.setPayload(row.getPayload());
             dlq.setLastError(errMsg);
             dlqRepo.insert(dlq);
-            outboxRepo.markDeadLetter(row.getEventId(), LocalDateTime.now());
+            int updated = outboxRepo.markDeadLetter(row.getEventId(), LocalDateTime.now());
+            if (updated != 1) {
+                throw new IllegalStateException("markDeadLetter affectedRows=" + updated + " eventId=" + row.getEventId());
+            }
             deadLetterCounter.increment();
             LOG.error("[Outbox] DEAD_LETTER eventId={} after {} attempts, err={}",
                     row.getEventId(), nextAttempt, errMsg);
         } else {
-            outboxRepo.markRetry(row.getEventId(),
+            int updated = outboxRepo.markRetry(row.getEventId(),
                     RetryPolicy.nextAttemptAt(nextAttempt),
                     errMsg,
                     LocalDateTime.now());
+            if (updated != 1) {
+                throw new IllegalStateException("markRetry affectedRows=" + updated + " eventId=" + row.getEventId());
+            }
             retryCounter.increment();
             LOG.warn("[Outbox] RETRY eventId={} attempt={} nextAt={} err={}",
                     row.getEventId(), nextAttempt,

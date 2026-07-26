@@ -39,6 +39,9 @@ class AuthServiceImplFailClosedTest {
     private MockHttpServletRequest request;
     private AdminSettingService adminSettingService;
     private AuthQueryService queryService;
+    private CasTicketValidationService casTicketValidationService;
+    private AuthCasLoginService authCasLoginService;
+    private UserAvatarStorageService userAvatarStorageService;
     private AuthServiceImpl authService;
 
     @BeforeEach
@@ -51,6 +54,9 @@ class AuthServiceImplFailClosedTest {
         request = new MockHttpServletRequest();
         adminSettingService = mock(AdminSettingService.class);
         queryService = mock(AuthQueryService.class);
+        casTicketValidationService = mock(CasTicketValidationService.class);
+        authCasLoginService = mock(AuthCasLoginService.class);
+        userAvatarStorageService = mock(UserAvatarStorageService.class);
         authService = new AuthServiceImpl(
                 userRepository,
                 jwtUtil,
@@ -60,7 +66,9 @@ class AuthServiceImplFailClosedTest {
                 request,
                 adminSettingService,
                 queryService,
-                null
+                casTicketValidationService,
+                authCasLoginService,
+                userAvatarStorageService
         );
         SecurityContextHolder.clearContext();
     }

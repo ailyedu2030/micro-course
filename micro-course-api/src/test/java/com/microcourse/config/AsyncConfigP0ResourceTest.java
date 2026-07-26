@@ -60,7 +60,7 @@ class AsyncConfigP0ResourceTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("BOUNDARY: 提交超过队列容量+maxPoolSize 的任务,AbrotPolicy 必须抛 RejectedExecutionException")
+    @DisplayName("BOUNDARY: 提交超过队列容量+maxPoolSize 的任务,AbortPolicy 必须抛 RejectedExecutionException")
     void rejectPolicyFires() throws Exception {
         ThreadPoolExecutor raw = ((ThreadPoolTaskExecutor) videoUploadExecutor).getThreadPoolExecutor();
         // 准备大量任务堆积
