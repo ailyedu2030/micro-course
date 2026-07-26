@@ -148,8 +148,13 @@ plugin:
       thumbnail-width: 320
     html-content:
       # 从环境变量注入 max-file-size 和 whitelist-teachers
+      # SLIDES_HTML_MAX_SIZE: HTML 文件大小限制（字节，默认 5MB）
       max-file-size: ${SLIDES_HTML_MAX_SIZE:5242880}
-      whitelist-teachers: ${SLIDES_HTML_WHITELIST:}
+      # SLIDES_HTML_WHITELIST: 灰度白名单教师 ID（逗号分隔）
+      # 6.1 灰度阶段默认白名单: 101(历史教师账号) + 205(测试教师账号)
+      # 生产环境通过 SLIDES_HTML_WHITELIST 环境变量覆盖(例如 "101,205,300,400")
+      # 空字符串 = 关闭白名单校验(全量开放,仅用于本地开发)
+      whitelist-teachers: ${SLIDES_HTML_WHITELIST:101,205}
     deepseek:
       # LLM 配置（OpenAI 兼容 API）
       # 默认用 DeepSeek 云端，可改用本地 Ollama：

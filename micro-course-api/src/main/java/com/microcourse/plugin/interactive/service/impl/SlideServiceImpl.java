@@ -70,6 +70,10 @@ public class SlideServiceImpl implements SlideService {
     private final CourseSectionRepository sectionRepo;
     private final SlideRenderService slideRenderService;
 
+    // Micrometer 指标 (HTML 互动课件 - 灰度监控)
+    private final io.micrometer.core.instrument.Counter htmlLoadCounter;
+    private final io.micrometer.core.instrument.Counter htmlXssBlockedCounter;
+
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
 
@@ -81,13 +85,23 @@ public class SlideServiceImpl implements SlideService {
                             CourseRepository courseRepository,
                             CourseChapterRepository courseChapterRepository,
                             CourseSectionRepository sectionRepo,
-                            SlideRenderService slideRenderService) {
+                            SlideRenderService slideRenderService,
+                            io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.sectionRepo = sectionRepo;
         this.slideRenderService = slideRenderService;
+        // HTML 互动课件监控指标 (灰度观察 6.4 用)
+        this.htmlLoadCounter = io.micrometer.core.instrument.Counter.builder("interactive_html_load_total")
+                .description("HTML 课件成功加载次数（白名单教师上传后学生可访问）")
+                .tag("type", "html_courseware")
+                .register(meterRegistry);
+        this.htmlXssBlockedCounter = io.micrometer.core.instrument.Counter.builder("interactive_html_xss_blocked_total")
+                .description("XSS payload 被 sanitize 拦截次数")
+                .tag("type", "html_courseware")
+                .register(meterRegistry);
     }
 
     @Override
@@ -238,7 +252,13 @@ public class SlideServiceImpl implements SlideService {
             throw new BusinessException(ErrorCode.HTML_INVALID, "HTML 文件读取失败");
         }
         String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
-        if (safeHtml.isEmpty() && !rawHtml.isEmpty()) { throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL); }
+        if (safeHtml.isEmpty() && !rawHtml.isEmpty()) {
+            // XSS payload 全部被 sanitize 移除 → 计入拦截计数
+            htmlXssBlockedCounter.increment();
+            throw new BusinessException(ErrorCode.HTML_SANITIZE_REMOVED_ALL);
+        }
+        // 成功 sanitize → 计入加载计数
+        htmlLoadCounter.increment();
 
         String safeFilename = XssSanitizer.sanitizePlainText(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");

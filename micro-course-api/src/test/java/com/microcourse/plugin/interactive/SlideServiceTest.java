@@ -56,7 +56,8 @@ class SlideServiceTest {
         courseChapterRepository = mock(CourseChapterRepository.class);
         courseSectionRepository = mock(CourseSectionRepository.class);
         slideRenderService = mock(SlideRenderService.class);
-        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, courseChapterRepository, courseSectionRepository, slideRenderService);
+        io.micrometer.core.instrument.MeterRegistry meterRegistry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, courseChapterRepository, courseSectionRepository, slideRenderService, meterRegistry);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
