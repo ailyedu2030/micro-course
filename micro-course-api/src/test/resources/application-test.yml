@@ -45,6 +45,10 @@ plugin:
   interactive:
     deepseek:
       api-key: test-deepseek-api-key-for-tests
+    html-content:
+      # 测试白名单包含 p0_teacher(id=6)+teacher1(id=2)+teacher2(id=3)
+      # 集成测试 P1Stage1IntegrationTest.alias_HtmlUpload_AcceptsFile 用 p0_teacher
+      whitelist-teachers: ${SLIDES_HTML_WHITELIST:2,3,6}
 
 logging:
   level:
