@@ -282,36 +282,6 @@ async function run() {
     result._consoleStart = prevConsoleLen
     networkErrors.length = 0
 
-    try {
-      // 解析动态路由参数
-      let resolvedPath = route.path;
-      if (route.dynamic) {
-        const paramValues = {};
-        for (const [paramKey, paramType] of Object.entries(route.paramsMap || {})) {
-          const val = await tryResolveDynamicParam(page, paramType);
-          if (val) {
-            paramValues[paramKey] = val;
-          } else {
-            result.status = 'SKIPPED';
-            result.skipReason = `无法解析动态参数 ${paramKey}(${paramType})`;
-            skippedCount++;
-            break;
-          }
-        }
-        if (result.status === 'SKIPPED') {
-          console.log(`⚠ SKIPPED (${result.skipReason})`);
-          results.push(result);
-          continue;
-        }
-        resolvedPath = fillDynamicPath(route.path, paramValues);
-      }
-
-      // 导航
-      await page.goto(`${baseUrl}${resolvedPath}`, { waitUntil: 'networkidle', timeout: 30000 });
-      await page.waitForTimeout(1500); // 等待 JS 渲染
-
-      // 收集控制台错误 — 仅取当前路由期间新增的
-      const routeConsoleErrors = consoleErrors.slice(result._consoleStart);
       result.consoleErrors = routeConsoleErrors;
 
       // 截图
