@@ -74,8 +74,9 @@
                 :auto-upload="false"
                 accept="image/jpeg,image/png,image/webp"
                 :on-change="handleAvatarChange"
+                ref="avatarUploadCompRef"
               >
-                <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" />
+                <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" alt="头像" />
               </el-upload>
               <div class="avatar-tip">支持 JPG、PNG、WebP 格式，建议 200×200 像素，≤2MB</div>
               <div class="avatar-actions">
@@ -149,8 +150,9 @@
             :auto-upload="false"
             accept="image/jpeg,image/png,image/webp"
             :on-change="handleAvatarChange"
+            ref="avatarUploadMobileRef"
           >
-            <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" />
+            <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" alt="头像" />
           </el-upload>
           <div class="user-info-text">
             <div class="user-info-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</div>
@@ -214,7 +216,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, defineAsyncComponent } from 'vue'
+import { ref, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { uploadAvatar } from '../../api/auth'
@@ -332,7 +334,7 @@ const handleCancelAvatar = () => {
 }
 
 // 响应式布局
-const isMobile = ref(window.innerWidth <= 768)
+const isMobile = ref(window.innerWidth < 768)
 
 const checkMobile = () => {
   isMobile.value = window.innerWidth < 768
@@ -353,6 +355,16 @@ onMounted(async () => {
       profileError.value = true
     }
   }
+  // P1-C: fix aria-label on el-upload role="button" inner element
+  // EP 2.14.1 的 el-upload 将 aria-label 放在外层 wrapper 上，
+  // 但 role="button" 在内层 .el-upload 上。需要校正。
+  nextTick(() => {
+    document.querySelectorAll('.avatar-uploader .el-upload[role="button"], .avatar-uploader-mobile .el-upload[role="button"]').forEach(el => {
+      if (!el.getAttribute('aria-label')) {
+        el.setAttribute('aria-label', '上传头像')
+      }
+    })
+  })
   // 成就/错题/证书数据由各自子组件自行加载
 })
 

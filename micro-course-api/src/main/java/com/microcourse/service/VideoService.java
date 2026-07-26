@@ -10,7 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface VideoService {
 
-    PageResult<VideoVO> page(Long courseId, int page, int size);
+    PageResult<VideoVO> page(Long courseId, Long chapterId, int page, int size);
 
     VideoVO getById(Long id);
 
@@ -63,6 +63,14 @@ public interface VideoService {
      * @return VideoStatusVO (videoId, status, statusLabel, progress, errorMessage)
      */
     VideoStatusVO getStatus(Long id);
+
+    /**
+     * 批量获取视频转码状态（替代 N 次单点轮询）
+     *
+     * @param ids 视频ID列表
+     * @return List&lt;VideoStatusVO&gt;
+     */
+    java.util.List<VideoStatusVO> getStatusBatch(java.util.List<Long> ids);
 
     /**
      * 更新视频状态(0=UPLOADING,1=TRANSCODING,2=COMPLETED,3=FAILED)。

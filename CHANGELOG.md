@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed (Phase 6 教师模块收口)
+
+#### 教师看板 / 成绩明细 / 教学班 / 视频管理
+- **教师看板待办口径与顶部统计统一** — `TeacherServiceImpl.getPendingTasks()` 仅保留“已提交且未批改”的练习与“未回复”的讨论，避免已处理事项继续出现在待办列表中
+- **成绩明细院系筛选恢复逻辑修复** — `StudentGrades.vue` 在 `ACADEMIC / ADMIN` 场景下清空院系筛选后，可稳定恢复全量课程列表，不再停留在错误的局部筛选结果
+- **成绩明细只读语义统一** — `ACADEMIC` 角色查看待批改成绩时，弹窗标题、表单禁用态和提交按钮统一收口为只读“查看成绩”语义
+- **课件工作台身份缺失保护补齐** — `TeacherSlideOverview.vue` 在缺失教师身份时增加显式失败保护，避免静默异常态影响教师链路判断
+- **教学班课程卡片键盘可达性补齐** — 教学班与教师看板课程卡片均补齐键盘进入能力和可访问语义
+- **视频管理章节上下文保护** — `VideoList.vue` 在章节上下文下执行重置时不再丢失 `chapterId`，保证章节工作区上下文稳定
+- **失败视频“重试转码”链路补回归护栏** — 视频异常态回归测试补齐，锁住失败视频重试入口
+
+#### 本地联调与部署稳定性
+- **`local-dev-deploy.sh --keep` 复跑稳定性修复** — 脚本启动前改为检查并清理 `docker ps -a` 中的同名已退出容器，解决 DB / Redis 保留容器导致的复跑冲突
+
+### Tests
+- 前端全量单测：`110/110` 通过
+- 后端定向测试：`TeacherPendingTasksConsistencyTest 1/1` 通过
+- `npm run lint`：通过
+- `npm run build`：通过
+- `mvn -DskipTests compile`：通过
+- 本地隔离部署：`local-dev-deploy.sh --keep` `16/16` 通过
+- GitHub CI：`backend / frontend / e2e / docker / monitoring-lint` 全绿
+
+### References
+- 进度报告：[docs/pr/2026-07-25-teacher-module-progress-report.md](file:///Users/jackie/微课平台/docs/pr/2026-07-25-teacher-module-progress-report.md)
+- 交付汇总：[docs/pr/2026-07-25-phase6-teacher-delivery-summary.md](file:///Users/jackie/微课平台/docs/pr/2026-07-25-phase6-teacher-delivery-summary.md)
+
+---
+
 ## [1.22.1] - 2026-07-19
 
 ### Fixed (P1-C)

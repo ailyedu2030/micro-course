@@ -1,0 +1,1 @@
+import{E as n}from"./index-BRkJPDut.js";const e=new Set([n.ENROLLED,n.APPROVED]),r=new Set([n.ENROLLED,n.APPROVED,n.COMPLETED]);function i(t){return t?e.has(t.enrollmentStatus):!1}function l(t){return t?r.has(t.enrollmentStatus):!1}function E(t){return(t||[]).filter(i)}function s(t){return(t||[]).filter(l)}export{E as a,s as f,i};

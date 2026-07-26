@@ -2,6 +2,7 @@
 
 > 建档日期：2026-07-23
 > 基线提交：`dd46e9c3` (`main`)
+> 最新主干：`c21a768f`（合并 PR #97）
 > 范围：`micro-course-api` + `micro-course-admin`
 > 方法：后端高风险代码质量只读扫描 + 前端 UX/可访问性只读扫描 + 既有审计文档去重归并
 > 目标：建立后续治理的唯一执行台账，所有问题必须进入“发现 → 定级 → 修复 → 验收 → 关闭”闭环
@@ -24,17 +25,17 @@
 | 等级 | 数量 | 说明 |
 |------|------|------|
 | **P0** | 2 | 后端安全上下文 / Redis 安全降级 |
-| **P1-C** | 10 | 用户可感知的数据一致性、任务可靠性、无障碍与交互问题 |
+| **P1-C** | 12 | 用户可感知的数据一致性、任务可靠性、无障碍与交互问题 |
 | **P1-I** | 8 | 架构过载、长事务、职责耦合、生命周期治理问题 |
 | **P2** | 0 | 本轮只读扫描未单列 P2 |
-| **合计** | **20** | 首版治理台账 |
+| **合计** | **22** | 首版治理台账 |
 
 ### 按域分布
 
 | 域 | P0 | P1-C | P1-I | 小计 |
 |----|:--:|:----:|:----:|:----:|
 | **后端** | 2 | 4 | 4 | 10 |
-| **前端 / UX** | 0 | 6 | 4 | 10 |
+| **前端 / UX** | 0 | 8 | 4 | 12 |
 
 ---
 
@@ -61,6 +62,8 @@
 | **QX-P1C-008** | 前端交互/a11y | LearningCenter“继续学习”卡片不可键盘触达 | `micro-course-admin/src/views/student/LearningCenter.vue` | 高频学习闭环入口不可访问，影响继续学习任务完成率 | 卡片具备角色、焦点与键盘触发；补回归测试 | Wave C |
 | **QX-P1C-009** | 前端一致性 | LearningView 与 VideoPlayer 存在重复进度保存链路 | `micro-course-admin/src/views/student/LearningView.vue`, `micro-course-admin/src/views/student/VideoPlayer.vue` | 双报、漏报、离开页补报行为可能不一致，直接影响学习进度体验 | 统一为单一 composable / 服务；补“定时上报 + 离开页补报”回归测试 | Wave D |
 | **QX-P1C-010** | 前端可用性 | CourseList / StudentList 表格键盘增强绑定到原生 `tbody` 匿名监听 | `micro-course-admin/src/views/courses/CourseList.vue`, `micro-course-admin/src/views/teacher/StudentList.vue` | 重渲染后能力丢失或事件泄漏，键盘导航体验不稳定 | 抽统一表格键盘增强方案；确保销毁/重建无泄漏；补列表交互测试 | Wave D |
+| **QX-P1C-011** | 前端可用性 | 上传进度浮窗在业务失败时不复位，导致进度卡死 | `micro-course-admin/src/utils/request.js` | 用户看到“上传中”但实际已失败，造成体验误导与操作阻塞 | 业务失败 / 网络失败 / 成功分支均复位；补 unit test 锁定复位行为 | Wave A2 |
+| **QX-P1C-012** | 前端一致性/a11y | TeacherDashboard 使用 emoji 作为 icon，破坏一致性与读屏语义 | `micro-course-admin/src/views/teacher/TeacherDashboard.vue` | icon 体系不统一；读屏可能读出无意义 emoji；视觉层级不稳定 | 全部替换为 Element Plus Icons；关键标题用具名 slot + icon；补页面 mount 回归测试 | Wave A2 |
 
 ### 3.3 P1-I（内部问题，必须纳入治理批次）
 
@@ -82,6 +85,7 @@
 | 批次 | 目标 | 范围 | 完成定义 |
 |------|------|------|----------|
 | **Wave A** | 先清安全与 fail-open | `QX-P0-001` ~ `QX-P0-002` | P0 清零，补回归测试 |
+| **Wave A2** | 前端 UX 快速修复（不等下一波） | `QX-P1C-011` ~ `QX-P1C-012` | 进度状态一致；icon 体系统一；补单测 |
 | **Wave B** | 修后端事务与异步一致性 | `QX-P1C-001` ~ `QX-P1C-004` | 核心异步链路状态一致，失败可恢复 |
 | **Wave C** | 修高频学习链路可访问性 | `QX-P1C-005` ~ `QX-P1C-008` | 高频入口支持键盘 / 辅助技术 |
 | **Wave D** | 收敛前端交互一致性 | `QX-P1C-009` ~ `QX-P1C-010` | 学习进度与列表交互稳定一致 |
@@ -120,8 +124,33 @@
 
 ---
 
-## 7. 下一步
+## 7. 已完成项（关闭记录）
 
-- 立即进入 **Wave A**
-- 优先做 `QX-P0-001`：安全上下文继承策略根因分析与横向扫描
-- 同步预研 `QX-P0-002`：Redis 安全降级 fail-open 收敛方案
+| 编号 | 关闭方式 | 关联 PR | 关联提交 | 验收结果 |
+|------|----------|---------|----------|----------|
+| QX-P0-001 | 移除全局继承策略 + 回归测试 | #73 | `ff9a56ee` | CI 全绿；回归测试锁住“子线程不继承认证上下文” |
+| QX-P0-002 | Redis 安全能力 fail-closed + 过滤器与业务回归测试 | #73 | `ff9a56ee` | CI 全绿；认证关键路径 Redis 故障不再放行 |
+| QX-P1C-011 | 响应拦截器统一复位上传进度 + unit test | #74 | `f927bada` | CI 全绿；`code != 200` 不再卡死进度 |
+| QX-P1C-012 | TeacherDashboard emoji → Element Plus Icons + 页面回归测试 | #74 | `f927bada` | CI 全绿；图标语义与一致性对齐 |
+| QX-P1C-001 | `TransactionTemplate` 重建 outbox 单条事务边界 + affectedRows 强校验 | #85 | `50e88099` | CI 全绿；事件投递/重试/死信链路不再依赖失效的同类自调用事务 |
+| QX-P1C-002 | 上传/重试统一 after-commit 提交转码 + 重试真正重入队 | #86 | `059df304` | CI 全绿；转码失败后可恢复，状态推进与异步提交保持一致 |
+| QX-P1C-003 | section/admin TTS 任务状态持久化 + 移除 sleep 编排 | #87 / #88 | `6292b142` / `a8e7a586` | CI 全绿；TTS 任务跨重启可恢复，教师批量生成状态不再丢失 |
+| QX-P1C-004 | 课程封面删除改为 after-commit + 路径规范化校验 + 回归测试 | #89 | `e02b6e96` | CI 全绿；DB 回滚不再导致课程仍在但封面已丢失，集成测试缓存串扰同步清除 |
+| QX-P1C-005 | SlidePlayer 核心交互按钮化 + 进度条 slider 语义 + 键盘提示层关闭路径 | #91 | `aeb9373a` | CI 全绿；播放、拖动进度、关闭提示层均支持键盘与焦点可见性 |
+| QX-P1C-006 | ExerciseTake 答题卡入口/题号按钮化 + 对话框语义 + `Escape` 关闭 | #91 | `aeb9373a` | CI 全绿；移动端答题卡入口与导航对键盘/读屏用户可用 |
+| QX-P1C-007 | CourseDetail 预览 CTA 改为原生按钮并补充可访问名称 | #91 | `aeb9373a` | CI 全绿；课程预览首屏入口可聚焦、可键盘触发，试听转化路径恢复可访问性 |
+| QX-P1C-008 | LearningCenter 继续学习/最近学习卡片按钮化 + 回归测试 | #91 | `aeb9373a` | CI 全绿；高频继续学习入口支持键盘触达与清晰焦点反馈 |
+| QX-P1C-009 | 抽离统一学习进度上报 composable，收敛定时上报/补报/冲突回补路径 | #93 | `6553f7cf` | CI 全绿；LearningView 与 VideoPlayer 进度保存链路统一，定时上报与离页补报走同一能力 |
+| QX-P1C-010 | 抽离统一表格键盘增强 composable，补重渲染刷新与卸载清理 | #93 | `6553f7cf` | CI 全绿；CourseList / StudentList 行语义、键盘触发与监听清理保持一致 |
+| QX-P1I-001 | HermesWebhookController 课件桥接逻辑下沉到应用服务，移除手工 `SecurityContext` 注入 | #95 | `bf5cf255` | CI 5/5 全绿；Bot 自动 approve；控制器回到鉴权适配层，课件上传/讲稿/级联删除/批量推送统一由 `HermesWebhookCoursewareService` 承接 |
+| QX-P1I-002 | 存储申请导出改为事务内读取快照、事务外生成 Word/PDF，并补事务边界回归测试 | #95 | `bf5cf255` | CI 5/5 全绿；Bot 自动 approve；导出长事务收口，`StorageApplicationExportServiceImpl` 不再在只读事务内执行文档生成 |
+| QX-P1I-003 | CAS 验票、事务化登录注册、头像文件存储从 `AuthServiceImpl` 拆出为独立服务，并补回归测试 | #97 | `c21a768f` | CI 5/5 全绿；Bot 自动 approve；`AuthServiceImpl` 回到认证编排层，CAS HTTP、用户落库与头像文件副作用分别由专责 service 承接 |
+| QX-P1I-004 | 存储申请图片校验/缩放/落盘/旧文件清理下沉到独立存储服务，并补替换/魔数校验回归测试 | #97 | `c21a768f` | CI 5/5 全绿；Bot 自动 approve；`StorageApplicationServiceImpl` 不再内联文件系统副作用，图片上传链路职责边界收口 |
+
+---
+
+## 8. 下一步
+
+- **Wave F 已完成**：`QX-P1I-003` ~ `QX-P1I-004` 全部关闭，认证主服务与存储申请主服务的文件/外部调用副作用已拆出，Wave E~F 的后端高风险职责链已收口
+- 进入 **Wave G**：优先处理 `QX-P1I-005` ~ `QX-P1I-008`（`VideoPlayer.vue` 大组件拆分、`App.vue` 全局监听清理、重复组件收敛、播放器状态源统一）
+- Wave G 完成标准：前端播放器领域边界、全局生命周期副作用和重复实现完成收敛，并补齐对应交互/生命周期回归验证与文档基线

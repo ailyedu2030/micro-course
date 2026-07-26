@@ -35,6 +35,13 @@ class VideoAccessControlTest extends BaseIntegrationTest {
 
     private final List<Long> createdVideoIds = new ArrayList<>();
 
+    @org.junit.jupiter.api.BeforeEach
+    void clearStudentEnrollments() {
+        // P1-1 修复：强制清空 student(id=7) 的所有选课记录，
+        // 避免前序测试（如 EnrollmentDataIsolationTest）创建遗留污染导致用例相互干扰
+        try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7"); } catch (Exception ignored) {}
+    }
+
     @AfterEach
     void cleanup() {
         // 清理选课（student id=7）+ 本类创建的视频，保证用例相互隔离
@@ -48,8 +55,8 @@ class VideoAccessControlTest extends BaseIntegrationTest {
     /** 插入一条可播放视频（status=2 COMPLETED，带 m3u8）。 */
     private long insertVideo(long courseId, long chapterId) {
         Long id = jdbc.queryForObject(
-                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at) " +
-                        "VALUES (?, ?, ?, 2, '/api/videos/stream/test/index.m3u8', 100, 0, 0, now(), now()) RETURNING id",
+                "INSERT INTO videos(course_id, chapter_id, title, status, m3u8_url, progress, sort_order, version, created_at, updated_at, original_name) " +
+                        "VALUES (?, ?, ?, 2, '/api/videos/stream/test/index.m3u8', 100, 0, 0, now(), now(), '') RETURNING id",
                 Long.class, courseId, chapterId, "r8-vid-" + System.nanoTime());
         createdVideoIds.add(id);
         return id;

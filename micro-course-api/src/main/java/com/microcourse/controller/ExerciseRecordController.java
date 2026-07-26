@@ -43,7 +43,7 @@ public class ExerciseRecordController {
     }
 
     @GetMapping("/my/{exerciseId}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<List<ExerciseRecordVO>> getMyRecords(
             @PathVariable Long exerciseId,
             Authentication authentication) {
@@ -53,7 +53,7 @@ public class ExerciseRecordController {
     }
 
     @GetMapping("/my/accuracy-trend")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<List<Map<String, Object>>> getAccuracyTrend(
             @RequestParam(defaultValue = "30") int days,
             Authentication authentication) {
@@ -73,7 +73,7 @@ public class ExerciseRecordController {
     }
 
     @GetMapping("/my/{exerciseId}/attempt-count")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<Map<String, Object>> getMyAttemptCount(
             @PathVariable Long exerciseId,
             Authentication authentication) {

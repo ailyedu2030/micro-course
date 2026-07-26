@@ -54,7 +54,14 @@ export const useUserStore = defineStore('user', {
         this.refreshToken = newRefreshToken
         return newToken
       } catch {
-        this.logout()
+        // P1-I: 瞬态网络错误不攻击性清空全部 localStorage，
+        // 仅清空 token 让 router 守卫 next(false) 处理导航中断，
+        // 用户可手动刷新重试，而非直接被强制登出。
+        removeToken()
+        removeRefreshToken()
+        this.token = ''
+        this.refreshToken = ''
+        this.userInfo = null
         return null
       }
     },

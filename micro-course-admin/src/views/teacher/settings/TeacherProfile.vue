@@ -73,17 +73,17 @@ const webhookUrl = computed(() => {
   padding-left: 20px;
   font-size: 13px;
   line-height: 1.8;
-  color: #555;
+  color: var(--el-text-color-regular);
 }
 .usage-list li {
   margin-bottom: 12px;
 }
 .usage-list code {
-  background: #f4f4f5;
+  background: var(--el-fill-color-light);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
-  color: #d63384;
+  color: var(--el-color-danger-dark-2);
   word-break: break-all;
 }
 .usage-code {

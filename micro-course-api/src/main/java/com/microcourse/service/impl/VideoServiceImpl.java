@@ -30,10 +30,11 @@ import com.microcourse.util.VideoDiskCleanup;
 import com.microcourse.util.VideoSignUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
@@ -47,8 +48,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 @Service
 public class VideoServiceImpl implements VideoService {
@@ -60,7 +59,6 @@ public class VideoServiceImpl implements VideoService {
     private final CourseRepository courseRepository;
     private final VideoBookmarkRepository videoBookmarkRepository;
     private final VideoTranscodeService videoTranscodeService;
-    private final Executor videoUploadExecutor;
     private final VideoAccessService videoAccessService;
     private final VideoSignUtil videoSignUtil;
     private final AdminSettingService adminSettingService;
@@ -82,7 +80,6 @@ public class VideoServiceImpl implements VideoService {
                             CourseRepository courseRepository,
                             VideoBookmarkRepository videoBookmarkRepository,
                             VideoTranscodeService videoTranscodeService,
-                            @Qualifier("videoUploadExecutor") Executor videoUploadExecutor,
                             VideoAccessService videoAccessService,
                             VideoSignUtil videoSignUtil,
                             AdminSettingService adminSettingService,
@@ -93,7 +90,6 @@ public class VideoServiceImpl implements VideoService {
         this.courseRepository = courseRepository;
         this.videoBookmarkRepository = videoBookmarkRepository;
         this.videoTranscodeService = videoTranscodeService;
-        this.videoUploadExecutor = videoUploadExecutor;
         this.learningProgressRepository = learningProgressRepository;
         this.videoAccessService = videoAccessService;
         this.videoSignUtil = videoSignUtil;
@@ -110,9 +106,10 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public PageResult<VideoVO> page(Long courseId, int page, int size) {
+    public PageResult<VideoVO> page(Long courseId, Long chapterId, int page, int size) {
         LambdaQueryWrapper<Video> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Video::getCourseId, courseId)
+                .eq(chapterId != null, Video::getChapterId, chapterId)
                 .orderByAsc(Video::getSortOrder)
                 .orderByDesc(Video::getCreatedAt);
 
@@ -339,14 +336,20 @@ public class VideoServiceImpl implements VideoService {
                     "仅 FAILED 状态的视频可重试转码, 当前状态: " + v.getStatus());
         }
 
-        videoRepository.update(null,
+        int affected = videoRepository.update(null,
                 new LambdaUpdateWrapper<Video>()
                         .eq(Video::getId, id)
+                        .eq(Video::getStatus, VideoStatus.FAILED.getCode())
                         .set(Video::getStatus, VideoStatus.TRANSCODING.getCode())
                         .set(Video::getErrorMessage, (String) null)
                         .set(Video::getProgress, 0)
                         .set(Video::getUpdatedAt, LocalDateTime.now())
                         .setSql("version = version + 1"));
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "视频状态已被修改，请刷新");
+        }
+
+        scheduleTranscodeAfterCommit(id);
         log.info("[RetryTranscode] 视频重新进入转码: id={}", id);
         return getById(id);
     }
@@ -572,22 +575,33 @@ public class VideoServiceImpl implements VideoService {
 
         createEntity(video);
 
-        // P1-4: 文件已同步保存，仅异步转码
+        // 转码任务必须在事务提交后再提交，避免异步线程读不到刚插入的视频记录。
         final Long videoId = video.getId();
-        CompletableFuture.runAsync(() -> {
-            try {
-                videoTranscodeService.transcode(videoId);
-            } catch (Exception e) {
-                log.error("[VideoUpload] 异步转码失败 videoId={}", videoId, e);
-                try {
-                    updateStatus(videoId, VideoStatus.FAILED.getCode());
-                } catch (Exception ex) {
-                    log.error("[VideoUpload] 更新视频状态为 FAILED 也失败 videoId={}", videoId, ex);
-                }
-            }
-        }, videoUploadExecutor);
+        scheduleTranscodeAfterCommit(videoId);
 
         return getById(video.getId());
+    }
+
+    private void scheduleTranscodeAfterCommit(Long videoId) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    submitTranscode(videoId);
+                }
+            });
+            return;
+        }
+        submitTranscode(videoId);
+    }
+
+    private void submitTranscode(Long videoId) {
+        try {
+            videoTranscodeService.transcode(videoId);
+        } catch (Exception e) {
+            log.error("[VideoUpload] 提交转码任务失败 videoId={}", videoId, e);
+            throw e;
+        }
     }
 
     @Override
@@ -634,7 +648,24 @@ public class VideoServiceImpl implements VideoService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
+        assertCourseOwnership(video.getCourseId());
         return new VideoStatusVO(video.getId(), video.getStatus(), video.getProgress(), video.getErrorMessage());
+    }
+
+    @Override
+    public java.util.List<VideoStatusVO> getStatusBatch(java.util.List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return java.util.Collections.emptyList();
+        java.util.List<Video> videos = videoRepository.selectBatchIds(ids);
+        java.util.Map<Long, VideoStatusVO> map = new java.util.HashMap<>();
+        for (Video v : videos) {
+            map.put(v.getId(), new VideoStatusVO(v.getId(), v.getStatus(), v.getProgress(), v.getErrorMessage()));
+        }
+        java.util.List<VideoStatusVO> result = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            VideoStatusVO vo = map.get(id);
+            if (vo != null) result.add(vo);
+        }
+        return result;
     }
 
     /* ================================================================
@@ -766,4 +797,3 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 }
-

@@ -299,9 +299,10 @@
                 </div>
               </template>
               <div class="question-dots">
-                <div
+                <button
                   v-for="(qId, idx) in questionIds"
                   :key="qId"
+                  type="button"
                   class="q-dot"
                   :class="{
                     'dot-current': idx === currentIndex,
@@ -309,10 +310,11 @@
                     'dot-correct': submitted && isQuestionCorrect(qId),
                     'dot-wrong': submitted && isQuestionWrong(qId),
                   }"
+                  :aria-label="`跳转到第 ${idx + 1} 题`"
                   @click="jumpToQuestion(idx)"
                 >
                   {{ idx + 1 }}
-                </div>
+                </button>
               </div>
               <div class="dot-legend">
                 <span class="legend-item"><span class="dot dot-answered"></span> 已答</span>
@@ -521,28 +523,38 @@
 
         <!-- 浮动答题卡（移动端） -->
         <teleport to="body">
-          <div class="answer-sheet-fab" @click="sheetVisible = !sheetVisible">
+          <button
+            type="button"
+            class="answer-sheet-fab"
+            aria-label="打开答题卡"
+            :aria-expanded="String(sheetVisible)"
+            @click="toggleAnswerSheet"
+          >
             <el-icon><Grid /></el-icon>
             <span>答题卡</span>
-          </div>
+          </button>
           <transition name="fade">
-            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="sheetVisible = false"></div>
+            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
           </transition>
           <transition name="slide-up">
-            <div v-if="sheetVisible" class="answer-sheet-panel">
+            <div v-if="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
               <div class="answer-sheet-header">
                 <span>答题卡</span>
                 <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
-                <el-button text @click="sheetVisible = false">✕</el-button>
+                <el-button text aria-label="关闭答题卡" @click="closeAnswerSheet">关闭</el-button>
               </div>
               <div class="answer-sheet-grid">
-                <div
-v-for="(q, idx) in questions" :key="q.id"
+                <button
+                  v-for="(q, idx) in questions"
+                  :key="q.id"
+                  type="button"
                   class="answer-sheet-item"
                   :class="{ answered: answers[q.id], current: currentIndex === idx }"
-                  @click="jumpToQuestion(idx); sheetVisible = false">
+                  :aria-label="`跳转到第 ${idx + 1} 题`"
+                  @click="jumpToQuestion(idx); closeAnswerSheet()"
+                >
                   {{ idx + 1 }}
-                </div>
+                </button>
               </div>
             </div>
           </transition>
@@ -633,6 +645,7 @@ const answers = reactive({})     // questionId → answer string | string[]
 const multipleAnswers = reactive({}) // questionId → string[] (多选用)
 const timeLeft = ref(0)
 let timerInterval = null
+let autoStartTimer = null
 const elapsedTime = ref(0)
 let elapsedTimerInterval = null
 
@@ -704,6 +717,14 @@ function jumpToQuestion(idx) {
   })
 }
 
+function toggleAnswerSheet() {
+  sheetVisible.value = !sheetVisible.value
+}
+
+function closeAnswerSheet() {
+  sheetVisible.value = false
+}
+
 // ===== 结果 =====
 const resultVisible = ref(false)
 const submitResult = ref({})
@@ -723,6 +744,7 @@ onMounted(async () => {
 onUnmounted(() => {
   clearTimer()
   clearElapsedTimer()
+  if (autoStartTimer) { clearTimeout(autoStartTimer); autoStartTimer = null }
   window.removeEventListener('resize', handleResize)
   window.removeEventListener('keydown', handleKeydown)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
@@ -732,6 +754,11 @@ onUnmounted(() => {
 // 答题界面下方向键切换上/下一题。焦点在选项组/输入框内时不拦截，
 // 让 el-radio-group / el-checkbox-group 的原生方向键行为优先。
 function handleKeydown(e) {
+  if (sheetVisible.value && e.key === 'Escape') {
+    e.preventDefault()
+    closeAnswerSheet()
+    return
+  }
   if (!exerciseStarted.value) return
   const t = e.target
   if (
@@ -767,7 +794,7 @@ async function fetchExerciseList() {
       )
       if (autoExam) {
         // 延时确保组件渲染完成后自动开始
-        setTimeout(() => startExercise(autoExam), 300)
+        autoStartTimer = setTimeout(() => startExercise(autoExam), 300)
       }
     }
   } catch {
@@ -1512,6 +1539,7 @@ function formatCorrectAnswer(q) {
   transition: all var(--duration-base, 200ms) ease;
   background: var(--el-bg-color-overlay);
   color: var(--el-text-color-secondary);
+  padding: 0;
 }
 
 .q-dot:hover {
@@ -1772,6 +1800,7 @@ function formatCorrectAnswer(q) {
   transition: transform 0.2s, box-shadow 0.2s;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  border: none;
 }
 
 .answer-sheet-fab:active {
@@ -1841,6 +1870,7 @@ function formatCorrectAnswer(q) {
   transition: background 0.2s, color 0.2s, border-color 0.2s;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  border: none;
 }
 
 .answer-sheet-item:active {
@@ -1856,6 +1886,13 @@ function formatCorrectAnswer(q) {
   border: 2px solid #409eff;
   background: #ecf5ff;
   color: #409eff;
+}
+
+.q-dot:focus-visible,
+.answer-sheet-fab:focus-visible,
+.answer-sheet-item:focus-visible {
+  outline: 3px solid #facc15;
+  outline-offset: 2px;
 }
 
 /* 过渡动画 */

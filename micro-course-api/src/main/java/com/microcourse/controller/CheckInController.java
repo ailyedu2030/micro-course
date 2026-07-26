@@ -21,7 +21,7 @@ public class CheckInController {
     }
 
     @PostMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     @AuditedLog("学生打卡")
     public R<CheckInVO> checkIn() {
         Long userId = getCurrentUserId();
@@ -30,7 +30,7 @@ public class CheckInController {
     }
 
     @GetMapping("/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<List<CheckInVO>> getMyCheckIns(
             @RequestParam(defaultValue = "30") int days) {
         Long userId = getCurrentUserId();
@@ -39,7 +39,7 @@ public class CheckInController {
     }
 
     @GetMapping("/streak")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<Integer> getStreak() {
         Long userId = getCurrentUserId();
         int streak = checkInService.getStreak(userId);

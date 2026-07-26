@@ -62,10 +62,10 @@
           <template #header><span class="card-title">邀请新教师</span></template>
           <!-- 搜索过滤 -->
           <div class="filter-bar">
-            <el-input v-model="searchKeyword" placeholder="搜索教师姓名" clearable class="search-input" @clear="fetchCandidates" @keyup.enter="fetchCandidates">
+            <el-input v-model="searchKeyword" placeholder="搜索教师姓名" clearable class="search-input" @clear="fetchCandidates" @keyup.enter="fetchCandidates" aria-label="搜索教师姓名">
               <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
-            <el-select v-model="searchDept" placeholder="选择学院" clearable class="filter-select" @change="fetchCandidates">
+            <el-select v-model="searchDept" placeholder="选择学院" clearable class="filter-select" @change="fetchCandidates" aria-label="筛选学院">
               <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
             </el-select>
             <el-button type="primary" @click="fetchCandidates">搜索</el-button>
@@ -80,7 +80,7 @@
             <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
             <el-table-column label="角色" width="140">
               <template #default="{ row: r }">
-                <el-select v-model="inviteRoles[r.id]" size="small" class="full-width">
+                <el-select v-model="inviteRoles[r.id]" size="small" class="full-width" :aria-label="'为' + (r.realName || '') + '选择角色'">
                   <el-option label="团队成员" value="MEMBER" />
                   <el-option label="助教" value="ASSISTANT" />
                 </el-select>
@@ -105,7 +105,7 @@
     <el-dialog v-model="chapterPopupVisible" title="选择章节" width="500px">
       <template v-if="chapterPopupTeacher">
         <el-alert :title="'为 ' + (chapterPopupTeacher.realName || '') + ' 分配章节'" type="info" :closable="false" show-icon class="mg-bottom-12" />
-        <el-checkbox-group v-model="inviteChapters[chapterPopupTeacher.id]">
+        <el-checkbox-group v-model="inviteChapters[chapterPopupTeacher.id]" aria-label="选择章节">
           <div v-for="ch in chapterOptions" :key="ch.id" class="chapter-check-row">
             <el-checkbox :label="ch.id" :value="ch.id">
               {{ ch.courseTitle || ch.courseName }} / {{ ch.chapterTitle || ch.title }}

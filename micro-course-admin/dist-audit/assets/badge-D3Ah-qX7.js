@@ -1,0 +1,1 @@
+import{r as e}from"./vendor-video-player-Dct-RoXs.js";function n(){return e({method:"GET",url:"/badges/my"})}function r(){return e({method:"GET",url:"/badges/definitions"})}function s(){return e({method:"GET",url:"/badges/achievements"})}export{r as a,s as b,n as g};

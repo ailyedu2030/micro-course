@@ -9,6 +9,8 @@
 </template>
 
 <script setup>
+import { UploadFilled } from '@element-plus/icons-vue'
+
 defineProps({ uploading: Boolean, handleUpload: { type: Function, required: true }, chapterId: { type: Number, default: null } })
 </script>
 

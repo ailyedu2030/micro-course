@@ -56,6 +56,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -341,15 +343,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             throw new BusinessException(ErrorCode.COURSE_HAS_ENROLLMENTS);
         }
 
-        if (course.getCoverUrl() != null && !course.getCoverUrl().isBlank()) {
-            try {
-                Path coverPath = Paths.get(uploadBaseDir, course.getCoverUrl());
-                Files.deleteIfExists(coverPath);
-                LOG.info("[P2-7] 封面文件已清理 path={}", coverPath);
-            } catch (Exception e) {
-                LOG.warn("[P2-7] 封面文件清理失败 url={}", course.getCoverUrl(), e);
-            }
-        }
+        scheduleCoverDeletionAfterCommit(course.getCoverUrl());
 
         int affected = courseRepository.update(null,
                 new LambdaUpdateWrapper<Course>()
@@ -418,6 +412,49 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         LOG.info("课程已关闭（含级联清理）, id={}", id);
         // 触发 Hermes 同步事件 (Course 实体在 DAO 已逻辑删除, payload 用 course 当时字段的快照)
         publishCourseEvent(course, "DELETED");
+    }
+
+    private void scheduleCoverDeletionAfterCommit(String coverUrl) {
+        Path coverPath = resolveManagedCoverPath(coverUrl);
+        if (coverPath == null) {
+            return;
+        }
+        Runnable cleanup = () -> deleteCoverQuietly(coverPath, coverUrl);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanup.run();
+                }
+            });
+            return;
+        }
+        cleanup.run();
+    }
+
+    private Path resolveManagedCoverPath(String coverUrl) {
+        if (coverUrl == null || coverUrl.isBlank() || coverUrl.startsWith("http")) {
+            return null;
+        }
+        String relativePath = coverUrl.startsWith("/api/files/")
+                ? coverUrl.substring("/api/files/".length())
+                : coverUrl;
+        Path basePath = Paths.get(uploadBaseDir).toAbsolutePath().normalize();
+        Path resolvedPath = basePath.resolve(relativePath).normalize();
+        if (!resolvedPath.startsWith(basePath)) {
+            LOG.warn("[CourseDelete] skip unsafe cover cleanup, coverUrl={}, resolvedPath={}", coverUrl, resolvedPath);
+            return null;
+        }
+        return resolvedPath;
+    }
+
+    private void deleteCoverQuietly(Path coverPath, String coverUrl) {
+        try {
+            Files.deleteIfExists(coverPath);
+            LOG.info("[CourseDelete] 封面文件已清理 path={}", coverPath);
+        } catch (IOException e) {
+            LOG.warn("[CourseDelete] 封面文件清理失败 url={}", coverUrl, e);
+        }
     }
 
     @Override

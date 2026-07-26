@@ -121,6 +121,18 @@ console-errors-all.log
 dump.rdb
 backups/
 
+# 教师端 ego-browser audit 运行时输出（截图/HTML/JSON 报告）
+docs/audit/teacher-module-audit/
+!docs/audit/teacher-module-audit/.gitkeep 2>/dev/null
+!docs/audit/teacher-module-audit/README.md 2>/dev/null
+
+# playwright-report 与 results.json（运行时生成）
+micro-course-admin/playwright-report/
+micro-course-admin/results.json
+micro-course-admin/test-results/
+!micro-course-admin/e2e/a11y-utils.test.mjs
+!micro-course-admin/e2e/teacher-audit.spec.js
+
 # Phase 15: 字体文件（运行时生成PDF用，从系统拷入，不入仓）
 micro-course-api/src/main/resources/fonts/
 .production-gate

@@ -14,9 +14,12 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.entity.OperationLog;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
+import com.microcourse.service.AuthCasLoginService;
 import com.microcourse.service.AuthQueryService;
 import com.microcourse.service.AuthService;
+import com.microcourse.service.CasTicketValidationService;
 import com.microcourse.service.OperationLogService;
+import com.microcourse.service.UserAvatarStorageService;
 import com.microcourse.util.IpUtil;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
@@ -26,24 +29,14 @@ import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.StringReader;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-
-import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
 
 /**
  * 认证服务实现
@@ -63,11 +56,10 @@ public class AuthServiceImpl implements AuthService {
     private final OperationLogService operationLogService;
     private final HttpServletRequest httpServletRequest;
     private final AdminSettingService adminSettingService;
-    private final RestTemplate restTemplate;
     private final AuthQueryService queryService;
-
-    /** Self-reference for @Transactional proxy access (via @Lazy constructor injection) */
-    private final AuthServiceImpl self;
+    private final CasTicketValidationService casTicketValidationService;
+    private final AuthCasLoginService authCasLoginService;
+    private final UserAvatarStorageService userAvatarStorageService;
 
     public AuthServiceImpl(UserRepository userRepository, JwtUtil jwtUtil,
                            BCryptPasswordEncoder passwordEncoder, RedisUtil redisUtil,
@@ -75,7 +67,9 @@ public class AuthServiceImpl implements AuthService {
                            HttpServletRequest httpServletRequest,
                            AdminSettingService adminSettingService,
                            AuthQueryService queryService,
-                           @Lazy AuthServiceImpl self) {
+                           CasTicketValidationService casTicketValidationService,
+                           AuthCasLoginService authCasLoginService,
+                           UserAvatarStorageService userAvatarStorageService) {
         this.userRepository = userRepository;
         this.jwtUtil = jwtUtil;
         this.passwordEncoder = passwordEncoder;
@@ -83,9 +77,10 @@ public class AuthServiceImpl implements AuthService {
         this.operationLogService = operationLogService;
         this.httpServletRequest = httpServletRequest;
         this.adminSettingService = adminSettingService;
-        this.restTemplate = new RestTemplate();
         this.queryService = queryService;
-        this.self = self;
+        this.casTicketValidationService = casTicketValidationService;
+        this.authCasLoginService = authCasLoginService;
+        this.userAvatarStorageService = userAvatarStorageService;
     }
 
     @Override
@@ -375,225 +370,8 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public LoginResponse casLogin(String ticket, String state) {
-        // Step 1: 验证 CAS ticket（外部 HTTP，非事务）
-        CasUserInfo casUser = verifyCasTicket(ticket);
-        if (casUser == null) {
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS票据验证失败");
-        }
-
-        // Step 2: DB 操作（事务，通过 self 代理调用以触发 @Transactional）
-        if (self == null) {
-            // 极端容灾：self 注入未完成时回退到直接调用（仅测试环境可能触发）
-            log.warn("[CAS] self 未注入，回退到直接调用 casLoginTransaction");
-            return casLoginTransaction(casUser);
-        }
-        return self.casLoginTransaction(casUser);
-    }
-
-    /**
-     * 验证 CAS ticket，返回 CAS 用户信息。
-     * 此方法不涉及数据库操作，不加事务，避免长事务持有数据库连接。
-     */
-    private CasUserInfo verifyCasTicket(String ticket) {
-        // 读取 CAS 配置
-        String casServerUrl = adminSettingService.getByKey("cas_server_url");
-        String casServiceUrl = adminSettingService.getByKey("cas_service_url");
-
-        if (casServerUrl == null || casServerUrl.isBlank()) {
-            throw new BusinessException(ErrorCode.CAS_NOT_CONFIGURED, "CAS服务地址未配置，请在系统设置中配置 cas_server_url");
-        }
-        if (casServiceUrl == null || casServiceUrl.isBlank()) {
-            throw new BusinessException(ErrorCode.CAS_NOT_CONFIGURED, "CAS回调地址未配置，请在系统设置中配置 cas_service_url");
-        }
-
-        // 调用 CAS serviceValidate 端点验证票据
-        String encodedServiceUrl = URLEncoder.encode(casServiceUrl, StandardCharsets.UTF_8);
-        String baseUrl = casServerUrl.endsWith("/") ? casServerUrl.substring(0, casServerUrl.length() - 1) : casServerUrl;
-        String validateUrl = baseUrl + "/serviceValidate?ticket=" + URLEncoder.encode(ticket, StandardCharsets.UTF_8)
-                + "&service=" + encodedServiceUrl;
-
-        log.info("[CAS] 验证票据 validateUrl={}", validateUrl);
-
-        String xmlResponse;
-        try {
-            xmlResponse = restTemplate.getForObject(validateUrl, String.class);
-        } catch (Exception e) {
-            log.error("[CAS] 调用 CAS serviceValidate 失败 url={}", validateUrl, e);
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "无法连接CAS服务器，请稍后重试或联系管理员", e);
-        }
-
-        if (xmlResponse == null || xmlResponse.isBlank()) {
-            log.error("[CAS] CAS 返回空响应");
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS服务器返回空响应");
-        }
-
-        log.debug("[CAS] CAS 响应 XML: {}", xmlResponse);
-
-        // 解析 CAS XML 响应提取用户名
-        String casUsername = parseCasUsername(xmlResponse);
-        log.info("[CAS] 票据验证成功，CAS用户名={}", casUsername);
-
-        return new CasUserInfo(casUsername);
-    }
-
-    /**
-     * CAS 登录事务 — 仅包含数据库操作（upsert user、generate token、log）。
-     * 通过 AOP 代理（self）调用以确保 @Transactional 生效。
-     */
-    @Transactional(rollbackFor = Exception.class)
-    protected LoginResponse casLoginTransaction(CasUserInfo casUser) {
-        String casUsername = casUser.getUsername();
-
-        // Step 4: 查找或自动注册用户
-        User user = userRepository.findByUsername(casUsername).orElse(null);
-        if (user == null) {
-            // 自动注册 CAS 用户（默认学生角色）
-            user = new User();
-            user.setUsername(casUsername);
-            user.setRole(UserRole.STUDENT);
-            user.setCasBound(true);
-            user.setStatus(UserStatus.ACTIVE.getCode());
-            user.setCreatedAt(LocalDateTime.now());
-            user.setUpdatedAt(LocalDateTime.now());
-            userRepository.insert(user);
-            log.info("[CAS] 自动注册CAS用户 username={} userId={}", casUsername, user.getId());
-        } else {
-            // 已有用户，标记 CAS 绑定
-            if (!Boolean.TRUE.equals(user.getCasBound())) {
-                user.setCasBound(true);
-                user.setUpdatedAt(LocalDateTime.now());
-                userRepository.updateById(user);
-            }
-        }
-
-        // Step 4.5: 检查用户状态
-        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.INACTIVE.getCode()) {
-            throw new BusinessException(ErrorCode.INVALID_CREDENTIALS, "账号未激活");
-        }
-        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DISABLED.getCode()) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DISABLED);
-        }
-        if (user.getStatus() != null && user.getStatus().intValue() == UserStatus.DELETED.getCode()) {
-            throw new BusinessException(ErrorCode.ACCOUNT_DELETED);
-        }
-
-        // P1-I-12: CAS admin/super_admin 角色检查（覆写默认 STUDENT 角色）
-        boolean roleUpgraded = false;
-        String adminUsername = adminSettingService.getByKey("cas_admin_username");
-        if (adminUsername != null && adminUsername.equals(casUsername)) {
-            user.setRole(UserRole.ADMIN);
-            roleUpgraded = true;
-        }
-        String superAdmins = adminSettingService.getByKey("cas_super_admins");
-        if (superAdmins != null && !superAdmins.isBlank()) {
-            for (String sa : superAdmins.split(",")) {
-                if (sa.trim().equals(casUsername)) {
-                    user.setRole(UserRole.ADMIN);
-                    roleUpgraded = true;
-                    break;
-                }
-            }
-        }
-        if (roleUpgraded) {
-            user.setUpdatedAt(LocalDateTime.now());
-            userRepository.updateById(user);
-        }
-
-        // Step 5: 递增 token 代数(旧 refreshToken 失效) + 生成 JWT
-        long casTokenGen = redisUtil.incrementTokenGeneration(user.getId());
-        if (casTokenGen == 0) casTokenGen = 1; // 兜底:确保从 1 开始
-        String accessToken = jwtUtil.generateToken(
-                user.getId(), user.getUsername(), user.getRole(), user.getDepartmentId());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), casTokenGen);
-
-        // Step 6: 更新 lastLoginAt
-        user.setLastLoginAt(LocalDateTime.now());
-        userRepository.updateById(user);
-
-        // Step 7: 记录操作日志
-        OperationLog logEntry = new OperationLog();
-        logEntry.setUserId(user.getId());
-        logEntry.setAction("CAS_LOGIN");
-        logEntry.setTargetType("USER");
-        logEntry.setTargetId(user.getId());
-        logEntry.setIp(IpUtil.getClientIp());
-        logEntry.setSuccess(true);
-        logEntry.setDetail("{\"method\":\"AuthController.casLogin\",\"path\":\"POST /api/auth/cas/login\",\"status\":200}");
-        logEntry.setDurationMs(0);
-        operationLogService.log(logEntry);
-
-        // Step 8: 构建响应
-        LoginResponse response = new LoginResponse();
-        response.setAccessToken(accessToken);
-        response.setRefreshToken(refreshToken);
-        response.setExpiresIn(TOKEN_EXPIRES_IN_SECONDS);
-        response.setTokenType("Bearer");
-        return response;
-    }
-
-    /**
-     * 解析 CAS serviceValidate XML 响应，提取用户名。
-     *
-     * 成功响应示例：
-     * <cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
-     *   <cas:authenticationSuccess>
-     *     <cas:user>zhangsan</cas:user>
-     *   </cas:authenticationSuccess>
-     * </cas:serviceResponse>
-     *
-     * 失败响应示例：
-     * <cas:serviceResponse xmlns:cas='http://www.yale.edu/tp/cas'>
-     *   <cas:authenticationFailure code='INVALID_TICKET'>
-     *     Ticket ST-xxx not recognized
-     *   </cas:authenticationFailure>
-     * </cas:serviceResponse>
-     */
-    private String parseCasUsername(String xmlResponse) {
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setNamespaceAware(true);
-            // 安全配置：禁用外部实体
-            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-
-            Document doc = factory.newDocumentBuilder()
-                    .parse(new InputSource(new StringReader(xmlResponse)));
-
-            // 先检查是否有认证失败
-            NodeList failureNodes = doc.getElementsByTagNameNS("http://www.yale.edu/tp/cas", "authenticationFailure");
-            if (failureNodes.getLength() > 0) {
-                String failureMsg = failureNodes.item(0).getTextContent().trim();
-                log.warn("[CAS] 票据验证失败: {}", failureMsg);
-                throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS票据验证失败: " + failureMsg);
-            }
-
-            // 提取用户名
-            NodeList userNodes = doc.getElementsByTagNameNS("http://www.yale.edu/tp/cas", "user");
-            if (userNodes.getLength() > 0) {
-                String username = userNodes.item(0).getTextContent().trim();
-                if (!username.isEmpty()) {
-                    return username;
-                }
-            }
-
-            // 兜底：尝试不带命名空间解析（兼容某些非标准 CAS 实现）
-            NodeList userNodesNoNs = doc.getElementsByTagName("cas:user");
-            if (userNodesNoNs.getLength() > 0) {
-                String username = userNodesNoNs.item(0).getTextContent().trim();
-                if (!username.isEmpty()) {
-                    return username;
-                }
-            }
-
-            log.error("[CAS] 无法从响应中提取用户名, XML={}", xmlResponse);
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS响应中未找到用户信息");
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("[CAS] 解析CAS XML响应失败", e);
-            throw new BusinessException(ErrorCode.CAS_VALIDATION_FAILED, "CAS认证响应格式异常，请联系管理员", e);
-        }
+        String casUsername = casTicketValidationService.validateTicket(ticket);
+        return authCasLoginService.loginOrRegister(casUsername);
     }
 
     @Override
@@ -703,72 +481,18 @@ public class AuthServiceImpl implements AuthService {
         if (user == null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        // 文件类型校验
-        String contentType = file.getContentType();
-        // 兼容前端 Canvas 压缩后 File Blob 传递时 Content-Type 可能为 null 的情况（魔数校验兜底）
-        boolean contentTypeOk = contentType != null && java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType);
-        if (!contentTypeOk) {
-            String origName = file.getOriginalFilename();
-            if (origName != null) {
-                String lower = origName.toLowerCase();
-                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) contentType = "image/jpeg";
-                else if (lower.endsWith(".png")) contentType = "image/png";
-                else if (lower.endsWith(".webp")) contentType = "image/webp";
-            }
-            if (contentType == null || !java.util.Set.of("image/jpeg", "image/png", "image/webp").contains(contentType)) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "仅支持 JPEG、PNG、WebP 格式的图片");
-            }
-        }
-        // 文件大小校验（≤2MB）
-        if (file.getSize() > 2 * 1024 * 1024) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像文件大小不能超过 2MB");
-        }
-        // P1 安全修复: 文件魔数校验（JPEG/PNG/WebP）
-        queryService.validateImageMagic(file);
-
-        // 记录旧头像文件，用于上传成功后清理
-        String oldAvatarToDelete = null;
-        if (user.getAvatar() != null && user.getAvatar().startsWith("/api/files/avatars/")) {
-            oldAvatarToDelete = user.getAvatar().substring("/api/files/avatars/".length());
-        }
-        final String oldFileToClean = oldAvatarToDelete;
-
+        UserAvatarStorageService.StoredAvatar storedAvatar =
+                userAvatarStorageService.storeAvatar(userId, file, user.getAvatar());
         try {
-            String uploadDir = System.getProperty("user.dir") + "/uploads/avatars/";
-            java.io.File dir = new java.io.File(uploadDir);
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
-            String ext = ".jpg";
-            if ("image/png".equals(contentType)) {
-                ext = ".png";
-            } else if ("image/webp".equals(contentType)) {
-                ext = ".webp";
-            }
-            String filename = userId + "_" + System.currentTimeMillis() + ext;
-            java.io.File dest = new java.io.File(uploadDir + filename);
-            file.transferTo(dest);
-
-            String avatarUrl = "/api/files/avatars/" + filename;
-            user.setAvatar(avatarUrl);
+            user.setAvatar(storedAvatar.getAvatarUrl());
             userRepository.updateById(user);
-
-            // 清理旧头像文件（上传成功后删除旧文件，避免磁盘堆积）
-            if (oldFileToClean != null) {
-                try {
-                    java.io.File oldFile = new java.io.File(uploadDir + oldFileToClean);
-                    if (oldFile.exists()) {
-                        oldFile.delete();
-                    }
-                } catch (Exception e) {
-                    log.warn("[Auth] 清理旧头像文件失败 userId={}, oldFile={}", userId, oldFileToClean, e);
-                }
-            }
-
-            return avatarUrl;
+            userAvatarStorageService.cleanupPreviousAvatar(storedAvatar.getPreviousAvatarFilename());
+            return storedAvatar.getAvatarUrl();
         } catch (BusinessException e) {
+            userAvatarStorageService.deleteByUrl(storedAvatar.getAvatarUrl());
             throw e;
         } catch (Exception e) {
+            userAvatarStorageService.deleteByUrl(storedAvatar.getAvatarUrl());
             log.error("头像上传失败 userId={}", userId, e);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "头像上传失败");
         }
@@ -777,19 +501,5 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resetLoginLockout() {
         queryService.resetLoginLockout();
-    }
-
-    /**
-     * CAS 用户信息 — verifyCasTicket 的返回值。
-     * 仅包含 CAS 验证阶段获取的数据，不含数据库操作。
-     */
-    static class CasUserInfo {
-        private final String username;
-
-        CasUserInfo(String username) {
-            this.username = username;
-        }
-
-        String getUsername() { return username; }
     }
 }

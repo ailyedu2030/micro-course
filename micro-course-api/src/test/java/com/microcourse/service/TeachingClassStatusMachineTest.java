@@ -6,10 +6,16 @@ import com.microcourse.dto.TeachingClassVO;
 import com.microcourse.enums.TeachingClassStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -75,6 +81,21 @@ class TeachingClassStatusMachineTest extends BaseIntegrationTest {
         Long catId = insertCategory();
         Long courseId = insertCourse(catId, teacherId);
         return insertTeachingClass(courseId, teacherId, status);
+    }
+
+    // --------- auth setup ---------
+
+    @BeforeEach
+    void setupSecurityContext() {
+        // complete() 权限检查需要 SecurityContext；集成测试直接调 Service 不经过 Filter
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null,
+                        List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
     }
 
     // --------- tests ---------

@@ -16,15 +16,15 @@
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="标题/内容" clearable class="filter-input-w160" />
+          <el-input v-model="searchForm.keyword" placeholder="标题/内容" clearable class="filter-input-w160" aria-label="关键字" />
         </el-form-item>
         <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w180">
+          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w180" aria-label="课程">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
+          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120" aria-label="状态">
             <el-option label="待审核" value="PENDING" />
             <el-option label="已发布" value="PUBLISHED" />
             <el-option label="已驳回" value="REJECTED" />
@@ -90,10 +90,16 @@
           v-model:page-size="size"
           :total="totalElements"
           :page-sizes="[10, 20, 50, 100]"
-          layout="total,sizes,prev,pager,next"
+          layout="total,prev,pager,next"
           @size-change="handleSizeChange"
           @current-change="handlePageChange" aria-label="分页导航"
 />
+        <div class="page-size-wrap">
+          <label for="disc-list-page-size" class="sr-only">每页条数</label>
+          <el-select id="disc-list-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          </el-select>
+        </div>
       </div>
       </template>
     </el-card>

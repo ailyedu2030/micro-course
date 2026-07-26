@@ -62,6 +62,7 @@
           class="header-search"
           :prefix-icon="Search"
           clearable
+          aria-label="搜索课程"
           @keyup.enter="handleSearch"
         />
 
@@ -79,7 +80,7 @@
             <div v-else class="user-avatar user-avatar--fallback" :style="avatarStyle">
               {{ userInitials }}
             </div>
-            <el-tag size="small" type="info" effect="plain" class="role-badge">学生</el-tag>
+            <el-tag size="small" color="#4F46E5" effect="dark" class="role-badge">学生</el-tag>
             <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
@@ -154,7 +155,7 @@
 import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Grid, DataLine, Bell, User, Star, Setting, Reading,
+  Grid, DataLine, Bell, User, Star, Setting, Reading, VideoPlay,
   Microphone, Search, ArrowDown, ArrowLeft, SwitchButton, ShoppingCart,
   Wallet, Menu
 } from '@element-plus/icons-vue'
@@ -616,7 +617,7 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 .layout-main.has-tabbar {
-  padding-bottom: calc(56px + var(--space-4));
+  padding-bottom: calc(56px + var(--space-4) + env(safe-area-inset-bottom, 0px));
 }
 
 /* PC 端：内容容器限宽 1200px 居中 (学生端统一布局约束) */
