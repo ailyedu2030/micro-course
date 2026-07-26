@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.audit.AuditedLog;
 import com.microcourse.dto.R;
+import com.microcourse.dto.interactive.SlideUpdateRequest;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.exception.BusinessException;
@@ -17,12 +18,12 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/interactive")
@@ -69,7 +70,7 @@ public class InteractiveCoursewareController {
      * 获取课程互动课件
      */
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER','STUDENT','ADMIN','ACADEMIC')")
     @Operation(summary = "获取课程互动课件")
     public R<SlideVO> get(@PathVariable Long courseId) {
         verifyAccess(courseId);
@@ -90,7 +91,7 @@ public class InteractiveCoursewareController {
     @Operation(summary = "更新互动课件")
     public R<Void> update(@PathVariable Long courseId,
                            @PathVariable Long id,
-                           @RequestBody Map<String, Object> body) {
+                           @Valid @RequestBody SlideUpdateRequest req) {
         verifyTeacherOwnership(courseId);
         CourseSlide slide = courseSlideMapper.selectById(id);
         if (slide == null) {
@@ -99,8 +100,8 @@ public class InteractiveCoursewareController {
         if (!slide.getCourseId().equals(courseId)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "该课件不属于本课程");
         }
-        if (body.containsKey("fileName") && body.get("fileName") instanceof String) {
-            slide.setFileName((String) body.get("fileName"));
+        if (req.getFileName() != null) {
+            slide.setFileName(req.getFileName());
         }
         slide.setUpdatedAt(java.time.LocalDateTime.now());
         int affected = courseSlideMapper.updateById(slide);
@@ -148,30 +149,28 @@ public class InteractiveCoursewareController {
     }
 
     private void verifyAccess(Long courseId) {
-        if (SecurityUtil.isAdmin() || SecurityUtil.hasRole("ACADEMIC")) {
+        // ADMIN/ACADEMIC 豁免所有检查
+        if (SecurityUtil.isAdminOrAcademic()) {
             return;
         }
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (SecurityUtil.hasRole("TEACHER")) {
-            if (!course.getTeacherId().equals(SecurityUtil.getCurrentUserId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该课程");
-            }
+        Long userId = SecurityUtil.getCurrentUserId();
+        // TEACHER（课程所有者）
+        if (course.getTeacherId().equals(userId)) {
             return;
         }
-        if (SecurityUtil.hasRole("STUDENT")) {
-            Long userId = SecurityUtil.getCurrentUserId();
-            Enrollment enrollment = enrollmentRepository.selectOne(
-                    new LambdaQueryWrapper<Enrollment>()
-                            .eq(Enrollment::getUserId, userId)
-                            .eq(Enrollment::getCourseId, courseId)
-                            .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
-                            .isNull(Enrollment::getDeletedAt));
-            if (enrollment == null) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "请先选课再查看课件");
-            }
+        // STUDENT（非所有者）→ 必须已选课
+        Enrollment enrollment = enrollmentRepository.selectOne(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getUserId, userId)
+                        .eq(Enrollment::getCourseId, courseId)
+                        .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
+                        .isNull(Enrollment::getDeletedAt));
+        if (enrollment == null) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "请先选课再查看课件");
         }
     }
 }

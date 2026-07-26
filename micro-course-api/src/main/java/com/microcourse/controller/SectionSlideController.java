@@ -45,7 +45,7 @@ public class SectionSlideController {
      * <p>P0-3 修复: API Key 路径也要 ownership 校验(以前只校验 API Key 有效性,允许越权读任何 course 的 slide)
      */
     @GetMapping("/slide")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<List<com.microcourse.plugin.interactive.dto.SlidePageVO>> getSectionSlide(
             @PathVariable Long courseId,
             @PathVariable Long sectionId,
@@ -71,15 +71,9 @@ public class SectionSlideController {
         Course course = courseRepository.selectById(courseId);
         if (course == null) throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         if (!SecurityUtil.isAdmin()) {
-            if (SecurityUtil.hasRole("TEACHER")) {
-                if (!callerUserId.equals(course.getTeacherId())) {
-                    throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问该课程课件");
-                }
-            } else {
-                // 其他角色(主要是 STUDENT):必须已选此课
-                // 这里仅作 owner 阻断,详细 enrollment 校验由 SlideController 负责
-                // 简单策略: 非 owner 一律拒绝(因为本接口只供教师写/AI 同步使用)
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "该接口仅供教师/管理员调用");
+            // TEACHER（或 API Key 用户）: 必须为课程所有者
+            if (!callerUserId.equals(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问该课程课件");
             }
         }
 
