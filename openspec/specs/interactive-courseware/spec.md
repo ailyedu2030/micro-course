@@ -1,11 +1,11 @@
-# interactive-courseware (Modified)
+# interactive-courseware Specification
 
-## MODIFIED Requirements
-
+## Purpose
+TBD - created by archiving change html-interactive-extension. Update Purpose after archive.
+## Requirements
 ### Requirement: 互动课时通用能力
 
 The system MUST implement: 互动课时通用能力.
-
 
 原能力"互动课时支持 PPT 上传、POI 渲染、音频同步、自动播放"。本次修改:**新增** HTML 直接上传能力,与 PPT 路径并行。
 
@@ -29,3 +29,4 @@ The system MUST implement: 互动课时通用能力.
 - **WHEN**: 同一课程包含 PPT 课时和 HTML 课时
 - **THEN**: SlidePlayer 逐页检测 contentType,分别渲染 img / iframe
 - **AND**: 自动播放/倍速/全屏/讲述稿/进度对两种类型都生效
+
