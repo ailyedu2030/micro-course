@@ -53,6 +53,7 @@ class EnrollmentDataIsolationTest extends BaseIntegrationTest {
 
     @BeforeEach
     void ensureAcademicUsers() {
+<<<<<<< HEAD
         // P0-12 fix (2026-07-26 总工程师兜底): 清空 student(7) 残留的 enrollments +
         // enrollment_histories, 避免跨测试类污染 (前序测试遗留 enrollments(7, ?)
         // 会导致 admin_EnrollmentProgress_AllCourses 期望 course-1 但实际响应
@@ -62,6 +63,8 @@ class EnrollmentDataIsolationTest extends BaseIntegrationTest {
                 + "(SELECT id FROM enrollments WHERE user_id = 7)");
         jdbc.update("DELETE FROM enrollments WHERE user_id = 7");
 
+=======
+>>>>>>> 25915d53 (fix(api): ACADEMIC role + CAS guards + status whitelist per V316 contract)
         // ACADEMIC 用户 9001/9002/9003（已被移出全局 p0-seed，仅此测试类使用）
         // 需先于测试通过 UserStatusCheckFilter 校验
         // 注意：ON CONFLICT (id) 无法处理 uk_users_username 冲突，故先 delete 再 insert
