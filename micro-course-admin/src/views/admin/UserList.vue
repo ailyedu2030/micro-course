@@ -367,10 +367,14 @@ async function fetchData() {
   }
 }
 
-// 搜索
+// P1C: 300ms 防抖搜索
+let searchDebounceTimer = null
 function handleSearch() {
-  page.value = 1
-  fetchData()
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    page.value = 1
+    fetchData()
+  }, 300)
 }
 
 // 重置

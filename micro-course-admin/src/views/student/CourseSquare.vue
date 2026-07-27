@@ -716,9 +716,18 @@ const loadBundles = async () => {
   }
 }
 
-// 封面图加载失败兜底：隐藏 img，露出底层占位符
+// 封面图加载失败兜底：隐藏 img 并显示占位元素
 const handleImgError = (e) => {
-  e.target.style.display = 'none'
+  const img = e.target
+  img.style.display = 'none'
+  // 露出底层占位元素
+  const parent = img.closest('.course-cover, .rec-cover')
+  if (parent) {
+    const placeholder = parent.querySelector('.cover-placeholder, .rec-cover-placeholder')
+    if (placeholder) {
+      placeholder.style.display = 'flex'
+    }
+  }
 }
 
 // 防抖搜索 (300ms)
