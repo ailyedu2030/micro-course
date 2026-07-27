@@ -144,3 +144,12 @@ jobs:
             --entrypoint /bin/amtool \
             prom/alertmanager:v0.27.0 \
             check-config /tmp/alertmanager.yml
+
+      - name: Validate Grafana dashboards JSON
+        run: |
+          for f in monitoring/grafana/dashboards/*.json; do
+            jq empty "$f" || (echo "❌ Invalid JSON: $f" && exit 1)
+            # 验证必需字段: title, uid, panels
+            jq -e '.title and .uid and .panels' "$f" > /dev/null || (echo "❌ Missing required fields in $f" && exit 1)
+            echo "✅ $f — valid"
+          done
