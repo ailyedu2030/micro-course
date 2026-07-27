@@ -17,6 +17,7 @@ import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleItemRepository;
+import com.microcourse.enums.CourseBundleStatus;
 import com.microcourse.repository.CourseBundleRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.OrderRepository;
@@ -197,7 +198,7 @@ public class CourseBundleServiceImpl implements CourseBundleService {
 
         if (SecurityUtil.hasRole("STUDENT")) {
             // 学生：仅看已上架
-            wrapper.eq(CourseBundle::getStatus, 1);
+            wrapper.eq(CourseBundle::getStatus, CourseBundleStatus.PUBLISHED.getCode());
         } else if (!SecurityUtil.isAdminOrAcademic()) {
             // 教师：仅看自己创建的
             wrapper.eq(CourseBundle::getCreatorId, SecurityUtil.getCurrentUserId());

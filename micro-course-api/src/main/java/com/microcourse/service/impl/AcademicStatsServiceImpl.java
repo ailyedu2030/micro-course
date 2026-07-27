@@ -12,6 +12,7 @@ import com.microcourse.entity.Department;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.User;
 import com.microcourse.enums.NotificationType;
+import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.UserRole;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DepartmentRepository;
@@ -73,7 +74,7 @@ public class AcademicStatsServiceImpl implements AcademicStatsService {
         // 按 spec: CourseStatus APPROVED=2
         long totalCourses = courseRepository.selectCount(
                 new LambdaQueryWrapper<Course>()
-                        .eq(Course::getStatus, 2)
+                        .eq(Course::getStatus, CourseStatus.APPROVED.getCode())
                         .isNull(Course::getDeletedAt)
         );
         vo.setTotalCourses(totalCourses);

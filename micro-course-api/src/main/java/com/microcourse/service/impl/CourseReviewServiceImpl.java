@@ -19,6 +19,7 @@ import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
+import com.microcourse.enums.CourseReviewStatus;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
 import com.microcourse.service.NotificationService;
@@ -173,7 +174,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         // E4: 只查顶级评价（parent_id IS NULL），回复通过 replies 嵌套
         // P0-001: 仅展示已审核评价（status=1）
         wrapper.eq(CourseReview::getCourseId, courseId)
-                .eq(CourseReview::getStatus, 1)
+                .eq(CourseReview::getStatus, CourseReviewStatus.APPROVED.getCode())
                 .isNull(CourseReview::getParentId)
                 .orderByDesc(CourseReview::getCreatedAt);
         IPage<CourseReview> result = courseReviewRepository.selectPage(pg, wrapper);
@@ -197,7 +198,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
         // P0-001: 仅展示已审核回复
         wrapper.eq(CourseReview::getParentId, parentId)
-                .eq(CourseReview::getStatus, 1)
+                .eq(CourseReview::getStatus, CourseReviewStatus.APPROVED.getCode())
                 .orderByAsc(CourseReview::getCreatedAt);
         Page<CourseReview> pg = new Page<>(0, 20);
         pg.setSearchCount(false);
@@ -220,7 +221,7 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         LambdaQueryWrapper<CourseReview> wrapper = new LambdaQueryWrapper<>();
         // P0-001: 仅展示已审核回复
         wrapper.eq(CourseReview::getParentId, parentId)
-                .eq(CourseReview::getStatus, 1)
+                .eq(CourseReview::getStatus, CourseReviewStatus.APPROVED.getCode())
                 .orderByAsc(CourseReview::getCreatedAt);
         List<CourseReview> replies = courseReviewRepository.selectList(wrapper);
         java.util.Map<Long, User> userMap = buildUserMap(replies);
