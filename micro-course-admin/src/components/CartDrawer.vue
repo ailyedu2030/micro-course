@@ -3,7 +3,7 @@
   学生端侧边滑出购物车
 -->
 <template>
-  <el-drawer v-model="visible" size="380px" :with-header="true">
+  <el-drawer v-model="visible" size="380px" :with-header="true" aria-label="购物车">
     <template #header>
       <span class="drawer-title">购物车 <el-tag v-if="store.count" type="danger" size="small">{{ store.count }}</el-tag></span>
     </template>

@@ -190,22 +190,23 @@ const router = useRouter()
 const isMobile = ref(window.innerWidth <= 768)
 const isTablet = ref(window.innerWidth <= 1024 && window.innerWidth > 768)
 const hamburgerOpen = ref(false)
-let resizeTimer = null
+let resizeRafId = null
 
 function onResize() {
-  clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(() => {
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
+  resizeRafId = requestAnimationFrame(() => {
     const w = window.innerWidth
     isMobile.value = w <= 768
     isTablet.value = w <= 1024 && w > 768
     if (!isTablet.value) hamburgerOpen.value = false
-  }, 150)
+    resizeRafId = null
+  })
 }
 
 onMounted(() => window.addEventListener('resize', onResize))
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
-  clearTimeout(resizeTimer)
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
 })
 
 // ---------------------------------------------------------------------------
@@ -665,7 +666,7 @@ onUnmounted(() => notificationStore.stopPolling())
 }
 
 .tab-item .tab-label {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1;
 }
 

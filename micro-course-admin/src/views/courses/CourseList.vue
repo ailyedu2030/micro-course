@@ -24,7 +24,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="教师">
-          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" aria-label="教师" />
+          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" aria-label="教师" @clear="handleSearch" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-input-w120" aria-label="状态">
@@ -182,7 +182,7 @@
           </el-col>
         </el-row>
         <el-form-item label="课程描述" prop="description">
-          <div class="quill-editor-wrapper">
+          <div class="quill-editor-wrapper" role="textbox" aria-label="课程描述" aria-multiline="true">
             <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '150px' }" />
           </div>
         </el-form-item>

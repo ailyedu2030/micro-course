@@ -92,6 +92,7 @@
               :prefix-icon="User"
               clearable
               maxlength="50"
+              aria-label="用户名"
             />
           </el-form-item>
           <el-form-item prop="password" label="密码">
@@ -103,6 +104,7 @@
               show-password
               clearable
               maxlength="32"
+              aria-label="密码"
             />
           </el-form-item>
           <el-form-item prop="confirmPassword" label="确认密码">
@@ -114,6 +116,7 @@
               show-password
               clearable
               maxlength="32"
+              aria-label="确认密码"
             />
           </el-form-item>
         </el-form>
