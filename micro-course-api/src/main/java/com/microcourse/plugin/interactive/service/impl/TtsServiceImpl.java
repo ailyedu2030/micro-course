@@ -71,20 +71,12 @@ public class TtsServiceImpl implements TtsService {
 
     private static final int MAX_STRING_LENGTH = 100 * 1024 * 1024; // 100MB
 
-    @Value("${plugin.interactive.minimax.tts-model:speech-2.8-hd}")
-    private String ttsModel;
-
-    /** Qwen3-TTS 0.6B 预定义声音 ID（vivian/serena/dylan/ryan/eric/aiden/ono_anna/sohee/uncle_fu） */
-    @Value("${plugin.interactive.minimax.tts-voice:vivian}")
-    private String ttsVoice;
-
-    @Value("${plugin.interactive.minimax.api-key:}")
-    private String minimaxApiKey;
+    private final String ttsModel;
+    private final String ttsVoice;
+    private final String minimaxApiKey;
+    private final String storagePath;
 
     private static final String MINIMAX_TTS_URL = "https://api.minimaxi.com/v1/t2a_v2";
-
-    @Value("${plugin.interactive.slides.storage-path:/data/slides}")
-    private String storagePath;
 
     private ExecutorService slideRenderExecutor;
 
@@ -110,7 +102,11 @@ public class TtsServiceImpl implements TtsService {
                           CourseSectionRepository sectionRepository,
                           TransactionTemplate transactionTemplate,
                           ObjectMapper objectMapper,
-                          ExecutorService slideRenderExecutor) {
+                          ExecutorService slideRenderExecutor,
+                          @Value("${plugin.interactive.minimax.tts-model:speech-2.8-hd}") String ttsModel,
+                          @Value("${plugin.interactive.minimax.tts-voice:vivian}") String ttsVoice,
+                          @Value("${plugin.interactive.minimax.api-key:}") String minimaxApiKey,
+                          @Value("${plugin.interactive.slides.storage-path:/data/slides}") String storagePath) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
@@ -118,6 +114,10 @@ public class TtsServiceImpl implements TtsService {
         this.transactionTemplate = transactionTemplate;
         this.objectMapper = configureObjectMapper(objectMapper);
         this.slideRenderExecutor = slideRenderExecutor;
+        this.ttsModel = ttsModel;
+        this.ttsVoice = ttsVoice;
+        this.minimaxApiKey = minimaxApiKey;
+        this.storagePath = storagePath;
     }
 
     private ObjectMapper configureObjectMapper(ObjectMapper mapper) {
@@ -223,7 +223,9 @@ public class TtsServiceImpl implements TtsService {
             throw e;
         } catch (Exception e) {
             log.error("TTS failed for courseId={} page={}", courseId, pageNumber, e);
-            try { txSetPageStatus(page.getId(), "TEACHER_EDITED"); } catch (Exception ignored) {}
+            try { txSetPageStatus(page.getId(), "TEACHER_EDITED"); } catch (Exception ex) {
+                log.warn("[TTS] 回退页面状态失败 pageId={}: {}", page.getId(), e.getMessage());
+            }
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED);
         }
 

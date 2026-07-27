@@ -1,7 +1,7 @@
 package com.microcourse.plugin.interactive.cache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -34,8 +34,11 @@ public class TtsResultCache {
     private static final String KEY_PREFIX = "mc:tts:result:";
     private static final Duration TTL = Duration.ofDays(7);
 
-    @Autowired(required = false)
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
+
+    public TtsResultCache(ObjectProvider<StringRedisTemplate> redisTemplateProvider) {
+        this.redisTemplate = redisTemplateProvider.getIfAvailable();
+    }
 
     /**
      * 取缓存的 TTS 结果 URL

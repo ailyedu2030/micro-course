@@ -53,9 +53,12 @@ class TtsServiceTaskStatePersistenceTest {
                 courseSectionRepository,
                 transactionTemplate,
                 objectMapper,
-                executorService
+                executorService,
+                "speech-2.8-hd",
+                "vivian",
+                "",
+                tempDir.toString()
         );
-        ReflectionTestUtils.setField(ttsService, "storagePath", tempDir.toString());
     }
 
     @Test

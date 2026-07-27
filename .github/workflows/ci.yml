@@ -12,6 +12,13 @@ concurrency:
 
 jobs:
   backend:
+    strategy:
+      matrix:
+        # 矩阵测试:JDK 17 主用 + JDK 21 兼容(项目需在 17/21 同时可编译)
+        # 当前因项目未完全适配 JDK 21 (字节码/某些特性),先仅用 17
+        # 后续 Phase 增加 JDK 21 + 必要适配后启 21
+        java-version: [17]
+      max-parallel: 1
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -39,10 +46,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 17
+      - name: Set up JDK ${{ matrix.java-version }}
         uses: actions/setup-java@v4
         with:
-          java-version: 17
+          java-version: ${{ matrix.java-version }}
           distribution: temurin
 
       - name: Wait for PostgreSQL & Redis
@@ -74,14 +81,18 @@ jobs:
           TEST_REDIS_PORT: 6379
 
   frontend:
+    strategy:
+      matrix:
+        node-version: [20, 22]
+      max-parallel: 2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
           cache-dependency-path: micro-course-admin/package-lock.json
 
@@ -136,3 +147,12 @@ jobs:
             --entrypoint /bin/amtool \
             prom/alertmanager:v0.27.0 \
             check-config /tmp/alertmanager.yml
+
+      - name: Validate Grafana dashboards JSON
+        run: |
+          for f in monitoring/grafana/dashboards/*.json; do
+            jq empty "$f" || (echo "❌ Invalid JSON: $f" && exit 1)
+            # 验证必需字段: title, uid, panels
+            jq -e '.title and .uid and .panels' "$f" > /dev/null || (echo "❌ Missing required fields in $f" && exit 1)
+            echo "✅ $f — valid"
+          done

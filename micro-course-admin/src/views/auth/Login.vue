@@ -17,29 +17,29 @@
         <div class="brand-icon">
           <el-icon :size="36"><Reading /></el-icon>
         </div>
-        <h1 class="brand-title">微课管理平台</h1>
-        <p class="brand-subtitle">让学习更高效 · 让教学更轻松</p>
+        <h1 class="brand-title">{{ $t('app.titleFull') }}</h1>
+        <p class="brand-subtitle">{{ $t('auth.slogan') }}</p>
       </div>
 
       <el-card class="login-box" shadow="never">
-        <h2 class="login-title">账号登录</h2>
-        <p class="login-tip">请使用您的账号登录系统</p>
+        <h2 class="login-title">{{ $t('auth.login') }}</h2>
+        <p class="login-tip">{{ $t('auth.loginTip') }}</p>
 
         <el-form ref="formRef" :model="form" :rules="rules" size="large" @keyup.enter="handleLogin">
-          <el-form-item prop="username" label="用户名">
-            <el-input id="username" v-model="form.username" placeholder="用户名" :prefix-icon="User" clearable maxlength="50" aria-label="用户名" />
+          <el-form-item prop="username" :label="$t('auth.username')">
+            <el-input id="username" v-model="form.username" :placeholder="$t('auth.username')" :prefix-icon="User" clearable maxlength="50" :aria-label="$t('auth.username')" />
           </el-form-item>
-          <el-form-item prop="password" label="密码">
+          <el-form-item prop="password" :label="$t('auth.password')">
             <el-input
               id="password"
               v-model="form.password"
               type="password"
-              placeholder="密码"
+              :placeholder="$t('auth.password')"
               :prefix-icon="Lock"
               show-password
               clearable
               maxlength="32"
-              aria-label="密码"
+              :aria-label="$t('auth.password')"
             />
           </el-form-item>
           <el-form-item>
@@ -50,13 +50,13 @@
               class="login-btn"
               @click="handleLogin"
             >
-              {{ loading ? '登录中...' : '登 录' }}
+              {{ loading ? $t('auth.loggingIn') : $t('auth.loginBtn') }}
             </el-button>
           </el-form-item>
         </el-form>
 
         <div v-if="quickAccounts.length > 0" class="login-roles" aria-label="测试账号">
-          <span class="role-tip">测试账号：</span>
+          <span class="role-tip">{{ $t('auth.testAccounts') }}</span>
           <el-tag
             v-for="r in quickAccounts"
             :key="r.label"
@@ -71,59 +71,59 @@
         </div>
 
         <div v-if="registrationEnabled" class="register-link">
-          <span>还没有账号？</span>
-          <el-button type="primary" link @click="showRegisterDialog = true">立即注册</el-button>
+          <span>{{ $t('auth.noAccount') }}</span>
+          <el-button type="primary" link @click="showRegisterDialog = true">{{ $t('auth.registerNow') }}</el-button>
         </div>
       </el-card>
 
       <!-- 注册弹窗 -->
       <el-dialog
         v-model="showRegisterDialog"
-        title="学生注册"
+        :title="$t('auth.studentRegister')"
         width="420px"
         :close-on-click-modal="false"
         center
       >
         <el-form ref="registerFormRef" :model="registerForm" :rules="registerRules" size="large" @keyup.enter="handleRegister">
-          <el-form-item prop="username" label="用户名">
+          <el-form-item prop="username" :label="$t('auth.username')">
             <el-input
               v-model="registerForm.username"
-              placeholder="请输入用户名（2-50个字符）"
+              :placeholder="$t('auth.username')"
               :prefix-icon="User"
               clearable
               maxlength="50"
-              aria-label="用户名"
+              :aria-label="$t('auth.username')"
             />
           </el-form-item>
-          <el-form-item prop="password" label="密码">
+          <el-form-item prop="password" :label="$t('auth.password')">
             <el-input
               v-model="registerForm.password"
               type="password"
-              placeholder="至少8位，含字母和数字"
+              :placeholder="$t('auth.password')"
               :prefix-icon="Lock"
               show-password
               clearable
               maxlength="32"
-              aria-label="密码"
+              :aria-label="$t('auth.password')"
             />
           </el-form-item>
-          <el-form-item prop="confirmPassword" label="确认密码">
+          <el-form-item prop="confirmPassword" :label="$t('auth.confirmPassword')">
             <el-input
               v-model="registerForm.confirmPassword"
               type="password"
-              placeholder="请再次输入密码"
+              :placeholder="$t('auth.confirmPassword')"
               :prefix-icon="Lock"
               show-password
               clearable
               maxlength="32"
-              aria-label="确认密码"
+              :aria-label="$t('auth.confirmPassword')"
             />
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="showRegisterDialog = false">取消</el-button>
+          <el-button @click="showRegisterDialog = false">{{ $t('common.cancel') }}</el-button>
           <el-button type="primary" :loading="registerLoading" @click="handleRegister">
-            {{ registerLoading ? '注册中...' : '注册并登录' }}
+            {{ registerLoading ? $t('auth.registering') : $t('auth.registerAndLogin') }}
           </el-button>
         </template>
       </el-dialog>

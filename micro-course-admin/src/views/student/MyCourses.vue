@@ -12,8 +12,8 @@
       <div class="page-header student-welcome">
         <div class="header-content">
           <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
-          <h1 class="page-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
-          <p class="page-subtitle">持续学习，遇见更好的自己</p>
+          <h1 class="page-title">{{ $t('student.welcome') }}，{{ userStore.realName || $t('student.student') }}</h1>
+          <p class="page-subtitle">{{ $t('student.subtitle') }}</p>
         </div>
       </div>
 
@@ -24,7 +24,7 @@
             <template #label>
               <span class="tab-label">
                 <el-icon><Reading /></el-icon>
-                进行中
+                 {{ $t('course.inProgress') }}
                 <span v-if="inProgressCourses.length > 0" class="tab-badge">{{ inProgressCourses.length }}</span>
               </span>
             </template>
@@ -33,7 +33,8 @@
             <template #label>
               <span class="tab-label">
                 <el-icon><CircleCheck /></el-icon>
-                已完成
+                 {{ $t('course.completed') }}
+                
                 <span v-if="completedCourses.length > 0" class="tab-badge completed">{{ completedCourses.length }}</span>
               </span>
             </template>
@@ -42,7 +43,8 @@
             <template #label>
               <span class="tab-label">
                 <el-icon><Star /></el-icon>
-                已收藏
+                 {{ $t('course.favorited') }}
+                
                 <span v-if="favoritedCourses.length > 0" class="tab-badge favorited">{{ favoritedCourses.length }}</span>
               </span>
             </template>
@@ -99,7 +101,7 @@
             <p>{{ emptyDescription }}</p>
           </template>
           <template #default>
-            <el-button type="primary" @click="$router.push('/student/courses')">去课程广场选课</el-button>
+                <el-button type="primary" @click="$router.push('/student/courses')">{{ $t('course.goToSquare') }}</el-button>
           </template>
         </el-empty>
 
@@ -146,7 +148,7 @@
                     type="info"
                     effect="dark"
                   >
-                    未开始
+                    {{ $t('course.notStarted') }}
                   </el-tag>
                   <el-tag
                     v-else-if="activeTab === 'completed'"
@@ -154,7 +156,7 @@
                     type="success"
                     effect="dark"
                   >
-                    已完成
+                    {{ $t('course.completed') }}
                   </el-tag>
                   <el-tag
                     v-else-if="activeTab === 'favorited'"
@@ -162,7 +164,7 @@
                     type="warning"
                     effect="dark"
                   >
-                    收藏
+                    {{ $t('course.favorited') }}
                   </el-tag>
                 </div>
 
@@ -190,7 +192,7 @@
                     class="exercise-progress"
                   >
                     <span class="exercise-text">
-                      练习 {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} 完成
+                      {{ $t('course.exercise') }} {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} {{ $t('course.completed') }}
                     </span>
                   </div>
 
@@ -208,7 +210,7 @@
                   <div class="time-info">
                     <span class="time-text">
                       <el-icon><Clock /></el-icon>
-                      {{ activeTab === 'completed' ? '完成于' : '最近学习' }}：
+                      {{ activeTab === 'completed' ? $t('course.completedAt') : $t('course.recentLearning') }}：
                       {{ formatTime(activeTab === 'completed' ? course.completedAt : (course.lastWatchAt || course.enrolledAt)) }}
                     </span>
                   </div>
@@ -220,7 +222,7 @@
                        size="small"
                        @click.stop="handleContinue(course.courseId)"
                      >
-                       {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
+                        {{ activeTab === 'in-progress' ? $t('course.continueLearning') : activeTab === 'completed' ? $t('course.viewDetail') : $t('course.startLearning') }}
                      </el-button>
                      <!-- 客户体验修复 v1.7.0: 添加退课按钮 (P0-UX-U4) -->
                      <el-button
@@ -229,9 +231,9 @@
                        type="danger"
                        plain
                        @click.stop="handleDropOut(course)"
-                       aria-label="退课"
-                     >
-                       退课
+                        :aria-label="$t('course.dropCourse')"
+                      >
+                        {{ $t('course.dropCourse') }}
                      </el-button>
                    </div>
                 </div>
@@ -378,7 +380,7 @@
               type="info"
               effect="dark"
             >
-              未开始
+              {{ $t('course.notStarted') }}
             </el-tag>
             <el-tag
               v-else-if="activeTab === 'completed'"
@@ -386,7 +388,7 @@
               type="success"
               effect="dark"
             >
-              已完成
+              {{ $t('course.completed') }}
             </el-tag>
             <el-tag
               v-else-if="activeTab === 'favorited'"
@@ -394,7 +396,7 @@
               type="warning"
               effect="dark"
             >
-              收藏
+              {{ $t('course.favorited') }}
             </el-tag>
           </div>
 
@@ -422,7 +424,7 @@
               class="h5-exercise-progress"
             >
               <span class="h5-exercise-text">
-                练习 {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} 完成
+                {{ $t('course.exercise') }} {{ courseProgressMap[course.courseId].completedExercises }}/{{ courseProgressMap[course.courseId].totalExercises }} {{ $t('course.completed') }}
               </span>
             </div>
 
@@ -439,7 +441,7 @@
             <!-- 时间 -->
             <p class="h5-time-info">
               <el-icon><Clock /></el-icon>
-              {{ activeTab === 'completed' ? '完成于' : '最近学习' }}：
+              {{ activeTab === 'completed' ? $t('course.completedAt') : $t('course.recentLearning') }}：
               {{ formatTime(activeTab === 'completed' ? course.completedAt : (course.lastWatchAt || course.enrolledAt)) }}
             </p>
 
@@ -451,7 +453,7 @@
                 class="h5-action-btn"
                 @click.stop="handleContinue(course.courseId)"
               >
-                {{ activeTab === 'in-progress' ? '继续学习' : activeTab === 'completed' ? '查看详情' : '开始学习' }}
+                {{ activeTab === 'in-progress' ? $t('course.continueLearning') : activeTab === 'completed' ? $t('course.viewDetail') : $t('course.startLearning') }}
               </el-button>
               <!-- 客户体验修复 v1.7.0: H5 也加退课按钮 (P0-UX-U4 mobile variant) -->
               <el-button
@@ -460,10 +462,10 @@
                 plain
                 type="danger"
                 class="h5-dropout-btn"
-                aria-label="退课"
+                :aria-label="$t('course.dropCourse')"
                 @click.stop="handleDropOut(course)"
               >
-                退课
+                {{ $t('course.dropCourse') }}
               </el-button>
             </div>
           </div>

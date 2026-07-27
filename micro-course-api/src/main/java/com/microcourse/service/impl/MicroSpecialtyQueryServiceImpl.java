@@ -188,8 +188,9 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                         .orderByAsc(MicroSpecialty::getFeaturedRank)
                         .orderByDesc(MicroSpecialty::getApprovedAt));
         // 普通招生中（排除已置顶的）— 修复 G1：按质量分降序排序（次按 approvedAt DESC）
-        // P1I-032: 增加 LIMIT 1000 防止全量加载 OOM，质量分排序在内存中完成
-        List<MicroSpecialty> recruitingList = msRepository.selectList(
+        // 使用 MyBatis-Plus 分页代替 LIMIT 1000，质量分排序在内存中完成
+        Page<MicroSpecialty> recruitingPage = msRepository.selectPage(
+                new Page<>(1, 1000),
                 new LambdaQueryWrapper<MicroSpecialty>()
                         .eq(MicroSpecialty::getStatus, "RECRUITING")
                         .isNull(MicroSpecialty::getDeletedAt)
@@ -197,8 +198,8 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                                 .or().isNull(MicroSpecialty::getIsFeatured))
                         .and(w -> w.eq(MicroSpecialty::getIsGoldFeatured, false)
                                 .or().isNull(MicroSpecialty::getIsGoldFeatured))
-                        .orderByDesc(MicroSpecialty::getApprovedAt)
-                        .last("LIMIT 1000"));
+                        .orderByDesc(MicroSpecialty::getApprovedAt));
+        List<MicroSpecialty> recruitingList = recruitingPage.getRecords();
         // P1-C-3: 一次性批量加载所有关联数据，消除 N+1
         List<MicroSpecialty> allList = new ArrayList<>();
         allList.addAll(goldList);
