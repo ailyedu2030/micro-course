@@ -8,17 +8,17 @@
   <div class="user-list-container">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>用户管理</el-breadcrumb-item>
-      <el-breadcrumb-item>用户列表</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('admin.userManagement') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('admin.userList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="关键字">
+        <el-form-item :label="$t('course.keyword')">
           <el-input
             v-model="searchForm.keyword"
-            placeholder="账号/姓名"
+            :placeholder="$t('admin.search')"
             clearable
             class="filter-input"
             @clear="handleSearch"
@@ -55,10 +55,10 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-<el-icon><Search /></el-icon>搜索
+<el-icon><Search /></el-icon>{{ $t('common.search') }}
           </el-button>
           <el-button @click="handleReset">
-<el-icon><RefreshRight /></el-icon>重置
+<el-icon><RefreshRight /></el-icon>{{ $t('common.reset') }}
           </el-button>
         </el-form-item>
       </el-form>

@@ -48,8 +48,11 @@ class TtsServiceTokenValidationTest {
                 enrollmentRepository, courseSectionRepository,
                 mock(org.springframework.transaction.support.TransactionTemplate.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
-                mock(java.util.concurrent.ExecutorService.class));
-        ReflectionTestUtils.setField(ttsService, "storagePath", "/tmp/test-storage");
+                mock(java.util.concurrent.ExecutorService.class),
+                "speech-2.8-hd",
+                "vivian",
+                "",
+                "/tmp/test-storage");
     }
 
     @Test

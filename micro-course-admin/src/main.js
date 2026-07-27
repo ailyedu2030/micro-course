@@ -10,6 +10,7 @@ import App from './App.vue'
 import router from './router'
 import { usePluginStore } from './store/plugins'
 import { syncEnumsFromBackend } from './utils/enums'
+import i18n from './i18n'
 import { initErrorReporting, reportError } from './utils/errorReport'
 
 // P-001: 只注册实际使用的 Element Plus 图标（约 74 个，按扫描统计）
@@ -60,6 +61,7 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus, { locale: zhCn })
+app.use(i18n)
 
 const pluginStore = usePluginStore()
 pluginStore.registerPlugins()

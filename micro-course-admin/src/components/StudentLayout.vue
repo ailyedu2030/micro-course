@@ -13,7 +13,7 @@
       <div class="header-left">
         <div class="logo">
           <el-icon class="logo-icon" :size="28"><Microphone /></el-icon>
-          <span class="logo-text">微课平台</span>
+          <span class="logo-text">{{ $t('app.title') }}</span>
         </div>
       </div>
 
@@ -58,7 +58,7 @@
       <div class="header-right">
         <el-input
           v-model="searchKeyword"
-          placeholder="搜索课程..."
+          :placeholder="$t('course.search')"
           class="header-search"
           :prefix-icon="Search"
           clearable
@@ -80,25 +80,25 @@
             <div v-else class="user-avatar user-avatar--fallback" :style="avatarStyle">
               {{ userInitials }}
             </div>
-            <el-tag size="small" color="#4F46E5" effect="dark" class="role-badge">学生</el-tag>
+            <el-tag size="small" color="#4F46E5" effect="dark" class="role-badge">{{ $t('student.student') }}</el-tag>
             <el-icon class="dropdown-arrow"><ArrowDown /></el-icon>
           </div>
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile" :icon="User">
-                个人中心
+                {{ $t('student.profile') }}
               </el-dropdown-item>
               <el-dropdown-item command="reviews" :icon="Star">
-                我的评价
+                {{ $t('student.myReviews') }}
               </el-dropdown-item>
               <el-dropdown-item command="report" :icon="DataLine">
-                我的周报
+                {{ $t('student.myReport') }}
               </el-dropdown-item>
               <el-dropdown-item command="settings" :icon="Setting">
-                设置
+                {{ $t('student.settings') }}
               </el-dropdown-item>
               <el-dropdown-item command="logout" divided :icon="SwitchButton" class="logout-item">
-                退出登录
+                {{ $t('auth.logout') }}
               </el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -112,7 +112,7 @@
         <button v-if="showBackBtn" class="back-btn" @click="handleBack" aria-label="返回">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <span class="h5-title">{{ pageTitle }}</span>
+        <span class="h5-title">{{ pageTitle || $t('app.title') }}</span>
         <div class="h5-actions">
           <el-badge :value="unreadCount" :hidden="unreadCount === 0" :max="99" class="notification-badge">
             <el-button :icon="Bell" circle size="small" class="icon-btn" @click="goNotifications" aria-label="通知中心" />

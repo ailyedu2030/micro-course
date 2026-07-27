@@ -168,8 +168,8 @@ public class UserBatchImportServiceImpl implements UserBatchImportService {
     }
 
     private Map<String, Long> buildDepartmentNameMap() {
-        List<Department> all = departmentRepository.selectList(
-                new LambdaQueryWrapper<Department>().last("LIMIT 10000"));
+        // 院系列表数据量很小，全量加载无需 LIMIT
+        List<Department> all = departmentRepository.selectList(new LambdaQueryWrapper<>());
         Map<String, Long> map = new HashMap<>();
         for (Department d : all) {
             map.put(d.getName(), d.getId());
@@ -178,8 +178,8 @@ public class UserBatchImportServiceImpl implements UserBatchImportService {
     }
 
     private Map<String, Long> buildMajorNameMap() {
-        List<Major> all = majorRepository.selectList(
-                new LambdaQueryWrapper<Major>().last("LIMIT 10000"));
+        // 专业列表数据量很小，全量加载无需 LIMIT
+        List<Major> all = majorRepository.selectList(new LambdaQueryWrapper<>());
         Map<String, Long> map = new HashMap<>();
         for (Major m : all) {
             map.put(m.getName(), m.getId());
@@ -188,8 +188,8 @@ public class UserBatchImportServiceImpl implements UserBatchImportService {
     }
 
     private Map<String, Long> buildClassNameMap() {
-        List<Classes> all = classesRepository.selectList(
-                new LambdaQueryWrapper<Classes>().last("LIMIT 10000"));
+        // 班级列表数据量很小，全量加载无需 LIMIT
+        List<Classes> all = classesRepository.selectList(new LambdaQueryWrapper<>());
         Map<String, Long> map = new HashMap<>();
         for (Classes c : all) {
             map.put(c.getName(), c.getId());
