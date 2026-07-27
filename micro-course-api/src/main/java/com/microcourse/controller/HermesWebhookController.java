@@ -1,11 +1,13 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
+import com.microcourse.dto.hermes.BatchPushScriptsRequest;
 import com.microcourse.dto.hermes.HermesChapterVO;
 import com.microcourse.dto.hermes.HermesCourseDetailVO;
 import com.microcourse.dto.hermes.HermesCourseListVO;
 import com.microcourse.dto.hermes.HermesSectionVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
+import com.microcourse.dto.hermes.NarrationUpdateRequest;
 import com.microcourse.entity.HermesCourseMapping;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseSection;
@@ -24,6 +26,7 @@ import com.microcourse.service.HermesCourseSyncService;
 import com.microcourse.service.HermesCourseSyncService.HermesSyncResult;
 import com.microcourse.service.HermesWebhookCoursewareService;
 import jakarta.validation.Valid;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,7 +74,12 @@ public class HermesWebhookController {
             log.warn("[HermesWebhook] Missing X-API-Key header");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
         }
-        Optional<User> callerOpt = userRepository.findByApiKey(apiKey);
+        // S-004: 优先按 hash 查询，未命中则 fallback 到明文（兼容未跑 V319 migration 的环境）
+        String apiKeyHash = DigestUtils.sha256Hex(apiKey);
+        Optional<User> callerOpt = userRepository.findByApiKeyHash(apiKeyHash);
+        if (callerOpt.isEmpty()) {
+            callerOpt = userRepository.findByApiKey(apiKey);
+        }
         if (callerOpt.isEmpty()) {
             log.warn("[HermesWebhook] API key not found or user inactive");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
@@ -334,10 +342,14 @@ public class HermesWebhookController {
             @PathVariable String hermesCourseId,
             @PathVariable Long lessonId,
             @PathVariable Integer pageNumber,
-            @RequestBody java.util.Map<String, Object> body) {
+            @RequestBody NarrationUpdateRequest req) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        if (req.getNarrationScript() != null) {
+            body.put("narrationScript", req.getNarrationScript());
+        }
         return R.ok(coursewareService.updateSlidePageNarration(mapping.getCourseId(), lessonId, pageNumber, body));
     }
 
@@ -485,22 +497,18 @@ public class HermesWebhookController {
     @PostMapping("/courses/{hermesCourseId}/scripts")
     public R<?> batchPushScripts(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                  @PathVariable String hermesCourseId,
-            @RequestBody java.util.Map<String, Object> body) {
+            @RequestBody BatchPushScriptsRequest req) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
-        Object scriptContentRaw = body.get("scriptContent");
-        if (!(scriptContentRaw instanceof String)) {
+        String scriptContent = req.getScriptContent();
+        if (scriptContent == null || scriptContent.isBlank()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "scriptContent 必须为字符串类型");
         }
-        Number sectionIdNum = (Number) body.get("sectionId");
-        Number chapterIdNum = (Number) body.get("chapterId");
-        Long targetSectionId = sectionIdNum != null ? sectionIdNum.longValue() : null;
-        Long targetChapterId = chapterIdNum != null ? chapterIdNum.longValue() : null;
         return R.ok(coursewareService.batchPushScripts(
                 mapping.getCourseId(),
-                targetSectionId,
-                targetChapterId,
-                (String) scriptContentRaw));
+                req.getSectionId(),
+                req.getChapterId(),
+                scriptContent));
     }
 }
