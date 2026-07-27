@@ -125,7 +125,9 @@ public class LegacyCoursewareAdapter implements CoursewareAdapter {
         // legacy 路径: 直接调 SlideService.generateAudio (旧实现)
         try {
             slideService.reorderPages(scriptId, java.util.List.of());  // 占位触发
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.warn("[LEGACY-Adapter] generateAudio 占位触发失败 scriptId={}: {}", scriptId, e.getMessage());
+        }
         return 0L;
     }
 

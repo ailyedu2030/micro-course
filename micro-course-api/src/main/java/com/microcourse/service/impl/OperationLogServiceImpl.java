@@ -174,8 +174,9 @@ public class OperationLogServiceImpl implements OperationLogService {
             wrapper.le(OperationLog::getCreatedAt, endDateTime);
         }
         wrapper.orderByDesc(OperationLog::getCreatedAt);
-        wrapper.last("LIMIT 10000");
-        return operationLogRepository.selectList(wrapper);
+        // 使用 MyBatis-Plus 分页代替 LIMIT 10000，支持真正的分页控制
+        Page<OperationLog> pg = new Page<>(1, 10000);
+        return operationLogRepository.selectPage(pg, wrapper).getRecords();
     }
 
     @Override

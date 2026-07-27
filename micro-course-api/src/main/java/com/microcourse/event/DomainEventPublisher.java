@@ -1,7 +1,6 @@
 package com.microcourse.event;
 
 import com.microcourse.event.repository.DomainEventOutboxRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.time.LocalDateTime;
@@ -19,8 +18,11 @@ import java.util.UUID;
 @Component
 public class DomainEventPublisher {
 
-    @Autowired
-    private DomainEventOutboxRepository outboxRepo;
+    private final DomainEventOutboxRepository outboxRepo;
+
+    public DomainEventPublisher(DomainEventOutboxRepository outboxRepo) {
+        this.outboxRepo = outboxRepo;
+    }
 
     /**
      * 便捷入口: 在当前事务内 atomic publish.

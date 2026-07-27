@@ -6,6 +6,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import com.microcourse.dto.ProgressCreateRequest;
 import com.microcourse.dto.ProgressUpdateRequest;
 import com.microcourse.dto.R;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.LearningProgressService;
@@ -22,6 +24,8 @@ import java.util.Map;
 @RequestMapping("/api/learning-progress")
 @Tag(name = "学习进度", description = "学习进度 API")
 public class LearningProgressController {
+
+    private static final Logger log = LoggerFactory.getLogger(LearningProgressController.class);
 
     private final LearningProgressService learningProgressService;
 
@@ -126,7 +130,9 @@ public class LearningProgressController {
         if (principal instanceof Long) return (Long) principal;
         if (principal instanceof Number) return ((Number) principal).longValue();
         if (principal instanceof String str) {
-            try { return Long.parseLong(str); } catch (NumberFormatException ignored) { }
+            try { return Long.parseLong(str); } catch (NumberFormatException e) {
+                log.warn("无法将principal解析为Long: {}", str);
+            }
         }
         throw new BusinessException(ErrorCode.TOKEN_INVALID, "无法获取用户ID");
     }
