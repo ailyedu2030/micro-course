@@ -25,7 +25,8 @@ export default {
     time: '时间',
     type: '类型',
     operation: '操作',
-    detail: '详情'
+    detail: '详情',
+    toggleLang: '切换语言'
   },
   common: {
     success: '操作成功',

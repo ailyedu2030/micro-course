@@ -25,7 +25,8 @@ export default {
     time: 'Time',
     type: 'Type',
     operation: 'Actions',
-    detail: 'Detail'
+    detail: 'Detail',
+    toggleLang: 'Language'
   },
   common: {
     success: 'Operation successful',
