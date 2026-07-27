@@ -3,6 +3,11 @@ name: micro-course
 services:
   postgres:
     image: postgres:17-alpine
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
     command:
       - "postgres"
       - "-c"
@@ -32,6 +37,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     # 修复 P0 配置残缺: 当 REDIS_PASSWORD 未设时不能传空字符串给 --requirepass (会触发 "wrong number of arguments" 死循环重启)
     # 改用条件式: 有密码时附加 --requirepass, 无密码时不附加
     command: >
@@ -57,6 +67,11 @@ services:
     build:
       context: ./micro-course-api
       dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/micro_course
@@ -96,6 +111,11 @@ services:
     build:
       context: ./micro-course-admin
       dockerfile: Dockerfile
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     ports:
       - "80:80"
     depends_on:
@@ -113,6 +133,10 @@ services:
   prometheus:
     image: prom/prometheus:v2.55.0
     container_name: micro-course-prometheus
+    deploy:
+      resources:
+        limits:
+          memory: 1G
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -137,6 +161,10 @@ services:
   grafana:
     image: grafana/grafana:11.3.0
     container_name: micro-course-grafana
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
       GF_USERS_ALLOW_SIGN_UP: "false"
@@ -159,6 +187,10 @@ services:
   node-exporter:
     image: prom/node-exporter:v1.8.2
     container_name: micro-course-node-exporter
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     command:
       - '--path.rootfs=/host'
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
@@ -167,10 +199,20 @@ services:
     ports:
       - "9100:9100"
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9100/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:v0.15.0
     container_name: micro-course-postgres-exporter
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     environment:
       DATA_SOURCE_NAME: "postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/micro_course?sslmode=disable"
     ports:
@@ -178,10 +220,20 @@ services:
     depends_on:
       - postgres
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9187/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.62.0
     container_name: micro-course-redis-exporter
+    deploy:
+      resources:
+        limits:
+          memory: 128M
     environment:
       REDIS_ADDR: "redis:6379"
     ports:
@@ -189,6 +241,12 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9121/metrics"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   prometheus_data:
