@@ -833,7 +833,9 @@ public class SlideServiceImpl implements SlideService {
                 Path slideDir = courseDir.resolve(String.valueOf(p.getSlideId()));
                 Files.deleteIfExists(slideDir.resolve("images").resolve(p.getFileUuid() + ".png"));
                 Files.deleteIfExists(slideDir.resolve("thumbnails").resolve(p.getFileUuid() + "_thumbnail.png"));
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                log.warn("[Slide] 删除页面文件失败 courseId={}, pageNumber={}: {}", courseId, pageNumber, e.getMessage());
+            }
         }
         if (p.getSectionId() != null) {
             cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
@@ -932,7 +934,9 @@ public class SlideServiceImpl implements SlideService {
         if (Files.exists(dir)) {
             try {
                 Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
-                    try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                    try { Files.deleteIfExists(p); } catch (IOException e) {
+                        log.debug("[Slide] 清理文件时忽略异常: {}", e.getMessage());
+                    }
                 });
             } catch (IOException e) { log.warn("[Slide] 清理文件失败 courseId={}", courseId, e); }
         }
@@ -945,7 +949,9 @@ public class SlideServiceImpl implements SlideService {
             if (Files.exists(slideDir)) {
                 try {
                     Files.walk(slideDir).sorted(java.util.Comparator.reverseOrder()).forEach(p -> {
-                        try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                        try { Files.deleteIfExists(p); } catch (IOException e) {
+                            log.debug("[Slide] 清理文件时忽略异常: {}", e.getMessage());
+                        }
                     });
                 } catch (IOException e) { log.warn("[Slide] 清理幻灯片文件失败 courseId={}, slideId={}", courseId, slideId, e); }
             }
@@ -962,7 +968,9 @@ public class SlideServiceImpl implements SlideService {
             try (var stream = Files.list(audioDir)) {
                 stream.filter(p -> p.getFileName().toString().startsWith("section_" + sectionId + "_page_"))
                         .forEach(p -> {
-                            try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                            try { Files.deleteIfExists(p); } catch (IOException e) {
+                                log.debug("[Slide] 清理音频文件时忽略异常: {}", e.getMessage());
+                            }
                         });
             }
             log.info("[Slide] 已清理音频文件 courseId={}, sectionId={}", courseId, sectionId);

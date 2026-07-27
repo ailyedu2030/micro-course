@@ -100,7 +100,9 @@ public class VideoServiceImpl implements VideoService {
     private long getMaxFileSize() {
         String v = adminSettingService.getByKey("max_video_size_mb");
         if (v != null && !v.isBlank()) {
-            try { return Long.parseLong(v) * 1024L * 1024L; } catch (NumberFormatException ignore) {}
+            try { return Long.parseLong(v) * 1024L * 1024L; } catch (NumberFormatException e) {
+                log.warn("解析 max_video_size_mb 失败: {}, 使用默认值", v);
+            }
         }
         return 2L * 1024L * 1024L * 1024L; // 默认 2GB
     }
