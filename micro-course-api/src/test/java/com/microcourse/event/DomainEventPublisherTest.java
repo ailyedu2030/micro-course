@@ -27,15 +27,7 @@ class DomainEventPublisherTest {
     @BeforeEach
     void setup() {
         repo = mock(DomainEventOutboxRepository.class);
-        publisher = new DomainEventPublisher();
-        // 反射注入 mock (publisher 用 @Autowired private field 名为 outboxRepo)
-        try {
-            java.lang.reflect.Field f = DomainEventPublisher.class.getDeclaredField("outboxRepo");
-            f.setAccessible(true);
-            f.set(publisher, repo);
-        } catch (Exception e) {
-            throw new RuntimeException("反射注入 mock 失败", e);
-        }
+        publisher = new DomainEventPublisher(repo);
 
         when(repo.insert(any(DomainEventOutbox.class))).thenReturn(1);
     }
