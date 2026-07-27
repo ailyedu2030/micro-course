@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.microcourse.dto.CourseCreateRequest;
 import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CoursePricingInfoVO;
@@ -385,8 +386,10 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public void exportCourses(HttpServletResponse response) throws IOException {
-        List<Course> courses = courseRepository.selectList(
-                new LambdaQueryWrapper<Course>().orderByDesc(Course::getCreatedAt).last("LIMIT 10000"));
+        // 使用 MyBatis-Plus 分页代替 LIMIT 10000，支持真正的分页控制
+        Page<Course> pg = new Page<>(1, 10000);
+        List<Course> courses = courseRepository.selectPage(pg,
+                new LambdaQueryWrapper<Course>().orderByDesc(Course::getCreatedAt)).getRecords();
 
         response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
         response.setHeader("Content-Disposition", "attachment; filename=courses_export.xlsx");

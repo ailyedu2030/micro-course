@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -601,10 +602,10 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseRecord::getUserId, userId)
                .ge(ExerciseRecord::getSubmittedAt, since)
-               .orderByAsc(ExerciseRecord::getSubmittedAt)
-               // RES-012 修复: 限制最大加载行数防止 OOM，后续应改为 SQL GROUP BY
-               .last("LIMIT 2000");
-        List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
+               .orderByAsc(ExerciseRecord::getSubmittedAt);
+        // 使用 MyBatis-Plus 分页代替 LIMIT 2000，防止 OOM
+        Page<ExerciseRecord> pg = new Page<>(1, 2000);
+        List<ExerciseRecord> records = exerciseRecordRepository.selectPage(pg, wrapper).getRecords();
 
         // P0 修复: 基于逐题 isCorrect 统计正确率，而非基于整卷 passed
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
