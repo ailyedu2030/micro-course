@@ -260,6 +260,14 @@
                   </el-button>
                 </template>
                 <template v-else>
+                  <!-- 提交失败重试按钮 -->
+                  <el-button
+                    v-if="submitError"
+                    type="danger"
+                    @click="handleRetrySubmit"
+                  >
+                    网络错误，点此重试
+                  </el-button>
                   <el-button
                     v-if="currentIndex < totalQuestions - 1"
                     type="primary"
@@ -493,6 +501,15 @@
             </el-button>
           </template>
           <template v-else>
+            <!-- 提交失败重试按钮 -->
+            <el-button
+              v-if="submitError"
+              type="danger"
+              class="h5-nav-btn"
+              @click="handleRetrySubmit"
+            >
+              网络错误，点此重试
+            </el-button>
             <el-button
               v-if="currentIndex < totalQuestions - 1"
               type="primary"
@@ -632,6 +649,7 @@ const exerciseList = ref([])
 const exerciseStarted = ref(false)
 const submitting = ref(false)
 const submitted = ref(false)
+const submitError = ref(false)
 const sheetVisible = ref(false)
 
 const chapterId = computed(() => route.params.chapterId)
@@ -1050,11 +1068,19 @@ async function doSubmit() {
       ElMessage.info('部分题目需教师批改，最终成绩可能变化')
     }
   } catch {
+    submitError.value = true
     ElMessage.error('提交失败，请重试')
     // submitted 保持 false，计时器继续运行，用户可重试
   } finally {
     submitting.value = false
   }
+}
+
+// P1C: 提交失败重试（保留答案）
+async function handleRetrySubmit() {
+  submitError.value = false
+  // 保留当前 answers/multipleAnswers 状态，重新提交
+  await doSubmit()
 }
 
 // ===== 重做 =====

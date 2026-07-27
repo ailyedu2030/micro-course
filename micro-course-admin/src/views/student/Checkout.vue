@@ -63,18 +63,18 @@
     </el-row>
 
     <!-- 支付结果明细弹窗 -->
-    <el-dialog v-model="showResultDialog" title="支付结果" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="showResultDialog" title="支付结果" width="600px" :close-on-click-modal="false" aria-label="支付结果">
       <p><strong>成功：{{ resultSummary.success.length }} 门</strong></p>
       <ul v-if="resultSummary.success.length > 0" style="margin-bottom:16px">
         <li v-for="o in resultSummary.success" :key="o.courseTitle">
           {{ o.courseTitle }} - ¥{{ o.amount }}
         </li>
       </ul>
-      <p v-if="resultSummary.failed.length > 0" style="color:#F56C6C">
+      <p v-if="resultSummary.failed.length > 0" style="color:var(--el-color-danger-dark-2)">
         <strong>失败：{{ resultSummary.failed.length }} 门</strong>
       </p>
       <ul v-if="resultSummary.failed.length > 0">
-        <li v-for="o in resultSummary.failed" :key="o.courseTitle" style="color:#F56C6C">
+        <li v-for="o in resultSummary.failed" :key="o.courseTitle" style="color:var(--el-color-danger-dark-2)">
           {{ o.courseTitle }} - {{ o.errorMsg }}
         </li>
       </ul>

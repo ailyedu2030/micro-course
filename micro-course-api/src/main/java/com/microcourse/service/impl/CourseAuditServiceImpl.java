@@ -8,6 +8,7 @@ import com.microcourse.entity.CourseReviewLog;
 import com.microcourse.entity.Enrollment;
 import com.microcourse.entity.PluginGrant;
 import com.microcourse.entity.User;
+import com.microcourse.enums.CourseSlideStatus;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
@@ -126,7 +127,7 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if ("INTERACTIVE".equals(course.getCourseType())) {
             LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();
             slideQuery.eq(CourseSlide::getCourseId, id)
-                      .eq(CourseSlide::getStatus, 2);
+                      .eq(CourseSlide::getStatus, CourseSlideStatus.COMPLETED.getCode());
             long slideCount = courseSlideMapper.selectCount(slideQuery);
             if (slideCount == 0) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");

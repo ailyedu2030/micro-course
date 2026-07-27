@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import com.microcourse.enums.UserRole;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.time.LocalDateTime;
 
@@ -85,10 +86,17 @@ public class User {
     /**
      * 教师 API Key（V175 增量）。
      * 用于 Hermes / 第三方系统调用 webhook 时认证教师身份。
-     * 明文存储（性能考虑；DB 仅微课平台内部访问）。
+     * 生成时展示一次明文给用户，同时 api_key_hash 用于后续认证（S-004）。
      */
     @TableField(value = "api_key", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String apiKey;
+
+    /**
+     * API Key SHA-256 hash（S-004 安全增强）。
+     * 查询时优先比对 hash，兼容已有明文 api_key。
+     */
+    @TableField("api_key_hash")
+    private String apiKeyHash;
 
     public User() {}
 
@@ -159,5 +167,16 @@ public class User {
     public Integer getVersion() { return version; }
     public void setVersion(Integer version) { this.version = version; }
     public String getApiKey() { return apiKey; }
-    public void setApiKey(String apiKey) { this.apiKey = apiKey; }
+
+    /**
+     * 设置 API Key 并自动计算 SHA-256 hash。
+     * hash 写入 api_key_hash 列用于安全查询，明文 api_key 保留用于首次展示。
+     */
+    public void setApiKey(String apiKey) {
+        this.apiKey = apiKey;
+        this.apiKeyHash = (apiKey != null) ? DigestUtils.sha256Hex(apiKey) : null;
+    }
+
+    public String getApiKeyHash() { return apiKeyHash; }
+    public void setApiKeyHash(String apiKeyHash) { this.apiKeyHash = apiKeyHash; }
 }

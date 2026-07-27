@@ -12,7 +12,7 @@
         <div class="left-info">
           <span class="unread-tip">未读消息：<el-badge :value="unreadCount" :max="99" /></span>
         </div>
-        <el-button type="primary" @click="handleMarkAllRead" :disabled="!unreadCount">全部标记已读</el-button>
+        <el-button type="primary" @click="handleMarkAllRead" :disabled="!unreadCount || markingAll" :loading="markingAll">全部标记已读</el-button>
       </div>
     </el-card>
 
@@ -266,9 +266,11 @@ const handleMarkRead = async (row) => {
 }
 
 // ---------------------------------------------------------------------------
-// P1: "全部标记已读" 添加二次确认
+// P1: "全部标记已读" 添加二次确认 + loading 状态
 // ---------------------------------------------------------------------------
+const markingAll = ref(false)
 const handleMarkAllRead = async () => {
+  if (markingAll.value) return
   try {
     await ElMessageBox.confirm(
       `确认将所有 ${unreadCount.value} 条未读消息标记为已读？`,
@@ -278,12 +280,15 @@ const handleMarkAllRead = async () => {
   } catch {
     return // 用户取消
   }
+  markingAll.value = true
   try {
     await notificationStore.markAllRead()
     tableData.value.forEach(n => { n.isRead = true })
     ElMessage.success('全部已标记为已读')
   } catch (e) {
     ElMessage.error('标记已读失败，请重试')
+  } finally {
+    markingAll.value = false
   }
 }
 

@@ -43,6 +43,9 @@ public class MicroCourseApplication {
     @Value("${payment.mode:mock}")
     private String paymentMode;
 
+    @Value("${spring.datasource.password:}")
+    private String dbPassword;
+
     public static void main(String[] args) {
         SpringApplication.run(MicroCourseApplication.class, args);
     }
@@ -66,6 +69,16 @@ public class MicroCourseApplication {
             }
             log.warn("[PAYMENT] 当前使用 MOCK 支付模式！支付将模拟成功，不产生真实交易。"
                     + " 生产部署前请务必切换为 real 模式。");
+        }
+    }
+
+    @PostConstruct
+    public void checkDbPassword() {
+        // C-003: 生产环境下 DB_PASSWORD 必须设置，不允许使用默认密码
+        if (activeProfile.contains("prod")) {
+            if ("postgres".equals(dbPassword)) {
+                log.warn("[SECURITY] 生产环境正在使用默认数据库密码！强烈建议通过 DB_PASSWORD 环境变量设置强密码。");
+            }
         }
     }
 

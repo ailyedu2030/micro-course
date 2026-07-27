@@ -7,7 +7,7 @@
   <el-container class="layout-container">
     <!-- D3: 移动端遮罩层 -->
     <transition name="mobile-fade">
-      <div v-if="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" aria-hidden="true" />
+      <div v-if="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" @keydown.escape="closeMobileMenu" tabindex="0" aria-hidden="true" />
     </transition>
 
     <!-- 侧边栏 -->
@@ -222,10 +222,13 @@ function handleMobileMenuToggle() {
 function closeMobileMenu() {
   mobileMenuOpen.value = false
 }
-let resizeTimer = null
+let resizeRafId = null
 function handleWindowResize() {
-  clearTimeout(resizeTimer)
-  resizeTimer = setTimeout(checkResponsive, 150)
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
+  resizeRafId = requestAnimationFrame(() => {
+    checkResponsive()
+    resizeRafId = null
+  })
 }
 
 // 当前激活菜单
@@ -449,7 +452,7 @@ onMounted(() => {
 onUnmounted(() => {
   notificationStore.stopPolling()
   window.removeEventListener('resize', handleWindowResize)
-  if (resizeTimer) clearTimeout(resizeTimer)
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
 })
 </script>
 

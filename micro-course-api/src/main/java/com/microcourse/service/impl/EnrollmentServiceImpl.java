@@ -190,6 +190,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public StudentDetailVO getStudentDetail(Long userId) {
+        // TEACHER 仅能查询自己课程中的学生
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
+        }
         return queryService.getStudentDetail(userId);
     }
 
@@ -198,7 +202,9 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     public List<EnrollmentVO> getStudentProgress(Long userId) {
         List<EnrollmentVO> enrollments = queryService.getMyEnrollments(userId, null);
 
-        // P0 SECURITY FIX: TEACHER 只能看到自己课程中该学生的进度
+        // P0 SECURITY FIX: TEACHER 仅能查询自己课程中该学生的进度
+        // - 如果学生完全不在教师课程中 → 403 严格隔离
+        // - 如果有部分共同课程 → 200 + 仅返回共同课程的进度(宽松过滤)
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             Long currentUserId = SecurityUtil.getCurrentUserId();
             List<Long> teacherCourseIds = courseRepository.selectList(
@@ -208,6 +214,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
                             .select(Course::getId)
             ).stream().map(Course::getId).collect(Collectors.toList());
 
+            // 学生完全不在教师课程中 → 403
+            if (enrollments.stream().noneMatch(e -> teacherCourseIds.contains(e.getCourseId()))) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "该学生不在您的授课课程中");
+            }
+
+            // 部分共同 → 过滤
             return enrollments.stream()
                     .filter(e -> teacherCourseIds.contains(e.getCourseId()))
                     .collect(Collectors.toList());

@@ -6,12 +6,27 @@ import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import './styles/design-tokens.css'
 /* 注：common-table.css 已合并到 design-tokens.css，不再独立引入 */
 import './styles/mobile-fixes.css'
-import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
 import { usePluginStore } from './store/plugins'
 import { syncEnumsFromBackend } from './utils/enums'
 import { initErrorReporting, reportError } from './utils/errorReport'
+
+// P-001: 只注册实际使用的 Element Plus 图标（约 74 个，按扫描统计）
+// 不再用 import * as ElementPlusIconsVue 全量注册（减少 bundle 体积）
+import {
+  Aim, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Back, Bell, Bottom, Calendar,
+  CaretRight, ChatDotRound, ChatLineRound, ChatLineSquare, Check, CircleCheck,
+  CircleCheckFilled, CircleClose, CircleCloseFilled, Clock, Close, Coin,
+  Collection, Connection, CopyDocument, DataAnalysis, DataBoard, DataLine,
+  Delete, Document, DocumentCopy, Download, Edit, Finished, FullScreen, Grid,
+  Headset, InfoFilled, Key, List, Loading, Location, Lock, MagicStick, Medal,
+  Monitor, MoreFilled, Notebook, OfficeBuilding, Picture, PictureFilled, Plus,
+  Present, QuestionFilled, Reading, Refresh, RefreshRight, Search, Select,
+  Setting, ShoppingCart, Star, Tickets, Timer, Top, TrendCharts, Upload,
+  UploadFilled, User, VideoCamera, VideoPause, VideoPlay, View, Wallet,
+  Warning, WarningFilled
+} from '@element-plus/icons-vue'
 
 const app = createApp(App)
 
@@ -23,7 +38,21 @@ app.config.errorHandler = (err, instance, info) => {
 // 全局 JS / 未处理 Promise 异常自动上报后端（与 Vue errorHandler 互补，捕获非 Vue 运行时错误）
 initErrorReporting()
 
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+// 按需注册图标组件
+const icons = {
+  Aim, ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Back, Bell, Bottom, Calendar,
+  CaretRight, ChatDotRound, ChatLineRound, ChatLineSquare, Check, CircleCheck,
+  CircleCheckFilled, CircleClose, CircleCloseFilled, Clock, Close, Coin,
+  Collection, Connection, CopyDocument, DataAnalysis, DataBoard, DataLine,
+  Delete, Document, DocumentCopy, Download, Edit, Finished, FullScreen, Grid,
+  Headset, InfoFilled, Key, List, Loading, Location, Lock, MagicStick, Medal,
+  Monitor, MoreFilled, Notebook, OfficeBuilding, Picture, PictureFilled, Plus,
+  Present, QuestionFilled, Reading, Refresh, RefreshRight, Search, Select,
+  Setting, ShoppingCart, Star, Tickets, Timer, Top, TrendCharts, Upload,
+  UploadFilled, User, VideoCamera, VideoPause, VideoPlay, View, Wallet,
+  Warning, WarningFilled
+}
+for (const [key, component] of Object.entries(icons)) {
   app.component(key, component)
 }
 

@@ -16,6 +16,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.enums.UserStatus;
 import com.microcourse.repository.NotificationRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.NotificationService;
@@ -142,7 +143,7 @@ public class NotificationServiceImpl implements NotificationService {
                 throw new BusinessException(ErrorCode.NO_PERMISSION, "仅管理员可发送全员公告");
             }
             LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(User::getStatus, 1).isNull(User::getDeletedAt);
+            wrapper.eq(User::getStatus, UserStatus.ACTIVE.getCode()).isNull(User::getDeletedAt);
             return userRepository.selectList(wrapper).stream()
                     .map(User::getId).collect(Collectors.toList());
         }

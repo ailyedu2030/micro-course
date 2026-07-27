@@ -38,8 +38,17 @@ public interface UserRepository extends BaseMapper<User> {
 
     /**
      * 按 API Key 查找用户（Hermes Webhook 认证）。
+     * 保留以兼容未跑 V319 migration 的环境。
      * 只查未删除且状态=1（ACTIVE）的用户。
      */
     @Select("SELECT * FROM users WHERE api_key = #{apiKey} AND deleted_at IS NULL AND status = 1 LIMIT 1")
     Optional<User> findByApiKey(@Param("apiKey") String apiKey);
+
+    /**
+     * 按 API Key SHA-256 hash 查找用户（S-004 安全增强）。
+     * 优先使用此方法替代 findByApiKey。
+     * 只查未删除且状态=1（ACTIVE）的用户。
+     */
+    @Select("SELECT * FROM users WHERE api_key_hash = #{hash} AND deleted_at IS NULL AND status = 1 LIMIT 1")
+    Optional<User> findByApiKeyHash(@Param("hash") String hash);
 }

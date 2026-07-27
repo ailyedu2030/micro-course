@@ -61,5 +61,5 @@ function onChange() {
 .sign-text-input { margin-top: 8px; }
 .sign-image-upload { margin-top: 8px; }
 .preview-img { margin-top: 8px; display: flex; align-items: center; gap: 8px; }
-.preview-img img { max-height: 60px; border: 1px solid #dcdfe6; border-radius: 4px; }
+.preview-img img { max-height: 60px; border: 1px solid var(--el-border-color); border-radius: 4px; }
 </style>

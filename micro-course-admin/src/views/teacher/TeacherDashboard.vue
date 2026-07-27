@@ -6,6 +6,26 @@
 -->
 <template>
   <div class="teacher-dashboard">
+    <!-- 全局骨架屏：5 个分片独立刷新 -->
+    <div v-if="pageLoading" class="page-skeleton">
+      <div class="skeleton-welcome" />
+      <div class="skeleton-stats">
+        <div class="skeleton-stat" v-for="n in 6" :key="n" />
+      </div>
+      <div class="skeleton-main">
+        <div class="skeleton-left">
+          <div class="skeleton-block" v-for="n in 2" :key="n" />
+        </div>
+        <div class="skeleton-right">
+          <div class="skeleton-block" v-for="n in 3" :key="n" />
+        </div>
+      </div>
+      <div class="skeleton-course-grid">
+        <div class="skeleton-course-card" v-for="n in 4" :key="n" />
+      </div>
+    </div>
+
+    <template v-else>
     <!-- 顶部欢迎条 — 玻璃态 -->
     <div class="welcome-bar">
       <div class="welcome-left">
@@ -494,6 +514,7 @@
         </template>
       </el-skeleton>
     </div>
+  </template>
   </div>
 </template>
 
@@ -519,6 +540,17 @@ const greeting = computed(() => {
   if (h < 18) return '，下午好'
   return '，晚上好'
 })
+
+// U-010: 聚合 loading — 5 个分片全部加载完成后关闭全局骨架
+const pageLoading = ref(true)
+const loadedFragments = ref(0)
+const FRAGMENT_COUNT = 5
+function markFragmentLoaded() {
+  loadedFragments.value++
+  if (loadedFragments.value >= FRAGMENT_COUNT) {
+    pageLoading.value = false
+  }
+}
 
 // 统计数据
 const statsLoading = ref(true)
@@ -635,6 +667,7 @@ async function loadStats() {
     ElMessage.error('统计数据加载失败')
   } finally {
     statsLoading.value = false
+    markFragmentLoaded()
   }
 }
 
@@ -645,7 +678,6 @@ async function loadActivity() {
   try {
     const res = await getStudentActivity(7)
     const data = res.data || []
-    // BUG-009 修复: nextTick + 关 loading 之后再 render
     activityLoading.value = false
     await nextTick()
     renderStudyChart(data)
@@ -658,6 +690,7 @@ async function loadActivity() {
     renderStudyChart([])
     renderActiveChart([])
   }
+  markFragmentLoaded()
 }
 
 function renderStudyChart(data) {
@@ -747,6 +780,7 @@ async function loadTasks() {
     ElMessage.error('待办数据加载失败')
   } finally {
     tasksLoading.value = false
+    markFragmentLoaded()
   }
 }
 
@@ -762,6 +796,7 @@ async function loadNotifications() {
     ElMessage.error('通知数据加载失败')
   } finally {
     notifLoading.value = false
+    markFragmentLoaded()
   }
 }
 
@@ -777,6 +812,7 @@ async function loadCourses() {
     ElMessage.error('课程数据加载失败')
   } finally {
     coursesLoading.value = false
+    markFragmentLoaded()
   }
 }
 
@@ -1623,5 +1659,70 @@ onBeforeUnmount(() => {
   .metric-item {
     flex: 1 1 45%;
   }
+}
+
+/* U-010: 全局骨架屏 */
+.page-skeleton {
+  padding: var(--space-6);
+  max-width: 1440px;
+  margin: 0 auto;
+  animation: sk-fade-in .6s ease both;
+}
+@keyframes sk-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.skeleton-welcome {
+  height: 100px;
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-6);
+  background: linear-gradient(110deg, var(--el-fill-color-lighter) 30%, var(--el-fill-color) 50%, var(--el-fill-color-lighter) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.skeleton-stats {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.skeleton-stat {
+  height: 100px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(110deg, var(--el-fill-color-lighter) 30%, var(--el-fill-color) 50%, var(--el-fill-color-lighter) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.skeleton-main {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.skeleton-left { flex: 1.4; display: flex; flex-direction: column; gap: var(--space-4); }
+.skeleton-right { flex: 1; display: flex; flex-direction: column; gap: var(--space-4); }
+.skeleton-block {
+  height: 200px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(110deg, var(--el-fill-color-lighter) 30%, var(--el-fill-color) 50%, var(--el-fill-color-lighter) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+.skeleton-course-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-5);
+}
+.skeleton-course-card {
+  height: 180px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(110deg, var(--el-fill-color-lighter) 30%, var(--el-fill-color) 50%, var(--el-fill-color-lighter) 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+@media (max-width: 768px) {
+  .skeleton-stats { grid-template-columns: repeat(2, 1fr); }
+  .skeleton-main { flex-direction: column; }
+  .skeleton-course-grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

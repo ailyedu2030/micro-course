@@ -15,6 +15,7 @@ import com.microcourse.entity.User;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.enums.DiscussionCommentStatus;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.DiscussionCommentLikeRepository;
 import com.microcourse.repository.DiscussionCommentRepository;
@@ -72,7 +73,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     public List<DiscussionCommentVO> page(Long postId) {
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, postId)
-               .eq(DiscussionComment::getStatus, 1)
+               .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())
                .orderByAsc(DiscussionComment::getCreatedAt)
                .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);

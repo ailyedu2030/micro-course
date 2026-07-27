@@ -301,7 +301,7 @@ function saveChapters() {
 .empty-hint {
   margin-top: 16px;
   padding: 20px;
-  background: #f5f7fa;
+  background: var(--el-fill-color-light);
   border-radius: 4px;
   text-align: center;
   color: var(--el-text-color-secondary);
@@ -318,13 +318,13 @@ function saveChapters() {
   font-size: 16px;
 }
 .validation-ok {
-  color: #67c23a;
+  color: var(--el-color-success);
 }
 .validation-warn {
-  color: #e6a23c;
+  color: var(--el-color-warning-dark-2);
 }
 .validation-error {
-  color: #f56c6c;
+  color: var(--el-color-danger-dark-2);
 }
 .validation-text {
   font-size: 11px;
@@ -334,15 +334,15 @@ function saveChapters() {
 
 /* 整行轻染色（更直观） */
 :deep(.course-row-warn) {
-  background: #fdf6ec !important;
+  background: var(--el-color-warning-light-9) !important;
 }
 :deep(.course-row-warn:hover > td) {
-  background: #f9ead9 !important;
+  background: var(--el-color-warning-light-8) !important;
 }
 :deep(.course-row-error) {
-  background: #fef0f0 !important;
+  background: var(--el-color-danger-light-9) !important;
 }
 :deep(.course-row-error:hover > td) {
-  background: #fde2e2 !important;
+  background: var(--el-color-danger-light-8) !important;
 }
 </style>

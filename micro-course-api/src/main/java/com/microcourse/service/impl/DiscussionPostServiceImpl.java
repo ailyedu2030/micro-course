@@ -14,6 +14,8 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.DiscussionComment;
 import com.microcourse.entity.User;
+import com.microcourse.enums.DiscussionCommentStatus;
+import com.microcourse.enums.DiscussionPostStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
@@ -90,10 +92,10 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         wrapper.eq(chapterId != null, DiscussionPost::getChapterId, chapterId);
         // 所有用户可见已发布(status=1)；作者本人可见自己的所有状态(含 PENDING/REJECTED)
         if (uid != null) {
-            wrapper.and(w -> w.eq(DiscussionPost::getStatus, 1)
+            wrapper.and(w -> w.eq(DiscussionPost::getStatus, DiscussionPostStatus.PUBLISHED.getCode())
                     .or(w2 -> w2.eq(DiscussionPost::getUserId, uid)));
         } else {
-            wrapper.eq(DiscussionPost::getStatus, 1);
+            wrapper.eq(DiscussionPost::getStatus, DiscussionPostStatus.PUBLISHED.getCode());
         }
         wrapper.orderByDesc(DiscussionPost::getIsPinned)
                .orderByDesc(DiscussionPost::getCreatedAt);
@@ -272,7 +274,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         // 查评论列表并构建树结构（PERF-006: 添加 LIMIT 防止全量加载）
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, id)
-               .eq(DiscussionComment::getStatus, 1)
+               .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())
                .orderByAsc(DiscussionComment::getCreatedAt)
                .last("LIMIT 200");
         List<DiscussionComment> comments = commentRepository.selectList(wrapper);

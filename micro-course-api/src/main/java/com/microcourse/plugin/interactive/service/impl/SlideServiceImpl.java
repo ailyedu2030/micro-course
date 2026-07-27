@@ -982,4 +982,17 @@ public class SlideServiceImpl implements SlideService {
         }
     }
 
+    @Override
+    public void validateFileMagic(MultipartFile file) {
+        byte[] magic = new byte[4];
+        try (java.io.InputStream is = file.getInputStream()) {
+            int read = is.read(magic);
+            if (read < 4 || !isZipHeader(magic)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件不是 PPTX 格式(ZIP 魔数校验失败)");
+            }
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件读取失败: " + e.getMessage());
+        }
+    }
+
 }

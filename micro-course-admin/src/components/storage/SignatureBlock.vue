@@ -56,5 +56,5 @@ watch(localData, () => emit('update:modelValue', { ...localData.value }), { deep
 </script>
 
 <style scoped>
-.block-title { margin: 8px 0; color: #303133; font-size: 14px; }
+.block-title { margin: 8px 0; color: var(--el-text-color-primary); font-size: 14px; }
 </style>

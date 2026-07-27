@@ -17,9 +17,11 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 import com.microcourse.entity.User;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * ApiKeyAuthenticationFilter 单元测试
@@ -91,7 +93,8 @@ class ApiKeyAuthenticationFilterTest {
     @Test
     @DisplayName("有效 X-API-Key + TEACHER → SecurityContext 设置，请求放行")
     void validApiKeyWithTeacherSetsSecurityContextAndPasses() throws Exception {
-        when(userRepository.findByApiKey("valid-teacher-key")).thenReturn(Optional.of(teacherUser(10L)));
+        String expectedHash = DigestUtils.sha256Hex("valid-teacher-key");
+        when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.of(teacherUser(10L)));
         request.addHeader("X-API-Key", "valid-teacher-key");
 
         filter.doFilterInternal(request, response, filterChain);
@@ -103,13 +106,15 @@ class ApiKeyAuthenticationFilterTest {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_TEACHER")), "应有 ROLE_TEACHER 权限");
         assertEquals(200, response.getStatus(), "响应状态应为 200（放行）");
         assertNotNull(filterChain.getRequest(), "filterChain 应被调用");
-        verify(userRepository).findByApiKey("valid-teacher-key");
+        verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 
     @Test
     @DisplayName("有效 X-API-Key + ADMIN → SecurityContext 设置，请求放行")
     void validApiKeyWithAdminSetsSecurityContextAndPasses() throws Exception {
-        when(userRepository.findByApiKey("valid-admin-key")).thenReturn(Optional.of(adminUser(1L)));
+        String expectedHash = DigestUtils.sha256Hex("valid-admin-key");
+        when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.of(adminUser(1L)));
         request.addHeader("X-API-Key", "valid-admin-key");
 
         filter.doFilterInternal(request, response, filterChain);
@@ -121,12 +126,15 @@ class ApiKeyAuthenticationFilterTest {
                 .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")));
         assertEquals(200, response.getStatus());
         assertNotNull(filterChain.getRequest());
+        verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 
     @Test
     @DisplayName("有效 X-API-Key + STUDENT → 403 拒绝")
     void validApiKeyWithStudentReturnsForbidden() throws Exception {
-        when(userRepository.findByApiKey("student-key")).thenReturn(Optional.of(studentUser(99L)));
+        String expectedHash = DigestUtils.sha256Hex("student-key");
+        when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.of(studentUser(99L)));
         request.addHeader("X-API-Key", "student-key");
 
         filter.doFilterInternal(request, response, filterChain);
@@ -138,11 +146,14 @@ class ApiKeyAuthenticationFilterTest {
         assertTrue(body.contains("\"code\":"), "响应应为 JSON");
         assertTrue(body.contains("API Key 仅限教师或管理员使用") || body.contains("NO_PERMISSION"),
                 "错误信息应提及权限问题");
+        verify(userRepository).findByApiKeyHash(expectedHash);
     }
 
     @Test
-    @DisplayName("无效 X-API-Key（不存在）→ 401 返回 21001")
+    @DisplayName("无效 X-API-Key（不存在）→ 401 返回 21001（hash + fallback 均未命中）")
     void invalidApiKeyReturnsUnauthorized() throws Exception {
+        String expectedHash = DigestUtils.sha256Hex("invalid-key");
+        when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.empty());
         when(userRepository.findByApiKey("invalid-key")).thenReturn(Optional.empty());
         request.addHeader("X-API-Key", "invalid-key");
 
@@ -154,6 +165,8 @@ class ApiKeyAuthenticationFilterTest {
         assertTrue(body.contains("21001"), "错误码应为 21001");
         assertTrue(body.contains("无效的 Hermes API Key") || body.contains("Hermes API Key"),
                 "错误信息应说明 API Key 无效");
+        verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository).findByApiKey("invalid-key");
     }
 
     @Test
@@ -184,7 +197,8 @@ class ApiKeyAuthenticationFilterTest {
     @Test
     @DisplayName("DB 异常 → fail-safe 401 返回 21001，不阻断请求链路")
     void dbExceptionReturnsFailSafeUnauthorized() throws Exception {
-        when(userRepository.findByApiKey("db-error-key"))
+        String expectedHash = DigestUtils.sha256Hex("db-error-key");
+        when(userRepository.findByApiKeyHash(expectedHash))
                 .thenThrow(new RuntimeException("connection refused"));
         request.addHeader("X-API-Key", "db-error-key");
 
@@ -193,12 +207,16 @@ class ApiKeyAuthenticationFilterTest {
         assertEquals(401, response.getStatus(), "fail-safe: DB 异常时返回 401 而非抛出不降级");
         String body = response.getContentAsString();
         assertTrue(body.contains("21001"), "错误码应为 21001");
+        verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 
     @Test
     @DisplayName("X-API-Key trim 处理 — 前后空格应被忽略")
     void apiKeyIsTrimmedBeforeLookup() throws Exception {
-        when(userRepository.findByApiKey("valid-teacher-key")).thenReturn(Optional.of(teacherUser(10L)));
+        // hash 查询使用 trim 后的 key 的 hash
+        String expectedHash = DigestUtils.sha256Hex("valid-teacher-key");
+        when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.of(teacherUser(10L)));
         request.addHeader("X-API-Key", "  valid-teacher-key  ");
 
         filter.doFilterInternal(request, response, filterChain);
@@ -206,6 +224,7 @@ class ApiKeyAuthenticationFilterTest {
         assertNotNull(SecurityContextHolder.getContext().getAuthentication(),
                 "trim 后的 key 应能匹配");
         assertEquals(200, response.getStatus());
-        verify(userRepository).findByApiKey("valid-teacher-key");
+        verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 }

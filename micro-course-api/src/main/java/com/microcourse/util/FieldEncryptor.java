@@ -1,5 +1,8 @@
 package com.microcourse.util;
 
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.encrypt.Encryptors;
 import org.springframework.security.crypto.encrypt.TextEncryptor;
@@ -8,13 +11,32 @@ import org.springframework.stereotype.Component;
 @Component
 public class FieldEncryptor {
 
+    private static final Logger log = LoggerFactory.getLogger(FieldEncryptor.class);
     private static final String ENC_PREFIX = "ENC:";
-    private static final String SALT = "0123456789abcdef";
 
     private final TextEncryptor encryptor;
 
-    public FieldEncryptor(@Value("${app.security.field-encryption-key:default-32-char-key-for-encrypt}") String password) {
-        this.encryptor = Encryptors.delux(password, SALT);
+    public FieldEncryptor(
+            @Value("${app.security.field-encryption-key:}") String password,
+            @Value("${app.security.field-encryption-salt:}") String salt) {
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException(
+                    "app.security.field-encryption-key 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_KEY（>= 32 字符）");
+        }
+        if (password.length() < 32) {
+            throw new IllegalArgumentException(
+                    "app.security.field-encryption-key 长度不足 32 字符，当前长度: " + password.length());
+        }
+        if (salt == null || salt.isBlank()) {
+            throw new IllegalArgumentException(
+                    "app.security.field-encryption-salt 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_SALT（>= 16 字符）");
+        }
+        this.encryptor = Encryptors.delux(password, salt);
+    }
+
+    @PostConstruct
+    void init() {
+        log.info("[FieldEncryptor] Initialized with key length {} (≥32 OK)", "***");
     }
 
     public String encrypt(String plain) {

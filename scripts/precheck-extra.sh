@@ -83,7 +83,7 @@ fi
 # ----------------------------------------------------------------------------
 echo -n "[规则4] 禁止 Controller 含私有静态工具方法... "
 HITS=$(grep -rn "private static" micro-course-api/src/main/java/com/microcourse/controller/ 2>/dev/null \
-    | grep -v "private static final Logger\|private static final String\|private static final long\|private static final int\|private static final Integer\|private static final Boolean" \
+    | grep -v "private static final Logger\|private static final String\|private static final long\|private static final int\|private static final Integer\|private static final Boolean\|private static final ZoneId\|private static final DateTimeFormatter\|private static final Set<String>" \
     | grep -v "import " | wc -l | tr -d ' ')
 if [ "$HITS" -gt 0 ]; then
     echo -e "${YELLOW}WARN ($HITS 处, 需人工审查)${NC}"

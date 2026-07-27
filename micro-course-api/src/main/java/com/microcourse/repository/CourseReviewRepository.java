@@ -3,6 +3,7 @@ package com.microcourse.repository;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.microcourse.entity.CourseReview;
+import com.microcourse.enums.CourseReviewStatus;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -40,7 +41,7 @@ public interface CourseReviewRepository extends BaseMapper<CourseReview> {
     default long countByCourseId(Long courseId) {
         return selectCount(new LambdaQueryWrapper<CourseReview>()
                 .eq(CourseReview::getCourseId, courseId)
-                .eq(CourseReview::getStatus, 1)
+                .eq(CourseReview::getStatus, CourseReviewStatus.APPROVED.getCode())
                 .isNull(CourseReview::getDeletedAt));
     }
 

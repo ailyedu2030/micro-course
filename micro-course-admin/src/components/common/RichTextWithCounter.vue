@@ -85,19 +85,19 @@ function handleInput(value) {
 .word-count {
   text-align: right;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-placeholder);
   margin-top: 4px;
   line-height: 1;
 }
 .word-count.warning {
-  color: #e6a23c;
+  color: var(--el-color-warning-dark-2);
 }
 .word-count.error {
-  color: #f56c6c;
+  color: var(--el-color-danger-dark-2);
   font-weight: 600;
 }
 .min-hint {
-  color: #909399;
+  color: var(--el-text-color-placeholder);
   font-weight: 400;
 }
 .rich-form-item {
