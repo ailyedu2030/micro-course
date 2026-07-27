@@ -10,9 +10,9 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="left-info">
-          <span class="unread-tip">未读消息：<el-badge :value="unreadCount" :max="99" /></span>
+          <span class="unread-tip">{{ $t('notification.unread') }}：<el-badge :value="unreadCount" :max="99" /></span>
         </div>
-        <el-button type="primary" @click="handleMarkAllRead" :disabled="!unreadCount || markingAll" :loading="markingAll">全部标记已读</el-button>
+        <el-button type="primary" @click="handleMarkAllRead" :disabled="!unreadCount || markingAll" :loading="markingAll">{{ $t('notification.markAllRead') }}</el-button>
       </div>
     </el-card>
 
@@ -37,7 +37,7 @@
       <!-- 空状态 -->
       <el-empty
         v-else-if="!loading && tableData.length === 0"
-        description="暂无通知消息"
+        :description="$t('notification.noData')"
         :image-size="120"
       />
 
@@ -52,14 +52,14 @@
         @row-click="handleRowClick"
         style="cursor: pointer;"
       >
-        <el-table-column prop="type" label="类型" width="140" align="center">
+        <el-table-column prop="type" :label="$t('notification.type')" width="140" align="center">
           <template #default="{ row }">
             <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
               {{ getNotifTagLabel(row.type) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip>
+        <el-table-column prop="title" :label="$t('notification.titleLabel')" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <span :class="{ 'title-unread': !row.isRead }">{{ row.title }}</span>
           </template>
@@ -69,18 +69,18 @@
             {{ truncate(row.content, 50) }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="时间" width="170" />
-        <el-table-column prop="isRead" label="状态" width="100" align="center">
+        <el-table-column prop="createdAt" :label="$t('notification.time')" width="170" />
+        <el-table-column prop="isRead" :label="$t('notification.status')" width="100" align="center">
           <template #default="{ row }">
             <el-badge v-if="!row.isRead" is-dot class="unread-dot">
-              <el-tag type="warning" size="small" effect="light">未读</el-tag>
+              <el-tag type="warning" size="small" effect="light">{{ $t('notification.unread') }}</el-tag>
             </el-badge>
-            <el-tag v-else type="info" size="small" effect="light">已读</el-tag>
+            <el-tag v-else type="info" size="small" effect="light">{{ $t('notification.read') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="120" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="!row.isRead" type="primary" link size="small" @click.stop="handleMarkRead(row)">标记已读</el-button>
+            <el-button v-if="!row.isRead" type="primary" link size="small" @click.stop="handleMarkRead(row)">{{ $t('notification.markRead') }}</el-button>
             <span v-else class="dash-placeholder">—</span>
           </template>
         </el-table-column>
@@ -105,9 +105,9 @@
           <div class="card-content">{{ truncate(row.content, 80) }}</div>
           <div class="card-footer">
             <el-badge v-if="!row.isRead" is-dot class="unread-dot">
-              <el-tag type="warning" size="small" effect="light">未读</el-tag>
+              <el-tag type="warning" size="small" effect="light">{{ $t('notification.unread') }}</el-tag>
             </el-badge>
-            <el-tag v-else type="info" size="small" effect="light">已读</el-tag>
+            <el-tag v-else type="info" size="small" effect="light">{{ $t('notification.read') }}</el-tag>
             <el-button
               v-if="!row.isRead"
               type="primary"
@@ -115,7 +115,7 @@
               size="small"
               @click.stop="handleMarkRead(row)"
             >
-标记已读
+{{ $t('notification.markRead') }}
 </el-button>
           </div>
         </div>

@@ -8,15 +8,15 @@
   <div class="course-list-page">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>课程列表</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('teacher.courseManagement') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 筛选区 -->
     <el-card class="filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="课程标题" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" aria-label="关键字" />
+        <el-form-item :label="$t('course.keyword')">
+          <el-input v-model="searchForm.keyword" :placeholder="$t('course.courseName')" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" :aria-label="$t('course.keyword')" />
         </el-form-item>
         <el-form-item label="分类">
           <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160" aria-label="分类">
@@ -45,8 +45,8 @@
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('common.search') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -64,9 +64,9 @@
               @click="handleExport"
               aria-label="导出数据"
             >
-              <el-icon><Download /></el-icon>导出
+              <el-icon><Download /></el-icon>{{ $t('course.export') }}
             </el-button>
-            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增课程</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">{{ $t('course.createCourse') }}</el-button>
             <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
             <el-button v-if="route.query.courseType" @click="handleBackToFullList">返回课程列表</el-button>
           </div>

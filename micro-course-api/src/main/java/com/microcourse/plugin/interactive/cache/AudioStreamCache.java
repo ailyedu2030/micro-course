@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -50,11 +50,14 @@ public class AudioStreamCache {
     private static final String KEY_PREFIX = "mc:audio:stream:";
     private static final Duration TTL = Duration.ofMinutes(5);
 
-    @Autowired(required = false)
-    private StringRedisTemplate redisTemplate;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
-    @Autowired(required = false)
-    private ObjectMapper objectMapper;
+    public AudioStreamCache(ObjectProvider<StringRedisTemplate> redisTemplateProvider,
+                            ObjectProvider<ObjectMapper> objectMapperProvider) {
+        this.redisTemplate = redisTemplateProvider.getIfAvailable();
+        this.objectMapper = objectMapperProvider.getIfAvailable();
+    }
 
     /**
      * 取缓存. Redis 不可用时返回 empty (退化到 DB).

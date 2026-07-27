@@ -100,7 +100,9 @@ public class VideoServiceImpl implements VideoService {
     private long getMaxFileSize() {
         String v = adminSettingService.getByKey("max_video_size_mb");
         if (v != null && !v.isBlank()) {
-            try { return Long.parseLong(v) * 1024L * 1024L; } catch (NumberFormatException ignore) {}
+            try { return Long.parseLong(v) * 1024L * 1024L; } catch (NumberFormatException e) {
+                log.warn("解析 max_video_size_mb 失败: {}, 使用默认值", v);
+            }
         }
         return 2L * 1024L * 1024L * 1024L; // 默认 2GB
     }
@@ -680,8 +682,8 @@ public class VideoServiceImpl implements VideoService {
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
         }
-        // Round 11-4 安全加固：文件名路径穿越防护（纵深防御）。
-        assertSafeFilename(file.getOriginalFilename());
+        // Round 11-4 安全加固:文件名路径穿越防护(纵深防御)。
+        com.microcourse.util.FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
         String originalFilename = file.getOriginalFilename();
         String ext = "";
         if (originalFilename != null && originalFilename.contains(".")) {
@@ -714,15 +716,6 @@ public class VideoServiceImpl implements VideoService {
             log.warn("视频文件读取失败: {}", e.getMessage());
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
         }
-    }
-
-    /**
-     * Round 11-4 安全加固：文件名路径穿越防护。
-     * 拒绝含 ".." / 路径分隔符 / null 字节的恶意文件名。
-     * 【复用工具类】已迁移至 FileUploadUtil.assertSafeFilename
-     */
-    private static void assertSafeFilename(String filename) {
-        com.microcourse.util.FileUploadUtil.assertSafeFilename(filename);
     }
 
     /** MP4/MOV 文件魔数：ftyp box */

@@ -5,19 +5,19 @@
 <template>
   <div class="checkout-page">
     <nav class="page-breadcrumb" aria-label="面包屑">
-      <router-link to="/student/courses" class="bc-link">课程广场</router-link>
+      <router-link to="/student/courses" class="bc-link">{{ $t('course.square') }}</router-link>
       <span class="bc-sep">/</span>
-      <span>结算</span>
+      <span>{{ $t('cart.checkout') }}</span>
     </nav>
 
-    <el-alert v-if="paid" title="支付成功！" type="success" show-icon :closable="false" class="mg-bottom-16" />
+    <el-alert v-if="paid" :title="$t('order.success')" type="success" show-icon :closable="false" class="mg-bottom-16" />
 
     <el-row :gutter="20">
       <el-col :span="16">
         <el-card shadow="never" class="section-card">
-          <template #header>确认订单</template>
+          <template #header>{{ $t('cart.confirmOrder') }}</template>
           <el-table v-loading="loading" :data="store.items" stripe border>
-            <el-table-column label="课程" min-width="200">
+            <el-table-column :label="$t('course.title')" min-width="200">
               <template #default="{ row }">
                 <div class="course-cell">
                   <el-image v-if="row.coverUrl" :src="row.coverUrl" class="cell-cover" fit="cover" />
@@ -25,23 +25,23 @@
                 </div>
               </template>
             </el-table-column>
-            <el-table-column prop="teacherName" label="教师" width="120" />
-            <el-table-column label="金额" width="100" align="center">
+            <el-table-column prop="teacherName" :label="$t('course.teacher')" width="120" />
+            <el-table-column :label="$t('cart.amount')" width="100" align="center">
               <template #default="{ row }">
                 <span v-if="!row.isFree" class="price">¥{{ row.price }}</span>
-                <span v-else class="free">免费</span>
+                <span v-else class="free">{{ $t('app.free') }}</span>
               </template>
             </el-table-column>
           </el-table>
         </el-card>
 
         <el-card shadow="never" class="section-card">
-          <template #header>支付方式</template>
+          <template #header>{{ $t('cart.paymentMethod') }}</template>
           <el-radio-group v-model="paymentMethod" class="payment-methods">
             <el-radio value="BALANCE" border class="payment-option">
               <div class="payment-label">
                 <el-icon><Wallet /></el-icon>
-                <span>余额支付</span>
+                <span>{{ $t('cart.balancePayment') }}</span>
               </div>
             </el-radio>
           </el-radio-group>
@@ -51,27 +51,27 @@
 
       <el-col :span="8">
         <el-card shadow="never" class="summary-card">
-          <template #header>订单摘要</template>
-          <div class="summary-row"><span>课程数量</span><span>{{ store.count }} 门</span></div>
-          <div class="summary-row"><span>合计</span><span class="total-price">¥{{ store.totalPrice }}</span></div>
+          <template #header>{{ $t('cart.orderSummary') }}</template>
+          <div class="summary-row"><span>{{ $t('cart.courseCount') }}</span><span>{{ store.count }} {{ $t('course.title') }}</span></div>
+          <div class="summary-row"><span>{{ $t('cart.totalPrice') }}</span><span class="total-price">¥{{ store.totalPrice }}</span></div>
           <el-divider />
           <el-button type="primary" size="large" class="full-width" :loading="submitting" :disabled="store.count === 0 || paid" @click="handleSubmit">
-            确认支付 ¥{{ store.totalPrice }}
+            {{ $t('order.pay') }} ¥{{ store.totalPrice }}
           </el-button>
         </el-card>
       </el-col>
     </el-row>
 
     <!-- 支付结果明细弹窗 -->
-    <el-dialog v-model="showResultDialog" title="支付结果" width="600px" :close-on-click-modal="false" aria-label="支付结果">
-      <p><strong>成功：{{ resultSummary.success.length }} 门</strong></p>
+    <el-dialog v-model="showResultDialog" :title="$t('order.paymentResult')" width="600px" :close-on-click-modal="false" :aria-label="$t('order.paymentResult')">
+      <p><strong>{{ $t('order.successCount') }}：{{ resultSummary.success.length }}</strong></p>
       <ul v-if="resultSummary.success.length > 0" style="margin-bottom:16px">
         <li v-for="o in resultSummary.success" :key="o.courseTitle">
           {{ o.courseTitle }} - ¥{{ o.amount }}
         </li>
       </ul>
       <p v-if="resultSummary.failed.length > 0" style="color:var(--el-color-danger-dark-2)">
-        <strong>失败：{{ resultSummary.failed.length }} 门</strong>
+        <strong>{{ $t('order.failedCount') }}：{{ resultSummary.failed.length }}</strong>
       </p>
       <ul v-if="resultSummary.failed.length > 0">
         <li v-for="o in resultSummary.failed" :key="o.courseTitle" style="color:var(--el-color-danger-dark-2)">
@@ -79,9 +79,9 @@
         </li>
       </ul>
       <template #footer>
-        <el-button @click="showResultDialog = false" v-if="resultSummary.failed.length > 0">关闭</el-button>
-        <el-button type="warning" @click="handleRetryFailed" v-if="resultSummary.failed.length > 0" :loading="retrying">重试失败项</el-button>
-        <el-button type="primary" @click="router.push('/student/my-courses')" v-if="resultSummary.success.length > 0">查看我的课程</el-button>
+        <el-button @click="showResultDialog = false" v-if="resultSummary.failed.length > 0">{{ $t('common.close') }}</el-button>
+        <el-button type="warning" @click="handleRetryFailed" v-if="resultSummary.failed.length > 0" :loading="retrying">{{ $t('order.retryFailed') }}</el-button>
+        <el-button type="primary" @click="router.push('/student/my-courses')" v-if="resultSummary.success.length > 0">{{ $t('order.viewMyCourses') }}</el-button>
       </template>
     </el-dialog>
   </div>
