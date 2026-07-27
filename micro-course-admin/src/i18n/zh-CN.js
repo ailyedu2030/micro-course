@@ -129,7 +129,10 @@ export default {
     publish: '发布',
     unpublish: '下架',
     archive: '归档',
-    view: '查看'
+    view: '查看',
+    completedAt: '完成于',
+    recentLearning: '最近学习',
+    exercise: '练习'
   },
   student: {
     dashboard: '学习中心',

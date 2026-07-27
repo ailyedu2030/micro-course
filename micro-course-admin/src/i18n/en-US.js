@@ -129,7 +129,10 @@ export default {
     publish: 'Publish',
     unpublish: 'Unpublish',
     archive: 'Archive',
-    view: 'View'
+    view: 'View',
+    completedAt: 'Completed at',
+    recentLearning: 'Recent',
+    exercise: 'Exercise'
   },
   student: {
     dashboard: 'Learning Center',

@@ -23,17 +23,17 @@
     <!-- ============ Hero + Search ============ -->
     <section class="hero-section" aria-label="课程发现">
       <div class="hero-content">
-        <h1 class="hero-title">发现优质课程</h1>
-        <p class="hero-subtitle">开启你的学习之旅</p>
+        <h1 class="hero-title">{{ $t('course.discover') }}</h1>
+        <p class="hero-subtitle">{{ $t('course.startJourney') }}</p>
         <div class="hero-search">
           <el-input
-            v-model="searchForm.keyword" placeholder="搜索课程名称或教师" clearable
+            v-model="searchForm.keyword" :placeholder="$t('course.search')" clearable
             class="hero-search-input" aria-label="搜索关键词"
             @keyup.enter="handleSearch"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
             <template #append>
-              <el-button @click="handleSearch" :icon="Search">搜索</el-button>
+              <el-button @click="handleSearch" :icon="Search">{{ $t('common.search') }}</el-button>
             </template>
           </el-input>
         </div>
@@ -44,20 +44,20 @@
     <div class="filter-bar">
       <div class="filter-row">
           <el-select
-            v-model="searchForm.difficulty" placeholder="全部难度" clearable title="难度筛选"
+            v-model="searchForm.difficulty" :placeholder="$t('course.allDifficulty')" clearable title="难度筛选"
             class="difficulty-select" aria-label="难度筛选" @change="handleSearch"
           >
-            <el-option label="全部难度" value="" />
-            <el-option label="初级" :value="1" />
-            <el-option label="中级" :value="2" />
-            <el-option label="高级" :value="3" />
+            <el-option :label="$t('app.all')" value="" />
+            <el-option :label="$t('course.beginner')" :value="1" />
+            <el-option :label="$t('course.intermediate')" :value="2" />
+            <el-option :label="$t('course.advanced')" :value="3" />
           </el-select>
           <!-- P1C-004: 学院维度筛选 -->
           <el-select
-            v-model="searchForm.offerDepartmentId" placeholder="全部学院" clearable title="学院筛选"
+            v-model="searchForm.offerDepartmentId" :placeholder="$t('course.allDepartments')" clearable title="学院筛选"
             class="dept-select" aria-label="学院筛选" @change="handleSearch"
           >
-          <el-option label="全部学院" value="" />
+          <el-option :label="$t('app.all')" value="" />
           <el-option v-for="dept in departmentList" :key="dept.id" :label="dept.name" :value="dept.id" />
         </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
@@ -65,20 +65,20 @@
             v-model="selectedCategoryId" class="category-chip-group"
             aria-label="课程分类" @change="handleCategoryChange"
           >
-            <el-radio-button value="">全部</el-radio-button>
+            <el-radio-button value="">{{ $t('app.all') }}</el-radio-button>
             <el-radio-button v-for="cat in categoryList" :key="cat.id" :value="cat.id">
               {{ cat.name }}
             </el-radio-button>
           </el-radio-group>
         </div>
-        <el-button type="default" :icon="RefreshRight" size="small" class="reset-btn" @click="handleReset">重置</el-button>
+        <el-button type="default" :icon="RefreshRight" size="small" class="reset-btn" @click="handleReset">{{ $t('common.reset') }}</el-button>
       </div>
     </div>
 
     <!-- ============ 精选推荐 (横滑) — 仅在无搜索时显示,避免与搜索结果混淆 ============ -->
     <section v-if="recommendedCourses.length > 0 && !isSearchActive" class="section">
       <header class="section-header">
-        <h2 class="section-title">精选推荐</h2>
+        <h2 class="section-title">{{ $t('course.recommended') }}</h2>
       </header>
       <div class="rec-scroll-wrap">
         <div class="rec-scroll">
@@ -92,7 +92,7 @@
             <div class="rec-cover">
               <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="rec-cover-img" @error="handleImgError" />
               <div v-else class="rec-cover-placeholder"><el-icon :size="32"><VideoPlay /></el-icon></div>
-              <span class="rec-badge">推荐</span>
+              <span class="rec-badge">{{ $t('course.recommended') }}</span>
             </div>
             <div class="rec-info">
               <h3 class="rec-title">{{ course.title }}</h3>
@@ -110,11 +110,11 @@
     <!-- ============ 全部课程 (含排序 Tab、加载、空态等) ============ -->
     <section class="section">
       <header class="section-header">
-        <h2 class="section-title">全部课程</h2>
+        <h2 class="section-title">{{ $t('course.allCourses') }}</h2>
         <el-radio-group v-model="courseSort" size="small" class="sort-tabs">
-          <el-radio-button value="">推荐</el-radio-button>
-          <el-radio-button value="hot">热门</el-radio-button>
-          <el-radio-button value="new">最新</el-radio-button>
+          <el-radio-button value="">{{ $t('course.recommended') }}</el-radio-button>
+          <el-radio-button value="hot">{{ $t('course.hot') }}</el-radio-button>
+          <el-radio-button value="new">{{ $t('course.newest') }}</el-radio-button>
         </el-radio-group>
       </header>
 
@@ -139,17 +139,17 @@
       </div>
 
       <!-- Error -->
-      <el-empty v-else-if="error" class="state-block" description="课程加载失败">
+      <el-empty v-else-if="error" class="state-block" :description="$t('course.loadFailed')">
         <template #image><el-icon :size="64" class="state-icon state-icon--error"><WarningFilled /></el-icon></template>
-        <p class="state-detail">网络连接异常，请稍后重试</p>
-        <el-button type="primary" :icon="Refresh" class="state-action" @click="fetchCourses">重新加载</el-button>
+        <p class="state-detail">{{ $t('common.networkError') }}</p>
+        <el-button type="primary" :icon="Refresh" class="state-action" @click="fetchCourses">{{ $t('common.retry') }}</el-button>
       </el-empty>
 
       <!-- Empty (无课程) -->
-      <el-empty v-else-if="courseList.length === 0 && !isSearchActive" class="state-block" description="暂无课程">
+      <el-empty v-else-if="courseList.length === 0 && !isSearchActive" class="state-block" :description="$t('course.noCourses')">
         <template #image><el-icon :size="64" class="state-icon"><Notebook /></el-icon></template>
         <p class="state-detail">换个分类或筛选条件试试</p>
-        <el-button type="primary" class="state-action" @click="handleReset">重置筛选</el-button>
+        <el-button type="primary" class="state-action" @click="handleReset">{{ $t('common.reset') }}</el-button>
       </el-empty>
 
       <!-- Empty (无搜索结果) -->
@@ -158,8 +158,8 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
         :description="`未找到与 '${searchForm.keyword || '当前筛选'}' 相关的课程`"
       >
         <template #image><el-icon :size="64" class="state-icon"><Search /></el-icon></template>
-        <p class="state-detail">未找到匹配项，尝试更换筛选条件</p>
-        <el-button type="primary" class="state-action" @click="handleReset">清除筛选</el-button>
+        <p class="state-detail">{{ $t('common.noData') }}</p>
+        <el-button type="primary" class="state-action" @click="handleReset">{{ $t('common.reset') }}</el-button>
         <!-- 搜索无结果时展示热门课程推荐 -->
         <div v-if="hotCourses.length > 0" class="search-recommend-section">
           <p class="recommend-hint">你可能感兴趣的课程：</p>
@@ -241,7 +241,7 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
     <!-- ============ 课程套件 — 同样在搜索时隐藏 ============ -->
     <section v-if="bundles.length > 0 && !isSearchActive" class="section">
       <header class="section-header">
-        <h2 class="section-title">课程套件</h2>
+        <h2 class="section-title">{{ $t('course.bundles') }}</h2>
         <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
       </header>
       <div class="bundle-scroll">
@@ -262,7 +262,7 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
     <!-- ============ 微专业 (加载完成时显示,有数据/无数据/加载中三态) ============ -->
     <section v-if="!isSearchActive" class="section micro-specialty-section" aria-label="微专业">
       <header class="section-header">
-        <h2 class="section-title">微专业</h2>
+        <h2 class="section-title">{{ $t('course.microSpecialty') }}</h2>
         <el-button v-if="hasMSData" text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
       </header>
       <div v-if="msLoading" class="rec-scroll-wrap">
