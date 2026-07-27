@@ -342,7 +342,7 @@ public class HermesWebhookController {
             @PathVariable String hermesCourseId,
             @PathVariable Long lessonId,
             @PathVariable Integer pageNumber,
-            @RequestBody NarrationUpdateRequest req) {
+            @Valid @RequestBody NarrationUpdateRequest req) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
@@ -497,7 +497,7 @@ public class HermesWebhookController {
     @PostMapping("/courses/{hermesCourseId}/scripts")
     public R<?> batchPushScripts(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                  @PathVariable String hermesCourseId,
-            @RequestBody BatchPushScriptsRequest req) {
+            @Valid @RequestBody BatchPushScriptsRequest req) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
