@@ -41,4 +41,12 @@ public interface SlideService {
     byte[] getOriginalFile(Long courseId);
 
     void cleanupSlideFiles(Long courseId, Long slideId);
+
+    /**
+     * 校验文件是否为有效的 PPTX 格式（ZIP 魔数校验）。
+     *
+     * @param file 上传的文件
+     * @throws com.microcourse.exception.BusinessException 如果魔数校验失败
+     */
+    void validateFileMagic(org.springframework.web.multipart.MultipartFile file);
 }

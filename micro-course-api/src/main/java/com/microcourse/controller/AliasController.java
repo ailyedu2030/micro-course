@@ -73,9 +73,9 @@ public class AliasController {
     public R<SlideUploadResponse> uploadPpt(@PathVariable Long courseId,
                                              @PathVariable Long sectionId,
                                              @RequestParam("file") MultipartFile file) {
+        // R2 审查 P0: PPT 魔数校验（委托 Service 层）
+        slideService.validateFileMagic(file);
         try {
-            // R2 审查 P0: PPT 魔数校验
-            validateSlideFileMagic(file);
             SlideUploadResponse resp = slideService.upload(
                 courseId, file.getOriginalFilename(), file.getBytes(), null, sectionId);
             return R.ok(resp);
@@ -103,20 +103,4 @@ public class AliasController {
         return R.ok(sectionService.batchCreate(courseId, chapterId, requests));
     }
 
-    // ===== private helpers =====
-
-    private void validateSlideFileMagic(MultipartFile file) throws IOException {
-        byte[] magic = new byte[4];
-        try (java.io.InputStream is = file.getInputStream()) {
-            int read = is.read(magic);
-            if (read < 4 || !isZipHeader(magic)) {
-                throw new com.microcourse.exception.BusinessException(
-                    com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "文件不是 PPTX 格式(ZIP 魔数校验失败)");
-            }
-        }
-    }
-
-    private boolean isZipHeader(byte[] b) {
-        return b.length >= 4 && b[0] == 0x50 && b[1] == 0x4B && b[2] == 0x03 && b[3] == 0x04;
-    }
 }
