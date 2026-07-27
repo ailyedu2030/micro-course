@@ -146,9 +146,19 @@ const chapterIdFromQuery = computed(() => parseInt(route.query.chapterId) || nul
 
 // ==================== 响应式 ====================
 const isMobile = ref(window.innerWidth < 768)
-const handleResize = () => { isMobile.value = window.innerWidth < 768 }
+let resizeRafId = null
+const handleResize = () => {
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
+  resizeRafId = requestAnimationFrame(() => {
+    isMobile.value = window.innerWidth < 768
+    resizeRafId = null
+  })
+}
 onMounted(() => window.addEventListener('resize', handleResize))
-onUnmounted(() => window.removeEventListener('resize', handleResize))
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (resizeRafId) cancelAnimationFrame(resizeRafId)
+})
 
 // ==================== Tab 配置 ====================
 const tabs = [
