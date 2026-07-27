@@ -135,25 +135,25 @@ function handleRemove() {
   justify-content: center;
   width: 120px;
   height: 100px;
-  border: 1px dashed #d9d9d9;
+  border: 1px dashed var(--el-border-color);
   border-radius: 6px;
   cursor: pointer;
-  background: #fafafa;
+  background: var(--el-fill-color-light);
   transition: border-color 0.2s;
   gap: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-placeholder);
 }
 /* P1-UX: 上传中样式 — 蓝色边框 + Loading 旋转图标 */
 .upload-placeholder.uploading {
-  border-color: #409eff;
+  border-color: var(--el-color-primary);
   border-style: solid;
-  background: #ecf5ff;
-  color: #409eff;
+  background: var(--el-color-primary-light-9);
+  color: var(--el-color-primary);
   cursor: not-allowed;
 }
 .upload-placeholder.uploading .upload-icon {
-  color: #409eff;
+  color: var(--el-color-primary);
   animation: rotating 1.2s linear infinite;
 }
 @keyframes rotating {
@@ -165,14 +165,14 @@ function handleRemove() {
   margin-top: 2px;
 }
 .upload-placeholder:hover {
-  border-color: #409eff;
-  color: #409eff;
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
 }
 .upload-icon {
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder);
 }
 .upload-placeholder:hover .upload-icon {
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 .preview-area {
   display: flex;
@@ -183,7 +183,7 @@ function handleRemove() {
 .preview-img {
   max-width: 120px;
   max-height: 80px;
-  border: 1px solid #dcdfe6;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
   cursor: pointer;
   transition: box-shadow 0.2s;

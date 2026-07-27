@@ -91,7 +91,7 @@ defineEmits(['back', 'toggle-favorite', 'show-notes'])
 .header-btn:hover { background: rgba(255,255,255,0.15) !important; }
 .back-btn .el-icon,
 .header-btn .el-icon { font-size: 15px; }
-.header-btn.is-favorited { color: #FCD34D !important; }
+.header-btn.is-favorited { color: var(--el-color-warning) !important; }
 
 .course-title {
   font-size: var(--text-lg);

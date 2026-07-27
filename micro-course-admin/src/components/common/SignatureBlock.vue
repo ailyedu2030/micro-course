@@ -127,15 +127,15 @@ function handleDateUpdate(val) {
 
 <style scoped>
 .signature-block {
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--el-border-color-lighter);
   border-radius: 6px;
   padding: 16px;
   margin-bottom: 12px;
-  background: #fafafa;
+  background: var(--el-fill-color-light);
 }
 .signature-block.removable {
-  border-color: #fde2e2;
-  background: #fff5f5;
+  border-color: var(--el-color-danger-light-7);
+  background: var(--el-color-danger-light-9);
 }
 .block-header {
   display: flex;
@@ -147,7 +147,7 @@ function handleDateUpdate(val) {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #303133;
+  color: var(--el-text-color-primary);
 }
 .signature-fields {
   display: flex;
@@ -161,7 +161,7 @@ function handleDateUpdate(val) {
 }
 .sig-label {
   font-size: 13px;
-  color: #606266;
+  color: var(--el-text-color-regular);
   white-space: nowrap;
   line-height: 32px;
   min-width: 40px;

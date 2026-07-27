@@ -75,10 +75,10 @@ function handleChange(val) {
 }
 .validation-hint {
   font-size: 12px;
-  color: #e6a23c;
+  color: var(--el-color-warning-dark-2);
   line-height: 1;
 }
 .validation-hint.error {
-  color: #f56c6c;
+  color: var(--el-color-danger-dark-2);
 }
 </style>

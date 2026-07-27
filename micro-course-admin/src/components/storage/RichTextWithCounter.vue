@@ -64,7 +64,7 @@ const effectiveWarningThreshold = computed(() => {
 .quill-wrapper { width: 100%; border-radius: 4px; }
 .quill-wrapper :deep(.ql-toolbar) { border-radius: 4px 4px 0 0; background: #fafafa; }
 .quill-wrapper :deep(.ql-container) { border-radius: 0 0 4px 4px; font-size: 14px; }
-.word-count { text-align: right; font-size: 12px; color: #909399; margin-top: 4px; }
-.word-count.warning { color: #e6a23c; }
-.word-count.error { color: #f56c6c; }
+.word-count { text-align: right; font-size: 12px; color: var(--el-text-color-placeholder); margin-top: 4px; }
+.word-count.warning { color: var(--el-color-warning-dark-2); }
+.word-count.error { color: var(--el-color-danger-dark-2); }
 </style>
