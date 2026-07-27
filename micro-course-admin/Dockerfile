@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.4
 # Build stage: npm ci + vite build (自给自足, 不依赖外部 dist artifact)
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --cache /root/.npm
 COPY . .
 RUN npm run build
 
