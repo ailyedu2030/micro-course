@@ -249,7 +249,7 @@ services:
       start_period: 10s
 
   # ═══════════════════════════════════════════════════════════════
-  # Loki 日志聚合
+  # Loki + Promtail 日志聚合栈
   # ═══════════════════════════════════════════════════════════════
   micro-course-loki:
     image: grafana/loki:3.3.2
@@ -271,6 +271,28 @@ services:
         limits:
           memory: 512M
           cpus: '0.5'
+
+  micro-course-promtail:
+    image: grafana/promtail:3.3.2
+    container_name: micro-course-promtail
+    restart: unless-stopped
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/promtail/promtail-config.yaml:/etc/promtail/config.yaml:ro
+    command: -config.file=/etc/promtail/config.yaml
+    depends_on:
+      - micro-course-loki
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:9080/ready || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.3'
 
 volumes:
   prometheus_data:
