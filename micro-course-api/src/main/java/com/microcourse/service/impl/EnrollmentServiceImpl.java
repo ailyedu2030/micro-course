@@ -190,6 +190,10 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(readOnly = true)
     public StudentDetailVO getStudentDetail(Long userId) {
+        // TEACHER 仅能查询自己课程中的学生
+        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
+            assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
+        }
         return queryService.getStudentDetail(userId);
     }
 

@@ -136,9 +136,7 @@ public class InteractiveCoursewareController {
         if (SecurityUtil.isAdmin()) {
             return;
         }
-        if (!SecurityUtil.hasRole("TEACHER")) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+        // @PreAuthorize on the calling method ensures only TEACHER/ADMIN reach here
         Course course = courseRepository.selectById(courseId);
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);

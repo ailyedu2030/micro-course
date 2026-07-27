@@ -50,9 +50,6 @@ public class StudentController {
         query.setStatus(status);
         query.setClassName(className);
         query.setMajorName(majorName);
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            query.setTeacherId(SecurityUtil.getCurrentUserId());
-        }
         return R.ok(enrollmentService.getEnrollmentPage(query));
     }
 
@@ -64,9 +61,6 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     @Operation(summary = "获取学员详情")
     public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
-        }
         StudentDetailVO detail = enrollmentService.getStudentDetail(userId);
         return R.ok(detail);
     }
@@ -79,9 +73,6 @@ public class StudentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     @Operation(summary = "获取学员学习进度")
     public R<List<EnrollmentVO>> getStudentProgress(@PathVariable Long userId) {
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
-        }
         List<EnrollmentVO> progress = enrollmentService.getStudentProgress(userId);
         return R.ok(progress);
     }

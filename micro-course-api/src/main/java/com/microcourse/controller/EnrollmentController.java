@@ -97,10 +97,6 @@ public class EnrollmentController {
     @GetMapping("/student-detail/{userId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<StudentDetailVO> getStudentDetail(@PathVariable Long userId) {
-        // R12 P1-C-4: TEACHER 仅能查询自己课程中的学生（校验由 Service 层执行）
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
-        }
         StudentDetailVO detail = enrollmentService.getStudentDetail(userId);
         return R.ok(detail);
     }
@@ -113,9 +109,6 @@ public class EnrollmentController {
     @GetMapping("/student/{userId}/progress")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<EnrollmentVO>> getStudentProgress(@PathVariable Long userId) {
-        if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
-            enrollmentService.assertStudentInTeachersCourses(SecurityUtil.getCurrentUserId(), userId);
-        }
         List<EnrollmentVO> progress = enrollmentService.getStudentProgress(userId);
         return R.ok(progress);
     }
