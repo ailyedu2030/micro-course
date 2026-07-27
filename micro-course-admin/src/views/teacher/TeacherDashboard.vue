@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="welcome-right">
-        <span class="welcome-title">教师工作台</span>
+        <span class="welcome-title">{{ $t('teacher.dashboard') }}</span>
       </div>
     </div>
 
@@ -56,7 +56,7 @@
                 <div class="stat-value">{{ stats.courseCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">我的课程数</div>
+            <div class="stat-label">{{ $t('teacher.myCourseCount') }}</div>
           </div>
         </div>
       </el-col>
@@ -74,7 +74,7 @@
                 <div class="stat-value">{{ stats.studentCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">在学学员数</div>
+            <div class="stat-label">{{ $t('teacher.studentCount') }}</div>
           </div>
         </div>
       </el-col>
@@ -92,7 +92,7 @@
                 <div class="stat-value">{{ stats.pendingHomework ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">待批改作业</div>
+            <div class="stat-label">{{ $t('teacher.pendingHomework') }}</div>
           </div>
         </div>
       </el-col>
@@ -110,7 +110,7 @@
                 <div class="stat-value">{{ stats.pendingQuestions ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">学员提问</div>
+            <div class="stat-label">{{ $t('teacher.studentQuestions') }}</div>
           </div>
         </div>
       </el-col>
@@ -128,7 +128,7 @@
                 <div class="stat-value">{{ Number(stats.completionRate ?? 0).toFixed(1) }}%</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">完成率</div>
+            <div class="stat-label">{{ $t('teacher.completionRate') }}</div>
           </div>
         </div>
       </el-col>
@@ -146,7 +146,7 @@
                 <div class="stat-value">{{ Number(stats.avgScore ?? 0).toFixed(1) }} 分</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">平均分</div>
+            <div class="stat-label">{{ $t('teacher.avgScore') }}</div>
           </div>
         </div>
       </el-col>
@@ -331,35 +331,42 @@
       <router-link to="/teacher/courses" class="quick-action-card" aria-label="创建新课程">
         <div class="qa-icon qa-icon-primary"><el-icon :size="22"><Plus /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">创建课程</div>
-          <div class="qa-desc">新建课程、编辑章节、添加视频</div>
+          <div class="qa-title">{{ $t('teacher.createCourse') }}</div>
+          <div class="qa-desc">{{ $t('teacher.courseManagement') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/teaching-classes" class="quick-action-card" aria-label="管理教学班">
         <div class="qa-icon qa-icon-success"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">教学班</div>
-          <div class="qa-desc">开班、结课、查看学员</div>
+          <div class="qa-title">{{ $t('teacher.teachingClassTitle') }}</div>
+          <div class="qa-desc">{{ $t('teacher.teachingClass') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/students" class="quick-action-card" aria-label="查看学员列表">
         <div class="qa-icon qa-icon-warning"><el-icon :size="22"><User /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">学员管理</div>
-          <div class="qa-desc">查看学员、学习进度与课程归属</div>
+          <div class="qa-title">{{ $t('teacher.studentManagementTitle') }}</div>
+          <div class="qa-desc">{{ $t('teacher.studentManagement') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/grades" class="quick-action-card" aria-label="查看成绩明细">
         <div class="qa-icon qa-icon-danger"><el-icon :size="22"><DataAnalysis /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">成绩明细</div>
-          <div class="qa-desc">查看成绩、筛选课程并处理批改</div>
+          <div class="qa-title">{{ $t('teacher.gradeDetail') }}</div>
+          <div class="qa-desc">{{ $t('teacher.gradeManagement') }}</div>
         </div>
       </router-link>
-      <router-link to="/teacher/discussions" class="quick-action-card" aria-label="回复学员提问">
+      <router-link to="/teacher/discussions" class="quick-action-card" :aria-label="$t('teacher.studentQuestions')">
         <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">学员提问</div>
+          <div class="qa-title">{{ $t('teacher.studentQuestions') }}</div>
+          <div class="qa-desc">{{ $t('teacher.studentQA') }}</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/discussions" class="quick-action-card" :aria-label="$t('teacher.studentQuestions')">
+        <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">{{ $t('teacher.studentQuestions') }}</div>
           <div class="qa-desc">答疑、互动讨论</div>
         </div>
       </router-link>
@@ -371,7 +378,7 @@
       <el-col :xs="24" :md="14">
         <div class="chart-card">
           <div class="card-header">
-            <span>最近 7 天学情</span>
+            <span>{{ $t('teacher.recentActivity') }}</span>
           </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
@@ -388,7 +395,7 @@
         </div>
         <div class="chart-card">
           <div class="card-header">
-            <span>学员活跃度</span>
+            <span>{{ $t('teacher.studentActivity') }}</span>
           </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
@@ -409,7 +416,7 @@
       <el-col :xs="24" :md="10">
         <div class="list-card">
           <div class="card-header">
-            <span>待办</span>
+            <span>{{ $t('teacher.pendingTasks') }}</span>
           </div>
           <el-skeleton :loading="tasksLoading" animated :rows="3">
             <template #template>
@@ -436,7 +443,7 @@
         </div>
         <div class="list-card">
           <div class="card-header">
-            <span>最新通知</span>
+            <span>{{ $t('teacher.latestNotifications') }}</span>
           </div>
           <el-skeleton :loading="notifLoading" animated :rows="3">
             <template #template>
@@ -466,7 +473,7 @@
     <!-- 底部：我教的课程 -->
     <div class="course-card">
       <div class="card-header">
-        <span>我教的课程</span>
+        <span>{{ $t('teacher.myCourses') }}</span>
       </div>
       <el-skeleton :loading="coursesLoading" animated :rows="2">
         <template #template>
