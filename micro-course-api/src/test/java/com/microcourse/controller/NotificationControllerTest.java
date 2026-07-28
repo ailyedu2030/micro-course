@@ -3,6 +3,7 @@ package com.microcourse.controller;
 import com.microcourse.BaseIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -93,10 +94,10 @@ class NotificationControllerTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /api/notifications · TEACHER 可发送通知")
-    void send_Teacher_ReturnsNotification() throws Exception {
+    @DisplayName("POST /api/notifications · ADMIN 可发送通知")
+    void send_Admin_ReturnsNotification() throws Exception {
         MvcResult result = mockMvc.perform(post("/api/notifications")
-                        .header("Authorization", bearerTeacher())
+                        .header("Authorization", bearerAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"userId\":7,\"type\":\"COURSE_NOTICE\",\"title\":\"测试通知\",\"content\":\"这是一条测试通知内容\"}"))
                 .andExpect(status().isOk())
