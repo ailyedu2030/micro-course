@@ -11,14 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 注:GitHub branch protection 要求 status check 名称与 job name 精确匹配。
+  # 使用 strategy.matrix 会产生 backend (17) 后缀,与 required check "backend" 不匹配。
+  # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
-    strategy:
-      matrix:
-        # 矩阵测试:JDK 17 主用 + JDK 21 兼容(项目需在 17/21 同时可编译)
-        # 当前因项目未完全适配 JDK 21 (字节码/某些特性),先仅用 17
-        # 后续 Phase 增加 JDK 21 + 必要适配后启 21
-        java-version: [17]
-      max-parallel: 1
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -46,10 +42,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK ${{ matrix.java-version }}
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ matrix.java-version }}
+          java-version: 17
           distribution: temurin
 
       - name: Wait for PostgreSQL & Redis
@@ -80,19 +76,16 @@ jobs:
           TEST_REDIS_HOST: localhost
           TEST_REDIS_PORT: 6379
 
+  # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
-    strategy:
-      matrix:
-        node-version: [20, 22]
-      max-parallel: 2
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20
           cache: npm
           cache-dependency-path: micro-course-admin/package-lock.json
 
