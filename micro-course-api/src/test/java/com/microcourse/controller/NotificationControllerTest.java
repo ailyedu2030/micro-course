@@ -29,6 +29,8 @@ class NotificationControllerTest extends BaseIntegrationTest {
     @AfterEach
     void cleanup() {
         jdbc.update("DELETE FROM notifications WHERE id > 0");
+        // 防御性:重置 p0_teacher 角色(防止其他 test class 状态污染)
+        jdbc.update("UPDATE users SET role = 'TEACHER', status = 1 WHERE id = 6 AND username = 'p0_teacher'");
     }
 
     private String bearerTeacher() throws Exception {
