@@ -64,7 +64,7 @@
             <span :class="{ 'title-unread': !row.isRead }">{{ row.title }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="内容" min-width="200">
+        <el-table-column prop="content" :label="$t('notification.contentLabel')" min-width="200">
           <template #default="{ row }">
             {{ truncate(row.content, 50) }}
           </template>
@@ -140,8 +140,10 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useNotificationStore } from '@/store/notification'
 import { useUserStore } from '@/store/user'
+const { t } = useI18n()
 
 // ---------------------------------------------------------------------------
 // Store & Router
@@ -175,11 +177,11 @@ const size = ref(Number(route.query.size) || 10)
 const typeFilter = ref(route.query.type || '')
 
 const typeTabs = [
-  { label: '全部', value: '' },
-  { label: '选课', value: 'ENROLLMENT' },
-  { label: '成绩', value: 'GRADE' },
-  { label: '讨论', value: 'DISCUSSION' },
-  { label: '系统', value: 'SYSTEM' }
+  { label: t('app.all'), value: '' },
+  { label: t('notification.enrollment'), value: 'ENROLLMENT' },
+  { label: t('notification.grade'), value: 'GRADE' },
+  { label: t('notification.discussion'), value: 'DISCUSSION' },
+  { label: t('notification.system'), value: 'SYSTEM' }
 ]
 
 const truncate = (text, length) => {
@@ -189,11 +191,11 @@ const truncate = (text, length) => {
 
 // 通知类型标签映射: 系统(blue), 课程/选课(green), 成绩/考试(orange)
 const notifTagMap = {
-  SYSTEM: { label: '系统通知', type: 'primary' },     // 蓝色
-  ENROLLMENT: { label: '课程通知', type: 'success' }, // 绿色
-  GRADE: { label: '考试通知', type: 'warning' },      // 橙色
-  DISCUSSION: { label: '讨论通知', type: 'primary' },  // 蓝色
-  EXAM: { label: '考试通知', type: 'warning' }         // 橙色
+  SYSTEM: { label: () => t('notification.system'), type: 'primary' },
+  ENROLLMENT: { label: () => t('notification.enrollment'), type: 'success' },
+  GRADE: { label: () => t('notification.grade'), type: 'warning' },
+  DISCUSSION: { label: () => t('notification.discussion'), type: 'primary' },
+  EXAM: { label: () => t('notification.grade'), type: 'warning' }
 }
 
 function getNotifTagType(type) {
@@ -201,7 +203,7 @@ function getNotifTagType(type) {
 }
 
 function getNotifTagLabel(type) {
-  return notifTagMap[type]?.label ?? '系统通知'
+  return notifTagMap[type]?.label() ?? t('notification.system')
 }
 
 // 未读行高亮
@@ -245,7 +247,7 @@ const fetchData = async () => {
     tableData.value = notificationStore.list
     totalElements.value = notificationStore.totalElements
   } catch {
-    ElMessage.error('获取通知列表失败')
+    ElMessage.error(t('common.failed'))
   } finally {
     loading.value = false
   }
@@ -284,9 +286,9 @@ const handleMarkAllRead = async () => {
   try {
     await notificationStore.markAllRead()
     tableData.value.forEach(n => { n.isRead = true })
-    ElMessage.success('全部已标记为已读')
+    ElMessage.success(t('notification.markAllRead'))
   } catch (e) {
-    ElMessage.error('标记已读失败，请重试')
+    ElMessage.error(t('common.failed'))
   } finally {
     markingAll.value = false
   }

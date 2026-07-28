@@ -3,13 +3,13 @@
   路由: /courses/:id  |  /courses/:id/edit
 -->
 <template>
-  <div class="course-detail-page" v-loading="loading" element-loading-text="加载课程信息...">
+  <div class="course-detail-page" v-loading="loading" :element-loading-text="$t('common.loading')">
     <!-- 面包屑 -->
     <div class="page-breadcrumb">
-      <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
-        <el-breadcrumb-item>{{ isCreateMode ? '创建课程' : (isEditMode ? '编辑课程' : (courseData.title || '课程详情')) }}</el-breadcrumb-item>
+        <el-breadcrumb separator="→">
+        <el-breadcrumb-item :to="{ path: '/' }">{{ $t('course.home') }}</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ isCreateMode ? $t('course.createCourse') : (isEditMode ? $t('course.editCourse') : (courseData.title || $t('course.courseDetail'))) }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
 
@@ -18,7 +18,7 @@
       <!-- P1C-075: ACADEMIC 只读模式提示 -->
       <el-alert
 v-if="userRole === 'ACADEMIC'"
-        title="您正在以教务处身份查看，当前为只读模式"
+        :title="$t('course.readonlyAcademic')"
         type="warning"
         :closable="false"
         show-icon
@@ -26,86 +26,86 @@ v-if="userRole === 'ACADEMIC'"
       />
       <!-- 头部操作栏 -->
       <div class="action-bar">
-        <h1 class="course-title">{{ courseData.title || '未命名课程' }}</h1>
+        <h1 class="course-title">{{ courseData.title || $t('course.unnamed') }}</h1>
         <div class="action-buttons">
           <template v-if="courseData.status === 0 && userRole === 'TEACHER'">
-            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">提交审核</el-button>
+            <el-button type="primary" @click="handleSubmitForReview" :loading="submitLoading" :disabled="submitLoading">{{ $t('course.submitForReview') }}</el-button>
           </template>
           <template v-if="courseData.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')">
-            <el-button type="success" @click="handleApprove">审核通过</el-button>
-            <el-button type="danger" @click="handleReject">驳回</el-button>
+            <el-button type="success" @click="handleApprove">{{ $t('course.approve') }}</el-button>
+            <el-button type="danger" @click="handleReject">{{ $t('course.reject') }}</el-button>
           </template>
           <template v-if="[2, 5].includes(courseData.status) && userRole === 'ADMIN'">
-            <el-button type="primary" @click="handlePublish">{{ courseData.status === 5 ? '重新上架' : '发布' }}</el-button>
+            <el-button type="primary" @click="handlePublish">{{ courseData.status === 5 ? $t('course.publish') : $t('course.publish') }}</el-button>
           </template>
           <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
-            <el-button type="warning" @click="handleUnpublish">下架</el-button>
+            <el-button type="warning" @click="handleUnpublish">{{ $t('course.unpublish') }}</el-button>
           </template>
-          <el-button v-if="courseData.courseType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">课件总览</el-button>
-          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">编辑</el-button>
-          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="warning" plain @click="handleCopy">复制</el-button>
+          <el-button v-if="courseData.courseType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">{{ $t('course.slideOverview') }}</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">{{ $t('app.edit') }}</el-button>
+          <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="warning" plain @click="handleCopy">{{ $t('course.copy') }}</el-button>
           <el-button type="info" plain @click="previewAsStudent">
-            <el-icon><View /></el-icon> 學生預覽
+            <el-icon><View /></el-icon> {{ $t('course.studentPreview') }}
           </el-button>
-          <el-button @click="handleBack">返回</el-button>
+          <el-button @click="handleBack">{{ $t('app.back') }}</el-button>
         </div>
       </div>
 
       <!-- 基本信息 -->
       <el-card shadow="never" class="info-card">
-        <template #header><span class="card-title">基本信息</span></template>
+        <template #header><span class="card-title">{{ $t('course.basicInfo') }}</span></template>
         <div class="info-grid">
           <div class="info-item">
-            <label>分类</label>
+            <label>{{ $t('course.category') }}</label>
             <span>{{ courseData.categoryName || '-' }}</span>
           </div>
           <div class="info-item">
-            <label>授课教师</label>
+            <label>{{ $t('course.teacher') }}</label>
             <span>{{ courseData.teacherName || '-' }}</span>
           </div>
           <div class="info-item">
-            <label>状态</label>
+            <label>{{ $t('course.status') }}</label>
             <span>
-              <el-tag v-if="courseData.status === 0" type="info" size="small">草稿</el-tag>
-              <el-tag v-else-if="courseData.status === 1" type="warning" size="small">待审核</el-tag>
-              <el-tag v-else-if="courseData.status === 2" type="success" size="small">已通过</el-tag>
-              <el-tag v-else-if="courseData.status === 3" type="danger" size="small">驳回</el-tag>
-              <el-tag v-else-if="courseData.status === 4" type="success" size="small">已发布</el-tag>
-              <el-tag v-else-if="courseData.status === 5" type="warning" size="small">已下架</el-tag>
-              <el-tag v-else type="info" size="small">已归档</el-tag>
+              <el-tag v-if="courseData.status === 0" type="info" size="small">{{ $t('course.draft') }}</el-tag>
+              <el-tag v-else-if="courseData.status === 1" type="warning" size="small">{{ $t('course.submitForReview') }}</el-tag>
+              <el-tag v-else-if="courseData.status === 2" type="success" size="small">{{ $t('course.approve') }}</el-tag>
+              <el-tag v-else-if="courseData.status === 3" type="danger" size="small">{{ $t('course.reject') }}</el-tag>
+              <el-tag v-else-if="courseData.status === 4" type="success" size="small">{{ $t('course.published') }}</el-tag>
+              <el-tag v-else-if="courseData.status === 5" type="warning" size="small">{{ $t('course.unpublish') }}</el-tag>
+              <el-tag v-else type="info" size="small">{{ $t('course.archived') }}</el-tag>
             </span>
           </div>
           <div class="info-item">
-            <label>学分</label>
+            <label>{{ $t('course.credit') }}</label>
             <span>{{ courseData.creditHours ?? '-' }}</span>
           </div>
           <div class="info-item">
-            <label>学期</label>
+            <label>{{ $t('course.semester') }}</label>
             <span>{{ courseData.semester || '-' }}</span>
           </div>
           <div class="info-item">
-            <label>难度</label>
+            <label>{{ $t('course.difficulty') }}</label>
             <span>
-              <template v-if="courseData.difficulty === 1">初级</template>
-              <template v-else-if="courseData.difficulty === 2">中级</template>
-              <template v-else-if="courseData.difficulty === 3">高级</template>
+              <template v-if="courseData.difficulty === 1">{{ $t('course.beginner') }}</template>
+              <template v-else-if="courseData.difficulty === 2">{{ $t('course.intermediate') }}</template>
+              <template v-else-if="courseData.difficulty === 3">{{ $t('course.advanced') }}</template>
               <template v-else>-</template>
             </span>
           </div>
           <div class="info-item">
-            <label>课程类型</label>
+            <label>{{ $t('course.courseType') }}</label>
             <span>
-              <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">视频课程</el-tag>
-              <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">互动课程</el-tag>
+              <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">{{ $t('course.videoCourse') }}</el-tag>
+              <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">{{ $t('course.interactive') }}</el-tag>
               <span v-else>{{ courseData.courseType || '-' }}</span>
             </span>
           </div>
           <div class="info-item">
-            <label>价格</label>
-            <span class="price">{{ courseData.price ? '¥' + courseData.price : '免费' }}</span>
+            <label>{{ $t('course.coursePrice') }}</label>
+            <span class="price">{{ courseData.price ? '¥' + courseData.price : $t('app.free') }}</span>
           </div>
           <div class="info-item">
-            <label>学员数</label>
+            <label>{{ $t('course.studentCount') }}</label>
             <span>{{ courseData.studentCount ?? 0 }}</span>
           </div>
         </div>
@@ -113,24 +113,24 @@ v-if="userRole === 'ACADEMIC'"
 
       <!-- 封面 -->
       <el-card shadow="never" class="info-card">
-        <template #header><span class="card-title">课程封面</span></template>
+        <template #header><span class="card-title">{{ $t('course.courseCover') }}</span></template>
         <template v-if="courseData.coverUrl">
           <el-image :src="courseData.coverUrl" fit="contain" class="cover-img" />
         </template>
         <template v-else>
           <el-alert
-            title="尚未设置课程封面"
+            :title="$t('course.noCover')"
             type="warning"
             :closable="false"
             show-icon
-            description="提交审核前必须上传封面，点击「编辑」按钮后在封面区域上传"
+            :description="$t('course.noCoverDesc')"
           />
         </template>
       </el-card>
 
       <!-- 课程描述 -->
       <el-card shadow="never" class="info-card" v-if="courseData.description">
-        <template #header><span class="card-title">课程描述</span></template>
+        <template #header><span class="card-title">{{ $t('course.courseDescription') }}</span></template>
         <div class="description-html" v-html="sanitizeHtml(courseData.description)"></div>
       </el-card>
 
@@ -138,13 +138,13 @@ v-if="userRole === 'ACADEMIC'"
       <el-card shadow="never" class="chapter-card">
         <template #header>
           <div class="card-header-row">
-            <span class="card-title">章节管理 <span v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" class="hint">（可拖拽排序）</span></span>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="handleCreateChapter">新增章节</el-button>
+            <span class="card-title">{{ $t('course.chapterMgmt') }} <span v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" class="hint">{{ $t('course.dragHint') }}</span></span>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="handleCreateChapter">{{ $t('course.addChapter') }}</el-button>
           </div>
         </template>
         <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
-          <template #empty><el-empty description="暂无章节，点击上方「新增章节」添加内容" /></template>
-          <el-table-column type="expand" width="40" label="展开">
+          <template #empty><el-empty :description="$t('course.noChapters')" /></template>
+          <el-table-column type="expand" width="40" :label="$t('app.detail')">
             <template #default="{ row }">
               <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
                 <div v-loading="sectionLoading[row.id]">
@@ -154,27 +154,27 @@ v-if="userRole === 'ACADEMIC'"
                     @delete="(s) => handleDeleteSection(row, s)"
                   />
                   <div style="margin-top:8px">
-                    <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">+ 新增课时</el-button>
+                    <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">{{ $t('course.addSection') }}</el-button>
                   </div>
                 </div>
               </div>
             </template>
           </el-table-column>
           <el-table-column type="index" label="#" width="60" align="center" />
-          <el-table-column prop="title" label="章节标题" min-width="200" show-overflow-tooltip />
-          <el-table-column label="课时" width="70" align="center">
+          <el-table-column prop="title" :label="$t('course.courseName')" min-width="200" show-overflow-tooltip />
+          <el-table-column :label="$t('course.sectionCount')" width="70" align="center">
             <template #default="{ row }">{{ (sectionsByChapterId[row.id] || []).length }}</template>
           </el-table-column>
-          <el-table-column prop="sortOrder" label="排序" width="70" align="center" />
-          <el-table-column v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" label="操作" width="120" align="center" fixed="right">
+          <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="70" align="center" />
+          <el-table-column v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" :label="$t('app.operation')" width="120" align="center" fixed="right">
             <template #default="{ row }">
-              <el-button type="primary" link size="small" @click="handleEditChapter(row)">编辑</el-button>
-              <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">删除</el-button>
+              <el-button type="primary" link size="small" @click="handleEditChapter(row)">{{ $t('course.sectionEdit') }}</el-button>
+              <el-button type="danger" link size="small" @click="handleDeleteChapter(row)">{{ $t('course.sectionDelete') }}</el-button>
             </template>
           </el-table-column>
         </el-table>
         <div v-if="chapters.length > 0" class="sort-bar">
-          <el-button type="warning" size="small" :loading="saveSortLoading" :disabled="saveSortLoading" @click="handleSaveSort">保存排序</el-button>
+          <el-button type="warning" size="small" :loading="saveSortLoading" :disabled="saveSortLoading" @click="handleSaveSort">{{ $t('course.saveSort') }}</el-button>
         </div>
       </el-card>
     </template>
@@ -182,7 +182,7 @@ v-if="userRole === 'ACADEMIC'"
     <!-- P1C-075: ACADEMIC 编辑模式只读提示 -->
     <el-alert
 v-if="isEditMode && userRole === 'ACADEMIC'"
-      title="您正在以教务处身份查看，当前为只读模式。如需编辑请联系管理员。"
+      :title="$t('course.readonlyAcademicEdit')"
       type="warning"
       :closable="false"
       show-icon
@@ -192,72 +192,72 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
     <template v-if="isEditMode && !loading">
       <!-- 基本信息 -->
       <el-card shadow="never" class="info-card">
-        <template #header><span class="card-title">基本信息</span></template>
+        <template #header><span class="card-title">{{ $t('course.basicInfo') }}</span></template>
         <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="edit-form">
-          <el-form-item label="课程标题" prop="title">
-            <el-input v-model="formData.title" placeholder="请输入课程标题" aria-label="课程标题" />
+          <el-form-item :label="$t('course.courseName')" prop="title">
+            <el-input v-model="formData.title" :placeholder="$t('course.courseName')" :aria-label="$t('course.courseName')" />
           </el-form-item>
-          <el-form-item label="分类" prop="categoryId">
-            <el-select v-model="formData.categoryId" placeholder="请选择分类" class="full-width" aria-label="课程分类">
+          <el-form-item :label="$t('course.category')" prop="categoryId">
+            <el-select v-model="formData.categoryId" :placeholder="$t('course.category')" class="full-width" :aria-label="$t('course.category')">
               <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
             </el-select>
           </el-form-item>
-          <el-form-item label="授课教师">
-            <el-input :model-value="teacherName" disabled aria-label="授课教师" />
+          <el-form-item :label="$t('course.teacher')">
+            <el-input :model-value="teacherName" disabled :aria-label="$t('course.teacher')" />
           </el-form-item>
           <el-row :gutter="20">
             <el-col :span="8">
-              <el-form-item label="学分">
-                <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" aria-label="学分" />
+              <el-form-item :label="$t('course.credit')">
+                <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" :aria-label="$t('course.credit')" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="学期">
-                <el-input v-model="formData.semester" placeholder="如：2024春季" aria-label="学期" />
+              <el-form-item :label="$t('course.semester')">
+                <el-input v-model="formData.semester" :placeholder="$t('course.semester')" :aria-label="$t('course.semester')" />
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="难度">
-                <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable aria-label="难度">
-                  <el-option label="初级" :value="1" />
-                  <el-option label="中级" :value="2" />
-                  <el-option label="高级" :value="3" />
+              <el-form-item :label="$t('course.difficulty')">
+                <el-select v-model="formData.difficulty" :placeholder="$t('course.difficulty')" class="full-width" clearable :aria-label="$t('course.difficulty')">
+                  <el-option :label="$t('course.beginner')" :value="1" />
+                  <el-option :label="$t('course.intermediate')" :value="2" />
+                  <el-option :label="$t('course.advanced')" :value="3" />
                 </el-select>
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="价格(¥)">
-                <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" aria-label="价格" />
+              <el-form-item :label="$t('course.coursePrice') + '(¥)'">
+                <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=free" class="full-width" :aria-label="$t('course.coursePrice')" />
               </el-form-item>
             </el-col>
           </el-row>
-          <el-divider content-position="left">定价规则</el-divider>
+          <el-divider content-position="left">{{ $t('course.pricingRule') }}</el-divider>
           <!-- 【I-9 硬编码定价范围】当新增枚举值需同步更新此处 -->
           <el-row :gutter="20">
             <el-col :span="8">
-              <el-form-item label="免费范围">
-                <el-select v-model="formData.freeAccessScope" placeholder="选择免费范围" class="full-width" aria-label="免费范围">
-                  <el-option label="无" value="none" />
-                  <el-option label="同院系" value="same_department" />
-                  <el-option label="同学院" value="same_college" />
-                  <el-option label="同学校" value="same_school" />
+              <el-form-item :label="$t('course.freeAccess')">
+                <el-select v-model="formData.freeAccessScope" :placeholder="$t('course.freeAccess')" class="full-width" :aria-label="$t('course.freeAccess')">
+                  <el-option :label="$t('app.no')" value="none" />
+                  <el-option label="Same Dept" value="same_department" />
+                  <el-option label="Same College" value="same_college" />
+                  <el-option label="Same School" value="same_school" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="优惠范围">
-                <el-select v-model="formData.discountScope" placeholder="选择优惠范围" class="full-width" aria-label="优惠范围">
-                  <el-option label="无" value="none" />
-                  <el-option label="同学院" value="same_college" />
-                  <el-option label="同学校" value="same_school" />
+              <el-form-item :label="$t('course.discountScope')">
+                <el-select v-model="formData.discountScope" :placeholder="$t('course.discountScope')" class="full-width" :aria-label="$t('course.discountScope')">
+                  <el-option :label="$t('app.no')" value="none" />
+                  <el-option label="Same College" value="same_college" />
+                  <el-option label="Same School" value="same_school" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="8">
-              <el-form-item label="优惠比例">
-                <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" aria-label="优惠比例" />%
+              <el-form-item :label="$t('course.discountPercent')">
+                <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" :aria-label="$t('course.discountPercent')" />%
               </el-form-item>
             </el-col>
           </el-row>
@@ -266,9 +266,9 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
 
       <!-- 课程描述 -->
       <el-card shadow="never" class="info-card">
-        <template #header><span class="card-title">课程描述</span></template>
+        <template #header><span class="card-title">{{ $t('course.courseDescription') }}</span></template>
         <el-form label-width="100px">
-          <el-form-item label="课程描述" prop="description">
+          <el-form-item :label="$t('course.courseDescription')" prop="description">
             <div class="quill-editor-wrapper">
               <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '180px' }" />
             </div>
@@ -278,54 +278,54 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
 
       <!-- 封面 -->
       <el-card shadow="never" class="info-card">
-        <template #header><span class="card-title">课程封面</span></template>
+        <template #header><span class="card-title">{{ $t('course.courseCover') }}</span></template>
         <div class="cover-edit-area">
           <template v-if="!coverPreviewUrl">
-            <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange" drag aria-label="上传课程封面">
+            <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png,image/gif,image/webp" :on-change="handleCoverChange" drag :aria-label="$t('course.uploadCover')">
               <el-icon class="el-icon--upload"><i class="el-icon-upload" /></el-icon>
-              <div class="el-upload__text">拖拽或<em>点击上传</em></div>
-              <template #tip><div class="form-tip">建议 1200×628px，支持 JPG/PNG/GIF/WebP，最大 2MB</div></template>
+              <div class="el-upload__text">{{ $t('course.uploadCover') }}</div>
+              <template #tip><div class="form-tip">{{ $t('course.coverSizeHint') }}</div></template>
             </el-upload>
           </template>
           <div v-else class="cover-preview-wrap">
-            <img :src="coverPreviewUrl" class="cover-preview-img" alt="封面预览" />
-            <el-button size="small" @click="handleRemoveCover">删除</el-button>
+            <img :src="coverPreviewUrl" class="cover-preview-img" alt="Cover preview" />
+            <el-button size="small" @click="handleRemoveCover">{{ $t('course.removeCover') }}</el-button>
           </div>
         </div>
       </el-card>
 
       <!-- 操作按钮 -->
       <div class="submit-bar">
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ isCreateMode ? '创建课程' : '保存' }}</el-button>
-        <el-button @click="switchToView">取消</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ isCreateMode ? $t('course.createCourse') : $t('app.save') }}</el-button>
+        <el-button @click="switchToView">{{ $t('app.cancel') }}</el-button>
       </div>
     </template>
 
     <!-- 章节弹窗 -->
     <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
-        <el-form-item label="章节标题" prop="title">
-          <el-input v-model="chapterFormData.title" placeholder="如：第一章 · 环境搭建" aria-label="章节标题" />
+        <el-form-item :label="$t('course.courseName')" prop="title">
+          <el-input v-model="chapterFormData.title" :placeholder="$t('course.courseName')" :aria-label="$t('course.courseName')" />
         </el-form-item>
         <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
-          章节类型已迁移到「课时」管理。创建章节后，可在章节下添加不同类型的课时。
+          {{ $t('course.chapterTypeHint') }}
         </div>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="排序号">
-              <el-input-number v-model="chapterFormData.sortOrder" :min="1" class="full-width" aria-label="排序号" />
+            <el-form-item :label="$t('course.sortOrder')">
+              <el-input-number v-model="chapterFormData.sortOrder" :min="1" class="full-width" :aria-label="$t('course.sortOrder')" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="预计时长(分)">
-              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="选填" class="full-width" aria-label="预计时长" />
+            <el-form-item :label="$t('course.duration')">
+              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="optional" class="full-width" :aria-label="$t('course.duration')" />
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="handleChapterCancel">取消</el-button>
-        <el-button type="primary" :loading="chapterSubmitLoading" :disabled="chapterSubmitLoading" @click="handleChapterSubmit">确定</el-button>
+        <el-button @click="handleChapterCancel">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="chapterSubmitLoading" :disabled="chapterSubmitLoading" @click="handleChapterSubmit">{{ $t('app.confirm') }}</el-button>
       </template>
     </el-dialog>
 
