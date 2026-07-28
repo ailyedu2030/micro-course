@@ -239,6 +239,28 @@
             <artifactId>commons-codec</artifactId>
         </dependency>
 
+        <!-- OpenTelemetry SDK 链路追踪（Spring Boot 3.x 自动配置） -->
+        <!-- OpenTelemetry 集成 → 临时禁用 (Phase 4 Round 4 总工程师决策)
+             【教训】OTel 1.31.0 没有 ComponentLoader,1.44.0+ 才有但 1.44.0-1.45.0 调
+             ConfigUtil.safeSystemProperties(只在 1.46.0+ 提供),1.46.0+ 又与 starter 2.16.0
+             transitive api 1.31.0 不兼容。完整解决需要 OTel BOM 统一管理 + 完整的
+             spring-boot-3.4 + starter 2.20+ 组合,作为独立 Phase 投入。
+             当前 Round 4 的 OTel 集成导致 prod 启动失败,【回滚 P3 改动保护 P0 功能】。 -->
+        <!--
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-spring-boot-starter</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-bom</artifactId>
+            <version>1.46.0</version>
+            <type>pom</type>
+            <scope>import</scope>
+        </dependency>
+        -->
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

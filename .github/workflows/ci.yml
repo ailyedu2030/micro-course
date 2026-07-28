@@ -11,6 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # 注:GitHub branch protection 要求 status check 名称与 job name 精确匹配。
+  # 使用 strategy.matrix 会产生 backend (17) 后缀,与 required check "backend" 不匹配。
+  # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
     runs-on: ubuntu-latest
     services:
@@ -73,15 +76,16 @@ jobs:
           TEST_REDIS_HOST: localhost
           TEST_REDIS_PORT: 6379
 
+  # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js
+      - name: Use Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
           cache-dependency-path: micro-course-admin/package-lock.json
 
@@ -112,11 +116,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Pull base images
-        run: docker compose pull
-
-      - name: Build Docker
-        run: docker compose build
+      - name: Build Docker (pull base images if available otherwise use cached)
+        run: docker compose pull --ignore-pull-failures 2>&1 || true; docker compose build
 
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
@@ -136,3 +137,12 @@ jobs:
             --entrypoint /bin/amtool \
             prom/alertmanager:v0.27.0 \
             check-config /tmp/alertmanager.yml
+
+      - name: Validate Grafana dashboards JSON
+        run: |
+          for f in monitoring/grafana/dashboards/*.json; do
+            jq empty "$f" || (echo "❌ Invalid JSON: $f" && exit 1)
+            # 验证必需字段: title, uid, panels
+            jq -e '.title and .uid and .panels' "$f" > /dev/null || (echo "❌ Missing required fields in $f" && exit 1)
+            echo "✅ $f — valid"
+          done

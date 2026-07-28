@@ -11,7 +11,7 @@
       <!-- 欢迎栏 -->
       <div class="welcome-bar student-welcome">
         <div class="welcome-left">
-          <span class="welcome-text">你好，{{ username }}</span>
+          <span class="welcome-text">{{ $t('learning.greeting') }}{{ username }}</span>
         </div>
         <div class="welcome-right">
           <span class="badge-date">
@@ -20,7 +20,7 @@
           </span>
           <span class="badge-motto">
             <el-icon><Star /></el-icon>
-            学无止境
+            {{ $t('learning.motto') }}
           </span>
           <el-button
             v-if="!checkedInToday"
@@ -30,11 +30,11 @@
             @click="doCheckIn"
             :loading="checkInLoading"
           >
-            今日打卡
+            {{ $t('learning.todayCheckIn') }}
           </el-button>
           <span v-else class="checked-in-badge">
             <el-icon><CircleCheck /></el-icon>
-            已打卡
+            {{ $t('learning.checkedIn') }}
           </span>
         </div>
       </div>
@@ -47,7 +47,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedInProgress }}</div>
-            <div class="hl-stat-label">进行中课程</div>
+            <div class="hl-stat-label">{{ $t('learning.inProgress') }}</div>
           </div>
         </el-card>
         <el-card class="highlight-stat-card hl-success student-stat-card" shadow="hover">
@@ -56,7 +56,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedCompleted }}</div>
-            <div class="hl-stat-label">已完成课程</div>
+            <div class="hl-stat-label">{{ $t('learning.completedCourses') }}</div>
           </div>
         </el-card>
         <el-card class="highlight-stat-card hl-warning student-stat-card" shadow="hover">
@@ -65,7 +65,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
-            <div class="hl-stat-label">连续打卡天数</div>
+            <div class="hl-stat-label">{{ $t('learning.streakDays') }}</div>
           </div>
         </el-card>
       </div>
@@ -78,7 +78,7 @@
           class="quick-entry-item student-card-item"
           role="button"
           tabindex="0"
-          :aria-label="'快捷入口：' + entry.label"
+          :aria-label="entry.label"
           @click="navigateTo(entry.path)"
           @keydown.enter="navigateTo(entry.path)"
           @keydown.space.prevent="navigateTo(entry.path)"
@@ -101,12 +101,12 @@
       <el-result
         v-else-if="statsError"
         icon="error"
-        title="数据加载失败"
-        sub-title="统计信息获取异常，请重试"
+        :title="$t('learning.loadingFailed')"
+        :sub-title="$t('learning.statsError')"
         class="stats-error-result"
       >
         <template #extra>
-          <el-button type="primary" @click="loadData">重新加载</el-button>
+          <el-button type="primary" @click="loadData">{{ $t('learning.reload') }}</el-button>
         </template>
       </el-result>
 
@@ -115,25 +115,25 @@
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.totalHours }}</div>
-            <div class="stat-card-label">累计学习时长</div>
+            <div class="stat-card-label">{{ $t('learning.totalTime') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.completedCourses }}</div>
-            <div class="stat-card-label">已完成课程</div>
+            <div class="stat-card-label">{{ $t('learning.completedCourses') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.certificates }}</div>
-            <div class="stat-card-label">获得证书</div>
+            <div class="stat-card-label">{{ $t('learning.certificates') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.studyDays }}</div>
-            <div class="stat-card-label">累计天数</div>
+            <div class="stat-card-label">{{ $t('learning.studyDays') }}</div>
           </el-card>
         </div>
       </div>
@@ -143,17 +143,17 @@
         v-if="recentCourse.title"
         type="button"
         class="continue-learning"
-        :aria-label="`继续学习：${recentCourse.title}`"
+        :aria-label="$t('learning.continueLearning') + '：' + recentCourse.title"
         @click="navigateToLearning(recentCourse)"
       >
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner">
             <div class="continue-info">
-              <div class="continue-label">继续学习</div>
+              <div class="continue-label">{{ $t('learning.continueLearning') }}</div>
               <div class="continue-title">{{ recentCourse.title }}</div>
               <div class="continue-meta">
-                <span class="continue-chapter">第{{ recentCourse.currentChapter }}章</span>
-                <span class="continue-progress-label">学习进度</span>
+                <span class="continue-chapter">{{ $t('learning.chapterFormat', { chapter: recentCourse.currentChapter }) }}</span>
+                <span class="continue-progress-label">{{ $t('learning.progressLabel') }}</span>
               </div>
               <el-progress
                 :percentage="recentCourse.progress"
@@ -171,14 +171,14 @@
 
       <!-- 最近学习 -->
       <div v-if="recentRecords.length > 0" class="recent-learning-section">
-        <div class="section-title">最近学习</div>
+        <div class="section-title">{{ $t('learning.recentLearning') }}</div>
         <div class="recent-learning-list">
           <button
             v-for="record in recentRecords"
             :key="record.courseId"
             type="button"
             class="recent-learning-item"
-            :aria-label="`继续学习：${record.title}`"
+            :aria-label="$t('learning.continueLearning') + ' ' + record.title"
             @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
@@ -190,7 +190,7 @@
                 size="small"
                 effect="dark"
               >
- 已完成
+  {{ $t('learning.completed') }}
 </el-tag>
             </div>
             <div class="recent-info">
@@ -214,7 +214,7 @@
         <div class="chart-section">
           <el-card shadow="hover" class="chart-card student-card-item">
             <template #header>
-              <div class="card-header-title">本周学习时长</div>
+              <div class="card-header-title">{{ $t('learning.weekHours') }}</div>
             </template>
             <AccuracyTrendChart
               :data="chartData"
@@ -229,7 +229,7 @@
         <div class="calendar-section">
           <el-card shadow="hover" class="calendar-card student-card-item">
             <template #header>
-              <div class="card-header-title">学习日历（近30天）</div>
+              <div class="card-header-title">{{ $t('learning.studyCalendar') }}</div>
             </template>
             <div class="heatmap-wrapper">
               <div class="heatmap-grid">
@@ -239,19 +239,19 @@
                     :key="di"
                     class="heatmap-cell"
                     :class="getHeatmapCellClass(day.level)"
-                    :title="day.date + '：' + day.minutes + '分钟'"
+                    :title="day.date + ' — ' + day.minutes + 'min'"
                   >
                     <span class="cell-day">{{ day.day }}</span>
                   </div>
                 </div>
               </div>
               <div class="heatmap-legend">
-                <span class="legend-label">少</span>
+                <span class="legend-label">{{ $t('learning.heatmapLess') }}</span>
                 <div class="legend-cell level-0"></div>
                 <div class="legend-cell level-1"></div>
                 <div class="legend-cell level-2"></div>
                 <div class="legend-cell level-3"></div>
-                <span class="legend-label">多</span>
+                <span class="legend-label">{{ $t('learning.heatmapMore') }}</span>
               </div>
             </div>
           </el-card>
@@ -260,7 +260,7 @@
 
       <!-- 推荐课程 -->
       <div class="recommendations-section">
-        <div class="section-title">推荐课程</div>
+        <div class="section-title">{{ $t('learning.recommended') }}</div>
         <div class="recommendations-grid">
           <el-card
             v-for="course in recommendations"
@@ -276,14 +276,14 @@
               <div class="recommend-title">{{ course.title }}</div>
               <div class="recommend-meta">
                 <span class="recommend-author">{{ course.author }}</span>
-                <span class="recommend-students">{{ course.students }}人在学</span>
+                   <span class="recommend-students">{{ $t('learning.studentsEnrolled', { count: course.students }) }}</span>
               </div>
               <div class="recommend-footer">
                 <span class="recommend-rating">
                   <el-icon><Star /></el-icon>
                   {{ course.rating }}
                 </span>
-                <el-button type="primary" size="small" plain @click="goCourse(course.id)">开始学习</el-button>
+                <el-button type="primary" size="small" plain @click="goCourse(course.id)">{{ $t('learning.startLearning') }}</el-button>
               </div>
             </div>
           </el-card>
@@ -292,7 +292,7 @@
 
       <!-- 我的徽章 -->
       <div class="badges-section">
-        <div class="section-title">我的徽章</div>
+        <div class="section-title">{{ $t('learning.myBadges') }}</div>
         <div class="badges-row">
           <div
             v-for="badge in badges"
@@ -315,7 +315,7 @@
     <div v-else class="h5-layout">
       <!-- 欢迎栏 -->
       <div class="welcome-bar h5-welcome student-welcome">
-        <span class="welcome-text">你好，{{ username }}</span>
+        <span class="welcome-text">{{ $t('learning.greeting') }}{{ username }}</span>
       </div>
 
       <!-- 3 个动画统计卡片 (H5) -->
@@ -326,7 +326,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedInProgress }}</div>
-            <div class="hl-stat-label">进行中</div>
+            <div class="hl-stat-label">{{ $t('learning.inProgress') }}</div>
           </div>
         </el-card>
         <el-card class="highlight-stat-card hl-success student-stat-card" shadow="hover">
@@ -335,7 +335,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedCompleted }}</div>
-            <div class="hl-stat-label">已完成</div>
+            <div class="hl-stat-label">{{ $t('learning.completed') }}</div>
           </div>
         </el-card>
         <el-card class="highlight-stat-card hl-warning student-stat-card" shadow="hover">
@@ -344,7 +344,7 @@
           </div>
           <div class="hl-stat-body">
             <div class="hl-stat-value stat-number">{{ animatedDays }}</div>
-            <div class="hl-stat-label">连续打卡</div>
+            <div class="hl-stat-label">{{ $t('learning.streakDays') }}</div>
           </div>
         </el-card>
       </div>
@@ -357,7 +357,7 @@
           class="quick-entry-item student-card-item"
           role="button"
           tabindex="0"
-          :aria-label="'快捷入口：' + entry.label"
+          :aria-label="entry.label"
           @click="navigateTo(entry.path)"
           @keydown.enter="navigateTo(entry.path)"
           @keydown.space.prevent="navigateTo(entry.path)"
@@ -380,12 +380,12 @@
       <el-result
         v-else-if="statsError"
         icon="error"
-        title="数据加载失败"
-        sub-title="统计信息获取异常，请重试"
+        :title="$t('learning.loadingFailed')"
+        :sub-title="$t('learning.statsError')"
         class="h5-error-result"
       >
         <template #extra>
-          <el-button type="primary" size="small" @click="loadData">重试</el-button>
+          <el-button type="primary" size="small" @click="loadData">{{ $t('learning.retry') }}</el-button>
         </template>
       </el-result>
 
@@ -394,25 +394,25 @@
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.totalHours }}</div>
-            <div class="stat-card-label">累计学习时长</div>
+            <div class="stat-card-label">{{ $t('learning.totalTime') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.completedCourses }}</div>
-            <div class="stat-card-label">已完成课程</div>
+            <div class="stat-card-label">{{ $t('learning.completedCourses') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.certificates }}</div>
-            <div class="stat-card-label">获得证书</div>
+            <div class="stat-card-label">{{ $t('learning.certificates') }}</div>
           </el-card>
         </div>
         <div class="stat-card">
           <el-card shadow="hover" class="student-stat-card">
             <div class="stat-card-value">{{ stats.studyDays }}</div>
-            <div class="stat-card-label">累计天数</div>
+            <div class="stat-card-label">{{ $t('learning.studyDays') }}</div>
           </el-card>
         </div>
       </div>
@@ -422,13 +422,13 @@
         v-if="recentCourse.title"
         type="button"
         class="continue-learning h5-continue"
-        :aria-label="`继续学习：${recentCourse.title}`"
+        :aria-label="$t('learning.continueLearning') + '：' + recentCourse.title"
         @click="navigateToLearning(recentCourse)"
       >
         <el-card shadow="hover" class="continue-card">
           <div class="continue-card-inner h5-continue-inner">
             <div class="continue-info">
-              <div class="continue-label">继续学习</div>
+              <div class="continue-label">{{ $t('learning.continueLearning') }}</div>
               <div class="continue-title">{{ recentCourse.title }}</div>
               <el-progress
                 :percentage="recentCourse.progress"
@@ -443,14 +443,14 @@
 
       <!-- 最近学习 (H5) -->
       <div v-if="recentRecords.length > 0" class="recent-learning-section h5-recent-learning">
-        <div class="section-title">最近学习</div>
+        <div class="section-title">{{ $t('learning.recentLearning') }}</div>
         <div class="recent-learning-list h5-recent-list">
           <button
             v-for="record in recentRecords"
             :key="record.courseId"
             type="button"
             class="recent-learning-item"
-            :aria-label="`继续学习：${record.title}`"
+            :aria-label="$t('learning.continueLearning') + ' ' + record.title"
             @click="navigateToLearning(record)"
           >
             <div class="recent-cover-wrap">
@@ -475,7 +475,7 @@
       <div class="chart-section h5-chart">
         <el-card shadow="hover" class="chart-card student-card-item">
           <template #header>
-            <div class="card-header-title">本周学习时长</div>
+            <div class="card-header-title">{{ $t('learning.weekHours') }}</div>
           </template>
           <AccuracyTrendChart
             :data="chartData"
@@ -488,7 +488,7 @@
 
       <!-- 推荐课程 (单列) -->
       <div class="recommendations-section h5-recommend">
-        <div class="section-title">推荐课程</div>
+        <div class="section-title">{{ $t('learning.recommended') }}</div>
         <div class="recommendations-list">
           <el-card
             v-for="course in recommendations"
@@ -502,14 +502,14 @@
                 <div class="recommend-title">{{ course.title }}</div>
                 <div class="recommend-meta">
                   <span class="recommend-author">{{ course.author }}</span>
-                  <span class="recommend-students">{{ course.students }}人在学</span>
+                <span class="recommend-students">{{ $t('learning.studentsEnrolled', { count: course.students }) }}</span>
                 </div>
                 <div class="recommend-footer">
                   <span class="recommend-rating">
                     <el-icon><Star /></el-icon>
                     {{ course.rating }}
                   </span>
-                  <el-button type="primary" size="small" plain @click="goCourse(course.id)">开始学习</el-button>
+                <el-button type="primary" size="small" plain @click="goCourse(course.id)">{{ $t('learning.startLearning') }}</el-button>
                 </div>
               </div>
             </div>
@@ -519,7 +519,7 @@
 
       <!-- 我的徽章 (横向滚动) -->
       <div class="badges-section h5-badges">
-        <div class="section-title">我的徽章</div>
+        <div class="section-title">{{ $t('learning.myBadges') }}</div>
         <div class="badges-scroll">
           <div
             v-for="badge in badges"
@@ -543,10 +543,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.vue'
 import { ElMessage } from 'element-plus'
 import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+const { t } = useI18n()
 import { getStudyDays, getTotalTime, getLearningProgress, getServerTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
 import { getMyBadges } from '@/api/badge'
@@ -566,11 +568,11 @@ const router = useRouter()
 // 快捷入口
 // ---------------------------------------------------------------------------
 const quickEntries = [
-  { label: '课程广场', icon: Grid, path: '/student/courses', color: '#6366f1' },
-  { label: '我的课程', icon: Reading, path: '/student/my-courses', color: '#10b981' },
-  { label: '考试中心', icon: Document, path: '/student/exams', color: '#f59e0b' },
-  { label: '学习报告', icon: DataLine, path: '/student/report', color: '#ef4444' },
-  { label: '错题本', icon: Close, path: '/student/profile', color: '#8b5cf6' }
+  { label: t('learning.courseSquare'), icon: Grid, path: '/student/courses', color: '#6366f1' },
+  { label: t('learning.myCourses'), icon: Reading, path: '/student/my-courses', color: '#10b981' },
+  { label: t('learning.examCenter'), icon: Document, path: '/student/exams', color: '#f59e0b' },
+  { label: t('learning.learningReport'), icon: DataLine, path: '/student/report', color: '#ef4444' },
+  { label: t('learning.wrongBook'), icon: Close, path: '/student/profile', color: '#8b5cf6' }
 ]
 
 function navigateTo(path) {
@@ -607,7 +609,7 @@ onUnmounted(() => {
 // ---------------------------------------------------------------------------
 // 用户信息
 // ---------------------------------------------------------------------------
-const username = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '同学')
+const username = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || t('learning.classmate'))
 const currentDate = computed(() => {
   const now = new Date()
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -937,7 +939,7 @@ async function getRecommendations(sharedEnrollments) {
         id: e.courseId,
         title: e.courseTitle || e.title,
         cover: e.courseCover || e.coverUrl,
-        tag: '学习中',
+        tag: t('learning.tagLearning'),
         author: e.teacherName || '',
         students: e.studentCount || 0,
         rating: e.avgRating || 0
@@ -960,7 +962,7 @@ async function getBadges() {
 
     badges.value = badgeList.map(b => ({
       id: b.id,
-      name: b.name || b.badgeName || '徽章',
+      name: b.name || b.badgeName || t('learning.badgeName'),
       earned: b.earned !== false
     }))
   } catch (e) {
@@ -993,7 +995,7 @@ async function getRecentRecords(sharedEnrollments) {
 
     recentRecords.value = sorted.map(e => ({
       courseId: e.courseId,
-      title: e.courseTitle || e.title || '课程',
+      title: e.courseTitle || e.title || t('learning.courseDefault'),
       cover: e.courseCover || e.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg'),
       progress: e.progress || 0,
       completed: !!e.completed,
@@ -1046,7 +1048,7 @@ async function loadData() {
             id: c.id,
             title: c.title || c.courseTitle,
             cover: c.coverUrl || c.cover,
-            tag: '热门推荐',
+            tag: t('learning.hotRecommend'),
             author: c.teacherName || c.teacher || '',
             students: c.studentCount || 0,
             rating: c.avgRating || 0
@@ -1093,7 +1095,7 @@ async function doCheckIn() {
   try {
     await createCheckIn()
     checkedInToday.value = true
-    ElMessage.success('打卡成功！')
+    ElMessage.success(t('learning.checkInSuccess'))
     } catch (e) {
       console.warn("[LearningCenter]", e)
     } finally {

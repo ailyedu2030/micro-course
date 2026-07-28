@@ -36,7 +36,7 @@
         </div>
       </div>
       <div class="welcome-right">
-        <span class="welcome-title">教师工作台</span>
+        <span class="welcome-title">{{ $t('teacher.dashboard') }}</span>
       </div>
     </div>
 
@@ -56,7 +56,7 @@
                 <div class="stat-value">{{ stats.courseCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">我的课程数</div>
+            <div class="stat-label">{{ $t('teacher.myCourseCount') }}</div>
           </div>
         </div>
       </el-col>
@@ -74,7 +74,7 @@
                 <div class="stat-value">{{ stats.studentCount ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">在学学员数</div>
+            <div class="stat-label">{{ $t('teacher.studentCount') }}</div>
           </div>
         </div>
       </el-col>
@@ -92,7 +92,7 @@
                 <div class="stat-value">{{ stats.pendingHomework ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">待批改作业</div>
+            <div class="stat-label">{{ $t('teacher.pendingHomework') }}</div>
           </div>
         </div>
       </el-col>
@@ -110,7 +110,7 @@
                 <div class="stat-value">{{ stats.pendingQuestions ?? 0 }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">学员提问</div>
+            <div class="stat-label">{{ $t('teacher.studentQuestions') }}</div>
           </div>
         </div>
       </el-col>
@@ -128,7 +128,7 @@
                 <div class="stat-value">{{ Number(stats.completionRate ?? 0).toFixed(1) }}%</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">完成率</div>
+            <div class="stat-label">{{ $t('teacher.completionRate') }}</div>
           </div>
         </div>
       </el-col>
@@ -146,7 +146,7 @@
                 <div class="stat-value">{{ Number(stats.avgScore ?? 0).toFixed(1) }} 分</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">平均分</div>
+            <div class="stat-label">{{ $t('teacher.avgScore') }}</div>
           </div>
         </div>
       </el-col>
@@ -155,34 +155,34 @@
     <!-- 统计加载失败提示 -->
     <div v-if="statsError" class="stats-error-tip">
       <el-icon><WarningFilled /></el-icon>
-      <span>统计数据加载失败，请刷新重试</span>
+      <span>{{ $t('teacherDashboard.statsLoadFailed') }}</span>
     </div>
 
     <!-- 教师收益卡片 -->
     <div class="revenue-card" v-loading="revenueLoading">
       <div class="revenue-card-header">
         <span class="revenue-card-title">
-          <el-icon><TrendCharts /></el-icon> 收益概况
+          <el-icon><TrendCharts /></el-icon> {{ $t('teacherDashboard.revenueTitle') }}
         </span>
-        <span class="revenue-subtitle">共 {{ revenueData.orderCount ?? 0 }} 笔付费订单</span>
+        <span class="revenue-subtitle">{{ $t('teacherDashboard.orderCount', { count: revenueData.orderCount ?? 0 }) }}</span>
       </div>
       <div class="revenue-card-body">
         <el-row :gutter="16">
           <el-col :xs="24" :sm="8">
             <div class="revenue-stat">
-              <span class="revenue-label">总收入</span>
+              <span class="revenue-label">{{ $t('teacherDashboard.totalRevenue') }}</span>
               <span class="revenue-value primary">¥{{ formatRevenue(revenueData.totalRevenue) }}</span>
             </div>
           </el-col>
           <el-col :xs="24" :sm="8">
             <div class="revenue-stat">
-              <span class="revenue-label">平台分成 ({{ platformSharePercent }}%)</span>
+              <span class="revenue-label">{{ $t('teacherDashboard.platformShare') }} ({{ platformSharePercent }}%)</span>
               <span class="revenue-value muted">-¥{{ formatRevenue(revenueData.platformShare) }}</span>
             </div>
           </el-col>
           <el-col :xs="24" :sm="8">
             <div class="revenue-stat">
-              <span class="revenue-label">教师净收入</span>
+              <span class="revenue-label">{{ $t('teacherDashboard.netEarnings') }}</span>
               <span class="revenue-value success">¥{{ formatRevenue(revenueData.netEarnings) }}</span>
             </div>
           </el-col>
@@ -191,7 +191,7 @@
         <!-- 按课程分解 -->
         <template v-if="revenueData.courseBreakdown && revenueData.courseBreakdown.length > 0">
           <el-divider />
-          <div class="revenue-subtitle">按课程</div>
+          <div class="revenue-subtitle">{{ $t('teacherDashboard.byCourse') }}</div>
           <div class="revenue-course-list">
             <div v-for="item in revenueData.courseBreakdown.slice(0, 5)" :key="item.courseId" class="revenue-course-item">
               <span class="rc-title" :title="item.courseTitle">{{ item.courseTitle }}</span>
@@ -205,7 +205,7 @@
         <!-- 最近交易 -->
         <template v-if="revenueData.recentTransactions && revenueData.recentTransactions.length > 0">
           <el-divider />
-          <div class="revenue-subtitle">最近交易</div>
+          <div class="revenue-subtitle">{{ $t('teacherDashboard.recentTx') }}</div>
           <div class="revenue-tx-list">
             <div v-for="tx in revenueData.recentTransactions.slice(0, 5)" :key="tx.orderNo" class="revenue-tx-item">
               <span class="tx-course">{{ tx.courseTitle }}</span>
@@ -216,7 +216,7 @@
         </template>
 
         <div v-else-if="!revenueLoading" class="revenue-empty">
-          暂无收益数据
+          {{ $t('teacherDashboard.noRevenue') }}
         </div>
       </div>
     </div>
@@ -225,46 +225,46 @@
     <div class="rating-card" v-loading="ratingLoading">
       <div class="rating-card-header">
         <span class="rating-card-title">
-          <el-icon><Medal /></el-icon> 我的教师等级
+          <el-icon><Medal /></el-icon> {{ $t('teacherDashboard.ratingTitle') }}
         </span>
-        <span class="rating-update" v-if="ratingData.calculatedAt">更新于 {{ formatTime(ratingData.calculatedAt) }}</span>
+        <span class="rating-update" v-if="ratingData.calculatedAt">{{ $t('teacherDashboard.ratingUpdated') }} {{ formatTime(ratingData.calculatedAt) }}</span>
       </div>
       <div class="rating-card-body">
         <div class="rating-tier-section">
           <div class="rating-tier-badge" :class="'tier-badge--' + (ratingData.tier || 'NEW').toLowerCase()">
             <el-icon class="tier-icon"><component :is="tierIconComponent" /></el-icon>
-            <span class="tier-name">{{ ratingData.tierLabel || '新教师' }}</span>
+            <span class="tier-name">{{ ratingData.tierLabel || $t('teacherDashboard.newTeacher') }}</span>
           </div>
           <div class="rating-score-section">
             <div class="rating-score">{{ ratingData.ratingScore ?? 0 }}</div>
-            <div class="rating-score-label">综合评分</div>
+            <div class="rating-score-label">{{ $t('teacherDashboard.ratingScore') }}</div>
             <div class="rating-next" v-if="nextTierInfo">
-              距 {{ nextTierInfo.label }} 还差 {{ nextTierInfo.gap }} 分
+              {{ $t('teacherDashboard.distanceNext', { tier: nextTierInfo.label, gap: nextTierInfo.gap }) }}
             </div>
           </div>
           <div class="rating-share">
-            <span class="share-label">当前平台分成</span>
+            <span class="share-label">{{ $t('teacherDashboard.currentShare') }}</span>
             <span class="share-value">{{ platformSharePercent }}%</span>
-            <span class="share-hint">教师占 {{ 100 - platformSharePercent }}%</span>
+            <span class="share-hint">{{ $t('teacherDashboard.shareHint', { percent: 100 - platformSharePercent }) }}</span>
           </div>
         </div>
         <el-divider />
         <div class="rating-metrics">
           <div class="metric-item">
             <span class="metric-value">{{ ratingData.avgStudentRating ?? '-' }}</span>
-            <span class="metric-label">学生评价</span>
+            <span class="metric-label">{{ $t('teacherDashboard.studentEval') }}</span>
           </div>
           <div class="metric-item">
             <span class="metric-value">{{ ratingData.completionRate ?? 0 }}%</span>
-            <span class="metric-label">完成率</span>
+            <span class="metric-label">{{ $t('teacherDashboard.completionRate') }}</span>
           </div>
           <div class="metric-item">
             <span class="metric-value">{{ ratingData.totalStudents ?? 0 }}</span>
-            <span class="metric-label">学员数</span>
+            <span class="metric-label">{{ $t('teacherDashboard.totalStudents') }}</span>
           </div>
           <div class="metric-item">
             <span class="metric-value">{{ ratingData.totalCourses ?? 0 }}</span>
-            <span class="metric-label">课程数</span>
+            <span class="metric-label">{{ $t('teacherDashboard.totalCourses') }}</span>
           </div>
         </div>
         <!-- 提升指南 -->
@@ -273,7 +273,7 @@
             <template #title>
               <span class="collapse-title">
                 <el-icon><InfoFilled /></el-icon>
-                <span>如何提升等级？</span>
+                <span>{{ $t('teacherDashboard.howToUpgrade') }}</span>
               </span>
             </template>
             <div class="guide-list">
@@ -282,28 +282,28 @@
                   <CircleCheckFilled v-if="(ratingData.avgStudentRating || 0) >= 4.5" />
                   <CircleCloseFilled v-else />
                 </el-icon>
-                <span class="guide-text">学生评价 ≥ 4.5 分（当前 {{ (ratingData.avgStudentRating || 0).toFixed(1) }}）</span>
+                <span class="guide-text">{{ $t('teacherDashboard.guideStudentRating', { score: (ratingData.avgStudentRating || 0).toFixed(1) }) }}</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.completionRate || 0) >= 80 }">
                 <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.completionRate || 0) >= 80 }">
                   <CircleCheckFilled v-if="(ratingData.completionRate || 0) >= 80" />
                   <CircleCloseFilled v-else />
                 </el-icon>
-                <span class="guide-text">课程完成率 ≥ 80%（当前 {{ (ratingData.completionRate || 0).toFixed(1) }}%）</span>
+                <span class="guide-text">{{ $t('teacherDashboard.guideCompletionRate', { rate: (ratingData.completionRate || 0).toFixed(1) }) }}</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.totalStudents || 0) >= 200 }">
                 <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.totalStudents || 0) >= 200 }">
                   <CircleCheckFilled v-if="(ratingData.totalStudents || 0) >= 200" />
                   <CircleCloseFilled v-else />
                 </el-icon>
-                <span class="guide-text">累计学员 ≥ 200 人（当前 {{ ratingData.totalStudents || 0 }}）</span>
+                <span class="guide-text">{{ $t('teacherDashboard.guideTotalStudents', { count: ratingData.totalStudents || 0 }) }}</span>
               </div>
               <div class="guide-item" :class="{ 'guide-done': (ratingData.totalCourses || 0) >= 5 }">
                 <el-icon class="guide-icon" :class="{ 'guide-icon--done': (ratingData.totalCourses || 0) >= 5 }">
                   <CircleCheckFilled v-if="(ratingData.totalCourses || 0) >= 5" />
                   <CircleCloseFilled v-else />
                 </el-icon>
-                <span class="guide-text">课程数 ≥ 5 门（当前 {{ ratingData.totalCourses || 0 }}）</span>
+                <span class="guide-text">{{ $t('teacherDashboard.guideTotalCourses', { count: ratingData.totalCourses || 0 }) }}</span>
               </div>
             </div>
           </el-collapse-item>
@@ -311,7 +311,7 @@
             <template #title>
               <span class="collapse-title">
                 <el-icon><Tickets /></el-icon>
-                <span>等级变更记录</span>
+                <span>{{ $t('teacherDashboard.tierHistory') }}</span>
               </span>
             </template>
             <div class="history-list">
@@ -331,36 +331,43 @@
       <router-link to="/teacher/courses" class="quick-action-card" aria-label="创建新课程">
         <div class="qa-icon qa-icon-primary"><el-icon :size="22"><Plus /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">创建课程</div>
-          <div class="qa-desc">新建课程、编辑章节、添加视频</div>
+          <div class="qa-title">{{ $t('teacher.createCourse') }}</div>
+          <div class="qa-desc">{{ $t('teacher.courseManagement') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/teaching-classes" class="quick-action-card" aria-label="管理教学班">
         <div class="qa-icon qa-icon-success"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">教学班</div>
-          <div class="qa-desc">开班、结课、查看学员</div>
+          <div class="qa-title">{{ $t('teacher.teachingClassTitle') }}</div>
+          <div class="qa-desc">{{ $t('teacher.teachingClass') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/students" class="quick-action-card" aria-label="查看学员列表">
         <div class="qa-icon qa-icon-warning"><el-icon :size="22"><User /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">学员管理</div>
-          <div class="qa-desc">查看学员、学习进度与课程归属</div>
+          <div class="qa-title">{{ $t('teacher.studentManagementTitle') }}</div>
+          <div class="qa-desc">{{ $t('teacher.studentManagement') }}</div>
         </div>
       </router-link>
       <router-link to="/teacher/grades" class="quick-action-card" aria-label="查看成绩明细">
         <div class="qa-icon qa-icon-danger"><el-icon :size="22"><DataAnalysis /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">成绩明细</div>
-          <div class="qa-desc">查看成绩、筛选课程并处理批改</div>
+          <div class="qa-title">{{ $t('teacher.gradeDetail') }}</div>
+          <div class="qa-desc">{{ $t('teacher.gradeManagement') }}</div>
         </div>
       </router-link>
-      <router-link to="/teacher/discussions" class="quick-action-card" aria-label="回复学员提问">
+      <router-link to="/teacher/discussions" class="quick-action-card" :aria-label="$t('teacher.studentQuestions')">
         <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
         <div class="qa-info">
-          <div class="qa-title">学员提问</div>
-          <div class="qa-desc">答疑、互动讨论</div>
+          <div class="qa-title">{{ $t('teacher.studentQuestions') }}</div>
+          <div class="qa-desc">{{ $t('teacher.studentQA') }}</div>
+        </div>
+      </router-link>
+      <router-link to="/teacher/discussions" class="quick-action-card" :aria-label="$t('teacher.studentQuestions')">
+        <div class="qa-icon qa-icon-info"><el-icon :size="22"><ChatDotRound /></el-icon></div>
+        <div class="qa-info">
+          <div class="qa-title">{{ $t('teacher.studentQuestions') }}</div>
+          <div class="qa-desc">{{ $t('teacher.studentQA') }}</div>
         </div>
       </router-link>
     </div>
@@ -371,7 +378,7 @@
       <el-col :xs="24" :md="14">
         <div class="chart-card">
           <div class="card-header">
-            <span>最近 7 天学情</span>
+            <span>{{ $t('teacher.recentActivity') }}</span>
           </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
@@ -380,7 +387,7 @@
             <template #default>
               <div v-if="activityError" class="chart-error">
                 <el-icon><WarningFilled /></el-icon>
-                <span>加载失败</span>
+                <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
               <div v-else ref="studyChartRef" class="chart-container" role="img" aria-label="最近7天学情趋势图"></div>
             </template>
@@ -388,7 +395,7 @@
         </div>
         <div class="chart-card">
           <div class="card-header">
-            <span>学员活跃度</span>
+            <span>{{ $t('teacher.studentActivity') }}</span>
           </div>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template>
@@ -397,9 +404,9 @@
             <template #default>
               <div v-if="activityError" class="chart-error">
                 <el-icon><WarningFilled /></el-icon>
-                <span>加载失败</span>
+                <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="activeChartRef" class="chart-container" role="img" aria-label="学员活跃度分布图"></div>
+              <div v-else ref="activeChartRef" class="chart-container" role="img"></div>
             </template>
           </el-skeleton>
         </div>
@@ -409,7 +416,7 @@
       <el-col :xs="24" :md="10">
         <div class="list-card">
           <div class="card-header">
-            <span>待办</span>
+            <span>{{ $t('teacher.pendingTasks') }}</span>
           </div>
           <el-skeleton :loading="tasksLoading" animated :rows="3">
             <template #template>
@@ -419,10 +426,10 @@
             </template>
             <template #default>
               <div v-if="tasksError" class="list-error">
-                <span>加载失败</span>
+                <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
               <div v-else-if="tasks.length === 0" class="list-empty">
-                <span>暂无待办</span>
+                <span>{{ $t('teacherDashboard.noTasks') }}</span>
               </div>
               <ul v-else class="list-ul">
                 <li v-for="task in tasks" :key="task.id" class="list-item">
@@ -436,7 +443,7 @@
         </div>
         <div class="list-card">
           <div class="card-header">
-            <span>最新通知</span>
+            <span>{{ $t('teacher.latestNotifications') }}</span>
           </div>
           <el-skeleton :loading="notifLoading" animated :rows="3">
             <template #template>
@@ -446,10 +453,10 @@
             </template>
             <template #default>
               <div v-if="notifError" class="list-error">
-                <span>加载失败</span>
+                <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
               <div v-else-if="notifications.length === 0" class="list-empty">
-                <span>暂无通知</span>
+                <span>{{ $t('teacherDashboard.noNotifs') }}</span>
               </div>
               <ul v-else class="list-ul">
                 <li v-for="notif in notifications" :key="notif.id" class="list-item">
@@ -466,7 +473,7 @@
     <!-- 底部：我教的课程 -->
     <div class="course-card">
       <div class="card-header">
-        <span>我教的课程</span>
+        <span>{{ $t('teacher.myCourses') }}</span>
       </div>
       <el-skeleton :loading="coursesLoading" animated :rows="2">
         <template #template>
@@ -476,10 +483,10 @@
         </template>
         <template #default>
           <div v-if="coursesError" class="course-error">
-            <span>加载失败</span>
+            <span>{{ $t('teacherDashboard.loadFailed') }}</span>
           </div>
           <div v-else-if="courses.length === 0" class="course-empty">
-            <span>暂无课程</span>
+            <span>{{ $t('teacherDashboard.noCourses') }}</span>
           </div>
           <div v-else class="course-grid">
             <div
@@ -504,7 +511,7 @@
                 <div class="course-meta">
                   <span class="course-student">
                     <el-icon><User /></el-icon>
-                    {{ course.studentCount ?? 0 }} 学员
+                    {{ course.studentCount ?? 0 }} {{ $t('teacherDashboard.courseStudents') }}
                   </span>
                   <el-rate v-if="course.rating != null" :model-value="course.rating" disabled show-score size="small" />
                 </div>
@@ -664,7 +671,7 @@ async function loadStats() {
     stats.value = res.data || {}
   } catch {
     statsError.value = true
-    ElMessage.error('统计数据加载失败')
+    ElMessage.error(t('teacherDashboard.statsError'))
   } finally {
     statsLoading.value = false
     markFragmentLoaded()
@@ -684,7 +691,7 @@ async function loadActivity() {
     renderActiveChart(data)
   } catch {
     activityError.value = true
-    ElMessage.error('学情数据加载失败')
+    ElMessage.error(t('teacherDashboard.activityError'))
     activityLoading.value = false
     await nextTick()
     renderStudyChart([])
@@ -777,7 +784,7 @@ async function loadTasks() {
     tasks.value = res.data || []
   } catch {
     tasksError.value = true
-    ElMessage.error('待办数据加载失败')
+    ElMessage.error(t('teacherDashboard.loadFailed'))
   } finally {
     tasksLoading.value = false
     markFragmentLoaded()
@@ -793,7 +800,7 @@ async function loadNotifications() {
     notifications.value = res.data || []
   } catch {
     notifError.value = true
-    ElMessage.error('通知数据加载失败')
+    ElMessage.error(t('teacherDashboard.loadFailed'))
   } finally {
     notifLoading.value = false
     markFragmentLoaded()
@@ -809,7 +816,7 @@ async function loadCourses() {
     courses.value = res.data?.items || res.data || []
   } catch {
     coursesError.value = true
-    ElMessage.error('课程数据加载失败')
+    ElMessage.error(t('teacherDashboard.loadFailed'))
   } finally {
     coursesLoading.value = false
     markFragmentLoaded()

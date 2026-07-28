@@ -6,6 +6,7 @@ import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
@@ -32,30 +33,20 @@ class AudioStreamCacheTest {
     private ObjectMapper objectMapper;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
-        cache = new AudioStreamCache();
         redis = mock(StringRedisTemplate.class);
-        // raw ValueOperations.class because Mockito mock() 强类型需要 class literal,
-        // 但 StringRedisTemplate.opsForValue() 返回 ValueOperations<String,String>;
-        // 这里用 raw mock + SuppressWarnings 是项目惯例 (其他测试也这么做).
         @SuppressWarnings("unchecked")
         ValueOperations<String, String> typedOps = mock(ValueOperations.class);
         ops = typedOps;
         objectMapper = new ObjectMapper();
         when(redis.opsForValue()).thenReturn(ops);
 
-        // 用反射注入
-        try {
-            java.lang.reflect.Field redisField = AudioStreamCache.class.getDeclaredField("redisTemplate");
-            redisField.setAccessible(true);
-            redisField.set(cache, redis);
-
-            java.lang.reflect.Field mapperField = AudioStreamCache.class.getDeclaredField("objectMapper");
-            mapperField.setAccessible(true);
-            mapperField.set(cache, objectMapper);
-        } catch (Exception e) {
-            throw new RuntimeException("Reflection injection failed", e);
-        }
+        ObjectProvider<StringRedisTemplate> redisProvider = mock(ObjectProvider.class);
+        when(redisProvider.getIfAvailable()).thenReturn(redis);
+        ObjectProvider<ObjectMapper> mapperProvider = mock(ObjectProvider.class);
+        when(mapperProvider.getIfAvailable()).thenReturn(objectMapper);
+        cache = new AudioStreamCache(redisProvider, mapperProvider);
     }
 
     @Test
@@ -106,8 +97,11 @@ class AudioStreamCacheTest {
     @Test
     @DisplayName("Redis 不可用: get 返回 empty 不抛异常 (best-effort)")
     void redisUnavailableGetReturnsEmpty() {
-        // 注入 null redis
-        cache = new AudioStreamCache();
+        ObjectProvider<StringRedisTemplate> nullRedisProvider = mock(ObjectProvider.class);
+        when(nullRedisProvider.getIfAvailable()).thenReturn(null);
+        ObjectProvider<ObjectMapper> nullMapperProvider = mock(ObjectProvider.class);
+        when(nullMapperProvider.getIfAvailable()).thenReturn(null);
+        cache = new AudioStreamCache(nullRedisProvider, nullMapperProvider);
         Optional<AudioStreamInfo> result = cache.get("any-token");
 
         assertFalse(result.isPresent());
@@ -117,8 +111,11 @@ class AudioStreamCacheTest {
     @Test
     @DisplayName("Redis 不可用: put 不抛异常")
     void redisUnavailablePutNoThrow() {
-        cache = new AudioStreamCache();
-        // 不抛异常
+        ObjectProvider<StringRedisTemplate> nullRedisProvider = mock(ObjectProvider.class);
+        when(nullRedisProvider.getIfAvailable()).thenReturn(null);
+        ObjectProvider<ObjectMapper> nullMapperProvider = mock(ObjectProvider.class);
+        when(nullMapperProvider.getIfAvailable()).thenReturn(null);
+        cache = new AudioStreamCache(nullRedisProvider, nullMapperProvider);
         assertDoesNotThrow(() -> cache.put("any-token", createSampleInfo()));
     }
 

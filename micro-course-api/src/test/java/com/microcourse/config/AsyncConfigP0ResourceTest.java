@@ -1,6 +1,7 @@
 package com.microcourse.config;
 
 import com.microcourse.BaseIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -70,7 +71,7 @@ class AsyncConfigP0ResourceTest extends BaseIntegrationTest {
         try {
             for (int i = 0; i < total; i++) {
                 videoUploadExecutor.execute(() -> {
-                    try { Thread.sleep(5000); } catch (InterruptedException ignored) {}
+                    try { Thread.sleep(500); } catch (InterruptedException ignored) {}
                     ran.incrementAndGet();
                 });
             }
@@ -78,6 +79,27 @@ class AsyncConfigP0ResourceTest extends BaseIntegrationTest {
             rejected = true;
         }
         assertTrue(rejected, "队列+线程池满后必须触发拒绝策略");
+    }
+
+    /**
+     * 防御性:清空线程池中堆积的任务(否则 sleep 5000 任务占满线程,
+     * 可能影响其他 test class 的异步任务执行)
+     * 防止 fork 在 Spring context 关闭时 hang 30s surefire timeout
+     */
+    @AfterEach
+    void cleanupThreadPool() {
+        try {
+            ThreadPoolExecutor raw = ((ThreadPoolTaskExecutor) videoUploadExecutor).getThreadPoolExecutor();
+            // 1) 清空队列中的等待任务
+            raw.getQueue().clear();
+            // 2) 等待正在执行的任务完成(最多 1s)
+            raw.shutdown();
+            if (!raw.awaitTermination(1, java.util.concurrent.TimeUnit.SECONDS)) {
+                raw.shutdownNow();
+            }
+        } catch (Exception ignored) {
+            // 线程池清理失败不影响测试
+        }
     }
 
     @Test

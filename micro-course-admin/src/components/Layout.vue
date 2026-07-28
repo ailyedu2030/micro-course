@@ -15,7 +15,7 @@
       <!-- Logo 区域 -->
       <div class="layout-logo">
         <el-icon class="logo-icon"><Microphone /></el-icon>
-        <span v-show="!collapsed" class="logo-text">微课管理平台</span>
+        <span v-show="!collapsed" class="logo-text">{{ $t('app.titleFull') }}</span>
         <span v-show="collapsed" class="logo-text-short">微课</span>
       </div>
 
@@ -69,6 +69,10 @@
               <span class="sr-only">{{ isDark ? '切换亮色模式' : '切换深色模式' }}</span>
             </button>
           </el-tooltip>
+          <button class="header-icon header-btn-reset" @click="toggleLang" :aria-label="$t('app.toggleLang')">
+            <el-icon aria-hidden="true"><Document /></el-icon>
+            <span class="sr-only">{{ $t('app.toggleLang') }}</span>
+          </button>
           <button class="header-icon header-btn-reset" @click="$router.push('/notifications')">
             <el-icon aria-hidden="true">
               <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
@@ -99,13 +103,13 @@
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item command="profile">
-                  <el-icon><User /></el-icon>个人中心
+                  <el-icon><User /></el-icon>{{ $t('student.profile') }}
                 </el-dropdown-item>
                 <el-dropdown-item v-if="userStore.role === 'ADMIN' || userStore.role === 'ACADEMIC'" command="settings">
-                  <el-icon><Setting /></el-icon>系统设置
+                  <el-icon><Setting /></el-icon>{{ $t('admin.settings') }}
                 </el-dropdown-item>
                 <el-dropdown-item divided command="logout">
-                  <el-icon><SwitchButton /></el-icon>退出登录
+                  <el-icon><SwitchButton /></el-icon>{{ $t('auth.logout') }}
                 </el-dropdown-item>
               </el-dropdown-menu>
             </template>
@@ -145,11 +149,13 @@ import {
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
 import { ElMessageBox } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
+const { locale } = useI18n()
 
 // 图标名称到组件的映射（用于配置驱动菜单的动态渲染）
 const iconMap = {
@@ -189,6 +195,11 @@ function toggleTheme() {
     document.documentElement.removeAttribute('data-theme')
     localStorage.setItem('theme', 'light')
   }
+}
+
+function toggleLang() {
+  locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
+  localStorage.setItem('lang', locale.value)
 }
 
 // 侧边栏折叠状态

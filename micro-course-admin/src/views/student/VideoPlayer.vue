@@ -6,7 +6,7 @@
 <template>
   <div class="video-player-root role-video">
     <main class="player-main-area">
-      <h1 class="sr-only">{{ videoData.title || '视频播放' }}</h1>
+      <h1 class="sr-only">{{ videoData.title || $t('video.playing') }}</h1>
     <!-- Loading State -->
     <div v-if="loading" class="player-loading">
       <div class="skeleton-video">
@@ -45,9 +45,9 @@
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
       </div>
-      <p class="error-title">视频加载失败</p>
+      <p class="error-title">{{ $t('video.loadFailed') }}</p>
       <p class="error-desc">{{ errorMsg }}</p>
-      <el-button type="primary" @click="retryLoad">重新加载</el-button>
+      <el-button type="primary" @click="retryLoad">{{ $t('video.reload') }}</el-button>
     </div>
 
     <!-- Player Main -->
@@ -55,12 +55,12 @@
       <!-- PC Header (>= 769px) -->
       <header class="player-header pc-header">
         <div class="header-left">
-          <el-button class="back-btn" link @click="goBack" aria-label="返回">
+          <el-button class="back-btn" link @click="goBack" :aria-label="$t('video.back')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="15 18 9 12 15 6" />
             </svg>
           </el-button>
-          <span class="header-title">{{ videoData.title || '视频加载中' }}</span>
+          <span class="header-title">{{ videoData.title || $t('video.loading') }}</span>
         </div>
         <div class="header-right">
           <el-dropdown trigger="click" @command="changeSpeed">
@@ -97,7 +97,7 @@
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </el-button>
-        <span class="header-title">{{ videoData.title || '视频' }}</span>
+        <span class="header-title">{{ videoData.title || $t('video.playing') }}</span>
         <div class="h5-header-right">
           <el-dropdown trigger="click" @command="changeSpeed">
             <span class="speed-btn">{{ playbackRate }}x</span>
@@ -163,8 +163,8 @@
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
               </div>
-              <p class="hls-error-text">视频加载失败</p>
-              <el-button type="primary" size="default" @click="retryHls">重试</el-button>
+              <p class="hls-error-text">{{ $t('video.loadFailed') }}</p>
+              <el-button type="primary" size="default" @click="retryHls">{{ $t('video.retry') }}</el-button>
             </div>
 
             <!-- Gesture Indicators -->
@@ -221,7 +221,7 @@
             </transition>
 
             <!-- Center Play Button (when paused) -->
-            <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" role="button" tabindex="0" aria-label="播放视频" @click="togglePlay" @keydown.enter="togglePlay" @keydown.space.prevent="togglePlay">
+            <div v-if="!isPlaying && !isBuffering && !loading" class="center-play-btn" role="button" tabindex="0" :aria-label="$t('video.play')" @click="togglePlay" @keydown.enter="togglePlay" @keydown.space.prevent="togglePlay">
               <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
                 <polygon points="5 3 19 12 5 21 5 3" />
               </svg>
@@ -243,8 +243,8 @@
                   </svg>
                 </div>
                 <div class="obj-content">
-                  <div class="obj-label">本节目标</div>
-                  <div class="obj-text">{{ currentChapter?.description || '掌握核心概念' }}</div>
+                  <div class="obj-label">{{ $t('video.objectiveLabel') }}</div>
+                  <div class="obj-text">{{ currentChapter?.description || $t('video.objectiveDefault') }}</div>
                 </div>
               </div>
             </transition>
@@ -257,7 +257,7 @@
             <!-- Custom Controls -->
             <div class="video-controls" :class="{ visible: controlsVisible || !isPlaying }">
               <!-- Progress Bar -->
-              <div class="progress-track" role="slider" tabindex="0" :aria-label="`视频进度条 当前 ${Math.round(progressPercent)}%`" :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(progressPercent)" @click="seekVideo" ref="progressTrack" @keydown.left.prevent="seekRelative(-5)" @keydown.right.prevent="seekRelative(5)">
+              <div class="progress-track" role="slider" tabindex="0" :aria-label="$t('video.progressBar', { percent: Math.round(progressPercent) })" :aria-valuemin="0" :aria-valuemax="100" :aria-valuenow="Math.round(progressPercent)" @click="seekVideo" ref="progressTrack" @keydown.left.prevent="seekRelative(-5)" @keydown.right.prevent="seekRelative(5)">
                 <div class="progress-buffer" :style="{ width: bufferedPercent + '%' }"></div>
                 <div class="progress-played" :style="{ width: progressPercent + '%' }">
                   <div class="progress-thumb"></div>
@@ -268,7 +268,7 @@
               <div class="controls-row">
                 <div class="controls-left">
                   <!-- Play/Pause -->
-                  <button class="ctrl-btn" @click="togglePlay" :aria-label="isPlaying ? '暂停' : '播放'">
+                  <button class="ctrl-btn" @click="togglePlay" :aria-label="isPlaying ? $t('video.pause') : $t('video.play')">
                     <svg v-if="isPlaying" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                       <rect x="6" y="4" width="4" height="16" />
                       <rect x="14" y="4" width="4" height="16" />
@@ -279,7 +279,7 @@
                   </button>
 
                   <!-- Skip Backward -->
-                  <button class="ctrl-btn" @click="skipBackward" aria-label="快退10秒">
+                  <button class="ctrl-btn" @click="skipBackward" :aria-label="$t('video.skipBackward')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polygon points="11 19 2 12 11 5 11 19" />
                       <polygon points="22 19 13 12 22 5 22 19" />
@@ -287,7 +287,7 @@
                   </button>
 
                   <!-- Skip Forward -->
-                  <button class="ctrl-btn" @click="skipForward" aria-label="快进10秒">
+                  <button class="ctrl-btn" @click="skipForward" :aria-label="$t('video.skipForward')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polygon points="13 19 22 12 13 5 13 19" />
                       <polygon points="2 19 11 12 2 5 2 19" />
@@ -296,7 +296,7 @@
 
                   <!-- Volume -->
                   <div class="volume-control">
-                    <button class="ctrl-btn" @click="toggleMute" :aria-label="isMuted ? '取消静音' : '静音'">
+                    <button class="ctrl-btn" @click="toggleMute" :aria-label="isMuted ? $t('video.unmute') : $t('video.mute')">
                       <svg v-if="isMuted || volume === 0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
                         <line x1="23" y1="9" x2="17" y2="15" />
@@ -334,7 +334,7 @@
                   </el-dropdown>
 
                   <!-- Subtitles -->
-                  <button v-if="videoData.subtitleUrl" class="ctrl-btn" :class="{ active: subtitlesEnabled }" @click="toggleSubtitles" aria-label="字幕">
+                  <button v-if="videoData.subtitleUrl" class="ctrl-btn" :class="{ active: subtitlesEnabled }" @click="toggleSubtitles" :aria-label="$t('video.subtitle')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="2" y="6" width="20" height="12" rx="2" />
                       <line x1="6" y1="12" x2="18" y2="12" />
@@ -343,7 +343,7 @@
                   </button>
 
                   <!-- Picture-in-Picture -->
-                  <button v-if="isPipSupported" class="ctrl-btn" :class="{ active: isPip }" @click="togglePictureInPicture" :aria-label="isPip ? '退出画中画' : '画中画'">
+                  <button v-if="isPipSupported" class="ctrl-btn" :class="{ active: isPip }" @click="togglePictureInPicture" :aria-label="isPip ? $t('video.exitPip') : $t('video.pip')">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
                       <rect x="12" y="9" width="8" height="6" rx="1" ry="1" :fill="isPip ? 'currentColor' : 'none'" />
@@ -351,7 +351,7 @@
                   </button>
 
                   <!-- Fullscreen -->
-                  <button class="ctrl-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
+                  <button class="ctrl-btn" @click="toggleFullscreen" :aria-label="isFullscreen ? $t('video.exitFullscreen') : $t('video.fullscreen')">
                     <svg v-if="!isFullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="15 3 21 3 21 9" />
                       <polyline points="9 21 3 21 3 15" />
@@ -398,19 +398,19 @@
           <!-- Video Info Card -->
           <div class="video-info-card pc-info">
             <div class="info-row">
-              <span class="info-label">课程：</span>
+              <span class="info-label">{{ $t('video.courseLabel') }}</span>
               <span class="info-value">{{ videoData.courseTitle || '-' }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">章节：</span>
+              <span class="info-label">{{ $t('video.chapterLabel') }}</span>
               <span class="info-value">{{ currentChapter?.title || '-' }}</span>
             </div>
             <div class="info-row">
-              <span class="info-label">时长：</span>
+              <span class="info-label">{{ $t('video.durationLabel') }}</span>
               <span class="info-value">{{ formatTime(duration) }}</span>
             </div>
             <div v-if="lastPosition > 0" class="info-row">
-              <span class="info-label">上次进度：</span>
+              <span class="info-label">{{ $t('video.lastProgress') }}</span>
               <span class="info-value">{{ formatTime(lastPosition) }}</span>
             </div>
           </div>
@@ -419,9 +419,9 @@
         <!-- Right Sidebar (PC >= 769px) -->
         <aside v-show="showChapterList" class="player-sidebar pc-sidebar">
           <el-tabs v-model="activeTab" class="sidebar-tabs">
-            <el-tab-pane label="章节" name="chapters">
+            <el-tab-pane :label="$t('video.chapters')" name="chapters">
               <div class="tab-content chapters-tab">
-                <div v-if="chapters.length === 0" class="tab-empty">暂无章节</div>
+                <div v-if="chapters.length === 0" class="tab-empty">{{ $t('video.noChapters') }}</div>
                 <div
                   v-for="(chapter, index) in chapters"
                   :key="chapter.id"
@@ -445,19 +445,19 @@
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="笔记" name="notes">
+            <el-tab-pane :label="$t('video.notes')" name="notes">
               <div class="tab-content notes-tab">
                 <div class="note-input-row">
-                  <span class="note-time-btn" role="button" tabindex="0" aria-label="在当前时间点插入笔记" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <span class="note-time-btn" role="button" tabindex="0" :aria-label="$t('video.addNote')" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
                   <el-input
                     v-model="noteText"
-                    placeholder="添加笔记..."
+                    :placeholder="$t('video.addNotePlaceholder')"
                     class="note-input"
                     @keyup.enter="addNote"
                   />
-                  <el-button type="primary" size="small" @click="addNote">添加</el-button>
+                  <el-button type="primary" size="small" @click="addNote">{{ $t('video.addNote') }}</el-button>
                 </div>
-                <div v-if="notes.length === 0" class="tab-empty">暂无笔记</div>
+                <div v-if="notes.length === 0" class="tab-empty">{{ $t('video.noNotes') }}</div>
                 <div
                   v-for="note in notes"
                   :key="note.id"
@@ -468,14 +468,14 @@
                 >
                   <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
-                  <el-button link size="small" @click="deleteNote(note.id)">删除</el-button>
+                  <el-button link size="small" @click="deleteNote(note.id)">{{ $t('video.deleteNote') }}</el-button>
                 </div>
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="讨论" name="discussions">
+            <el-tab-pane :label="$t('video.discussions')" name="discussions">
               <div class="tab-content discussions-tab">
-                <div v-if="discussions.length === 0" class="tab-empty">暂无讨论</div>
+                <div v-if="discussions.length === 0" class="tab-empty">{{ $t('video.noDiscussions') }}</div>
                 <div
                   v-for="post in discussions"
                   :key="post.id"
@@ -496,9 +496,9 @@
         <!-- H5 Bottom Tabs (<= 768px) -->
         <div class="h5-bottom-tabs">
           <el-tabs v-model="activeTab" class="h5-tabs" swipeable>
-            <el-tab-pane label="章节" name="chapters">
+            <el-tab-pane :label="$t('video.chapters')" name="chapters">
               <div class="tab-content chapters-tab h5-chapters">
-                <div v-if="chapters.length === 0" class="tab-empty">暂无章节</div>
+                <div v-if="chapters.length === 0" class="tab-empty">{{ $t('video.noChapters') }}</div>
                 <div
                   v-for="(chapter, index) in chapters"
                   :key="chapter.id"
@@ -521,19 +521,19 @@
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="笔记" name="notes">
+            <el-tab-pane :label="$t('video.notes')" name="notes">
               <div class="tab-content notes-tab h5-notes">
                 <div class="note-input-row">
-                  <span class="note-time-btn" role="button" tabindex="0" aria-label="在当前时间点插入笔记" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
+                  <span class="note-time-btn" role="button" tabindex="0" :aria-label="$t('video.addNote')" @click="insertNoteAtCurrentTime" @keydown.enter="insertNoteAtCurrentTime" @keydown.space.prevent="insertNoteAtCurrentTime">{{ formatTime(currentTime) }}</span>
                   <el-input
                     v-model="noteText"
-                    placeholder="添加笔记..."
+                    :placeholder="$t('video.addNotePlaceholder')"
                     class="note-input"
                     @keyup.enter="addNote"
                   />
-                  <el-button type="primary" size="small" @click="addNote">添加</el-button>
+                  <el-button type="primary" size="small" @click="addNote">{{ $t('video.addNote') }}</el-button>
                 </div>
-                <div v-if="notes.length === 0" class="tab-empty">暂无笔记</div>
+                <div v-if="notes.length === 0" class="tab-empty">{{ $t('video.noNotes') }}</div>
                 <div
                   v-for="note in notes"
                   :key="note.id"
@@ -546,9 +546,9 @@
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="讨论" name="discussions">
+            <el-tab-pane :label="$t('video.discussions')" name="discussions">
               <div class="tab-content discussions-tab h5-discussions">
-                <div v-if="discussions.length === 0" class="tab-empty">暂无讨论</div>
+                <div v-if="discussions.length === 0" class="tab-empty">{{ $t('video.noDiscussions') }}</div>
                 <div
                   v-for="post in discussions"
                   :key="post.id"
@@ -579,7 +579,9 @@
 <script setup>
 import { ref, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
+const { t } = useI18n()
 // P2-02: 统一倍速选项配置，替换 3 处硬编码
 import { SPEED_OPTIONS } from '@/composables/usePlaybackSpeed'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
@@ -806,8 +808,8 @@ const {
   currentTime,
   formatTime,
   confirmDelete: async () => {
-    await ElMessageBox.confirm('确定删除此笔记?', '确认删除', {
-      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    await ElMessageBox.confirm(t('video.deleteNoteConfirm'), t('video.confirmDelete'), {
+      type: 'warning', confirmButtonText: t('video.deleteNote'), cancelButtonText: t('video.cancel')
     })
   },
   onStorageError: ({ type, error }) => {

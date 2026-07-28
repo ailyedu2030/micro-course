@@ -79,10 +79,12 @@ public class SecurityConfig {
                         //   - object-src 'none' / base-uri 'self' / form-action 'self'：纵深加固
                         .contentSecurityPolicy(csp -> csp.policyDirectives(
                                 "default-src 'self'; " +
-                                // P1-I #44 / P2 #28 fix: hls.js requires unsafe-eval/unsafe-inline for media handling (blob worker, HLS.js internals)
-                                // Vue CLI dev server also needs unsafe-inline; in production set script-src 'self' only and use nonce/hash
-                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-                                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                                // V2 安全升级：移除 unsafe-inline/unsafe-eval，改用 nonce 模式
+                                // Spring Security 自动为每个请求生成唯一 nonce，替换 {nonce} 占位符
+                                // 注意：本配置适用于 Spring 返回的 HTML 页面（如错误页、Swagger UI）
+                                // Vue SPA 前端的 CSP 在 nginx.conf 中独立管理
+                                "script-src 'self' 'nonce-{nonce}'; " +
+                                "style-src 'self' 'nonce-{nonce}' https://fonts.googleapis.com; " +
                                 "img-src 'self' data: blob: https:; " +
                                 "font-src 'self' data: https://fonts.gstatic.com; " +
                                 "connect-src 'self' https://api.deepseek.com ws: wss:; " +

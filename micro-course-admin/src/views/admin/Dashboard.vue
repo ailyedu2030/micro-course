@@ -11,12 +11,12 @@
       <div class="welcome-left">
         <div class="welcome-date">{{ welcomeDate }}</div>
         <div class="welcome-greeting">
-          <span class="greeting-name">管理员</span>
+          <span class="greeting-name">{{ $t('admin.welcomeTitle') }}</span>
           <span class="greeting-suffix">{{ greeting }}</span>
         </div>
       </div>
       <div class="welcome-right">
-        <span class="last-updated">最后更新: {{ lastUpdatedText }}</span>
+        <span class="last-updated">{{ $t('admin.lastUpdated') }}{{ lastUpdatedText }}</span>
         <el-button
           :icon="Refresh"
           circle
@@ -59,7 +59,7 @@
                 <div class="stat-value">{{ displayStats.totalUsers }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">总用户</div>
+            <div class="stat-label">{{ $t('admin.stats.users') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -75,7 +75,7 @@
                 <div class="stat-value">{{ displayStats.totalCourses }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">总课程</div>
+            <div class="stat-label">{{ $t('admin.stats.courses') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -91,7 +91,7 @@
                 <div class="stat-value">{{ displayStats.totalStudents }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">总学员</div>
+            <div class="stat-label">{{ $t('admin.stats.students') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -107,7 +107,7 @@
                 <div class="stat-value">{{ displayStats.activeUsers }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">活跃用户</div>
+            <div class="stat-label">{{ $t('admin.stats.activeUsers') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -123,7 +123,7 @@
                 <div class="stat-value">{{ displayStats.videoPlayCount }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">视频播放次数</div>
+            <div class="stat-label">{{ $t('admin.stats.videoPlays') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -139,7 +139,7 @@
                 <div class="stat-value">{{ displayStats.exerciseSubmitCount }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">练习提交次数</div>
+            <div class="stat-label">{{ $t('admin.stats.exerciseSubmits') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -155,7 +155,7 @@
                 <div class="stat-value">{{ formatDuration(displayStats.totalStudyMinutes) }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">学习时长</div>
+            <div class="stat-label">{{ $t('admin.stats.studyDuration') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -171,7 +171,7 @@
                 <div class="stat-value">{{ displayStats.certificatesIssued }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">证书发放</div>
+            <div class="stat-label">{{ $t('admin.stats.certificates') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -183,14 +183,14 @@
       <el-col :xs="24" :md="14">
         <el-card class="chart-card" shadow="never">
           <template #header>
-            <div class="card-header">核心指标趋势</div>
+            <div class="card-header">{{ $t('admin.charts.coreTrend') }}</div>
           </template>
           <el-skeleton :loading="trendsLoading" animated :rows="3">
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="trendsError" class="chart-error">
-                <span>{{ trendsErrorMsg || '核心指标趋势加载失败，请稍后重试' }}</span>
-                <el-button size="small" text type="primary" @click="loadTrends" style="margin-top:8px">重试</el-button>
+                <span>{{ trendsErrorMsg || $t('admin.loadFailed') }}</span>
+                <el-button size="small" text type="primary" @click="loadTrends" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
               <div v-else ref="trendsChartRef" class="chart-container" role="img" aria-label="核心指标趋势图表,展示用户与课程增长趋势"></div>
             </template>
@@ -201,14 +201,14 @@
       <el-col :xs="24" :md="10">
         <el-card class="chart-card" shadow="never">
           <template #header>
-            <div class="card-header">课程分类分布</div>
+            <div class="card-header">{{ $t('admin.charts.categoryDist') }}</div>
           </template>
           <el-skeleton :loading="categoryLoading" animated :rows="3">
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="categoryError" class="chart-error">
-                <span>{{ categoryErrorMsg || '课程分类分布加载失败，请稍后重试' }}</span>
-                <el-button size="small" text type="primary" @click="loadCategoryStats" style="margin-top:8px">重试</el-button>
+                <span>{{ categoryErrorMsg || $t('admin.loadFailed') }}</span>
+                <el-button size="small" text type="primary" @click="loadCategoryStats" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
               <div v-else ref="categoryChartRef" class="chart-container" role="img" aria-label="课程分类分布饼图"></div>
             </template>
@@ -223,14 +223,14 @@
       <el-col :xs="24" :md="14">
         <el-card class="chart-card" shadow="never">
           <template #header>
-            <div class="card-header">最近 30 天活跃</div>
+            <div class="card-header">{{ $t('admin.charts.activity30d') }}</div>
           </template>
           <el-skeleton :loading="activityLoading" animated :rows="3">
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="activityError" class="chart-error">
-                <span>{{ activityErrorMsg || '最近30天活跃加载失败，请稍后重试' }}</span>
-                <el-button size="small" text type="primary" @click="loadActivity" style="margin-top:8px">重试</el-button>
+                <span>{{ activityErrorMsg || $t('admin.loadFailed') }}</span>
+                <el-button size="small" text type="primary" @click="loadActivity" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
               <div v-else ref="activityChartRef" class="chart-container" role="img" aria-label="最近30天活跃用户趋势图"></div>
             </template>
@@ -241,7 +241,7 @@
       <el-col :xs="24" :md="10">
         <el-card class="list-card" shadow="never">
           <template #header>
-            <div class="card-header">最新操作日志</div>
+            <div class="card-header">{{ $t('admin.charts.latestLogs') }}</div>
           </template>
           <el-skeleton :loading="logsLoading" animated :rows="3">
             <template #template>
@@ -251,10 +251,10 @@
             </template>
             <template #default>
               <div v-if="logsError" class="list-error">
-                <span>加载失败</span>
+                <span>{{ $t('admin.loadFailed') }}</span>
               </div>
               <div v-else-if="logs.length === 0" class="list-empty">
-                <span>暂无日志</span>
+                <span>{{ $t('admin.noLogs') }}</span>
               </div>
               <ul v-else class="list-ul">
                 <li v-for="log in logs" :key="log.id" class="list-item">
@@ -273,7 +273,7 @@
         </el-card>
         <el-card class="health-card" shadow="never">
           <template #header>
-            <div class="card-header">系统健康</div>
+            <div class="card-header">{{ $t('admin.charts.systemHealth') }}</div>
           </template>
           <div v-if="healthLoading" class="health-skeleton">
             <el-skeleton :rows="1" animated />
@@ -313,7 +313,9 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
+const { t } = useI18n()
 import {
   User, UserFilled, Reading, Tickets, Timer, Medal, Clock, ChatLineSquare,
   Plus, Setting, OfficeBuilding, Download, List, Refresh
@@ -332,22 +334,22 @@ const welcomeDate = computed(() => {
 })
 const greeting = computed(() => {
   const h = now.value.getHours()
-  if (h < 6) return '，凌晨好'
-  if (h < 12) return '，上午好'
-  if (h < 14) return '，中午好'
-  if (h < 18) return '，下午好'
-  return '，晚上好'
+  if (h < 6) return t('admin.early')
+  if (h < 12) return t('admin.morning')
+  if (h < 14) return t('admin.noon')
+  if (h < 18) return t('admin.afternoon')
+  return t('admin.evening')
 })
 
 // ===== 最后更新时间 =====
 const lastUpdatedAt = ref(null)
 const lastUpdatedText = computed(() => {
-  if (!lastUpdatedAt.value) return '加载中...'
+  if (!lastUpdatedAt.value) return t('admin.loading')
   const diff = Date.now() - lastUpdatedAt.value
-  if (diff < 10000) return '刚刚'
-  if (diff < 60000) return `${Math.floor(diff / 1000)}秒前`
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  return `${Math.floor(diff / 3600000)}小时前`
+  if (diff < 10000) return t('admin.justNow')
+  if (diff < 60000) return t('admin.secondsAgo', { seconds: Math.floor(diff / 1000) })
+  if (diff < 3600000) return t('admin.minutesAgo', { minutes: Math.floor(diff / 60000) })
+  return t('admin.hoursAgo', { hours: Math.floor(diff / 3600000) })
 })
 let lastUpdatedTimer = null
 
@@ -372,12 +374,12 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: '新增用户', icon: markRaw(Plus), route: '/admin/users' },
-  { label: '课程管理', icon: markRaw(Reading), route: '/courses' },
-  { label: '部门管理', icon: markRaw(OfficeBuilding), route: '/departments' },
-  { label: '教学班管理', icon: markRaw(Tickets), route: '/admin/teaching-classes' },
-  { label: '系统设置', icon: markRaw(Setting), route: '/admin/settings' },
-  { label: '操作日志', icon: markRaw(List), route: '/admin/logs' }
+  { label: t('admin.quickActions.addUser'), icon: markRaw(Plus), route: '/admin/users' },
+  { label: t('admin.quickActions.courseMgmt'), icon: markRaw(Reading), route: '/courses' },
+  { label: t('admin.quickActions.deptMgmt'), icon: markRaw(OfficeBuilding), route: '/departments' },
+  { label: t('admin.quickActions.classMgmt'), icon: markRaw(Tickets), route: '/admin/teaching-classes' },
+  { label: t('admin.quickActions.settings'), icon: markRaw(Setting), route: '/admin/settings' },
+  { label: t('admin.quickActions.logs'), icon: markRaw(List), route: '/admin/logs' }
 ]
 
 function handleQuickAction(action) {
@@ -516,7 +518,7 @@ async function loadStats() {
     stats.value = newStats
     animateAllStats(newStats)
   } catch {
-    ElMessage.error('统计数据加载失败，请稍后重试')
+    ElMessage.error(t('admin.loadFailed'))
   } finally {
     statsLoading.value = false
   }
@@ -543,7 +545,7 @@ async function loadTrends() {
   } catch (e) {
     trendsError.value = true
     trendsErrorMsg.value = e?.message || e?.toString?.() || '趋势数据加载失败'
-    ElMessage.error('趋势数据加载失败')
+    ElMessage.error(t('admin.loadFailed'))
     trendsLoading.value = false
     await nextTick()
     renderTrendsChart({ users: [], courses: [], students: [] })
@@ -567,7 +569,7 @@ function renderTrendsChart(data) {
     legend: { data: ['用户', '课程', '学员'], bottom: 0, textStyle: { color: '#64748B' } },
     grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
-    yAxis: { type: 'value', name: '数量', minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
+    yAxis: { type: 'value', name: t('admin.stats.courses'), minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [
       {
         name: '用户',
@@ -687,7 +689,7 @@ function renderActivityChart(data) {
     },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
-    yAxis: { type: 'value', name: '活跃用户', minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
+    yAxis: { type: 'value', name: t('admin.stats.activeUsers'), minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [{
       name: '活跃用户',
       type: 'line',

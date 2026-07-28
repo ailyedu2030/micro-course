@@ -230,6 +230,25 @@ app:
     field-encryption-key: ${APP_SECURITY_FIELD_ENCRYPTION_KEY:dev-32-char-key-not-for-production-!}
     field-encryption-salt: ${APP_SECURITY_FIELD_ENCRYPTION_SALT:0123456789abcdef}
 
+# OpenTelemetry 链路追踪配置(临时禁用 — Phase 4 Round 4 总工程师决策)
+# 原因:OTel SDK 版本与 starter transitive 依赖冲突,prod 启动失败。
+# 完整解决:独立 Phase,引入 OTel BOM 1.46+ + starter 2.20+ + spring-boot 3.4+。
+# 当前回滚以保护 P0 启动链路。
+# otel:
+#   service:
+#     name: micro-course-api
+#   traces:
+#     exporter: otlp
+#   exporter:
+#     otlp:
+#       endpoint: http://localhost:4317
+#   metrics:
+#     exporter: otlp
+#   logs:
+#     exporter: otlp
+#   tracer:
+#     sampler: parentbased_always_on
+
 # Hermes 课程同步 Webhook 配置
 # V2 改造：取消共享 API Key，改为每个教师在个人设置里生成独立 API Key
 # 通过 X-API-Key Header 传入，服务端反查 users.api_key 获取教师身份

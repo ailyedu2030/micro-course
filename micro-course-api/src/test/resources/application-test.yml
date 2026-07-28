@@ -3,6 +3,7 @@ spring:
     exclude:
       - org.springframework.boot.autoconfigure.security.oauth2.client.servlet.OAuth2ClientAutoConfiguration
       - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+      - io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration
   datasource:
     url: ${TEST_DB_URL:jdbc:postgresql://localhost:5433/micro_course_test}
     username: postgres
