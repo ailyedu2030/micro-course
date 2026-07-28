@@ -241,27 +241,24 @@
 
         <!-- OpenTelemetry SDK 链路追踪（Spring Boot 3.x 自动配置） -->
         <!-- OpenTelemetry 集成(Phase 4 Round 4 — 总工程师引入) -->
-        <!-- 【依赖版本教训】1.46.0 与 starter 2.16.0 引入的 api:1.31.0 不兼容
-             (1.46.0 需要 ConfigUtil.safeSystemProperties 方法,1.31.0 没有)
-             修复:全部固定到 1.31.0 系列。
-             完整 OTel SDK 依赖链(同版本):
-             1. opentelemetry-spring-boot-starter:2.16.0 (transitive api:1.31.0)
-             2. opentelemetry-sdk-extension-autoconfigure:1.31.0 (匹配 api)
-             3. opentelemetry-sdk-extension-autoconfigure-spi:1.31.0 (匹配 autoconfigure) -->
+        <!-- 【依赖版本教训】1.31.0 没有 ComponentLoader 类,启动失败。
+             1.44.0+ 才有 ComponentLoader,但 1.46.0+ 调用 ConfigUtil.safeSystemProperties
+             需要 api 1.46.0(starter 2.16.0 transitive 1.31.0 不兼容)。
+             解决:全部固定 1.44.0 系列(包含 ComponentLoader 但不调 safeSystemProperties)。 -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-spring-boot-starter</artifactId>
-            <version>2.16.0</version>
+            <version>2.10.0</version>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
-            <version>1.31.0</version>
+            <version>1.44.0</version>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure-spi</artifactId>
-            <version>1.31.0</version>
+            <version>1.44.0</version>
         </dependency>
 
         <!-- Spring Boot Test -->
