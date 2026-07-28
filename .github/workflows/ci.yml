@@ -123,11 +123,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Pull base images
-        run: docker compose pull
-
-      - name: Build Docker
-        run: docker compose build
+      - name: Build Docker (pull base images if available otherwise use cached)
+        run: docker compose pull --ignore-pull-failures 2>&1 || true; docker compose build
 
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
