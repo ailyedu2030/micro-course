@@ -86,7 +86,12 @@
             :key="row.id"
             class="post-card"
             shadow="never"
+            role="button"
+            tabindex="0"
+            :aria-label="`帖子：${row.title}，${row.replyCount} 回复`"
             @click="viewDetail(row)"
+            @keydown.enter="viewDetail(row)"
+            @keydown.space.prevent="viewDetail(row)"
           >
             <div class="post-card-title">{{ row.title }}</div>
             <div class="post-card-meta">

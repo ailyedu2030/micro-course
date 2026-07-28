@@ -315,13 +315,24 @@ public class StorageApplicationPdfGenerator {
                         }
                     }
 
-                    // 公章图片
+                    // 公章图片 — P1 SSRF 修复：与签名图片保持一致的 URL 验证
                     if (sig.getSealImageUrl() != null && !sig.getSealImageUrl().isEmpty()) {
                         try {
-                            Image seal = Image.getInstance(new URL(sig.getSealImageUrl()));
-                            seal.scaleToFit(80, 80);
-                            doc.add(seal);
+                            URL sealUrl = new URL(sig.getSealImageUrl());
+                            String sealHost = sealUrl.getHost();
+                            if (sealHost == null || sealHost.equals("localhost") || sealHost.equals("127.0.0.1")
+                                    || sealHost.startsWith("10.") || sealHost.startsWith("172.16.")
+                                    || sealHost.startsWith("192.168.") || sealHost.equals("[::1]")
+                                    || sealHost.endsWith(".local")) {
+                                log.warn("SSRF blocked [seal]: rejecting private URL host={}", sealHost);
+                                doc.add(new Paragraph("[公章图片-地址无效]", bodyFont));
+                            } else {
+                                Image seal = Image.getInstance(sealUrl);
+                                seal.scaleToFit(80, 80);
+                                doc.add(seal);
+                            }
                         } catch (Exception e) {
+                            log.warn("公章图片加载失败: {}", e.getMessage());
                             doc.add(new Paragraph("[公章图片]", bodyFont));
                         }
                     }
