@@ -240,10 +240,20 @@
         </dependency>
 
         <!-- OpenTelemetry SDK 链路追踪（Spring Boot 3.x 自动配置） -->
+        <!-- OpenTelemetry 集成(Phase 4 Round 4 — 总工程师引入) -->
+        <!-- Io.opentelemetry.instrumentation:opentelemetry-spring-boot-starter 依赖 transitive:
+             opentelemetry-sdk、opentelemetry-exporter-otlp、opentelemetry-api -->
+        <!-- 但 opentelemetry-sdk-extension-autoconfigure 需显式引入(SDK 2.10+ 拆分)
+             缺失会导致 io.opentelemetry.sdk.autoconfigure.internal.ComponentLoader ClassNotFound -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-spring-boot-starter</artifactId>
             <version>2.16.0</version>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
+            <version>1.46.0</version>
         </dependency>
 
         <!-- Spring Boot Test -->
