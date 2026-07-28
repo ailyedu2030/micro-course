@@ -241,12 +241,13 @@
 
         <!-- OpenTelemetry SDK 链路追踪（Spring Boot 3.x 自动配置） -->
         <!-- OpenTelemetry 集成(Phase 4 Round 4 — 总工程师引入) -->
-        <!-- 完整 OTel SDK 依赖链:
-             1. opentelemetry-spring-boot-starter: OTel + Spring Boot 集成
-             2. opentelemetry-sdk-extension-autoconfigure: 自动配置核心
-             3. opentelemetry-sdk-extension-autoconfigure-spi: SPI 监听器接口
-                 (提供 io.opentelemetry.sdk.autoconfigure.spi.internal.AutoConfigureListener 类)
-             缺失任何 SPI 依赖会导致 Spring 启动失败 -->
+        <!-- 【依赖版本教训】1.46.0 与 starter 2.16.0 引入的 api:1.31.0 不兼容
+             (1.46.0 需要 ConfigUtil.safeSystemProperties 方法,1.31.0 没有)
+             修复:全部固定到 1.31.0 系列。
+             完整 OTel SDK 依赖链(同版本):
+             1. opentelemetry-spring-boot-starter:2.16.0 (transitive api:1.31.0)
+             2. opentelemetry-sdk-extension-autoconfigure:1.31.0 (匹配 api)
+             3. opentelemetry-sdk-extension-autoconfigure-spi:1.31.0 (匹配 autoconfigure) -->
         <dependency>
             <groupId>io.opentelemetry.instrumentation</groupId>
             <artifactId>opentelemetry-spring-boot-starter</artifactId>
@@ -255,12 +256,12 @@
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure</artifactId>
-            <version>1.46.0</version>
+            <version>1.31.0</version>
         </dependency>
         <dependency>
             <groupId>io.opentelemetry</groupId>
             <artifactId>opentelemetry-sdk-extension-autoconfigure-spi</artifactId>
-            <version>1.46.0</version>
+            <version>1.31.0</version>
         </dependency>
 
         <!-- Spring Boot Test -->
