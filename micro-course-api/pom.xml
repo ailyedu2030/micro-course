@@ -239,6 +239,13 @@
             <artifactId>commons-codec</artifactId>
         </dependency>
 
+        <!-- OpenTelemetry SDK 链路追踪（Spring Boot 3.x 自动配置） -->
+        <dependency>
+            <groupId>io.opentelemetry.instrumentation</groupId>
+            <artifactId>opentelemetry-spring-boot-starter</artifactId>
+            <version>2.16.0</version>
+        </dependency>
+
         <!-- Spring Boot Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
