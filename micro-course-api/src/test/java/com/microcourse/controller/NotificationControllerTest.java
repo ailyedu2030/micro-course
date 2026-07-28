@@ -2,6 +2,7 @@ package com.microcourse.controller;
 
 import com.microcourse.BaseIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,11 +27,10 @@ class NotificationControllerTest extends BaseIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
 
-    @AfterEach
-    void cleanup() {
-        jdbc.update("DELETE FROM notifications WHERE id > 0");
-        // 防御性:重置 p0_teacher 角色 + 清除 UserStatusCheckFilter Redis 缓存
-        // (防止其他 test class 状态污染 + Redis 缓存 30s TTL)
+    @BeforeEach
+    void resetUserState() {
+        // 防御性:本 test class 第一个 test 前重置 p0_teacher + 清除 Redis 缓存
+        // (其他 test class 可能在 @AfterEach 改了 role/status)
         jdbc.update("UPDATE users SET role = 'TEACHER', status = 1 WHERE id = 6 AND username = 'p0_teacher'");
         try {
             com.microcourse.util.RedisUtil redisUtil = applicationContext.getBean(com.microcourse.util.RedisUtil.class);
@@ -38,6 +38,11 @@ class NotificationControllerTest extends BaseIntegrationTest {
         } catch (Exception ignored) {
             // 缓存清除失败不影响测试
         }
+    }
+
+    @AfterEach
+    void cleanup() {
+        jdbc.update("DELETE FROM notifications WHERE id > 0");
     }
 
     private String bearerTeacher() throws Exception {
