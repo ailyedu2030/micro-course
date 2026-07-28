@@ -29,8 +29,15 @@ class NotificationControllerTest extends BaseIntegrationTest {
     @AfterEach
     void cleanup() {
         jdbc.update("DELETE FROM notifications WHERE id > 0");
-        // 防御性:重置 p0_teacher 角色(防止其他 test class 状态污染)
+        // 防御性:重置 p0_teacher 角色 + 清除 UserStatusCheckFilter Redis 缓存
+        // (防止其他 test class 状态污染 + Redis 缓存 30s TTL)
         jdbc.update("UPDATE users SET role = 'TEACHER', status = 1 WHERE id = 6 AND username = 'p0_teacher'");
+        try {
+            com.microcourse.util.RedisUtil redisUtil = applicationContext.getBean(com.microcourse.util.RedisUtil.class);
+            redisUtil.delete("mc:user:status:6");
+        } catch (Exception ignored) {
+            // 缓存清除失败不影响测试
+        }
     }
 
     private String bearerTeacher() throws Exception {
