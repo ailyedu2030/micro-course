@@ -929,8 +929,9 @@ async function performAutoSave() {
     const displayTime = serverTime ? new Date(serverTime).toLocaleTimeString() : new Date().toLocaleTimeString()
     saveStatus.value = '已保存 ' + displayTime
     dirty.value = false  // 仅成功时清除 dirty；失败保留让用户被警告，避免数据丢失
-  } catch {
+  } catch (e) {
     saveStatus.value = '⚠ 保存失败'
+    ElMessage.error(e?.response?.data?.message || '自动保存失败，请手动保存')
   } finally {
     pendingSave.value = false
   }

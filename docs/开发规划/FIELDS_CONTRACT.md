@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2607
+- 后端实体字段总数: 2608
 
 - 前端引用字段总数: 434
 
@@ -1414,7 +1414,7 @@
 
 | StorageApplicationAutoSaveRequest | 1 | 0 |
 
-| StorageApplicationPreviewVO | 36 | 0 |
+| StorageApplicationPreviewVO | 37 | 0 |
 
 | StorageApplicationSaveRequest | 35 | 0 |
 

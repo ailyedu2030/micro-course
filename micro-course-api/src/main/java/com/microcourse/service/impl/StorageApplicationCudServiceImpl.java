@@ -86,13 +86,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         }
         // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
         if (request.getApplyDate() != null && !request.getApplyDate().isEmpty()) {
-            try {
-                proposal.setApplyDate(parseDate(request.getApplyDate()));
-            } catch (Exception e) {
-                String redactedDate = request.getApplyDate().length() > 20
-                        ? request.getApplyDate().substring(0, 10) + "..." : request.getApplyDate();
-                log.warn("applyDate parse failed: {}", redactedDate, e);
-            }
+            proposal.setApplyDate(parseDate(request.getApplyDate()));
         }
         if (request.getType() != null) {
             proposal.setType(request.getType());
@@ -123,13 +117,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         }
         // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
         if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
-            try {
-                proposal.setStartDate(parseDate(request.getStartDate()));
-            } catch (Exception e) {
-                String redactedDate = request.getStartDate().length() > 20
-                        ? request.getStartDate().substring(0, 10) + "..." : request.getStartDate();
-                log.warn("startDate parse failed: {}", redactedDate, e);
-            }
+            proposal.setStartDate(parseDate(request.getStartDate()));
         }
         if (request.getDuration() != null) {
             proposal.setDuration(request.getDuration());
@@ -190,8 +178,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             throw new IllegalStateException("replaceSubTables 必须在事务上下文中调用");
         }
 
-        // courses — A2: 仅当 courses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getCourses() != null) {
+        // courses — A2: 仅当 courses 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getCourses() != null && !request.getCourses().isEmpty()) {
             courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
                     .eq(ProposalCourse::getProposalId, proposalId));
             int sortOrder = 0;
@@ -338,8 +326,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
         }
 
-        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getLeadCourses() != null) {
+        // leadCourses — A2: 仅当 leadCourses 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getLeadCourses() != null && !request.getLeadCourses().isEmpty()) {
             leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
                     .eq(ProposalLeadCourse::getProposalId, proposalId));
             int sortOrder = 0;
@@ -364,8 +352,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
         }
 
-        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getTeamMembers() != null) {
+        // teamMembers — A2: 仅当 teamMembers 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getTeamMembers() != null && !request.getTeamMembers().isEmpty()) {
             teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
                     .eq(ProposalTeamMember::getProposalId, proposalId));
             List<ProposalTeamMember> entities = new ArrayList<>();
@@ -394,8 +382,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
         }
 
-        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）(R-002: 批量插入)
-        if (request.getSignatures() != null) {
+        // signatures — A2: 仅当 signatures 数组非 null 且非空时更新（不处理 SHARED_UNIT 级别）(D-005: 空数组不触发删除)
+        if (request.getSignatures() != null && !request.getSignatures().isEmpty()) {
             signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
                     .eq(ProposalSignature::getProposalId, proposalId)
                     .ne(ProposalSignature::getSignLevel, "SHARED_UNIT"));
@@ -426,8 +414,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
         }
 
-        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新 (R-002: 批量插入)
-        if (includeSharedUnits && request.getSharedUnits() != null) {
+        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (includeSharedUnits && request.getSharedUnits() != null && !request.getSharedUnits().isEmpty()) {
             sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
                     .eq(ProposalSharedUnit::getProposalId, proposalId));
             // 先清除旧的 SHARED_UNIT 级别签字，再重新插入
@@ -532,7 +520,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         } catch (Exception e) {
             String redacted = dateStr.length() > 20 ? dateStr.substring(0, 10) + "..." : dateStr;
             log.error("日期解析失败: input='{}' (len={}), error={}", redacted, dateStr.length(), e.getMessage());
-            return null;
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "日期格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM 格式");
         }
     }
 }
