@@ -11,6 +11,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -52,7 +53,9 @@ class CheckInControllerTest extends BaseIntegrationTest {
     @Test
     @DisplayName("POST /api/check-ins · 打卡后返回当天日期")
     void checkIn_ReturnsTodayDate() throws Exception {
-        String today = LocalDate.now().toString();
+        // 【P0 修复】CI 服务器 UTC vs 服务器 Asia/Shanghai 时区不一致
+        // 统一使用 Asia/Shanghai（与后端服务时区一致）
+        String today = LocalDate.now(ZoneId.of("Asia/Shanghai")).toString();
         MvcResult result = mockMvc.perform(post("/api/check-ins")
                         .header("Authorization", studentToken()))
                 .andExpect(status().isOk())
@@ -60,7 +63,7 @@ class CheckInControllerTest extends BaseIntegrationTest {
 
         // response may use "checkinDate" field
         String body = result.getResponse().getContentAsString();
-        assertTrue(body.contains(today) || body.contains(LocalDate.now().toString()),
+        assertTrue(body.contains(today) || body.contains(LocalDate.now(ZoneId.of("Asia/Shanghai")).toString()),
                 "打卡记录应包含当天日期, body=" + body);
     }
 
