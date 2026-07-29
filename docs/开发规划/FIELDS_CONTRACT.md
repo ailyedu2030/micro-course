@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 13 字段
 
-- 后端实体字段总数: 2608
+- 后端实体字段总数: 2609
 
 - 前端引用字段总数: 435
 
@@ -1420,7 +1420,7 @@
 
 | StorageApplicationSummaryVO | 10 | 0 |
 
-| StorageApplicationVO | 41 | 0 |
+| StorageApplicationVO | 42 | 0 |
 
 | StudentActivityVO | 4 | 0 |
 

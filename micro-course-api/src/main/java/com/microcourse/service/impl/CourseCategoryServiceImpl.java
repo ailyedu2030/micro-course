@@ -14,6 +14,8 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseCategoryRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CourseCategoryService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @Cacheable(value = "categories", key = "#page + '-' + #size", sync = true)
     @Transactional(readOnly = true)
     public PageResult<CourseCategoryVO> page(int page, int size) {
         IPage<CourseCategory> ipage = courseCategoryRepository.selectPage(
@@ -81,6 +84,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public CourseCategoryVO create(CourseCategoryCreateRequest request) {
         CourseCategory category = new CourseCategory();
@@ -95,6 +99,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public CourseCategoryVO update(Long id, CourseCategoryUpdateRequest request) {
         CourseCategory category = courseCategoryRepository.selectById(id);
@@ -119,6 +124,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
     }
 
     @Override
+    @CacheEvict(value = "categories", allEntries = true)
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         CourseCategory category = courseCategoryRepository.selectById(id);

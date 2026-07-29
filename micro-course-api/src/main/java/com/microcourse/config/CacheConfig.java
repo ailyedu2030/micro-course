@@ -59,6 +59,7 @@ public class CacheConfig {
                 .withCacheConfiguration("adminSettingsByKey", defaultConfig.entryTtl(Duration.ofMinutes(10)))
                 .withCacheConfiguration("banners", defaultConfig.entryTtl(Duration.ofMinutes(15)))
                 .withCacheConfiguration("categories", defaultConfig.entryTtl(Duration.ofMinutes(30)))
+                .withCacheConfiguration("recommendedCourses", defaultConfig.entryTtl(Duration.ofMinutes(30)))
                 // P1-11 修复：academicOverview 缓存缩短 TTL 到 30 秒（原 5 分钟，数据陈旧导致统计延迟）
                 .withCacheConfiguration("academicOverview", defaultConfig.entryTtl(Duration.ofSeconds(30)))
                 .build();
