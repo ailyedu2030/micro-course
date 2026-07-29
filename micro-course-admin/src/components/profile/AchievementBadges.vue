@@ -19,6 +19,12 @@
         :key="badge.badgeType"
         class="badge-item student-card-item"
         :class="{ 'badge-locked': !badge.earnedAt }"
+        role="button"
+        tabindex="0"
+        :aria-label="badge.badgeName"
+        @click="goToAchievements"
+        @keydown.enter="goToAchievements"
+        @keydown.space.prevent="goToAchievements"
       >
         <div class="badge-icon">
           <el-icon v-if="badge.earnedAt" color="var(--role-primary)" :size="isMobile ? 28 : 32"><Star /></el-icon>
@@ -59,6 +65,10 @@ const allBadges = computed(() => {
     return earned ? { ...b, ...earned } : { ...b, earnedAt: null }
   })
 })
+
+const goToAchievements = () => {
+  router.push('/student/achievements')
+}
 
 const fetchBadges = async () => {
   badgeLoading.value = true
