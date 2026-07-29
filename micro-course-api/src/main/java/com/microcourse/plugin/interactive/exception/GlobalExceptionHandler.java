@@ -58,7 +58,8 @@ public class GlobalExceptionHandler {
         log.warn("[Global-Except] BusinessException path={} code={} msg={} traceId={}",
                 req.getRequestURI(), ex.getCode(), ex.getMessage(), traceId);
         R<Object> body = R.fail(ex.getCode(), ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        int httpStatus = ex.getHttpStatus() > 0 ? ex.getHttpStatus() : HttpStatus.BAD_REQUEST.value();
+        return ResponseEntity.status(httpStatus).body(body);
     }
 
     /**

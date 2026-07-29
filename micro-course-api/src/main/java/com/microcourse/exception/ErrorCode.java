@@ -92,7 +92,7 @@ public enum ErrorCode {
     USER_NOT_ACTIVE_VERIFIED(1011, "INACTIVE 用户需邮箱验证或 CAS 绑定后才能激活", 400),
 
     CAS_NOT_CONFIGURED(1010, "CAS服务未配置", 500),
-    CAS_VALIDATION_FAILED(1011, "CAS票据验证失败", 401),
+    CAS_VALIDATION_FAILED(1012, "CAS票据验证失败", 401),
 
     PLUGIN_NOT_ENABLED(16001, "该课程类型对应的插件未启用", 400),
     PLUGIN_NO_GRANT(16002, "您没有该课程类型的创建权限", 403),
