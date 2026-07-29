@@ -319,10 +319,7 @@ public class OrderServiceImpl implements OrderService {
         return toVO(orderRepository.selectById(orderId));
     }
 
-    /**
-     * J9-02: 退款 — 将 PAID 订单转为 REFUNDED，记录退款 Payment
-     * 状态机：PAID → REFUNDED
-     */
+    /** J9-02: 退款 — PAID → REFUNDED，记录退款 Payment */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public OrderVO refund(Long orderId) {
@@ -553,11 +550,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    /**
-     * 核心支付处理（无 SecurityUtil 校验，供回调使用）
-     * 单独事务方法，确保被 Spring AOP 拦截
-     */
-    // 事务由调用方 paymentCallback 的 @Transactional 保证
+    /** 核心支付处理（无 SecurityUtil，供回调）。事务由调用方 @Transactional 保证 */
     private void processPayment(Long orderId, String paymentMethod) {
         // P1: 支付方式白名单校验
         Set<String> validMethods = Set.of("BALANCE", "WECHAT", "ALIPAY");
@@ -661,13 +654,7 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    /**
-     * 生成全局唯一订单号。
-     * 格式：ORD + 时间戳(13位) + 用户ID后缀(4位hex) + UUID片段(8位hex) = 28位
-     * 相比旧版（时间戳+6位UUID），新增 userId 后缀和更长 UUID 片段，
-     * 即使同一毫秒内同一用户创建多个订单也不会碰撞。
-     * DB 层 uk_orders_order_no 唯一索引作为最终兜底。
-     */
+    /** 生成全局唯一订单号 ORD+时间戳+userId后缀+UUID片段=28位。DB 层唯一索引兜底。 */
     private String generateOrderNo() {
         String ts = Long.toString(System.currentTimeMillis());
         String uidSuffix = Long.toHexString(SecurityUtil.getCurrentUserId() & 0xFFFF);

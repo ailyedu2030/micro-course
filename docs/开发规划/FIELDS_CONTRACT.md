@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 284 | Vue 视图数: 60 | Controller 数: 74 | API 文件数: 45
+> 实体数: 284 | Vue 视图数: 60 | Controller 数: 73 | API 文件数: 45
 
 ---
 
@@ -14,7 +14,7 @@
 
 - 后端实体字段总数: 2609
 
-- 前端引用字段总数: 435
+- 前端引用字段总数: 428
 
 
 ## ⚠️ 前端孤儿字段
@@ -809,7 +809,7 @@
 
 | Alias | /api/courses/{courseId} | 5 | - |
 
-| Auth | /api/auth | 13 | - |
+| Auth | /api/auth | 17 | - |
 
 | Badge | /api/badges | 3 | - |
 
@@ -908,8 +908,6 @@
 | Order | /api/orders | 8 | - |
 
 | PlatformShareConfig | /api/admin/platform-share-config | 3 | - |
-
-| Profile | /api/profile | 4 | - |
 
 | Question | /api/questions | 7 | - |
 
