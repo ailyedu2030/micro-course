@@ -11,6 +11,7 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.*;
 import com.microcourse.service.StorageApplicationCudService;
+import com.microcourse.util.XssSanitizer;
 import org.apache.ibatis.session.ExecutorType;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -73,30 +74,30 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
     @Override
     public void applyRequestToProposal(MicroSpecialtyProposal proposal, StorageApplicationSaveRequest request) {
         if (request.getTitle() != null) {
-            proposal.setTitle(request.getTitle());
+            proposal.setTitle(XssSanitizer.sanitizePlainText(request.getTitle()));
         }
         // P0-4 修复：持久化微专业名称
         if (request.getMicroSpecialtyName() != null) {
-            proposal.setMicroSpecialtyName(request.getMicroSpecialtyName());
+            proposal.setMicroSpecialtyName(XssSanitizer.sanitizePlainText(request.getMicroSpecialtyName()));
         }
         if (request.getLeadName() != null) {
-            proposal.setLeadName(request.getLeadName());
+            proposal.setLeadName(XssSanitizer.sanitizePlainText(request.getLeadName()));
         }
         if (request.getContactPhone() != null) {
-            proposal.setContactPhone(request.getContactPhone());
+            proposal.setContactPhone(XssSanitizer.sanitizePlainText(request.getContactPhone()));
         }
         // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
         if (request.getApplyDate() != null && !request.getApplyDate().isEmpty()) {
             proposal.setApplyDate(parseDate(request.getApplyDate()));
         }
         if (request.getType() != null) {
-            proposal.setType(request.getType());
+            proposal.setType(XssSanitizer.sanitizePlainText(request.getType()));
         }
         if (request.getTargetAudience() != null) {
-            proposal.setTargetAudience(request.getTargetAudience());
+            proposal.setTargetAudience(XssSanitizer.sanitizePlainText(request.getTargetAudience()));
         }
         if (request.getTargetDisciplines() != null) {
-            proposal.setTargetDisciplines(request.getTargetDisciplines());
+            proposal.setTargetDisciplines(XssSanitizer.sanitizePlainText(request.getTargetDisciplines()));
         }
         if (request.getTotalCredits() != null) {
             proposal.setTotalCredits(request.getTotalCredits());
@@ -133,34 +134,34 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             proposal.setIndustryPartners(request.getIndustryPartners());
         }
         if (request.getIntroduction() != null) {
-            proposal.setIntroduction(request.getIntroduction());
+            proposal.setIntroduction(XssSanitizer.sanitize(request.getIntroduction()));
         }
         if (request.getMarketDemandAnalysis() != null) {
-            proposal.setMarketDemandAnalysis(request.getMarketDemandAnalysis());
+            proposal.setMarketDemandAnalysis(XssSanitizer.sanitize(request.getMarketDemandAnalysis()));
         }
         if (request.getSpecialtyOverview() != null) {
-            proposal.setSpecialtyOverview(request.getSpecialtyOverview());
+            proposal.setSpecialtyOverview(XssSanitizer.sanitize(request.getSpecialtyOverview()));
         }
         if (request.getCurriculumDesign() != null) {
-            proposal.setCurriculumDesign(request.getCurriculumDesign());
+            proposal.setCurriculumDesign(XssSanitizer.sanitize(request.getCurriculumDesign()));
         }
         if (request.getConstructionGuarantee() != null) {
-            proposal.setConstructionGuarantee(request.getConstructionGuarantee());
+            proposal.setConstructionGuarantee(XssSanitizer.sanitize(request.getConstructionGuarantee()));
         }
         if (request.getLeadTitle() != null) {
-            proposal.setLeadTitle(request.getLeadTitle());
+            proposal.setLeadTitle(XssSanitizer.sanitizePlainText(request.getLeadTitle()));
         }
         if (request.getLeadPosition() != null) {
-            proposal.setLeadPosition(request.getLeadPosition());
+            proposal.setLeadPosition(XssSanitizer.sanitizePlainText(request.getLeadPosition()));
         }
         if (request.getLeadPhone() != null) {
-            proposal.setLeadPhone(request.getLeadPhone());
+            proposal.setLeadPhone(XssSanitizer.sanitizePlainText(request.getLeadPhone()));
         }
         if (request.getLeadResearchDirection() != null) {
-            proposal.setLeadResearchDirection(request.getLeadResearchDirection());
+            proposal.setLeadResearchDirection(XssSanitizer.sanitizePlainText(request.getLeadResearchDirection()));
         }
         if (request.getLeadMainTasks() != null) {
-            proposal.setLeadMainTasks(request.getLeadMainTasks());
+            proposal.setLeadMainTasks(XssSanitizer.sanitizePlainText(request.getLeadMainTasks()));
         }
         // A1 修复：持久化申报院系 ID
         if (request.getOfferDepartmentId() != null) {
