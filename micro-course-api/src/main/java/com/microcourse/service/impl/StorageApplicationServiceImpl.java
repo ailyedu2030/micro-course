@@ -592,18 +592,19 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // ================================================================
     // 12. resolveSchoolName
     // ================================================================
-    @Override
-    public String resolveSchoolName(Long proposalId) {
+
+    /**
+     * R-008: 核心实现 — 对原始名称进行 fallback + 安全过滤。
+     * 提取为静态方法以便所有 overload 复用。
+     */
+    private static String sanitizeSchoolName(String universityFullName, String fallbackTitle) {
         try {
-            MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
-            // P2-03: 优先使用 universityFullName，fallback 到 title
-            String name = "申报高校";
-            if (p != null) {
-                name = p.getUniversityFullName();
-                if (name == null || name.isBlank()) {
-                    name = p.getTitle();
-                }
-                if (name == null) name = "申报高校";
+            String name = universityFullName;
+            if (name == null || name.isBlank()) {
+                name = fallbackTitle;
+            }
+            if (name == null || name.isBlank()) {
+                return "申报高校";
             }
             // Sanitize: remove characters unsafe for filenames across OS
             String sanitized = name.replaceAll("[/\\\\:*?\"<>|]", "").trim();
@@ -615,6 +616,29 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             return sanitized.isEmpty() ? "申报高校" : sanitized;
         } catch (Exception e) {
             return "申报高校";
+        }
+    }
+
+    @Override
+    public String resolveSchoolName(String universityFullName, String fallbackTitle) {
+        return sanitizeSchoolName(universityFullName, fallbackTitle);
+    }
+
+    @Override
+    public String resolveSchoolName(MicroSpecialtyProposal proposal) {
+        if (proposal == null) {
+            return sanitizeSchoolName(null, null);
+        }
+        return sanitizeSchoolName(proposal.getUniversityFullName(), proposal.getTitle());
+    }
+
+    @Override
+    public String resolveSchoolName(Long proposalId) {
+        try {
+            MicroSpecialtyProposal p = proposalRepository.selectById(proposalId);
+            return resolveSchoolName(p);
+        } catch (Exception e) {
+            return sanitizeSchoolName(null, null);
         }
     }
 

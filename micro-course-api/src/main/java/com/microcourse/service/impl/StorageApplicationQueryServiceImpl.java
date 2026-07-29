@@ -327,6 +327,9 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
         vo.setLeadMainTasks(proposal.getLeadMainTasks());
 
+        // R-008: 申报高校全称（用于导出文件名，避免 resolveSchoolName 多一次 selectById）
+        vo.setUniversityFullName(proposal.getUniversityFullName());
+
         // 子表数据
         vo.setCourses(buildCourseItems(proposal.getId()));
         vo.setLeadCourses(buildLeadCourseItems(proposal.getId()));

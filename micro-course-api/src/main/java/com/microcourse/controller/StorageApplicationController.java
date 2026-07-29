@@ -161,13 +161,17 @@ public class StorageApplicationController {
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
                     "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
         }
+        // R-008: 先获取详情（含 universityFullName），用于导出文件名，避免 resolveSchoolName(id) 多一次 selectById
+        StorageApplicationVO detail = storageApplicationService.getDetail(id, userId);
+        String schoolName = storageApplicationService.resolveSchoolName(
+                detail.getUniversityFullName(), detail.getTitle());
+
         byte[] bytes;
         try {
             bytes = exportService.exportWord(id);
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Word 文档生成失败，请稍后重试");
         }
-        String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".docx";
 
@@ -196,13 +200,17 @@ public class StorageApplicationController {
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
                     "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
         }
+        // R-008: 先获取详情（含 universityFullName），用于导出文件名，避免 resolveSchoolName(id) 多一次 selectById
+        StorageApplicationVO detail = storageApplicationService.getDetail(id, userId);
+        String schoolName = storageApplicationService.resolveSchoolName(
+                detail.getUniversityFullName(), detail.getTitle());
+
         byte[] bytes;
         try {
             bytes = exportService.exportPdf(id);
         } catch (RuntimeException e) {
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "PDF 生成失败，请稍后重试");
         }
-        String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";
 

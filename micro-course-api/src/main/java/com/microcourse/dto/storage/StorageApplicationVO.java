@@ -56,6 +56,9 @@ public class StorageApplicationVO {
     // === 审核信息 ===
     private String reviewComment;
 
+    // === R-008: 申报高校全称（用于导出文件名，映射 entity.universityFullName） ===
+    private String universityFullName;
+
     // === 关联查询字段 ===
     private String proposerName;
     private String departmentName;
@@ -146,6 +149,9 @@ public class StorageApplicationVO {
 
     public String getReviewComment() { return reviewComment; }
     public void setReviewComment(String reviewComment) { this.reviewComment = reviewComment; }
+
+    public String getUniversityFullName() { return universityFullName; }
+    public void setUniversityFullName(String universityFullName) { this.universityFullName = universityFullName; }
 
     public String getProposerName() { return proposerName; }
     public void setProposerName(String proposerName) { this.proposerName = proposerName; }

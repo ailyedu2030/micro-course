@@ -348,6 +348,7 @@ const previewUrl = ref('')
 const renderProgress = ref(0)
 const renderProgressLabel = ref('')
 let pollTimer = null
+let pollCount = 0
 const progressSim = null
 let sortableInstance = null
 
@@ -644,9 +645,12 @@ function selectPage(page) {
 
 function startPolling() {
   if (pollTimer) return
+  pollCount = 0
   pollTimer = setInterval(async () => {
+    pollCount++
     await loadData()
-    if (slide.value?.status !== 0 && slide.value?.status !== 1) { stopPolling(); stopProgressSim() }
+    if (slide.value?.status !== 0 && slide.value?.status !== 1) { stopPolling(); stopProgressSim(); return }
+    if (pollCount > 30) { stopPolling(); stopProgressSim(); ElMessage.error('渲染超时，请稍后刷新查看') }
   }, 3000)
   startProgressTracking()
 }
