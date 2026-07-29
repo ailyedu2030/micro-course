@@ -182,6 +182,10 @@ public class CourseStateMachineImpl implements CourseStateMachine {
             // 离开 REJECTED 状态时清空 rejectReason
             updateWrapper.set(Course::getRejectReason, (String) null);
         }
+        // P2-4 修复: 归档(ARCHIVED)时设置 deleted_at 时间戳以支持数据生命周期管理
+        if (targetStatus == CourseStatus.ARCHIVED) {
+            updateWrapper.set(Course::getDeletedAt, now);
+        }
 
         int affected = courseRepository.update(null, updateWrapper);
         if (affected == 0) {
@@ -197,6 +201,9 @@ public class CourseStateMachineImpl implements CourseStateMachine {
         if (targetStatus == CourseStatus.PUBLISHED) {
             course.setPublishedAt(now);
             course.setLastPublishedAt(now);
+        }
+        if (targetStatus == CourseStatus.ARCHIVED) {
+            course.setDeletedAt(now);
         }
         return course;
     }

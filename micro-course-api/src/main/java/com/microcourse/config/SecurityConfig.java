@@ -68,6 +68,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .headers(headers -> headers
+                        // P1C-7 注：https: 通配已在本文件内收窄为 https://microcourse.ailyedu.cn https://*.ailyedu.cn
                         // P1-5（Round 5）：CSP 资源策略对账。原 "default-src 'self'" 会阻断
                         // 前端实际使用的合法资源（design-tokens.css @import 的 Google Fonts、
                         // hls.js 的 blob worker/media、authImage 的 blob 图片）。下述白名单依据
@@ -85,10 +86,12 @@ public class SecurityConfig {
                                 // Vue SPA 前端的 CSP 在 nginx.conf 中独立管理
                                 "script-src 'self' 'nonce-{nonce}'; " +
                                 "style-src 'self' 'nonce-{nonce}' https://fonts.googleapis.com; " +
-                                "img-src 'self' data: blob: https:; " +
+                                // P1C-7 安全加固：收窄 img-src https: 通配为具体域名白名单，防止任意 HTTPS 域名加载图片（数据泄露/钓鱼）
+                                "img-src 'self' data: blob: https://microcourse.ailyedu.cn https://*.ailyedu.cn; " +
                                 "font-src 'self' data: https://fonts.gstatic.com; " +
                                 "connect-src 'self' https://api.deepseek.com ws: wss:; " +
-                                "media-src 'self' blob: https:; " +
+                                // P1C-7 安全加固：收窄 media-src https: 通配为具体域名白名单，防止任意 HTTPS 域名加载媒体资源
+                                "media-src 'self' blob: https://microcourse.ailyedu.cn https://*.ailyedu.cn; " +
                                 "frame-src 'self'; " +
                                 "worker-src 'self' blob:; " +
                                 "object-src 'none'; " +
@@ -137,8 +140,10 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/classes/**").authenticated()
                         .requestMatchers("/api/auth/**").authenticated()
                         .requestMatchers("/api/users/**").authenticated()
-                        // P2-06: Swagger 文档路径（生产禁用见 application-prod.yml springdoc.api-docs.enabled=false）
-                        // 【course-domain-drift-fix】springdoc-openapi 2.3.0 使用 /v3/api-docs 和 /swagger-ui.html
+                        // P2-06 / 【B4】Swagger 文档路径：permitAll 仅用于本地开发联调。
+                        // 生产环境通过 application-prod.yml 的 springdoc.api-docs.enabled=false 完全禁用 API 文档，
+                        // 确保生产不暴露任何端点列表。非 prod 环境如需收紧，在对应 profile 中移除本行。
+                        // springdoc-openapi 使用 /v3/api-docs 和 /swagger-ui 路径。
                         .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
                         // P0-07 修复：路径与 VideoStreamController @RequestMapping("/api/video-stream") 对齐

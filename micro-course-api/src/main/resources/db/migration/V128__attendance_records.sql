@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS attendance_records (
     id              BIGSERIAL       PRIMARY KEY,
     session_id      BIGINT          NOT NULL REFERENCES chapter_offline_sessions(id) ON DELETE CASCADE,
     user_id         BIGINT          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    status          VARCHAR(20)     NOT NULL DEFAULT 'PRESENT',
+    status          VARCHAR(20)     NOT NULL DEFAULT 'ABSENT',
     checkin_time    TIMESTAMP,
     updated_by      BIGINT          REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,

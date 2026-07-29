@@ -1,23 +1,22 @@
 package com.microcourse.controller;
 
 import com.microcourse.audit.AuditedLog;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.ChangePasswordRequest;
 import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
+import com.microcourse.dto.PreferenceUpdateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.dto.RefreshRequest;
 import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserVO;
-import com.microcourse.entity.User;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.AuthService;
+import com.microcourse.service.NotificationPreferenceService;
 import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,13 +40,13 @@ public class AuthController {
 
     private final AuthService authService;
     private final AdminSettingService adminSettingService;
-    private final UserRepository userRepository;
+    private final NotificationPreferenceService notificationPreferenceService;
 
     public AuthController(AuthService authService, AdminSettingService adminSettingService,
-                           UserRepository userRepository) {
+                          NotificationPreferenceService notificationPreferenceService) {
         this.authService = authService;
         this.adminSettingService = adminSettingService;
-        this.userRepository = userRepository;
+        this.notificationPreferenceService = notificationPreferenceService;
     }
 
     /**
@@ -143,15 +142,8 @@ public class AuthController {
     @GetMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> getMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        if (user.getApiKey() == null) {
-            return R.ok(null);
-        }
-        return R.ok(UserApiKeyResponse.maskedOnly(
-                UserApiKeyResponse.mask(user.getApiKey()),
-                user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null));
+        UserApiKeyResponse result = authService.getMyApiKey();
+        return R.ok(result);
     }
 
     /**
@@ -161,21 +153,8 @@ public class AuthController {
     @PostMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> generateMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
-                + java.util.UUID.randomUUID().toString().replace("-", "");
-        user.setApiKey(newKey);
-        user.setUpdatedAt(java.time.LocalDateTime.now());
-        int rows = userRepository.updateById(user);
-        if (rows == 0) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成 API Key 失败（乐观锁或无记录），请重试");
-        }
-        return R.ok(UserApiKeyResponse.full(
-                newKey,
-                UserApiKeyResponse.mask(newKey),
-                user.getUpdatedAt().toString()));
+        UserApiKeyResponse result = authService.generateMyApiKey();
+        return R.ok(result);
     }
 
     /**
@@ -185,15 +164,59 @@ public class AuthController {
     @DeleteMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<Void> revokeMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        user.setApiKey(null);
-        user.setUpdatedAt(java.time.LocalDateTime.now());
-        int rows = userRepository.updateById(user);
-        if (rows == 0) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "撤销 API Key 失败（乐观锁或无记录）");
-        }
+        authService.revokeMyApiKey();
+        return R.ok();
+    }
+
+    // ========== P2-6.5 别名路由: 合并自 ProfileController ==========
+    // 以下路由与 /api/auth/me/* 等效，作为前端统一入口 /api/profile/* 的别名映射
+
+    /**
+     * PUT /api/profile/notifications
+     * 设置通知偏好（ProfileController 合并而来）
+     */
+    @PutMapping("/api/profile/notifications")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "设置通知偏好")
+    public R<Void> updateNotificationPreferences(@Valid @RequestBody PreferenceUpdateRequest request) {
+        Long userId = SecurityUtil.getCurrentUserId();
+        notificationPreferenceService.update(userId, request);
+        return R.ok();
+    }
+
+    /**
+     * GET /api/profile
+     * 获取个人信息（ProfileController 别名路由）
+     */
+    @GetMapping("/api/profile")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "获取个人信息")
+    public R<UserVO> getProfile() {
+        UserVO user = authService.getCurrentUser();
+        return R.ok(user);
+    }
+
+    /**
+     * PUT /api/profile
+     * 更新个人信息（ProfileController 别名路由）
+     */
+    @PutMapping("/api/profile")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "更新个人信息")
+    public R<Void> updateProfileAlias(@Valid @RequestBody UpdateProfileRequest request) {
+        authService.updateProfile(request);
+        return R.ok();
+    }
+
+    /**
+     * POST /api/profile/change-password
+     * 修改密码（ProfileController 别名路由）
+     */
+    @PostMapping("/api/profile/change-password")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "修改密码")
+    public R<Void> changePasswordAlias(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
         return R.ok();
     }
 }

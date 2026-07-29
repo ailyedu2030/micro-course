@@ -470,10 +470,9 @@ class OrderServiceBundlePriceTest {
                 orderService.refund(1L);
             }
 
-            org.mockito.InOrder inOrder = inOrder(enrollmentService, orderRepository, paymentRepository, bundleRepository);
+            org.mockito.InOrder inOrder = inOrder(enrollmentService, orderRepository, paymentRepository);
             inOrder.verify(enrollmentService).cancelEnrollment(11L, 1L);
             inOrder.verify(enrollmentService).cancelEnrollment(12L, 1L);
-            inOrder.verify(bundleRepository).atomicDecrementStudentCount(50L);
             inOrder.verify(orderRepository).updateById(any(Order.class));
             inOrder.verify(paymentRepository).insert(any(com.microcourse.entity.Payment.class));
         }

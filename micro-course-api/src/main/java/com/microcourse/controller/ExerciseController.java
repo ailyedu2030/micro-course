@@ -53,7 +53,7 @@ public class ExerciseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("创建练习")
     public R<ExerciseVO> create(@Valid @RequestBody ExerciseCreateRequest request) {
         ExerciseVO vo = exerciseService.create(request);
@@ -61,7 +61,7 @@ public class ExerciseController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("更新练习")
     public R<ExerciseVO> update(@PathVariable Long id,
                                 @Valid @RequestBody ExerciseUpdateRequest request) {
@@ -70,7 +70,7 @@ public class ExerciseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("删除练习")
     public R<Void> delete(@PathVariable Long id) {
         exerciseService.delete(id);
@@ -78,7 +78,7 @@ public class ExerciseController {
     }
 
     @PostMapping("/{id}/questions")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("添加练习题目")
     public R<Void> addQuestions(@PathVariable Long id, @Valid @RequestBody AddQuestionsRequest request) {
         exerciseService.addQuestions(id, request.getQuestionIds());
@@ -86,7 +86,7 @@ public class ExerciseController {
     }
 
     @DeleteMapping("/{exerciseId}/questions/{questionId}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("移除练习题目")
     public R<Void> removeQuestion(@PathVariable Long exerciseId, @PathVariable Long questionId) {
         exerciseService.removeQuestion(exerciseId, questionId);
@@ -122,7 +122,7 @@ public class ExerciseController {
      * 获取练习统计分析（统计计算已下沉 Service 层）
      */
     @GetMapping("/{id}/analytics")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<Map<String, Object>> getAnalytics(@PathVariable Long id) {
         return R.ok(exerciseRecordService.getAnalytics(id));
     }

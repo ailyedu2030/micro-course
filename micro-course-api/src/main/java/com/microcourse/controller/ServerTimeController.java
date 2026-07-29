@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.R;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +24,7 @@ public class ServerTimeController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @GetMapping("/server-time")
+    @PreAuthorize("isAuthenticated()")
     public R<Map<String, Object>> getServerTime() {
         LocalDate today = LocalDate.now(CN_ZONE);
         Map<String, Object> result = new HashMap<>();

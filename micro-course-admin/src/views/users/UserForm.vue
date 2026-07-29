@@ -87,7 +87,7 @@
                   placeholder="请选择院系"
                   clearable
                   class="full-width"
-                  @change="handleDepartmentChange"
+                  @change="(val) => handleDeptChange(val, formData)"
                 >
                   <el-option
                     v-for="dept in departments"
@@ -108,7 +108,7 @@
                   clearable
                   class="full-width"
                   :disabled="!formData.departmentId"
-                  @change="handleMajorChange"
+                  @change="(val) => handleMajorChange(val, formData)"
                 >
                   <el-option
                     v-for="major in majors"
@@ -309,17 +309,17 @@ import { ElMessage } from 'element-plus'
 import { Back } from '@element-plus/icons-vue'
 import { getUserById, createUser, updateUser } from '@/api/user'
 import { getDepartments } from '@/api/department'
-import { getMajors } from '@/api/major'
-import { getClasses } from '@/api/class'
+import { useGradeCascade } from '@/composables/useGradeCascade'
 
 const router = useRouter()
 const route = useRoute()
 
 const formRef = ref(null)
 const submitLoading = ref(false)
+
+// 使用 useGradeCascade 统一级联逻辑（院系→专业→班级）
+const { majors, classes, fetchMajors, fetchClasses, handleDeptChange, handleMajorChange } = useGradeCascade()
 const departments = ref([])
-const majors = ref([])
-const classes = ref([])
 
 const isEdit = computed(() => route.path.includes('/edit'))
 
@@ -464,48 +464,6 @@ const fetchDepartments = async () => {
   } catch {
     ElMessage.error('获取院系列表失败')
   }
-}
-
-const fetchMajors = async (departmentId) => {
-  if (!departmentId) {
-    majors.value = []
-    formData.majorId = ''
-    classes.value = []
-    formData.classId = ''
-    return
-  }
-  try {
-    const { data } = await getMajors({ departmentId, size: 1000 })
-    majors.value = data.items || []
-  } catch {
-    ElMessage.error('获取专业列表失败')
-  }
-}
-
-const fetchClasses = async (majorId) => {
-  if (!majorId) {
-    classes.value = []
-    formData.classId = ''
-    return
-  }
-  try {
-    const { data } = await getClasses({ majorId, size: 1000 })
-    classes.value = data.items || []
-  } catch {
-    ElMessage.error('获取班级列表失败')
-  }
-}
-
-const handleDepartmentChange = (departmentId) => {
-  formData.majorId = ''
-  formData.classId = ''
-  classes.value = []
-  fetchMajors(departmentId)
-}
-
-const handleMajorChange = (majorId) => {
-  formData.classId = ''
-  fetchClasses(majorId)
 }
 
 const handleSubmit = async () => {

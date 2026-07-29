@@ -81,6 +81,13 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
     int physicalDeleteById(@Param("id") Long id);
 
     /**
+     * 物理删除指定用户的所有选课记录（绕过 @TableLogic 软删除）。
+     * 用于 UserRetentionCleanupJob 清理超过 90 天软删除用户的关联数据。
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM enrollments WHERE user_id = #{userId}")
+    int physicalDeleteByUserId(@Param("userId") Long userId);
+
+    /**
      * ★ 业务逻辑审计 DEVIATION-1 修复：原子容量检查 + 插入。
      * <p>原实现的 check-then-insert 是非原子的，高并发下可能超 max_students 上限。
      * 本方法在单条 INSERT ... SELECT ... WHERE 中同时检查：</p>

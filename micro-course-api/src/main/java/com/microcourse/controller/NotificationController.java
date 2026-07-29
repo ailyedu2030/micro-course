@@ -59,7 +59,7 @@ public class NotificationController {
 
     /** P0-1: 通知发送允许教师和管理员 */
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<NotificationVO> send(@Valid @RequestBody NotificationCreateRequest request) {
         Long userId = getCurrentUserId();
         NotificationVO vo = notificationService.send(request, userId);

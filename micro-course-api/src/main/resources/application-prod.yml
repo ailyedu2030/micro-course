@@ -15,6 +15,8 @@ springdoc:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS}
 
-# E4: 支付模式 — 默认 mock；生产部署时必须设置 PAY_MODE=production
+# P1C-9 安全加固：生产环境支付模式默认强制 real，防止部署时忘记设置 PAY_MODE 导致 mock 模式上线
+# mock 模式会跳过真实支付网关校验，允许任何人跳过支付直接完成订单，属于生产级严重漏洞
+# 如需临时 mock 调试，必须显式设置 PAY_MODE=mock 环境变量（不得出现在默认配置中）
 payment:
-  mode: ${PAY_MODE:mock}
+  mode: ${PAY_MODE:real}

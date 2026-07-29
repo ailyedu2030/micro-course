@@ -169,6 +169,8 @@ if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
                 user.setStatus(UserStatus.DELETED.getCode());
                 user.setDeletedAt(LocalDateTime.now());
                 redisUtil.clearLoginFailure(user.getUsername());
+                // P0-2: 用户删除后级联将进行中的选课标记为 DROPPED，从 WAITLIST 移除
+                cascadeDeleteEnrollments(id);
                 break;
             default:
                 user.setStatus(newStatusCode);
@@ -288,6 +290,48 @@ if (currentStatus == UserStatus.INACTIVE && newStatus == UserStatus.ACTIVE) {
         } catch (Exception e) {
             log.error("[P0-009] 用户禁用级联 enrollment 失败 userId={}，触发事务回滚", userId, e);
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "级联禁用选课失败", e);
+        }
+    }
+
+    /**
+     * P0-2: 用户删除后级联操作 — 将进行中选课标记为 DROPPED（终态），从 WAITLIST 移除。
+     * 状态机合规：APPROVED→DROPPED (合法), WAITLIST→CANCELLED (合法), PENDING→CANCELLED (合法)
+     */
+    private void cascadeDeleteEnrollments(Long userId) {
+        try {
+            // 将 APPROVED 状态的 enrollment 标记为 DROPPED（终态）
+            int droppedActive = enrollmentRepository.update(null,
+                    new LambdaUpdateWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, userId)
+                            .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.APPROVED.getValue())
+                            .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.DROPPED.getValue())
+                            .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+            log.info("[P0-2] 用户删除级联 DROPPED enrollment: userId={}, count={}", userId, droppedActive);
+
+            // 将 WAITLIST 状态的 enrollment 标记为 CANCELLED
+            int cancelledWaitlist = enrollmentRepository.update(null,
+                    new LambdaUpdateWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, userId)
+                            .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                            .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                            .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+            if (cancelledWaitlist > 0) {
+                log.info("[P0-2] 用户删除从 WAITLIST 移除: userId={}, count={}", userId, cancelledWaitlist);
+            }
+
+            // 将 PENDING 状态的 enrollment 标记为 CANCELLED
+            int cancelledPending = enrollmentRepository.update(null,
+                    new LambdaUpdateWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, userId)
+                            .eq(Enrollment::getEnrollmentStatus, EnrollmentStatus.PENDING.getValue())
+                            .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
+                            .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+            if (cancelledPending > 0) {
+                log.info("[P0-2] 用户删除取消待审核 enrollment: userId={}, count={}", userId, cancelledPending);
+            }
+        } catch (Exception e) {
+            log.error("[P0-2] 用户删除级联 enrollment 失败 userId={}，触发事务回滚", userId, e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "级联删除选课失败", e);
         }
     }
 

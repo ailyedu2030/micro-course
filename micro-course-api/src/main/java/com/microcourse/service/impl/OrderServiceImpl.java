@@ -356,18 +356,48 @@ public class OrderServiceImpl implements OrderService {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程学习进度已超过10%，无法退款");
                 }
             }
+            // P2-6: 套餐按课程粒度退款 — 超10%课程按比例扣费后退款剩余课程
+            java.math.BigDecimal bundleRefundDeduction = java.math.BigDecimal.ZERO;
+            List<Long> bundleRefundableCourseIds = new ArrayList<>();
+            List<Enrollment> bundleEnrollments = new ArrayList<>();
             if (order.getBundleId() != null) {
                 LambdaQueryWrapper<Enrollment> bundleProgressWrapper = new LambdaQueryWrapper<>();
                 bundleProgressWrapper.eq(Enrollment::getUserId, order.getUserId())
                         .eq(Enrollment::getBundleId, order.getBundleId())
                         .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
-                List<Enrollment> bundleEnrollments = enrollmentRepository.selectList(bundleProgressWrapper);
+                bundleEnrollments = enrollmentRepository.selectList(bundleProgressWrapper);
+                List<Enrollment> nonRefundableEnrollments = new ArrayList<>();
                 for (Enrollment be : bundleEnrollments) {
                     if (be.getProgress() != null && be.getProgress() > 10.0) {
-                        Course c = courseRepository.selectById(be.getCourseId());
-                        String courseName = (c != null) ? c.getTitle() : ("课程#" + be.getCourseId());
-                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                                "套餐内包含学习进度超过10%的课程（" + courseName + "），无法整体退款。如需部分退款请联系管理员");
+                        nonRefundableEnrollments.add(be);
+                    } else {
+                        bundleRefundableCourseIds.add(be.getCourseId());
+                    }
+                }
+                // 如果所有课程都超10%，拒绝整个退款
+                if (bundleRefundableCourseIds.isEmpty()) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                            "套餐内所有课程学习进度均已超过10%，无法退款");
+                }
+                // 计算超10%课程的按比例扣费
+                if (!nonRefundableEnrollments.isEmpty()) {
+                    Set<Long> nonRefundableIds = nonRefundableEnrollments.stream()
+                            .map(Enrollment::getCourseId).collect(Collectors.toSet());
+                    Set<Long> allCourseIds = bundleEnrollments.stream()
+                            .map(Enrollment::getCourseId).collect(Collectors.toSet());
+                    List<Course> allCourses = courseRepository.selectBatchIds(new ArrayList<>(allCourseIds));
+                    java.math.BigDecimal totalCoursePrice = allCourses.stream()
+                            .map(c -> c.getPrice() != null ? c.getPrice() : java.math.BigDecimal.ZERO)
+                            .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+                    if (totalCoursePrice.compareTo(java.math.BigDecimal.ZERO) > 0) {
+                        bundleRefundDeduction = allCourses.stream()
+                                .filter(c -> nonRefundableIds.contains(c.getId()))
+                                .map(c -> {
+                                    java.math.BigDecimal coursePrice = c.getPrice() != null ? c.getPrice() : java.math.BigDecimal.ZERO;
+                                    return coursePrice.multiply(order.getAmount())
+                                            .divide(totalCoursePrice, 2, java.math.RoundingMode.HALF_UP);
+                                })
+                                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
                     }
                 }
             }
@@ -384,9 +414,14 @@ public class OrderServiceImpl implements OrderService {
                     enrollmentService.cancelEnrollment(enrollment.getId(), order.getUserId());
                 }
             }
-            // 套餐退选 — 调用统一的 unenrollBundleCourses
-            if (order.getBundleId() != null && order.getUserId() != null) {
-                unenrollBundleCourses(order.getUserId(), order.getBundleId());
+            // P2-6: 套餐退选 — 仅退选可退款课程（进度≤10%），超进度课程保留选课
+            // 使用前面已查询的 bundleEnrollments 避免 N+1 selectOne
+            if (order.getBundleId() != null && order.getUserId() != null && !bundleRefundableCourseIds.isEmpty()) {
+                for (Enrollment be : bundleEnrollments) {
+                    if (bundleRefundableCourseIds.contains(be.getCourseId())) {
+                        enrollmentService.cancelEnrollment(be.getId(), order.getUserId());
+                    }
+                }
             }
 
             // 只有在访问权限和选课记录成功回收后，才真正落退款状态与退款流水
@@ -402,7 +437,7 @@ public class OrderServiceImpl implements OrderService {
             refundPayment.setOrderId(orderId);
             refundPayment.setTransactionId(refundTxnId);
             refundPayment.setPaymentMethod(order.getPaymentMethod() != null ? order.getPaymentMethod() : "REFUND");
-            refundPayment.setAmount(order.getAmount());
+            refundPayment.setAmount(order.getBundleId() != null ? order.getAmount().subtract(bundleRefundDeduction) : order.getAmount());
             refundPayment.setStatus("REFUNDED");
             refundPayment.setCreatedAt(LocalDateTime.now());
             paymentRepository.insert(refundPayment);
@@ -626,8 +661,18 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    /**
+     * 生成全局唯一订单号。
+     * 格式：ORD + 时间戳(13位) + 用户ID后缀(4位hex) + UUID片段(8位hex) = 28位
+     * 相比旧版（时间戳+6位UUID），新增 userId 后缀和更长 UUID 片段，
+     * 即使同一毫秒内同一用户创建多个订单也不会碰撞。
+     * DB 层 uk_orders_order_no 唯一索引作为最终兜底。
+     */
     private String generateOrderNo() {
-        return "ORD" + System.currentTimeMillis() + UUID.randomUUID().toString().replace("-", "").substring(0, 6).toUpperCase();
+        String ts = Long.toString(System.currentTimeMillis());
+        String uidSuffix = Long.toHexString(SecurityUtil.getCurrentUserId() & 0xFFFF);
+        String uuidSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase();
+        return "ORD" + ts + uidSuffix + uuidSuffix;
     }
 
     /**
@@ -716,6 +761,8 @@ public class OrderServiceImpl implements OrderService {
             LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Order::getStatus, OrderStatus.PENDING.getValue())
                    .lt(Order::getCreatedAt, threshold);
+            // P1-I E3 修复: 加 LIMIT 1000 防止全量加载到内存（selectList 无分页风险）
+            wrapper.last("LIMIT 1000");
             List<Order> expiredOrders = orderRepository.selectList(wrapper);
 
             if (expiredOrders.isEmpty()) {

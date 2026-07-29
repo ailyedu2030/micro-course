@@ -13,7 +13,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * MyBatis 慢 SQL 拦截器（P3-15）。
@@ -75,8 +78,21 @@ public class MybatisSlowSqlInterceptor implements Interceptor {
         }
     }
 
+    /** 敏感参数 key 列表（大小写不敏感匹配），包含时对对应值进行脱敏 */
+    private static final java.util.List<String> SENSITIVE_PARAM_KEYS = Arrays.asList(
+            "password", "pwd", "phone", "mobile", "email", "id_card", "idcard",
+            "real_name", "realname", "id_card_back", "id_card_front", "bank_card",
+            "bankcard", "credit_card", "credentials", "token", "refresh_token",
+            "access_token", "secret", "api_key", "apikey"
+    );
+
+    /** 脱敏正则：长度 &ge; 8 显示首尾各 2 位中间 ***，&lt; 8 显示首 1 位 *** 尾 1 位 */
+    private static final Pattern SENSITIVE_FIELD_PATTERN = Pattern.compile(
+            "(?i)(" + String.join("|", SENSITIVE_PARAM_KEYS) + ")\\s*=\\s*([^,&}\\s]+)"
+    );
+
     /**
-     * 记录慢 SQL。全程 try-catch 兜底：反射取 SQL/参数失败时仅降级记录，绝不抛出。
+     * 记录慢 SQL（P1C-8：日志参数脱敏）。全程 try-catch 兜底：反射取 SQL/参数失败时仅降级记录，绝不抛出。
      */
     private void logSlowSql(Invocation invocation, long duration) {
         try {
@@ -85,13 +101,46 @@ public class MybatisSlowSqlInterceptor implements Interceptor {
             Object rawSql = metaObject.getValue("delegate.boundSql.sql");
             String sql = rawSql == null ? "<unknown>" : rawSql.toString().replaceAll("\\s+", " ").trim();
             Object parameterObject = statementHandler.getBoundSql().getParameterObject();
+            String paramsStr = parameterObject == null ? "null" : maskSensitiveParams(parameterObject.toString());
             log.warn("[SLOW SQL] duration={}ms (threshold={}ms), sql={}, params={}",
-                    duration, thresholdMs, sql, parameterObject);
+                    duration, thresholdMs, sql, paramsStr);
         } catch (Exception e) {
             // 监控自身异常不得阻塞主流程，仅降级提示
             log.warn("[SLOW SQL] duration={}ms (threshold={}ms), but failed to resolve SQL detail: {}",
                     duration, thresholdMs, e.getMessage());
         }
+    }
+
+    /**
+     * 对参数字符串中的敏感字段值进行脱敏处理。
+     * <p>匹配格式：key=value（键值对），若 key 属于敏感字段则对 value 做掩码处理：
+     * <ul>
+     *   <li>value 长度 &ge; 8：显示首 2 尾 2，中间替换为 ****</li>
+     *   <li>value 长度 &lt; 8：显示首 1 尾 1，中间替换为 ****</li>
+     * </ul>
+     * 非敏感字段原样保留。
+     */
+    private String maskSensitiveParams(String input) {
+        if (input == null || input.isEmpty()) {
+            return input;
+        }
+        StringBuffer sb = new StringBuffer(input.length());
+        Matcher matcher = SENSITIVE_FIELD_PATTERN.matcher(input);
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            String value = matcher.group(2);
+            String masked;
+            if (value.length() >= 8) {
+                masked = value.substring(0, 2) + "****" + value.substring(value.length() - 2);
+            } else if (value.length() >= 2) {
+                masked = value.substring(0, 1) + "****" + value.substring(value.length() - 1);
+            } else {
+                masked = "****";
+            }
+            matcher.appendReplacement(sb, key + "=" + masked);
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     @Override

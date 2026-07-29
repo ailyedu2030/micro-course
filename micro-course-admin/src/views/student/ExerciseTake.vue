@@ -551,10 +551,10 @@
             <span>答题卡</span>
           </button>
           <transition name="fade">
-            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
+            <div v-show="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
           </transition>
           <transition name="slide-up">
-            <div v-if="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
+            <div v-show="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
               <div class="answer-sheet-header">
                 <span>答题卡</span>
                 <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
@@ -1153,7 +1153,7 @@ function isMultipleCorrect(value, answer) {
 }
 
 function questionTypeLabel(type) {
-  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题' }
+  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题', SHORT_ANSWER: '简答题' }
   return map[type] || type
 }
 

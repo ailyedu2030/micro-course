@@ -200,7 +200,7 @@ async function handleBatchReject() {
   const ids = selectedRows.value.map(r => r.id)
   try {
     const result = await batchRejectCourses(ids, reason)
-    ElMessage.success(`批量驳回完成：成功 ${result.success}，失败 ${result.failed}`)
+    ElMessage.success(`批量驳回完成：成功 ${result.data.successCount}，失败 ${result.data.failCount}`)
     selectedRows.value = []
     fetchData()
   } catch (e) {

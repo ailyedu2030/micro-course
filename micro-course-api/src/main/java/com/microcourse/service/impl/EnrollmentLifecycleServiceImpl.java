@@ -109,6 +109,7 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
     // ============ 1. 选课 ============
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO doEnroll(EnrollmentCreateRequest request) {
         // ★ 业务逻辑审计 P0-3 增强：功能开关（紧急回滚）
         if (!com.microcourse.config.EnrollmentFeatureFlag.isDynamicallyEnabled()) {

@@ -7,7 +7,7 @@
   <el-container class="layout-container">
     <!-- D3: 移动端遮罩层 -->
     <transition name="mobile-fade">
-      <div v-if="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" @keydown.escape="closeMobileMenu" tabindex="0" aria-hidden="true" />
+      <div v-show="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" @keydown.escape="closeMobileMenu" tabindex="0" aria-hidden="true" />
     </transition>
 
     <!-- 侧边栏 -->
@@ -123,7 +123,7 @@
         <h1 v-if="pageTitle" class="sr-only">{{ pageTitle }}</h1>
         <!-- 侧边栏切换时的淡入遮罩（P2-7: 折叠/展开进度指示） -->
         <transition name="sidebar-shade-fade">
-          <div v-if="sidebarTransitioning" class="sidebar-shade-overlay" />
+          <div v-show="sidebarTransitioning" class="sidebar-shade-overlay" />
         </transition>
         <router-view v-slot="{ Component, route: routeInfo }">
           <component :is="Component" :key="routeInfo.path" />

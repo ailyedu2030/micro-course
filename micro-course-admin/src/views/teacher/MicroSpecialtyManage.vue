@@ -192,7 +192,7 @@ const showClose = computed(() => status.value === 'RECRUITING')
 const canEdit = computed(() => !['COMPLETED', 'CANCELLED', 'ARCHIVED'].includes(status.value) && !route.query._readonly)
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', REJECTED: '已驳回', RECRUITING: '招生中', COMPLETED: '已结业', CANCELLED: '已取消', ARCHIVED: '已归档' }
-const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', RECRUITING: '', COMPLETED: 'info', CANCELLED: 'danger', ARCHIVED: 'info' }
+const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', RECRUITING: 'success', COMPLETED: 'info', CANCELLED: 'danger', ARCHIVED: 'info' }
 const statusLabel = computed(() => statusMap[status.value] || status.value || '-')
 const statusType = computed(() => statusTypeMap[status.value] || 'info')
 

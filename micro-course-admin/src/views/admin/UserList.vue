@@ -2,6 +2,7 @@
   管理员 - 用户管理
   /admin/users
   含 Excel 批量导入
+  使用 UserSearchBar + UserTable + UserDetailCard 共享组件
   Author: jackie
 -->
 <template>
@@ -12,57 +13,12 @@
       <el-breadcrumb-item>{{ $t('admin.userList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
-    <!-- 搜索筛选区 -->
-    <el-card class="search-card" shadow="never">
-      <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item :label="$t('course.keyword')">
-          <el-input
-            v-model="searchForm.keyword"
-            :placeholder="$t('admin.search')"
-            clearable
-            class="filter-input"
-            @clear="handleSearch"
-            @keyup.enter="handleSearch"
-          />
-        </el-form-item>
-        <el-form-item label="角色">
-          <el-select
-            v-model="searchForm.role"
-            placeholder="请选择"
-            clearable
-            class="filter-select"
-            @change="handleSearch"
-          >
-            <el-option label="学生" value="STUDENT" />
-            <el-option label="教师" value="TEACHER" />
-            <el-option label="管理员" value="ADMIN" />
-            <el-option label="教务" value="ACADEMIC" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="状态">
-          <el-select
-            v-model="searchForm.status"
-            placeholder="请选择"
-            clearable
-            class="filter-select"
-            @change="handleSearch"
-          >
-            <el-option label="未激活" :value="0" />
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="2" />
-            <el-option label="已删除" :value="3" />
-          </el-select>
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="handleSearch">
-<el-icon><Search /></el-icon>{{ $t('common.search') }}
-          </el-button>
-          <el-button @click="handleReset">
-<el-icon><RefreshRight /></el-icon>{{ $t('common.reset') }}
-          </el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+    <!-- 搜索筛选区（共享组件） -->
+    <UserSearchBar
+      v-model="searchForm"
+      @search="handleSearch"
+      @reset="handleReset"
+    />
 
     <!-- 工具栏 -->
     <el-card class="toolbar-card" shadow="never">
@@ -71,106 +27,34 @@
           <span class="card-count">共 {{ totalElements }} 条记录</span>
         </div>
         <div class="toolbar-right">
+          <el-button type="primary" @click="handleCreate" aria-label="新增用户">
+            <el-icon><Plus /></el-icon>新增用户
+          </el-button>
           <el-button type="success" @click="handleImport" aria-label="确认">
-<el-icon><Upload /></el-icon>Excel 导入
+            <el-icon><Upload /></el-icon>Excel 导入
           </el-button>
           <el-button type="primary" @click="handleExport" aria-label="下载">
-<el-icon><Download /></el-icon>导出
+            <el-icon><Download /></el-icon>导出
           </el-button>
         </div>
       </div>
     </el-card>
 
-    <!-- 表格区 -->
-    <el-card class="table-card" shadow="never">
-      <el-skeleton v-if="loading" :rows="6" animated />
-      <el-result
-        v-else-if="error"
-        icon="error"
-        title="数据加载失败"
-        sub-title="请稍后重试"
-      >
-        <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
-        </template>
-      </el-result>
-      <el-empty
-        v-else-if="!loading && tableData.length === 0"
-        description="暂无用户"
-        :image-size="120"
-      />
-      <el-table
-        v-else
-        v-loading="loading" :aria-busy="loading"
-        :data="tableData"
-        stripe
-        border
-        class="data-table"
-      >
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="id" label="ID" width="80" align="center" />
-        <el-table-column prop="username" label="账号" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="realName" label="姓名" min-width="120" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span>{{ row.realName || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="role" label="角色" width="100" align="center">
-          <template #default="{ row }">
-            <el-tag size="small" :type="getRoleTagType(row.role)">
-              {{ getRoleLabel(row.role) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="departmentName" label="院系" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span>{{ row.departmentName || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="majorName" label="专业" min-width="140" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span>{{ row.majorName || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="className" label="班级" min-width="120" show-overflow-tooltip>
-          <template #default="{ row }">
-            <span>{{ row.className || '-' }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="80" align="center">
-          <template #default="{ row }">
-            <el-tag size="small" :type="getStatusTagType(row.status)">
-              {{ getStatusLabel(row.status) }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="createdAt" label="注册时间" width="160">
-          <template #default="{ row }">
-            <span class="text-secondary">{{ formatTime(row.createdAt) }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleViewDetail(row)" aria-label="编辑">
-<el-icon><View /></el-icon>详情
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <!-- 分页 -->
-      <div v-if="tableData.length > 0" class="pagination-wrap">
-        <el-pagination
-          v-model:current-page="page"
-          v-model:page-size="size"
-          :total="totalElements"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next"
-          @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
-/>
-      </div>
-    </el-card>
+    <!-- 用户表格（共享组件） -->
+    <UserTable
+      :loading="loading"
+      :error="error"
+      :data="tableData"
+      :total="totalElements"
+      :page="page"
+      :size="size"
+      @update:page="handlePageChange"
+      @update:size="handleSizeChange"
+      @retry="fetchData"
+      @view-detail="handleViewDetail"
+      @edit="handleEdit"
+      @delete="handleSoftDelete"
+    />
 
     <!-- Excel 导入弹窗 -->
     <el-dialog
@@ -178,8 +62,8 @@
       title="Excel 批量导入用户"
       width="520px"
       destroy-on-close
-     :close-on-press-escape="true"
->
+      :close-on-press-escape="true"
+    >
       <div class="import-guide">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
@@ -198,7 +82,7 @@
             <el-table-column prop="className" label="className" />
           </el-table>
           <el-button type="primary" text @click="handleDownloadTemplate" aria-label="编辑">
-<el-icon><Download /></el-icon>下载模板文件
+            <el-icon><Download /></el-icon>下载模板文件
           </el-button>
         </div>
         <el-upload
@@ -232,8 +116,8 @@
       title="导入结果"
       width="600px"
       destroy-on-close
-     :close-on-press-escape="true"
->
+      :close-on-press-escape="true"
+    >
       <div class="result-content">
         <el-result
           :icon="importResult.successCount > 0 ? 'success' : 'warning'"
@@ -258,41 +142,11 @@
       </template>
     </el-dialog>
 
-    <!-- 用户详情弹窗 -->
-    <el-dialog
-      v-model="detailVisible"
-      title="用户详情"
-      width="560px"
-      destroy-on-close
-     :close-on-press-escape="true"
->
-      <el-descriptions :column="2" border v-if="currentUser">
-        <el-descriptions-item label="ID">{{ currentUser.id || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="账号">{{ currentUser.username || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="姓名">{{ currentUser.realName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="角色">
-          <el-tag size="small" :type="getRoleTagType(currentUser.role)">
-            {{ getRoleLabel(currentUser.role) }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="院系">{{ currentUser.departmentName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="专业">{{ currentUser.majorName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="班级">{{ currentUser.className || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="状态">
-          <el-tag size="small" :type="currentUser.status === 1 ? 'success' : 'danger'">
-            {{ currentUser.status === 1 ? '启用' : '禁用' }}
-          </el-tag>
-        </el-descriptions-item>
-        <el-descriptions-item label="注册时间" :span="2">
-          {{ formatTime(currentUser.createdAt) }}
-        </el-descriptions-item>
-        <el-descriptions-item label="邮箱" :span="2">{{ currentUser.email || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="手机" :span="2">{{ currentUser.phone || '-' }}</el-descriptions-item>
-      </el-descriptions>
-      <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
-      </template>
-    </el-dialog>
+    <!-- 用户详情弹窗（共享组件） -->
+    <UserDetailCard
+      v-model:visible="detailVisible"
+      :user="currentUser"
+    />
   </div>
 </template>
 
@@ -303,10 +157,14 @@
  * 含 Excel 批量导入
  */
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { Search, RefreshRight, View, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
-import { getUsers, batchImportUsers } from '@/api/user'
+import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
+import { getUsers, batchImportUsers, updateUserStatus } from '@/api/user'
 import * as XLSX from 'xlsx'
+import UserSearchBar from '@/components/users/UserSearchBar.vue'
+import UserTable from '@/components/users/UserTable.vue'
+import UserDetailCard from '@/components/users/UserDetailCard.vue'
 
 // 加载状态
 const loading = ref(false)
@@ -322,7 +180,7 @@ const size = ref(20)
 const searchForm = reactive({
   keyword: '',
   role: '',
-  status: ''
+  status:  ''
 })
 
 // 导入相关
@@ -338,11 +196,11 @@ const importResult = ref({
   errors: []
 })
 
-// 模板预览数据由 handleDownloadTemplate 动态生成，不硬编码测试数据
-
 // 详情弹窗
 const detailVisible = ref(false)
 const currentUser = ref(null)
+
+const router = useRouter()
 
 // 获取数据
 async function fetchData() {
@@ -354,7 +212,7 @@ async function fetchData() {
       size: size.value,
       keyword: searchForm.keyword || undefined,
       role: searchForm.role || undefined,
-      status: searchForm.status || undefined
+      status: searchForm.status !== '' ? searchForm.status : undefined
     }
     const { data } = await getUsers(params)
     tableData.value = data.items || []
@@ -387,52 +245,15 @@ function handleReset() {
 }
 
 // 翻页
-function handleSizeChange() {
+function handleSizeChange(val) {
+  size.value = val
   page.value = 1
   fetchData()
 }
 
-function handlePageChange() {
+function handlePageChange(val) {
+  page.value = val
   fetchData()
-}
-
-// 工具方法
-function getRoleLabel(role) {
-  const map = {
-    STUDENT: '学生',
-    TEACHER: '教师',
-    ADMIN: '管理员',
-    ACADEMIC: '教务'
-  }
-  return map[role] || role || '-'
-}
-
-function getRoleTagType(role) {
-  const map = {
-    STUDENT: 'success',
-    TEACHER: 'warning',
-    ADMIN: 'danger',
-    ACADEMIC: ''
-  }
-  return map[role] || 'info'
-}
-
-function getStatusLabel(status) {
-  const map = { 0: '未激活', 1: '启用', 2: '禁用', 3: '已删除' }
-  return map[status] || '未知'
-}
-
-function getStatusTagType(status) {
-  const map = { 0: 'info', 1: 'success', 2: 'danger', 3: 'info' }
-  return map[status] || 'info'
-}
-
-function formatTime(isoString) {
-  if (!isoString) return '-'
-  const d = new Date(isoString)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-    `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 
 // 导入
@@ -459,7 +280,6 @@ async function handleConfirmImport() {
     const formData = new FormData()
     formData.append('file', uploadFile.value)
     const res = await batchImportUsers(formData)
-    // P1-1 修复：字段名对齐后端 successCount/failCount
     const result = res.data || {}
     importResult.value = {
       successCount: result.successCount || 0,
@@ -487,7 +307,6 @@ async function handleConfirmImport() {
 }
 
 function handleDownloadTemplate() {
-  // P0-3 修复：使用 xlsx 库生成真正的 .xlsx 文件
   const template = [
     ['username', 'realName', 'password', 'role', 'departmentName', 'majorName', 'className'],
     ['zhangsan', '张三', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-1 班'],
@@ -507,14 +326,10 @@ function handleDownloadTemplate() {
 }
 
 function handleExport() {
-  // P1-修复: 实现真正的导出功能——使用客户端 xlsx 库导出当前列表数据
-  // 后端 GET /api/users/export 暂未实现，待后端提供后优先使用后端导出
-  // P1I-051 修复: 当前仅支持导出当前页，提示用户
   if (!tableData.value.length) {
     ElMessage.warning('暂无数据可导出')
     return
   }
-  // P1I-051: 提示用户当前仅导出本页数据
   ElMessage.info(`即将导出当前页 ${tableData.value.length} 条数据，如需全部导出请联系管理员`)
   const exportData = tableData.value.map((item, index) => ({
     序号: index + 1,
@@ -526,7 +341,7 @@ function handleExport() {
     专业: item.majorName || '',
     班级: item.className || '',
     状态: getStatusLabel(item.status),
-    注册时间: formatTime(item.createdAt)
+    注册时间: item.createdAt || '-'
   }))
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()
@@ -534,6 +349,41 @@ function handleExport() {
   const date = new Date().toISOString().split('T')[0]
   XLSX.writeFile(wb, `users-${date}.xlsx`)
   ElMessage.success('导出成功')
+}
+
+function getRoleLabel(role) {
+  const map = { STUDENT: '学生', TEACHER: '教师', ADMIN: '管理员', ACADEMIC: '教务' }
+  return map[role] || role || '-'
+}
+
+function getStatusLabel(status) {
+  const map = { 0: '未激活', 1: '启用', 2: '禁用', 3: '已删除' }
+  return map[status] || '未知'
+}
+
+function handleCreate() {
+  router.push('/users/create')
+}
+
+function handleEdit(row) {
+  router.push(`/users/${row.id}/edit`)
+}
+
+async function handleSoftDelete(row) {
+  try {
+    await ElMessageBox.confirm(
+      `确定删除用户「${row.realName || row.username}」吗？此操作将注销该用户。`,
+      '确认删除',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    await updateUserStatus(row.id, { status: 3 })
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error(e?.response?.data?.message || '删除失败')
+    }
+  }
 }
 
 // 查看详情
@@ -558,13 +408,6 @@ onMounted(() => {
 
 .page-breadcrumb {
   margin-bottom: var(--space-4);
-}
-
-.search-card {
-  margin-bottom: var(--space-4);
-  background: var(--el-fill-color-blank);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs), var(--shadow-sm);
 }
 
 .toolbar-card {
@@ -596,56 +439,6 @@ onMounted(() => {
 .card-count {
   font-size: var(--text-base);
   color: var(--el-text-color-secondary);
-}
-
-.filter-input {
-  width: 160px;
-}
-
-.filter-select {
-  width: 160px;
-}
-
-.table-card {
-  background: var(--el-fill-color-blank);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs), var(--shadow-sm);
-  transition: box-shadow var(--duration-base) var(--ease-out);
-}
-
-.table-card:hover {
-  box-shadow: var(--shadow-md), var(--shadow-lg);
-}
-
-.data-table {
-  width: 100%;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.data-table :deep(.el-table__header th) {
-  background: var(--el-fill-color-light) !important;
-  color: var(--el-text-color-primary);
-  font-weight: var(--weight-semibold);
-  font-size: var(--text-base);
-  letter-spacing: var(--tracking-wide);
-}
-
-.data-table :deep(.el-table__row:hover > td) {
-  background: var(--role-primary-light-9) !important;
-}
-
-.pagination-wrap {
-  margin-top: var(--space-6);
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--space-4) var(--space-5);
-  border-top: 1px solid var(--el-border-color-lighter);
-}
-
-.text-secondary {
-  color: var(--el-text-color-secondary);
-  font-size: var(--text-base);
 }
 
 /* 导入弹窗 */
@@ -727,17 +520,6 @@ onMounted(() => {
   .toolbar {
     flex-wrap: wrap;
     gap: var(--space-2);
-  }
-  .filter-input,
-  .filter-select {
-    width: 100%;
-  }
-  .data-table {
-    font-size: var(--text-sm);
-  }
-  .pagination-wrap {
-    padding: var(--space-3);
-    overflow-x: auto;
   }
 }
 </style>

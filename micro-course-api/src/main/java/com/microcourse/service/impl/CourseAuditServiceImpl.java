@@ -1,7 +1,6 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseReviewLog;
@@ -159,23 +158,12 @@ public class CourseAuditServiceImpl implements CourseAuditService {
         if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
-        CourseStatus current = CourseStatus.fromCode(course.getStatus());
-        if (current == null || !current.canTransitionTo(CourseStatus.CLOSED)) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED, "当前状态不允许下架");
-        }
-        Integer currentVersion = course.getVersion();
-        int affected = courseRepository.update(null,
-                new LambdaUpdateWrapper<Course>()
-                        .eq(Course::getId, id)
-                        .eq(Course::getStatus, current.getCode())
-                        .eq(Course::getVersion, currentVersion)
-                        .set(Course::getStatus, CourseStatus.CLOSED.getCode())
-                        .set(Course::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
-        if (affected == 0) {
-            throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
-        }
-        recordReviewLog(id, "UNPUBLISH", current.getCode(), CourseStatus.CLOSED.getCode(), null);
+        // 【P1C-11 修复】统一经 CourseStateMachine 进行状态变更（含守卫检查 + 乐观锁 + 副作用），
+        // 不再手动操作 DB。对比 publish() 等已全部使用 courseStateMachine.transition()。
+        Integer previousStatus = course.getStatus();
+        User actor = SecurityUtil.getCurrentUser();
+        courseStateMachine.transition(id, CourseStatus.CLOSED, actor, TransitionContext.empty());
+        recordReviewLog(id, "UNPUBLISH", previousStatus, CourseStatus.CLOSED.getCode(), null);
         List<Enrollment> activeEnrollments = enrollmentRepository.selectList(
                 new LambdaQueryWrapper<Enrollment>()
                         .eq(Enrollment::getCourseId, id)

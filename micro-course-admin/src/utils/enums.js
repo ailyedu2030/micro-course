@@ -128,28 +128,30 @@ export const Gender = {
 /**
  * 运行时从后端拉取最新枚举元数据并挂到 window.__BACKEND_ENUMS。
  *
+ * 使用 request.js 统一拦截器（Token 刷新、错误处理），而非裸 fetch()。
+ * 与所有 api/ 模块一致，确保请求经过全局拦截器流水线。
+ *
  * - 成功：返回后端返回的枚举映射对象（已解包 R 包装的 data 字段）。
  * - 失败（网络/未启动/非 JSON）：捕获并告警，返回 null —— 调用方据此回退本地常量，绝不抛出。
  *
  * 兼容性：同时支持后端返回 R 包装 { code, message, data } 与裸 Map 两种形态。
  *
+ * _suppressErrorToast: true → 静默失败，不触发全局错误弹窗。
+ *
  * @returns {Promise<Object|null>} 后端枚举映射，或 null（拉取失败）
  */
+import request from '../utils/request'
+
 export async function syncEnumsFromBackend() {
   try {
-    // R7 横向扫描修复：与 request.js 保持一致，使用 VITE_API_BASE_URL（fallback /api）
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
-    const response = await fetch(`${API_BASE_URL}/enums/export`, {
-      headers: { Accept: 'application/json' }
+    const { data } = await request({
+      method: 'GET',
+      url: '/enums/export',
+      _suppressErrorToast: true
     })
-    if (!response.ok) {
-      console.warn('[enums] backend export returned HTTP', response.status, '- using local fallback')
-      return null
-    }
-    const json = await response.json()
     // 兼容 R 包装（取 data）与裸 Map（取 json 本身）
-    const data = json && typeof json === 'object' && json.data ? json.data : json
-    return data && typeof data === 'object' ? data : null
+    const enumData = data && typeof data === 'object' && data.data ? data.data : data
+    return enumData && typeof enumData === 'object' ? enumData : null
   } catch (e) {
     console.warn('[enums] failed to sync from backend, using local fallback:', e)
     return null

@@ -96,16 +96,142 @@ jobs:
           npm run build
         working-directory: ./micro-course-admin
 
-  # e2e: TEMPORARILY DISABLED — e2e tests are blocking merge. Re-enable after fixing.
-  # TODO(re-enable): restore full e2e job after e2e-test.sh is stabilized
+  # P1C-14: 恢复 E2E 测试 — API 冒烟测试 + Playwright 浏览器 E2E
+  # 并行启动后端 API 服务 + 前端 Preview，覆盖 API 层面和浏览器 UI 层面
   e2e:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    steps:
-      - name: E2E tests skipped (temporarily disabled)
-        run: bash -c "echo e2e-tests-temporarily-disabled"
+    services:
+      postgres:
+        image: postgres:17-alpine
         env:
-          SKIP_E2E: "true"
+          POSTGRES_DB: micro_course
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: micro-course-admin/package-lock.json
+
+      - name: Build Backend JAR
+        run: mvn -B package -DskipTests -q
+        working-directory: ./micro-course-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+
+      - name: Start Backend
+        run: |
+          java -jar target/*.jar --server.port=8080 &
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Backend ready (health: 200)"
+              break
+            fi
+            echo "  attempt $i: HTTP $HTTP_CODE"
+            sleep 3
+          done
+        working-directory: ./micro-course-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+          JWT_SECRET: ci-test-jwt-secret-key-32-chars-for-testing-only
+          VIDEO_SIGN_SECRET: ci-test-video-sign-secret-key-32-char
+
+      - name: Install PostgreSQL Client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Seed E2E Test Data
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -f src/test/resources/sql/p0-seed.sql
+        working-directory: ./micro-course-api
+
+      - name: API 冒烟测试
+        run: bash scripts/e2e-test.sh
+        env:
+          BASE_URL: http://localhost:8080
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: ./micro-course-admin
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ./micro-course-admin
+
+      - name: Start Frontend Preview
+        run: |
+          npx vite preview --port 8088 --host 0.0.0.0 &
+          for i in $(seq 1 15); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" != "000" ]; then
+              echo "Frontend ready"
+              break
+            fi
+            echo "  attempt $i: HTTP $HTTP_CODE"
+            sleep 2
+          done
+        working-directory: ./micro-course-admin
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: ./micro-course-admin
+
+      - name: Run Playwright E2E Tests
+        run: npx playwright test --config=tests/e2e/e2e.config.ts
+        working-directory: ./micro-course-admin
+        env:
+          BASE_URL: http://localhost:8088
+
+      - name: Upload Playwright Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: micro-course-admin/test-results/
+          retention-days: 7
 
   docker:
     needs: [backend, frontend]
