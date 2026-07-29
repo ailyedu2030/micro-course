@@ -297,14 +297,27 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         if (request.getTags() != null) course.setTags(request.getTags());
         if (request.getCourseType() != null) {
-            checkPluginGrant(course.getTeacherId(), request.getCourseType());
+            // When courseType is changed, verify plugin grant
+            if (!request.getCourseType().equals(course.getCourseType())) {
+                checkPluginGrant(course.getTeacherId(), request.getCourseType());
+            }
             course.setCourseType(request.getCourseType());
         }
         if (request.getPrice() != null) {
             course.setPrice(request.getPrice());
             course.setIsFree(BigDecimal.ZERO.compareTo(request.getPrice()) >= 0);
         }
-        if (request.getIsFree() != null) course.setIsFree(request.getIsFree());
+        if (request.getIsFree() != null) {
+            // When both price and isFree are provided, enforce consistency
+            if (request.getPrice() != null) {
+                if (request.getPrice().compareTo(BigDecimal.ZERO) == 0) {
+                    request.setIsFree(true);
+                } else {
+                    request.setIsFree(false);
+                }
+            }
+            course.setIsFree(request.getIsFree());
+        }
         if (request.getFreeAccessScope() != null) course.setFreeAccessScope(request.getFreeAccessScope());
         if (request.getFreeDeptIds() != null) course.setFreeDeptIds(request.getFreeDeptIds());
         if (request.getDiscountScope() != null) course.setDiscountScope(request.getDiscountScope());

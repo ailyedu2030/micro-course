@@ -79,29 +79,26 @@ public class StorageApplicationImageStorageServiceImpl implements StorageApplica
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_TOO_LARGE);
         }
 
-        boolean isJpegMagic = false;
-        boolean isPngMagic = false;
+        byte[] header;
         try (InputStream is = file.getInputStream()) {
-            byte[] header = new byte[8];
-            int read = is.read(header, 0, 8);
-            if (read >= 8) {
-                if (header[0] == (byte) 0xFF && header[1] == (byte) 0xD8 && header[2] == (byte) 0xFF) {
-                    isJpegMagic = true;
-                }
-                if (header[0] == (byte) 0x89 && header[1] == 0x50 && header[2] == 0x4E
-                        && header[3] == 0x47 && header[4] == 0x0D && header[5] == 0x0A
-                        && header[6] == 0x1A && header[7] == 0x0A) {
-                    isPngMagic = true;
-                }
+            header = new byte[12];
+            int read = is.read(header);
+            if (read < 4) {
+                throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "文件内容过短，无法验证格式");
             }
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "无法读取文件内容");
         }
 
-        if (!isJpegMagic && !isPngMagic) {
-            throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE, "文件内容不是有效的 jpg/png 图片");
-        }
+        // S-004: 委托给 validateImageMagicBytes（SVG 拒绝 + 双扩展名拒绝 + 魔数校验）
+        validateImageMagicBytes(header, originalFilename);
 
+        // 魔数 vs 扩展名交叉验证
+        boolean isJpegMagic = (header[0] & 0xFF) == 0xFF && (header[1] & 0xFF) == 0xD8 && (header[2] & 0xFF) == 0xFF;
+        boolean isPngMagic = header.length >= 8
+                && (header[0] & 0xFF) == 0x89 && header[1] == 0x50 && header[2] == 0x4E
+                && header[3] == 0x47 && header[4] == 0x0D && header[5] == 0x0A
+                && header[6] == 0x1A && header[7] == 0x0A;
         boolean isJpegExt = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg");
         boolean isPngExt = lowerName.endsWith(".png");
         if (isJpegMagic && !isJpegExt) {
@@ -111,6 +108,59 @@ public class StorageApplicationImageStorageServiceImpl implements StorageApplica
         if (isPngMagic && !isPngExt) {
             throw new BusinessException(ErrorCode.SA_SIGNATURE_IMAGE_INVALID_TYPE,
                     "文件内容与扩展名不匹配：PNG 内容需使用 .png 扩展名");
+        }
+    }
+
+    /**
+     * S-004: 图片魔数 + 扩展名安全校验
+     * <p>
+     * - 验证 JPEG 魔数 (FF D8 FF) 或 PNG 魔数 (89 50 4E 47 0D 0A 1A 0A)<br>
+     * - 拒绝 SVG 文件 (XML 文本头，含脚本注入风险)<br>
+     * - 拒绝双扩展名文件 (如 shell.jpg.php)
+     * </p>
+     *
+     * @param bytes    文件前 12 字节
+     * @param filename 原始文件名
+     * @throws BusinessException 图片格式不支持时抛出
+     */
+    private void validateImageMagicBytes(byte[] bytes, String filename) {
+        // 1. 拒绝 SVG（XML 文本头检测）
+        if (bytes.length >= 4) {
+            boolean isSvg = (bytes[0] == '<' && bytes[1] == 's' && bytes[2] == 'v' && bytes[3] == 'g')
+                    || (bytes[0] == '<' && bytes[1] == '?' && bytes[2] == 'x' && bytes[3] == 'm')
+                    || (bytes[0] == '<' && bytes[1] == '!' && bytes[2] == 'D' && bytes[3] == 'O');
+            if (isSvg) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片格式不支持，仅允许 JPG/PNG");
+            }
+        }
+
+        // 2. 验证 JPEG 魔数：FF D8 FF
+        boolean isJpeg = bytes.length >= 3
+                && (bytes[0] & 0xFF) == 0xFF
+                && (bytes[1] & 0xFF) == 0xD8
+                && (bytes[2] & 0xFF) == 0xFF;
+
+        // 3. 验证 PNG 魔数：89 50 4E 47 0D 0A 1A 0A
+        boolean isPng = bytes.length >= 8
+                && (bytes[0] & 0xFF) == 0x89
+                && bytes[1] == 0x50
+                && bytes[2] == 0x4E
+                && bytes[3] == 0x47
+                && bytes[4] == 0x0D
+                && bytes[5] == 0x0A
+                && bytes[6] == 0x1A
+                && bytes[7] == 0x0A;
+
+        if (!isJpeg && !isPng) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片格式不支持，仅允许 JPG/PNG");
+        }
+
+        // 4. 拒绝双扩展名：如 shell.jpg.php
+        if (filename != null) {
+            String lower = filename.toLowerCase();
+            if (lower.contains(".jpg.") || lower.contains(".jpeg.") || lower.contains(".png.")) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "图片格式不支持，仅允许 JPG/PNG");
+            }
         }
     }
 

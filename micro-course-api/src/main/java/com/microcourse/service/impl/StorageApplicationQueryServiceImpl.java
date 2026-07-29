@@ -585,17 +585,20 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             item.setUnitType(e.getUnitType());
             item.setSortOrder(e.getSortOrder());
 
-            // 从 proposal_signatures 回填签字数据
+            // D-001: 优先从 proposal_shared_units 直接字段读取，如果为空则从 proposal_signatures 回填
             ProposalSignature sig = sigMap.get(e.getSortOrder());
-            if (sig != null) {
-                item.setOpinionText(sig.getOpinionText());
-                item.setSignature(new ProposalSignatureItem.SignatureFile(
-                        sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()));
-                item.setSeal(new ProposalSignatureItem.SignatureFile(
-                        null, null, sig.getSealImageUrl()));
-                item.setSignDate(sig.getSignDate() != null ? sig.getSignDate().toString() : null);
-                item.setRemark(sig.getRemark());
-            }
+            item.setOpinionText(e.getOpinionText() != null ? e.getOpinionText() :
+                    (sig != null ? sig.getOpinionText() : null));
+            item.setSignature(e.getSignatureType() != null || e.getSignatureText() != null || e.getSignatureImageUrl() != null
+                    ? new ProposalSignatureItem.SignatureFile(e.getSignatureType(), e.getSignatureText(), e.getSignatureImageUrl())
+                    : (sig != null ? new ProposalSignatureItem.SignatureFile(sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()) : null));
+            item.setSeal(e.getSealImageUrl() != null
+                    ? new ProposalSignatureItem.SignatureFile(null, null, e.getSealImageUrl())
+                    : (sig != null ? new ProposalSignatureItem.SignatureFile(null, null, sig.getSealImageUrl()) : null));
+            item.setSignDate(e.getSignDate() != null ? e.getSignDate().toString() :
+                    (sig != null && sig.getSignDate() != null ? sig.getSignDate().toString() : null));
+            item.setRemark(e.getRemark() != null ? e.getRemark() :
+                    (sig != null ? sig.getRemark() : null));
 
             items.add(item);
         }

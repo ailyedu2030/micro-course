@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.microcourse.dto.storage.StorageApplicationVO;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.service.StorageApplicationExportService;
 import com.microcourse.service.StorageApplicationQueryService;
 import org.slf4j.Logger;
@@ -21,21 +22,23 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
 
     private static final Logger log = LoggerFactory.getLogger(StorageApplicationExportServiceImpl.class);
 
+    private final MicroSpecialtyProposalRepository proposalRepository;
     private final StorageApplicationQueryService storageApplicationQueryService;
     private final StorageApplicationPdfGenerator pdfGenerator;
     private final StorageApplicationWordGenerator wordGenerator;
     private final TransactionTemplate readOnlyTransactionTemplate;
 
     public StorageApplicationExportServiceImpl(
+            MicroSpecialtyProposalRepository proposalRepository,
             StorageApplicationQueryService storageApplicationQueryService,
             StorageApplicationPdfGenerator pdfGenerator,
             StorageApplicationWordGenerator wordGenerator,
             PlatformTransactionManager transactionManager) {
+        this.proposalRepository = proposalRepository;
         this.storageApplicationQueryService = storageApplicationQueryService;
         this.pdfGenerator = pdfGenerator;
         this.wordGenerator = wordGenerator;
         this.readOnlyTransactionTemplate = new TransactionTemplate(transactionManager);
-        this.readOnlyTransactionTemplate.setReadOnly(true);
     }
 
     @Override
@@ -53,8 +56,14 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
     }
 
     private StorageApplicationVO loadExportSnapshot(Long proposalId) {
-        StorageApplicationVO data = readOnlyTransactionTemplate.execute(status ->
-                storageApplicationQueryService.getDetail(proposalId, null));
+        // R-007: 事务仅保护 FOR UPDATE 锁获取，不包含 getDetail（大量只读查询）
+        readOnlyTransactionTemplate.execute(status -> {
+            proposalRepository.selectByIdForUpdate(proposalId);
+            return null;
+        });
+
+        // getDetail 在事务外执行，避免长时间占用连接
+        StorageApplicationVO data = storageApplicationQueryService.getDetail(proposalId, null);
         if (data == null) {
             throw new BusinessException(ErrorCode.SA_NOT_FOUND);
         }

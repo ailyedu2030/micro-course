@@ -16,6 +16,7 @@ import com.microcourse.service.StorageApplicationCudService;
 import com.microcourse.service.StorageApplicationImageStorageService;
 import com.microcourse.service.StorageApplicationQueryService;
 import com.microcourse.service.StorageApplicationService;
+import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.StorageValidator;
 import org.slf4j.Logger;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -65,6 +67,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     private final StorageApplicationCudService cudService;
     private final StorageApplicationImageStorageService imageStorageService;
     private final NotificationService notificationService;
+    private final RedisUtil redisUtil;
     private final com.microcourse.service.MicroSpecialtyProposalService msProposalService;
 
     public StorageApplicationServiceImpl(
@@ -81,6 +84,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
             StorageApplicationCudService cudService,
             StorageApplicationImageStorageService imageStorageService,
             NotificationService notificationService,
+            RedisUtil redisUtil,
             com.microcourse.service.MicroSpecialtyProposalService msProposalService) {
         this.proposalRepository = proposalRepository;
         this.courseRepository = courseRepository;
@@ -95,6 +99,7 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         this.cudService = cudService;
         this.imageStorageService = imageStorageService;
         this.notificationService = notificationService;
+        this.redisUtil = redisUtil;
         this.msProposalService = msProposalService;
     }
 
@@ -168,30 +173,41 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public StorageApplicationVO save(Long proposalId, Long userId, StorageApplicationSaveRequest request) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        // C-002: Redis 分布式锁防止 save 与 autoSave/submit/reset 的竞态条件
+        String lockKey = "storage:lock:" + proposalId;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        if (!locked) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "操作过于频繁，请稍后重试");
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        try {
+            MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+            if (proposal == null) {
+                throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            }
+            if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+
+            String status = proposal.getStatus();
+            if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
+                throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可保存");
+            }
+
+            // 更新主表字段
+            cudService.applyRequestToProposal(proposal, request);
+            proposal.setUpdatedAt(LocalDateTime.now());
+            if (proposalRepository.updateById(proposal) == 0) {
+                throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据冲突，请重新加载后再试");
+            }
+
+            // 处理子表（先删后插，包含共享单位签字同步）
+            cudService.replaceSubTables(proposalId, request, true);
+
+            return queryService.getDetail(proposalId, userId);
+        } finally {
+            redisUtil.releaseLock(lockKey, lockValue);
         }
-
-        String status = proposal.getStatus();
-        if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可保存");
-        }
-
-        // 更新主表字段
-        cudService.applyRequestToProposal(proposal, request);
-        proposal.setUpdatedAt(LocalDateTime.now());
-        if (proposalRepository.updateById(proposal) == 0) {
-            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据冲突，请重新加载后再试");
-        }
-
-        // 处理子表（先删后插，包含共享单位签字同步）
-        cudService.replaceSubTables(proposalId, request, true);
-
-        return queryService.getDetail(proposalId, userId);
     }
 
     // ================================================================
@@ -209,41 +225,53 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
         }
         lastAutoSaveTime.put(proposalId, now);
 
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            log.warn("autoSave skipped: proposal {} not found", proposalId);
+        // C-002/C-003: Redis 分布式锁防止 autoSave 与 save/submit/reset 的竞态条件
+        String lockKey = "storage:lock:" + proposalId;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        if (!locked) {
+            log.warn("autoSave lock failed: proposal {} is being modified by another operation", proposalId);
             return;
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            log.warn("autoSave skipped: userId {} no permission for proposal {}", userId, proposalId);
-            return;
-        }
+        try {
+            MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+            if (proposal == null) {
+                log.warn("autoSave skipped: proposal {} not found", proposalId);
+                return;
+            }
+            if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+                log.warn("autoSave skipped: userId {} no permission for proposal {}", userId, proposalId);
+                return;
+            }
 
-        // P0-1 修复：autoSave 对非可编辑状态静默跳过（不抛异常，因为是后台操作）
-        String status = proposal.getStatus();
-        if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
-            log.debug("autoSave skipped: proposal {} status is {}", proposalId, status);
-            return;
-        }
+            // P0-1 修复：autoSave 对非可编辑状态静默跳过（不抛异常，因为是后台操作）
+            String status = proposal.getStatus();
+            if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
+                log.debug("autoSave skipped: proposal {} status is {}", proposalId, status);
+                return;
+            }
 
-        // 仅更新非空字段到主表
-        cudService.applyRequestToProposal(proposal, request);
-        proposal.setUpdatedAt(LocalDateTime.now());
-        // P2-02: 记录自动保存时间
-        proposal.setLastAutoSavedAt(LocalDateTime.now());
-        // RT-1: 使用 @Version 乐观锁防止 autoSave 与 submit 的竞态条件
-        // update(entity, wrapper) 将 WHERE 条件加入 version 检查，冲突时返回 0 行
-        int rows = proposalRepository.update(proposal, new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                .eq(MicroSpecialtyProposal::getId, proposalId)
-                .eq(MicroSpecialtyProposal::getVersion, proposal.getVersion()));
-        if (rows == 0) {
-            log.warn("autoSave conflict: proposal {} was modified by another operation (submit likely in progress)", proposalId);
-            // autoSave 是后台操作，冲突时静默跳过，不抛异常
-            return;
-        }
+            // 仅更新非空字段到主表
+            cudService.applyRequestToProposal(proposal, request);
+            proposal.setUpdatedAt(LocalDateTime.now());
+            // P2-02: 记录自动保存时间
+            proposal.setLastAutoSavedAt(LocalDateTime.now());
+            // RT-1: 使用 @Version 乐观锁防止 autoSave 与 submit 的竞态条件
+            // update(entity, wrapper) 将 WHERE 条件加入 version 检查，冲突时返回 0 行
+            int rows = proposalRepository.update(proposal, new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                    .eq(MicroSpecialtyProposal::getId, proposalId)
+                    .eq(MicroSpecialtyProposal::getVersion, proposal.getVersion()));
+            if (rows == 0) {
+                log.warn("autoSave conflict: proposal {} was modified by another operation (submit likely in progress)", proposalId);
+                // autoSave 是后台操作，冲突时静默跳过，不抛异常
+                return;
+            }
 
-        // 子表在 autoSave 时也进行替换，但共享单位签字仅在 full save 时同步
-        cudService.replaceSubTables(proposalId, request, false);
+            // 子表在 autoSave 时也进行替换，但共享单位签字仅在 full save 时同步
+            cudService.replaceSubTables(proposalId, request, false);
+        } finally {
+            redisUtil.releaseLock(lockKey, lockValue);
+        }
     }
 
     // ================================================================
@@ -275,45 +303,56 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void submit(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        // C-002: Redis 分布式锁防止 submit 与 save/autoSave/reset 的竞态条件
+        String lockKey = "storage:lock:" + proposalId;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        if (!locked) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "操作过于频繁，请稍后重试");
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+        try {
+            MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+            if (proposal == null) {
+                throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            }
+            if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
 
-        String status = proposal.getStatus();
-        if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
-        }
+            String status = proposal.getStatus();
+            if (!"DRAFT".equals(status) && !"REJECTED".equals(status)) {
+                throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿或已驳回状态可提交审核");
+            }
 
-        // 执行提交前校验 — 使用完整校验，与导出校验(validateForExport)分离
-        StorageApplicationSaveRequest validationReq = queryService.buildValidationRequest(proposalId);
-        List<String> submitErrors = StorageValidator.validateForSubmit(validationReq);
-        // 追加子表存在性校验
-        long courseCount = courseRepository.selectCount(
-            new LambdaQueryWrapper<ProposalCourse>().eq(ProposalCourse::getProposalId, proposalId));
-        long memberCount = teamMemberRepository.selectCount(
-            new LambdaQueryWrapper<ProposalTeamMember>().eq(ProposalTeamMember::getProposalId, proposalId));
-        long sigCount = signatureRepository.selectCount(
-            new LambdaQueryWrapper<ProposalSignature>().eq(ProposalSignature::getProposalId, proposalId));
-        if (courseCount == 0) submitErrors.add("课程表至少需要 1 门课程");
-        if (memberCount == 0) submitErrors.add("教学团队至少需要 1 名成员");
-        if (sigCount == 0) submitErrors.add("至少需要 1 个签字记录");
-        
-        if (!submitErrors.isEmpty()) {
-            throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
-                    "请补全以下必填项： " + String.join("; ", submitErrors));
-        }
+            // 执行提交前校验 — 使用完整校验，与导出校验(validateForExport)分离
+            StorageApplicationSaveRequest validationReq = queryService.buildValidationRequest(proposalId);
+            List<String> submitErrors = StorageValidator.validateForSubmit(validationReq);
+            // 追加子表存在性校验
+            long courseCount = courseRepository.selectCount(
+                new LambdaQueryWrapper<ProposalCourse>().eq(ProposalCourse::getProposalId, proposalId));
+            long memberCount = teamMemberRepository.selectCount(
+                new LambdaQueryWrapper<ProposalTeamMember>().eq(ProposalTeamMember::getProposalId, proposalId));
+            long sigCount = signatureRepository.selectCount(
+                new LambdaQueryWrapper<ProposalSignature>().eq(ProposalSignature::getProposalId, proposalId));
+            if (courseCount == 0) submitErrors.add("课程表至少需要 1 门课程");
+            if (memberCount == 0) submitErrors.add("教学团队至少需要 1 名成员");
+            if (sigCount == 0) submitErrors.add("至少需要 1 个签字记录");
+            
+            if (!submitErrors.isEmpty()) {
+                throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
+                        "请补全以下必填项： " + String.join("; ", submitErrors));
+            }
 
-        proposal.setStatus("PENDING_REVIEW");
-        proposal.setValidationPassed(true);
-        proposal.setUpdatedAt(LocalDateTime.now());
-        if (proposalRepository.updateById(proposal) == 0) {
-            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据已被其他操作修改，请刷新后重试");
+            proposal.setStatus("PENDING_REVIEW");
+            proposal.setValidationPassed(true);
+            proposal.setUpdatedAt(LocalDateTime.now());
+            if (proposalRepository.updateById(proposal) == 0) {
+                throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "数据已被其他操作修改，请刷新后重试");
+            }
+            log.info("submit: proposalId={}, userId={}", proposalId, userId);
+        } finally {
+            redisUtil.releaseLock(lockKey, lockValue);
         }
-        log.info("submit: proposalId={}, userId={}", proposalId, userId);
     }
 
     // ================================================================
@@ -322,64 +361,75 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetModule(Long proposalId, Long userId, String module) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        // C-004: Redis 分布式锁防止 resetModule 与 save/autoSave/submit 的竞态条件
+        String lockKey = "storage:lock:" + proposalId;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        if (!locked) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "操作过于频繁，请稍后重试");
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
-        }
+        try {
+            MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+            if (proposal == null) {
+                throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            }
+            if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
 
-        // P0-6 修复：仅草稿和已驳回状态允许重置
-        if (!"DRAFT".equals(proposal.getStatus()) && !"REJECTED".equals(proposal.getStatus())) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿和已驳回状态的申请表可重置");
-        }
+            // P0-6 修复：仅草稿和已驳回状态允许重置
+            if (!"DRAFT".equals(proposal.getStatus()) && !"REJECTED".equals(proposal.getStatus())) {
+                throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿和已驳回状态的申请表可重置");
+            }
 
-        switch (module) {
-            case MODULE_COURSES:
-                // P1-C-1 修复: 重置课程前检查是否有已接受的教师分配
-                // CASCADE DELETE 会连带删除 chapter_teacher_assignments
-                if (assignmentRepository.selectCount(
-                        new LambdaQueryWrapper<ChapterTeacherAssignment>()
-                                .eq(ChapterTeacherAssignment::getProposalId, proposalId)
-                                .eq(ChapterTeacherAssignment::getAcceptStatus, "ACCEPTED")) > 0) {
-                    throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
-                            "已有已接受的教师分配，无法重置课程模块");
-                }
-                courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
-                        .eq(ProposalCourse::getProposalId, proposalId));
-                break;
-            case MODULE_LEAD_COURSES:
-                leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
-                        .eq(ProposalLeadCourse::getProposalId, proposalId));
-                break;
-            case MODULE_TEAM_MEMBERS:
-                teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
-                        .eq(ProposalTeamMember::getProposalId, proposalId));
-                break;
-            case MODULE_SIGNATURES:
-                // P1-2 修复：对齐 spec §7.2#11 — 仅清空非固定签字（SHARED_UNIT），
-                // 固定 LEAD/DEPT/SCHOOL 三行保留但清空签字内容（图片/文字/日期）
-                signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                        .eq(ProposalSignature::getProposalId, proposalId)
-                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
-                resetFixedSignatureContents(proposalId);
-                break;
-            case MODULE_SHARED_UNITS:
-                sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
-                        .eq(ProposalSharedUnit::getProposalId, proposalId));
-                // P0-2 修复：重置共享单位时也清除对应的签字记录
-                signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                        .eq(ProposalSignature::getProposalId, proposalId)
-                        .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
-                break;
-            default:
-                throw new BusinessException(ErrorCode.SA_MODULE_NOT_FOUND, "未知模块: " + module);
-        }
+            switch (module) {
+                case MODULE_COURSES:
+                    // P1-C-1 修复: 重置课程前检查是否有已接受的教师分配
+                    // CASCADE DELETE 会连带删除 chapter_teacher_assignments
+                    if (assignmentRepository.selectCount(
+                            new LambdaQueryWrapper<ChapterTeacherAssignment>()
+                                    .eq(ChapterTeacherAssignment::getProposalId, proposalId)
+                                    .eq(ChapterTeacherAssignment::getAcceptStatus, "ACCEPTED")) > 0) {
+                        throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+                                "已有已接受的教师分配，无法重置课程模块");
+                    }
+                    courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
+                            .eq(ProposalCourse::getProposalId, proposalId));
+                    break;
+                case MODULE_LEAD_COURSES:
+                    leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
+                            .eq(ProposalLeadCourse::getProposalId, proposalId));
+                    break;
+                case MODULE_TEAM_MEMBERS:
+                    teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
+                            .eq(ProposalTeamMember::getProposalId, proposalId));
+                    break;
+                case MODULE_SIGNATURES:
+                    // P1-2 修复：对齐 spec §7.2#11 — 仅清空非固定签字（SHARED_UNIT），
+                    // 固定 LEAD/DEPT/SCHOOL 三行保留但清空签字内容（图片/文字/日期）
+                    signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                            .eq(ProposalSignature::getProposalId, proposalId)
+                            .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
+                    resetFixedSignatureContents(proposalId);
+                    break;
+                case MODULE_SHARED_UNITS:
+                    sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
+                            .eq(ProposalSharedUnit::getProposalId, proposalId));
+                    // P0-2 修复：重置共享单位时也清除对应的签字记录
+                    signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                            .eq(ProposalSignature::getProposalId, proposalId)
+                            .eq(ProposalSignature::getSignLevel, "SHARED_UNIT"));
+                    break;
+                default:
+                    throw new BusinessException(ErrorCode.SA_MODULE_NOT_FOUND, "未知模块: " + module);
+            }
 
-        proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
-        log.info("resetModule: proposalId={}, module={}", proposalId, module);
+            proposal.setUpdatedAt(LocalDateTime.now());
+            proposalRepository.updateById(proposal);
+            log.info("resetModule: proposalId={}, module={}", proposalId, redact(module));
+        } finally {
+            redisUtil.releaseLock(lockKey, lockValue);
+        }
     }
 
     // ================================================================
@@ -388,40 +438,51 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetAll(Long proposalId, Long userId) {
-        MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
-        if (proposal == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+        // C-004: Redis 分布式锁防止 resetAll 与 save/autoSave/submit 的竞态条件
+        String lockKey = "storage:lock:" + proposalId;
+        String lockValue = UUID.randomUUID().toString();
+        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
+        if (!locked) {
+            throw new BusinessException(ErrorCode.SA_AUTO_SAVE_CONFLICT, "操作过于频繁，请稍后重试");
         }
-        if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        try {
+            MicroSpecialtyProposal proposal = proposalRepository.selectById(proposalId);
+            if (proposal == null) {
+                throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            }
+            if (!proposal.getProposerId().equals(userId) && !SecurityUtil.isAdmin()) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+
+            // P0-6 修复：仅草稿和已驳回状态允许重置
+            if (!"DRAFT".equals(proposal.getStatus()) && !"REJECTED".equals(proposal.getStatus())) {
+                throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿和已驳回状态的申请表可重置");
+            }
+
+            // P1-3 修复：对齐 spec §7.2#12 — resetAll 只清空子表，
+            // 主表基础信息(title/proposer/department)保留，避免教师误操作丢失工作
+            proposal.setUpdatedAt(LocalDateTime.now());
+            proposalRepository.updateById(proposal);
+
+            // 删除所有子表数据
+            courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
+                    .eq(ProposalCourse::getProposalId, proposalId));
+            leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
+                    .eq(ProposalLeadCourse::getProposalId, proposalId));
+            teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
+                    .eq(ProposalTeamMember::getProposalId, proposalId));
+            signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
+                    .eq(ProposalSignature::getProposalId, proposalId));
+            sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
+                    .eq(ProposalSharedUnit::getProposalId, proposalId));
+
+            // P1-3 修复：对齐 spec §7.2#12 — resetAll 后必须重新初始化 3 行固定签字
+            initFixedSignatures(proposalId);
+
+            log.info("resetAll: proposalId={}", proposalId);
+        } finally {
+            redisUtil.releaseLock(lockKey, lockValue);
         }
-
-        // P0-6 修复：仅草稿和已驳回状态允许重置
-        if (!"DRAFT".equals(proposal.getStatus()) && !"REJECTED".equals(proposal.getStatus())) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "仅草稿和已驳回状态的申请表可重置");
-        }
-
-        // P1-3 修复：对齐 spec §7.2#12 — resetAll 只清空子表，
-        // 主表基础信息(title/proposer/department)保留，避免教师误操作丢失工作
-        proposal.setUpdatedAt(LocalDateTime.now());
-        proposalRepository.updateById(proposal);
-
-        // 删除所有子表数据
-        courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
-                .eq(ProposalCourse::getProposalId, proposalId));
-        leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
-                .eq(ProposalLeadCourse::getProposalId, proposalId));
-        teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
-                .eq(ProposalTeamMember::getProposalId, proposalId));
-        signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
-                .eq(ProposalSignature::getProposalId, proposalId));
-        sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
-                .eq(ProposalSharedUnit::getProposalId, proposalId));
-
-        // P1-3 修复：对齐 spec §7.2#12 — resetAll 后必须重新初始化 3 行固定签字
-        initFixedSignatures(proposalId);
-
-        log.info("resetAll: proposalId={}", proposalId);
     }
 
     /**
@@ -564,5 +625,12 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // buildVO, buildPreview(MicroSpecialtyProposal), buildRequest, build*Items,
     // lookupUserName, buildAssignmentItems — extracted to StorageApplicationQueryServiceImpl
 
+    /**
+     * S-008: 日志脱敏辅助方法 — 对用户输入截断至 50 字符，防止敏感信息泄露至日志。
+     */
+    private static String redact(String input) {
+        if (input == null) return null;
+        return input.length() > 50 ? input.substring(0, 50) + "..." : input;
+    }
 
 }

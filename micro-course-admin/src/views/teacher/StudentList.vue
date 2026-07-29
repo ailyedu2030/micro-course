@@ -125,6 +125,7 @@
         class="data-table"
         ref="tableRef"
         @row-click="handleRowClick"
+        @row-keydown.enter="handleRowClick"
       >
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="username" label="学号" width="140" show-overflow-tooltip />

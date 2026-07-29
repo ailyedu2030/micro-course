@@ -175,7 +175,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="授课教师" prop="teacherId">
-              <el-select v-model="formData.teacherId" placeholder="请选择" class="full-width" filterable :disabled="userStore.role === 'TEACHER'" aria-label="授课教师">
+              <el-select v-model="formData.teacherId" placeholder="请搜索并选择授课教师" class="full-width" filterable remote :remote-method="remoteSearchTeachers" :loading="teacherLoading" :disabled="userStore.role === 'TEACHER'" aria-label="授课教师">
                 <el-option v-for="t in teacherOptions" :key="t.id" :label="t.realName || t.username" :value="t.id" />
               </el-select>
             </el-form-item>
@@ -360,6 +360,7 @@ const page = ref(1)
 const size = ref(10)
 const categories = ref([])
 const teacherOptions = ref([])
+const teacherLoading = ref(false)
 
 const searchForm = reactive({
   keyword: '',
@@ -422,6 +423,21 @@ const fetchTeachers = async () => {
     const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
     teacherOptions.value = data.items || []
   } catch { teacherOptions.value = [] }
+}
+
+// 远程搜索教师
+const remoteSearchTeachers = async (query) => {
+  if (!query) {
+    // 无关键词时加载全部（保持下拉可选）
+    await fetchTeachers()
+    return
+  }
+  teacherLoading.value = true
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', keyword: query, size: 20 })
+    teacherOptions.value = data.items || []
+  } catch { teacherOptions.value = [] }
+  finally { teacherLoading.value = false }
 }
 
 const fetchData = async () => {

@@ -155,15 +155,18 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public ResponseEntity<byte[]> exportWord(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
-        // P2-01: 导出前执行数据完整性校验
         ExportValidationResult valResult = storageApplicationService.validateForExport(id, userId);
         if (!valResult.isValid()) {
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
                     "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
         }
-        byte[] bytes = exportService.exportWord(id);
+        byte[] bytes;
+        try {
+            bytes = exportService.exportWord(id);
+        } catch (RuntimeException e) {
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Word 文档生成失败，请稍后重试");
+        }
         String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".docx";
@@ -187,15 +190,18 @@ public class StorageApplicationController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC','ADMIN')")
     public ResponseEntity<byte[]> exportPdf(@PathVariable Long id) {
         Long userId = SecurityUtil.getCurrentUserId();
-        // 校验 owner 权限，防止 IDOR（P0 安全修复）
         storageApplicationService.validateOwner(id, userId);
-        // P2-01: 导出前执行数据完整性校验
         ExportValidationResult valResult = storageApplicationService.validateForExport(id, userId);
         if (!valResult.isValid()) {
             throw new BusinessException(ErrorCode.SA_FORM_INCOMPLETE,
                     "请补全以下必填项：\n" + String.join("\n", valResult.getErrors()));
         }
-        byte[] bytes = exportService.exportPdf(id);
+        byte[] bytes;
+        try {
+            bytes = exportService.exportPdf(id);
+        } catch (RuntimeException e) {
+            throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "PDF 生成失败，请稍后重试");
+        }
         String schoolName = storageApplicationService.resolveSchoolName(id);
         String filename = "【" + schoolName + "】微专业申报表_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd")) + ".pdf";

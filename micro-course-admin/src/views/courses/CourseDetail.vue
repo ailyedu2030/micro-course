@@ -142,7 +142,7 @@ v-if="userRole === 'ACADEMIC'"
             <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" size="small" @click="handleCreateChapter">{{ $t('course.addChapter') }}</el-button>
           </div>
         </template>
-        <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id">
+        <el-table ref="chapterTableRef" v-loading="chapterLoading" :data="chapters" stripe row-key="id" @row-keydown.enter="handleRowClick">
           <template #empty><el-empty :description="$t('course.noChapters')" /></template>
           <el-table-column type="expand" width="40" :label="$t('app.detail')">
             <template #default="{ row }">
@@ -533,6 +533,9 @@ const initSortable = () => {
 }
 
 // ===== 页面操作 =====
+const handleRowClick = (row) => {
+  chapterTableRef.value?.toggleRowExpansion(row)
+}
 const handleBack = () => {
   router.push(courseListPath.value)
 }

@@ -430,6 +430,7 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
+  document.title = '学习报告 - 微课平台'
   window.addEventListener('resize', handleResize)
   loading.value = true
   try {

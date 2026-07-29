@@ -1064,6 +1064,7 @@ async function handleAvatarUpload(file, row) {
 }
 
 onMounted(() => {
+  document.title = '用户管理 - 微课平台'
   fetchDepartments()
   // OP-0272: 从 sessionStorage 恢复分页上下文（从 UserForm 返回时）
   const saved = sessionStorage.getItem('user_list_page')

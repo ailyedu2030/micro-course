@@ -23,8 +23,8 @@ export function saveStorageApplication(id, data) {
 }
 
 // 5. 自动保存
-export function autoSaveStorageApplication(id, data) {
-  return request({ method: 'PATCH', url: `/storage-applications/${id}/auto-save`, data })
+export function autoSaveStorageApplication(id, data, config = {}) {
+  return request({ method: 'PATCH', url: `/storage-applications/${id}/auto-save`, data, ...config })
 }
 
 // 6. 上传图片（签名/公章）

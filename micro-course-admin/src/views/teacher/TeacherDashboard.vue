@@ -406,7 +406,7 @@
                 <el-icon><WarningFilled /></el-icon>
                 <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="activeChartRef" class="chart-container" role="img"></div>
+              <div v-else ref="activeChartRef" class="chart-container" role="img" aria-label="最近30天学生活跃趋势图"></div>
             </template>
           </el-skeleton>
         </div>

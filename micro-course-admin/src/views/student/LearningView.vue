@@ -339,7 +339,7 @@ async function loadCourse(cid) {
 
     // A11Y-023: 动态设置页面标题
     if (course.value.title) {
-      document.title = course.value.title + ' - 微课平台'
+      document.title = course.value.title + ' - 学习 - 微课平台'
     }
 
     // ✅ 构建 progressMap（key=sectionId）+ 保存原始列表供 chapterId 查询

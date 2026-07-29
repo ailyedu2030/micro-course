@@ -633,6 +633,7 @@ function handleResize() {
 }
 
 onMounted(async () => {
+  document.title = '成绩分布 - 微课平台'
   // P1I-071: ADMIN/ACADEMIC 角色加载院系列表
   await fetchDepartments()
   await fetchCourses()

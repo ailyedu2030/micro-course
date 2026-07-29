@@ -741,6 +741,7 @@ function resizeCharts() {
 }
 
 onMounted(async () => {
+  document.title = '管理后台 - 微课平台'
   await Promise.all([
     loadStats(),
     loadTrends(),
