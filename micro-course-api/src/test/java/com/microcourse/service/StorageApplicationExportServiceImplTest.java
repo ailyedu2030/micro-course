@@ -1,8 +1,10 @@
 package com.microcourse.service;
 
 import com.microcourse.dto.storage.StorageApplicationVO;
+import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.service.impl.StorageApplicationExportServiceImpl;
 import com.microcourse.service.impl.StorageApplicationPdfGenerator;
 import com.microcourse.service.impl.StorageApplicationWordGenerator;
@@ -31,9 +33,10 @@ class StorageApplicationExportServiceImplTest {
         StorageApplicationQueryService queryService = mock(StorageApplicationQueryService.class);
         StorageApplicationPdfGenerator pdfGenerator = mock(StorageApplicationPdfGenerator.class);
         StorageApplicationWordGenerator wordGenerator = mock(StorageApplicationWordGenerator.class);
+        MicroSpecialtyProposalRepository proposalRepository = mock(MicroSpecialtyProposalRepository.class);
         TrackingTransactionManager txManager = new TrackingTransactionManager();
         StorageApplicationExportServiceImpl service = new StorageApplicationExportServiceImpl(
-                queryService, pdfGenerator, wordGenerator, txManager);
+                proposalRepository, queryService, pdfGenerator, wordGenerator, txManager);
 
         StorageApplicationVO snapshot = new StorageApplicationVO();
         snapshot.setStatus("APPROVED");
@@ -60,9 +63,10 @@ class StorageApplicationExportServiceImplTest {
         StorageApplicationQueryService queryService = mock(StorageApplicationQueryService.class);
         StorageApplicationPdfGenerator pdfGenerator = mock(StorageApplicationPdfGenerator.class);
         StorageApplicationWordGenerator wordGenerator = mock(StorageApplicationWordGenerator.class);
+        MicroSpecialtyProposalRepository proposalRepository = mock(MicroSpecialtyProposalRepository.class);
         TrackingTransactionManager txManager = new TrackingTransactionManager();
         StorageApplicationExportServiceImpl service = new StorageApplicationExportServiceImpl(
-                queryService, pdfGenerator, wordGenerator, txManager);
+                proposalRepository, queryService, pdfGenerator, wordGenerator, txManager);
 
         StorageApplicationVO snapshot = new StorageApplicationVO();
         snapshot.setStatus("WITHDRAWN");

@@ -1,6 +1,7 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.microcourse.dto.storage.*;
 import com.microcourse.entity.MicroSpecialtyProposal;
 import com.microcourse.entity.User;
@@ -86,13 +87,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         }
         // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
         if (request.getApplyDate() != null && !request.getApplyDate().isEmpty()) {
-            try {
-                proposal.setApplyDate(parseDate(request.getApplyDate()));
-            } catch (Exception e) {
-                String redactedDate = request.getApplyDate().length() > 20
-                        ? request.getApplyDate().substring(0, 10) + "..." : request.getApplyDate();
-                log.warn("applyDate parse failed: {}", redactedDate, e);
-            }
+            proposal.setApplyDate(parseDate(request.getApplyDate()));
         }
         if (request.getType() != null) {
             proposal.setType(request.getType());
@@ -123,13 +118,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
         }
         // P1-C-1 修复：解析请求中的日期字符串，而非设为 now()
         if (request.getStartDate() != null && !request.getStartDate().isEmpty()) {
-            try {
-                proposal.setStartDate(parseDate(request.getStartDate()));
-            } catch (Exception e) {
-                String redactedDate = request.getStartDate().length() > 20
-                        ? request.getStartDate().substring(0, 10) + "..." : request.getStartDate();
-                log.warn("startDate parse failed: {}", redactedDate, e);
-            }
+            proposal.setStartDate(parseDate(request.getStartDate()));
         }
         if (request.getDuration() != null) {
             proposal.setDuration(request.getDuration());
@@ -190,8 +179,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             throw new IllegalStateException("replaceSubTables 必须在事务上下文中调用");
         }
 
-        // courses — A2: 仅当 courses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getCourses() != null) {
+        // courses — A2: 仅当 courses 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getCourses() != null && !request.getCourses().isEmpty()) {
             courseRepository.delete(new LambdaQueryWrapper<ProposalCourse>()
                     .eq(ProposalCourse::getProposalId, proposalId));
             int sortOrder = 0;
@@ -208,13 +197,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 entities.add(entity);
             }
             if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalCourseRepository batchRepo = sqlSession.getMapper(ProposalCourseRepository.class);
-                    for (ProposalCourse entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.flushStatements();  // 必须先 flush 让 course.id 可用
-                }
+                batchInsertFlush(entities, ProposalCourseRepository.class);  // 必须先 flush 让 course.id 可用
 
                 // Phase 1: 同步保存章节(嵌套在课程循环内,确保 course.id 可用)
                 // P0-1 修复: 维护 oldId → newChapter 映射,DELETE+INSERT 后前端旧ID不再有效
@@ -247,13 +230,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                     }
                 }
                 if (!allChapters.isEmpty()) {
-                    try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                        ProposalChapterRepository chRepo = sqlSession.getMapper(ProposalChapterRepository.class);
-                        for (ProposalChapter ch : allChapters) {
-                            chRepo.insert(ch);
-                        }
-                        sqlSession.commit();
-                    }
+                    batchInsertCommit(allChapters, ProposalChapterRepository.class);
                 }
 
                 // Phase 2: 章节-教师分配同步
@@ -338,8 +315,8 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
         }
 
-        // leadCourses — A2: 仅当 leadCourses 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getLeadCourses() != null) {
+        // leadCourses — A2: 仅当 leadCourses 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getLeadCourses() != null && !request.getLeadCourses().isEmpty()) {
             leadCourseRepository.delete(new LambdaQueryWrapper<ProposalLeadCourse>()
                     .eq(ProposalLeadCourse::getProposalId, proposalId));
             int sortOrder = 0;
@@ -354,18 +331,12 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 entities.add(entity);
             }
             if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalLeadCourseRepository batchRepo = sqlSession.getMapper(ProposalLeadCourseRepository.class);
-                    for (ProposalLeadCourse entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
+                batchInsertCommit(entities, ProposalLeadCourseRepository.class);
             }
         }
 
-        // teamMembers — A2: 仅当 teamMembers 数组非 null 时更新 (R-002: 批量插入)
-        if (request.getTeamMembers() != null) {
+        // teamMembers — A2: 仅当 teamMembers 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (request.getTeamMembers() != null && !request.getTeamMembers().isEmpty()) {
             teamMemberRepository.delete(new LambdaQueryWrapper<ProposalTeamMember>()
                     .eq(ProposalTeamMember::getProposalId, proposalId));
             List<ProposalTeamMember> entities = new ArrayList<>();
@@ -384,24 +355,25 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 entities.add(entity);
             }
             if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalTeamMemberRepository batchRepo = sqlSession.getMapper(ProposalTeamMemberRepository.class);
-                    for (ProposalTeamMember entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
+                batchInsertCommit(entities, ProposalTeamMemberRepository.class);
             }
         }
 
-        // signatures — A2: 仅当 signatures 数组非 null 时更新（不处理 SHARED_UNIT 级别）(R-002: 批量插入)
-        if (request.getSignatures() != null) {
+        // signatures — A2: 仅当 signatures 数组非 null 且非空时更新（不处理 SHARED_UNIT 级别）(D-005: 空数组不触发删除)
+        if (request.getSignatures() != null && !request.getSignatures().isEmpty()) {
             signatureRepository.delete(new LambdaQueryWrapper<ProposalSignature>()
                     .eq(ProposalSignature::getProposalId, proposalId)
                     .ne(ProposalSignature::getSignLevel, "SHARED_UNIT"));
             int sigSeq = 0;
             List<ProposalSignature> entities = new ArrayList<>();
             for (ProposalSignatureItem item : request.getSignatures()) {
+                // S-009: 防止 mass assignment 攻击 — 图片 URL 必须来自合法上传路径
+                if (item.getSignatureImageUrl() != null && !item.getSignatureImageUrl().startsWith("/uploads/storage/")) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "签名图片URL无效");
+                }
+                if (item.getSealImageUrl() != null && !item.getSealImageUrl().startsWith("/uploads/storage/")) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "签章图片URL无效");
+                }
                 ProposalSignature entity = new ProposalSignature();
                 entity.setProposalId(proposalId);
                 entity.setSignLevel(item.getSignLevel());
@@ -416,18 +388,12 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 entities.add(entity);
             }
             if (!entities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
-                    for (ProposalSignature entity : entities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
+                batchInsertCommit(entities, ProposalSignatureRepository.class);
             }
         }
 
-        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 时更新 (R-002: 批量插入)
-        if (includeSharedUnits && request.getSharedUnits() != null) {
+        // sharedUnits — 仅 full save 时处理，且仅当 sharedUnits 数组非 null 且非空时更新 (D-005: 空数组不触发删除)
+        if (includeSharedUnits && request.getSharedUnits() != null && !request.getSharedUnits().isEmpty()) {
             sharedUnitRepository.delete(new LambdaQueryWrapper<ProposalSharedUnit>()
                     .eq(ProposalSharedUnit::getProposalId, proposalId));
             // 先清除旧的 SHARED_UNIT 级别签字，再重新插入
@@ -438,11 +404,29 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             List<ProposalSharedUnit> unitEntities = new ArrayList<>();
             List<ProposalSignature> sigEntities = new ArrayList<>();
             for (ProposalSharedUnitItem item : request.getSharedUnits()) {
+                // S-009: 防止 mass assignment 攻击 — 共享单位签名/签章 URL 必须来自合法上传路径
+                if (item.getSignature() != null && item.getSignature().getImageUrl() != null
+                        && !item.getSignature().getImageUrl().startsWith("/uploads/storage/")) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签名图片URL无效");
+                }
+                if (item.getSeal() != null && item.getSeal().getImageUrl() != null
+                        && !item.getSeal().getImageUrl().startsWith("/uploads/storage/")) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签章图片URL无效");
+                }
                 ProposalSharedUnit entity = new ProposalSharedUnit();
                 entity.setProposalId(proposalId);
                 entity.setUnitName(item.getUnitName());
                 entity.setUnitType(item.getUnitType());
                 entity.setSortOrder(sortOrder);
+                // D-001: 直接存储意见与签字字段到 proposal_shared_units（双写，与 proposal_signatures 保持冗余）
+                entity.setOpinionText(item.getOpinionText());
+                entity.setSignatureType(item.getSignature() != null ? item.getSignature().getType() : null);
+                entity.setSignatureText(item.getSignature() != null ? item.getSignature().getText() : null);
+                entity.setSignatureImageUrl(item.getSignature() != null ? item.getSignature().getImageUrl() : null);
+                entity.setSealImageUrl(item.getSeal() != null ? item.getSeal().getImageUrl() : null);
+                entity.setSignDate(item.getSignDate() != null && !item.getSignDate().isEmpty()
+                        ? parseDate(item.getSignDate()) : null);
+                entity.setRemark(item.getRemark());
                 unitEntities.add(entity);
 
                 // 同步共享单位签字数据到 proposal_signatures 表
@@ -454,9 +438,17 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 if (item.getSignature() != null) {
                     sig.setSignatureType(item.getSignature().getType());
                     sig.setSignatureText(item.getSignature().getText());
+                    if (item.getSignature().getImageUrl() != null
+                            && !item.getSignature().getImageUrl().startsWith("/uploads/storage/")) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签名图片URL无效");
+                    }
                     sig.setSignatureImageUrl(item.getSignature().getImageUrl());
                 }
                 if (item.getSeal() != null) {
+                    if (item.getSeal().getImageUrl() != null
+                            && !item.getSeal().getImageUrl().startsWith("/uploads/storage/")) {
+                        throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签章图片URL无效");
+                    }
                     sig.setSealImageUrl(item.getSeal().getImageUrl());
                 }
                 sig.setSignDate(item.getSignDate() != null && !item.getSignDate().isEmpty()
@@ -468,24 +460,46 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             }
             // Batch insert shared units
             if (!unitEntities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSharedUnitRepository batchRepo = sqlSession.getMapper(ProposalSharedUnitRepository.class);
-                    for (ProposalSharedUnit entity : unitEntities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
+                batchInsertCommit(unitEntities, ProposalSharedUnitRepository.class);
             }
             // Batch insert shared unit signatures
             if (!sigEntities.isEmpty()) {
-                try (SqlSession sqlSession = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
-                    ProposalSignatureRepository batchRepo = sqlSession.getMapper(ProposalSignatureRepository.class);
-                    for (ProposalSignature entity : sigEntities) {
-                        batchRepo.insert(entity);
-                    }
-                    sqlSession.commit();
-                }
+                batchInsertCommit(sigEntities, ProposalSignatureRepository.class);
             }
+        }
+    }
+
+    // ================================================================
+    // batchInsert helpers (E-007: 替代 BATCH SqlSession + 循环 insert 模式)
+    // ================================================================
+
+    /**
+     * 批量插入（使用 BATCH SqlSession + commit）。
+     * 适用于不需要立即获取自增 ID 的场景。
+     */
+    private <T> void batchInsertCommit(List<T> entities, Class<? extends BaseMapper<T>> mapperClass) {
+        if (entities.isEmpty()) return;
+        try (SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+            BaseMapper<T> mapper = session.getMapper(mapperClass);
+            for (T entity : entities) {
+                mapper.insert(entity);
+            }
+            session.commit();
+        }
+    }
+
+    /**
+     * 批量插入（使用 BATCH SqlSession + flushStatements）。
+     * 适用于需要立即获取自增 ID（如 course.id）供后续逻辑使用的场景。
+     */
+    private <T> void batchInsertFlush(List<T> entities, Class<? extends BaseMapper<T>> mapperClass) {
+        if (entities.isEmpty()) return;
+        try (SqlSession session = sqlSessionFactory.openSession(ExecutorType.BATCH)) {
+            BaseMapper<T> mapper = session.getMapper(mapperClass);
+            for (T entity : entities) {
+                mapper.insert(entity);
+            }
+            session.flushStatements();
         }
     }
 
@@ -497,6 +511,14 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
      * 解析前端传来的日期字符串，支持多种格式。
      * A3 修复：解析失败时打印 ERROR 级别日志（含实际输入），不再静默忽略。
      */
+    /**
+     * S-008: 日志脱敏辅助方法 — 对用户输入截断至 50 字符，防止敏感信息泄露至日志。
+     */
+    private static String redact(String input) {
+        if (input == null) return null;
+        return input.length() > 50 ? input.substring(0, 50) + "..." : input;
+    }
+
     private static LocalDateTime parseDate(String dateStr) {
         if (dateStr == null || dateStr.isBlank()) {
             return null;
@@ -530,9 +552,9 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             return LocalDateTime.parse(trimmed.replace(" ", "T"),
                     java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME);
         } catch (Exception e) {
-            String redacted = dateStr.length() > 20 ? dateStr.substring(0, 10) + "..." : dateStr;
-            log.error("日期解析失败: input='{}' (len={}), error={}", redacted, dateStr.length(), e.getMessage());
-            return null;
+            log.error("日期解析失败: input='{}' (len={}), error={}", redact(dateStr), dateStr.length(), e.getMessage());
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "日期格式不正确，请使用 yyyy-MM-dd 或 yyyy-MM 格式");
         }
     }
 }

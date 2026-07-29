@@ -213,7 +213,7 @@ v-for="s in speeds" :key="s"
       >
         <div class="hint-card">
           <div class="hint-row"><kbd>←</kbd><kbd>→</kbd> 翻页</div>
-          <div class="hint-row"><kbd>Space</kbd> 下一页</div>
+          <div class="hint-row"><kbd>Space</kbd> 播放/暂停</div>
           <div class="hint-row"><kbd>F</kbd> 全屏</div>
           <div class="hint-row"><kbd>Esc</kbd> 退出全屏</div>
           <button type="button" class="keyboard-hint-dismiss" @click="dismissKeyboardHint">关闭提示</button>
@@ -761,7 +761,8 @@ function handleKeydown(e) {
     dismissKeyboardHint()
     return
   }
-  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goTo(Math.min(pages.value.length - 1, current.value + 1)) }
+  if (e.key === 'ArrowRight') { e.preventDefault(); goTo(Math.min(pages.value.length - 1, current.value + 1)) }
+  if (e.key === ' ') { e.preventDefault(); togglePlay() }
   if (e.key === 'ArrowLeft') { e.preventDefault(); goTo(Math.max(0, current.value - 1)) }
   if (e.key === 'f' || e.key === 'F') toggleFullscreen()
   if (e.key === 'Escape' && document.fullscreenElement) document.exitFullscreen()

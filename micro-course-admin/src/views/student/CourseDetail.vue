@@ -34,9 +34,13 @@
           <button
             v-if="course.courseType === 'INTERACTIVE'"
             type="button"
+            role="button"
+            tabindex="0"
             class="hero-img-box hero-preview-trigger"
-            :aria-label="previewButtonLabel"
+            aria-label="开始学习互动课程"
             @click="handlePlayPreview"
+            @keydown.enter="handlePlayPreview"
+            @keydown.space.prevent="handlePlayPreview"
           >
             <div class="hero-img-placeholder">
               <el-icon :size="56" color="#ccc"><Present /></el-icon>

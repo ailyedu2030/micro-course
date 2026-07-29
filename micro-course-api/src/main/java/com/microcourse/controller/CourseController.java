@@ -124,12 +124,17 @@ public class CourseController {
      * 按教师查询课程列表 (权限矩阵 v4.0 §3.3 GET_TEACHER_COURSES)
      * 权限：TEACHER(本人) / ADMIN / ACADEMIC / STUDENT
      * - TEACHER 必须 teacherId == 当前用户
+     * - STUDENT 强制 includeDrafts=false（不能查看草稿课程）
      */
     @GetMapping("/teacher/{teacherId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC','STUDENT')")
         @Operation(summary = "按教师查询课程列表 (TEACHER 仅本人, ADMIN/ACADEMIC 全部)")
     public R<List<CourseVO>> listByTeacher(@PathVariable Long teacherId,
                                            @RequestParam(defaultValue = "true") boolean includeDrafts) {
+        // P1 安全修复: STUDENT 不能查看教师草稿课程
+        if (com.microcourse.util.SecurityUtil.hasRole("STUDENT")) {
+            includeDrafts = false;
+        }
         // TEACHER Owner 校验下沉到 Service 层
         List<CourseVO> courses = courseQueryService.listByTeacherIdWithOwnerCheck(teacherId, includeDrafts);
         return R.ok(courses);

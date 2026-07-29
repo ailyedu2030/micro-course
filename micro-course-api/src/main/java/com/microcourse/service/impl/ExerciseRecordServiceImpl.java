@@ -547,7 +547,8 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
         LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(ExerciseRecord::getExerciseId, exerciseId)
-                .orderByDesc(ExerciseRecord::getSubmittedAt);
+                .orderByDesc(ExerciseRecord::getSubmittedAt)
+                .last("LIMIT 1000");
         List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
 
         return records.stream()

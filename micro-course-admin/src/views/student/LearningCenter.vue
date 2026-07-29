@@ -232,15 +232,16 @@
               <div class="card-header-title">{{ $t('learning.studyCalendar') }}</div>
             </template>
             <div class="heatmap-wrapper">
-              <div class="heatmap-grid">
-                <div class="heatmap-row" v-for="(week, wi) in heatmapData" :key="wi">
-                  <div
-                    v-for="(day, di) in week"
-                    :key="di"
-                    class="heatmap-cell"
-                    :class="getHeatmapCellClass(day.level)"
-                    :title="day.date + ' — ' + day.minutes + 'min'"
-                  >
+                <div class="heatmap-grid">
+                  <!-- v-memo on v-for is supported in Vue 3.4+ -->
+                  <div v-for="(week, wi) in heatmapData" :key="wi" class="heatmap-row">
+                    <div
+                      v-for="(day, di) in week"
+                      :key="di"
+                      class="heatmap-cell"
+                      :class="getHeatmapCellClass(day.level)"
+                      :title="day.date + ' — ' + day.minutes + 'min'"
+                    >
                     <span class="cell-day">{{ day.day }}</span>
                   </div>
                 </div>
@@ -265,6 +266,7 @@
           <el-card
             v-for="course in recommendations"
             :key="course.id"
+            v-memo="[course.title, course.cover, course.tag, course.author, course.students, course.rating]"
             shadow="hover"
             class="recommend-card"
           >
@@ -297,6 +299,7 @@
           <div
             v-for="badge in badges"
             :key="badge.id"
+            v-memo="[badge.name, badge.earned]"
             class="badge-item"
             :class="{ 'badge-locked': !badge.earned }"
           >
@@ -448,6 +451,7 @@
           <button
             v-for="record in recentRecords"
             :key="record.courseId"
+            v-memo="[record.title, record.cover, record.progress, record.completed]"
             type="button"
             class="recent-learning-item"
             :aria-label="$t('learning.continueLearning') + ' ' + record.title"
@@ -493,6 +497,7 @@
           <el-card
             v-for="course in recommendations"
             :key="course.id"
+            v-memo="[course.title, course.cover, course.author, course.students, course.rating]"
             shadow="hover"
             class="recommend-card recommend-card-list"
           >
@@ -524,6 +529,7 @@
           <div
             v-for="badge in badges"
             :key="badge.id"
+            v-memo="[badge.name, badge.earned]"
             class="badge-item"
             :class="{ 'badge-locked': !badge.earned }"
           >

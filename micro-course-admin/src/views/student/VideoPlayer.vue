@@ -64,7 +64,7 @@
         </div>
         <div class="header-right">
           <el-dropdown trigger="click" @command="changeSpeed">
-            <span class="speed-btn">
+            <span class="speed-btn" role="button" :aria-label="$t('video.playbackSpeed', { speed: playbackRate })">
               {{ playbackRate }}x
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6 9 12 15 18 9" />
@@ -100,7 +100,7 @@
         <span class="header-title">{{ videoData.title || $t('video.playing') }}</span>
         <div class="h5-header-right">
           <el-dropdown trigger="click" @command="changeSpeed">
-            <span class="speed-btn">{{ playbackRate }}x</span>
+            <span class="speed-btn" role="button" :aria-label="$t('video.playbackSpeed', { speed: playbackRate })">{{ playbackRate }}x</span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item v-for="opt in SPEED_OPTIONS" :key="opt.value" :command="opt.value" :class="{ active: playbackRate === opt.value }">{{ opt.label }}</el-dropdown-item>
@@ -323,7 +323,7 @@
                 <div class="controls-right">
                   <!-- Speed -->
                   <el-dropdown trigger="click" @command="changeSpeed">
-                    <button class="ctrl-btn speed-ctrl-btn">
+                    <button class="ctrl-btn speed-ctrl-btn" :aria-label="$t('video.playbackSpeed', { speed: playbackRate })">
                       {{ playbackRate }}x
                     </button>
                     <template #dropdown>

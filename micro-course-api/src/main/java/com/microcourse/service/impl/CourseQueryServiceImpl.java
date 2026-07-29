@@ -27,6 +27,7 @@ import com.microcourse.util.RedisUtil;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -577,5 +578,27 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             ? userRepository.selectById(course.getTeacherId()) : null;
         CourseVO vo = convertToVO(course, category, teacher, reviewRepository.countByCourseId(course.getId()));
         return vo;
+    }
+
+    @Override
+    @Cacheable(value = "recommendedCourses", key = "'recommended-top'", sync = true, unless = "#result == null || #result.isEmpty()")
+    @Transactional(readOnly = true)
+    public List<CourseVO> listRecommendedTop(int limit) {
+        LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Course::getIsRecommended, true);
+        wrapper.eq(Course::getStatus, CourseStatus.PUBLISHED.getCode());
+        wrapper.orderByDesc(Course::getStudentCount);
+        wrapper.last("LIMIT " + limit);
+        List<Course> courses = courseRepository.selectList(wrapper);
+        if (courses.isEmpty()) return List.of();
+
+        // 批量预加载避免 N+1
+        Map<Long, CourseCategory> categoryMap = buildCategoryMap(courses);
+        Map<Long, User> teacherMap = buildTeacherMap(courses);
+        Map<Long, Long> ratingCountMap = buildRatingCountMap(courses);
+
+        return courses.stream()
+                .map(c -> convertToVOFromMaps(c, categoryMap, teacherMap, ratingCountMap))
+                .collect(Collectors.toList());
     }
 }

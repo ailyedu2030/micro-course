@@ -273,7 +273,12 @@
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'in-progress' }"
+              role="tab"
+              tabindex="0"
+              :aria-selected="activeTab === 'in-progress'"
               @click="handleH5TabChange('in-progress')"
+              @keydown.enter="handleH5TabChange('in-progress')"
+              @keydown.space.prevent="handleH5TabChange('in-progress')"
             >
               <el-icon><Reading /></el-icon>
               进行中
@@ -282,7 +287,12 @@
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'completed' }"
+              role="tab"
+              tabindex="0"
+              :aria-selected="activeTab === 'completed'"
               @click="handleH5TabChange('completed')"
+              @keydown.enter="handleH5TabChange('completed')"
+              @keydown.space.prevent="handleH5TabChange('completed')"
             >
               <el-icon><CircleCheck /></el-icon>
               已完成
@@ -291,7 +301,12 @@
             <div
               class="h5-tab-item"
               :class="{ active: activeTab === 'favorited' }"
+              role="tab"
+              tabindex="0"
+              :aria-selected="activeTab === 'favorited'"
               @click="handleH5TabChange('favorited')"
+              @keydown.enter="handleH5TabChange('favorited')"
+              @keydown.space.prevent="handleH5TabChange('favorited')"
             >
               <el-icon><Star /></el-icon>
               收藏

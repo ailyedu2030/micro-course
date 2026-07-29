@@ -282,6 +282,7 @@ const checkMobile = () => {
 }
 
 onMounted(() => {
+  document.title = '登录 - 微课平台'
   checkMobile()
   checkRegistrationStatus()
   window.addEventListener('resize', checkMobile)

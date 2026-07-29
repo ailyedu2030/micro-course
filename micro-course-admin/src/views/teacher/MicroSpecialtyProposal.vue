@@ -162,12 +162,12 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="招生名额">
-              <el-input-number v-model="form.enrollmentQuota" :min="0" :max="10000" class="full-width" controls-position="right" />
+              <el-input-number v-model="form.enrollmentQuota" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="成班人数">
-              <el-input-number v-model="form.classSize" :min="0" :max="10000" class="full-width" controls-position="right" />
+              <el-input-number v-model="form.classSize" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -517,6 +517,7 @@ const draftId = ref(null)
 const saveStatus = ref('')
 const dirty = ref(false)
 const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防止标签页关闭数据丢失）
+const autoSaveAbortController = ref(null)  // C-007: AbortController 用于取消 in-flight autoSave
 const formRef1 = ref(null)
 const formRef2 = ref(null)
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
@@ -920,19 +921,31 @@ async function ensureDraft() {
 
 // 实际执行一次保存（被 scheduleAutoSave 和 handleSave 共用）
 async function performAutoSave() {
+  // C-007: 取消上一个 in-flight 请求（防止旧请求覆盖新保存结果）
+  if (autoSaveAbortController.value) {
+    autoSaveAbortController.value.abort()
+  }
+  autoSaveAbortController.value = new AbortController()
+
   pendingSave.value = true
   saveStatus.value = '保存中'
   try {
-    const res = await autoSaveStorageApplication(draftId.value, buildSavePayload())
+    const res = await autoSaveStorageApplication(draftId.value, buildSavePayload(), {
+      signal: autoSaveAbortController.value.signal
+    })
     // P1-UX: 使用服务器时间戳显示"已保存 HH:MM:SS"，避免客户端时钟偏差
     const serverTime = res?.data?.serverTime
     const displayTime = serverTime ? new Date(serverTime).toLocaleTimeString() : new Date().toLocaleTimeString()
     saveStatus.value = '已保存 ' + displayTime
     dirty.value = false  // 仅成功时清除 dirty；失败保留让用户被警告，避免数据丢失
-  } catch {
+  } catch (e) {
+    // C-007: AbortError 静默跳过（取消旧请求或组件卸载时触发）
+    if (e.name === 'AbortError' || e.code === 'ERR_CANCELED') return
     saveStatus.value = '⚠ 保存失败'
+    ElMessage.error(e?.response?.data?.message || '自动保存失败，请手动保存')
   } finally {
     pendingSave.value = false
+    autoSaveAbortController.value = null
   }
 }
 
@@ -973,19 +986,19 @@ const formDirtySnapshot = computed(() => {
 })
 watch(formDirtySnapshot, scheduleAutoSave)
 
-// Rich text fields: watch string length only (not deep) to detect edits
-watch(() => form.value.introduction?.length, scheduleAutoSave)
-watch(() => form.value.marketDemandAnalysis?.length, scheduleAutoSave)
-watch(() => form.value.specialtyOverview?.length, scheduleAutoSave)
-watch(() => form.value.curriculumDesign?.length, scheduleAutoSave)
-watch(() => form.value.constructionGuarantee?.length, scheduleAutoSave)
-
-// Sub-table arrays: deep watch via JSON (captures cell edits, not just add/remove)
-watch(() => JSON.stringify(courses.value), scheduleAutoSave)
-watch(() => JSON.stringify(leadCourses.value), scheduleAutoSave)
-watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
-watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
-watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
+// Consolidated: merge 10 individual watches into 1 (PERF-015/016)
+watch(() => [
+  form.value.introduction?.length,
+  form.value.marketDemandAnalysis?.length,
+  form.value.specialtyOverview?.length,
+  form.value.curriculumDesign?.length,
+  form.value.constructionGuarantee?.length,
+  JSON.stringify(courses.value),
+  JSON.stringify(leadCourses.value),
+  JSON.stringify(teamMembers.value),
+  JSON.stringify(signatures.value),
+  JSON.stringify(sharedUnits.value),
+], scheduleAutoSave)
 
 // Phase 2: 自动维护 teamMembers._index — P1-UX: 修复递归更新死循环
 // Vue 3 watch 会对整个数组重新触发 (包括 deep 修改成员 _index)
@@ -1147,7 +1160,12 @@ async function handleExport(type) {
       ElMessage.error(err.message || '导出校验失败')
       return
     }
-    const blob = new Blob([res.data])
+    let blob
+    if (res.data instanceof Blob) {
+      blob = res.data
+    } else {
+      blob = new Blob([res.data], { type: 'application/octet-stream' })
+    }
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -1313,6 +1331,11 @@ onBeforeUnmount(() => {
   window.removeEventListener('beforeunload', handleBeforeUnload)  // RT-3: 移除标签页关闭警告
   if (autoSaveTimer.value) {
     clearTimeout(autoSaveTimer.value)
+  }
+  // C-007: 取消正在执行的 autoSave 请求（避免组件卸载后回调更新已销毁的响应式状态）
+  if (autoSaveAbortController.value) {
+    autoSaveAbortController.value.abort()
+    autoSaveAbortController.value = null
   }
 })
 </script>

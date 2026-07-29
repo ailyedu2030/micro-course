@@ -71,22 +71,28 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
     // 2. getMyDrafts
     // ================================================================
     @Override
-    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
+    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status) {
         // I-05 fix: 如果请求页码越界（page >= totalPages 且 totalPages > 0），自动回退到最后一页
+        LambdaQueryWrapper<MicroSpecialtyProposal> wrapper = new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                .eq(MicroSpecialtyProposal::getProposerId, userId)
+                .orderByDesc(MicroSpecialtyProposal::getUpdatedAt);
+        if (status != null && !status.isBlank()) {
+            wrapper.eq(MicroSpecialtyProposal::getStatus, status);
+        }
         IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
                 new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                        .eq(MicroSpecialtyProposal::getProposerId, userId)
-                        .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+                wrapper);
 
         if (ipage.getPages() > 0 && page >= ipage.getPages()) {
             int lastPage = (int) ipage.getPages() - 1;
             log.warn("getMyDrafts: page {} out of bounds (totalPages={}), re-querying last page {}", page, ipage.getPages(), lastPage);
-            ipage = proposalRepository.selectPage(
-                    new Page<>(lastPage + 1, size),
-                    new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                            .eq(MicroSpecialtyProposal::getProposerId, userId)
-                            .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+            LambdaQueryWrapper<MicroSpecialtyProposal> lastWrapper = new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                    .eq(MicroSpecialtyProposal::getProposerId, userId)
+                    .orderByDesc(MicroSpecialtyProposal::getUpdatedAt);
+            if (status != null && !status.isBlank()) {
+                lastWrapper.eq(MicroSpecialtyProposal::getStatus, status);
+            }
+            ipage = proposalRepository.selectPage(new Page<>(lastPage + 1, size), lastWrapper);
             page = lastPage;
         }
 
@@ -321,6 +327,9 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
         vo.setLeadMainTasks(proposal.getLeadMainTasks());
 
+        // R-008: 申报高校全称（用于导出文件名，避免 resolveSchoolName 多一次 selectById）
+        vo.setUniversityFullName(proposal.getUniversityFullName());
+
         // 子表数据
         vo.setCourses(buildCourseItems(proposal.getId()));
         vo.setLeadCourses(buildLeadCourseItems(proposal.getId()));
@@ -379,6 +388,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setConstructionGuarantee(proposal.getConstructionGuarantee());
         vo.setLeadTitle(proposal.getLeadTitle());
         vo.setLeadPosition(proposal.getLeadPosition());
+        vo.setLeadPhone(proposal.getLeadPhone());
         vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
         vo.setLeadMainTasks(proposal.getLeadMainTasks());
 
@@ -578,17 +588,20 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             item.setUnitType(e.getUnitType());
             item.setSortOrder(e.getSortOrder());
 
-            // 从 proposal_signatures 回填签字数据
+            // D-001: 优先从 proposal_shared_units 直接字段读取，如果为空则从 proposal_signatures 回填
             ProposalSignature sig = sigMap.get(e.getSortOrder());
-            if (sig != null) {
-                item.setOpinionText(sig.getOpinionText());
-                item.setSignature(new ProposalSignatureItem.SignatureFile(
-                        sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()));
-                item.setSeal(new ProposalSignatureItem.SignatureFile(
-                        null, null, sig.getSealImageUrl()));
-                item.setSignDate(sig.getSignDate() != null ? sig.getSignDate().toString() : null);
-                item.setRemark(sig.getRemark());
-            }
+            item.setOpinionText(e.getOpinionText() != null ? e.getOpinionText() :
+                    (sig != null ? sig.getOpinionText() : null));
+            item.setSignature(e.getSignatureType() != null || e.getSignatureText() != null || e.getSignatureImageUrl() != null
+                    ? new ProposalSignatureItem.SignatureFile(e.getSignatureType(), e.getSignatureText(), e.getSignatureImageUrl())
+                    : (sig != null ? new ProposalSignatureItem.SignatureFile(sig.getSignatureType(), sig.getSignatureText(), sig.getSignatureImageUrl()) : null));
+            item.setSeal(e.getSealImageUrl() != null
+                    ? new ProposalSignatureItem.SignatureFile(null, null, e.getSealImageUrl())
+                    : (sig != null ? new ProposalSignatureItem.SignatureFile(null, null, sig.getSealImageUrl()) : null));
+            item.setSignDate(e.getSignDate() != null ? e.getSignDate().toString() :
+                    (sig != null && sig.getSignDate() != null ? sig.getSignDate().toString() : null));
+            item.setRemark(e.getRemark() != null ? e.getRemark() :
+                    (sig != null ? sig.getRemark() : null));
 
             items.add(item);
         }

@@ -6,6 +6,7 @@ import com.microcourse.dto.storage.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import org.springframework.stereotype.Component;
+import org.jsoup.Jsoup;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 
@@ -264,7 +265,9 @@ public class StorageApplicationWordGenerator {
         XWPFRun contentRun = p.createRun();
         contentRun.setFontSize(11);
         contentRun.setFontFamily("宋体");
-        contentRun.setText(content != null ? content : "");
+        // S-002 修复: 用 Jsoup 提取纯文本，防止 HTML 标签/VBA 注入写入 Word
+        String plainText = Jsoup.parse(content).text();
+        contentRun.setText(plainText);
     }
 
     private void setTableStyle(XWPFTable table) {

@@ -21,7 +21,7 @@
     </section>
 
     <!-- ============ Hero + Search ============ -->
-    <section class="hero-section" aria-label="课程发现">
+    <section class="hero-section" aria-label="课程广场 — 发现并搜索你感兴趣的课程">
       <div class="hero-content">
         <h1 class="hero-title">{{ $t('course.discover') }}</h1>
         <p class="hero-subtitle">{{ $t('course.startJourney') }}</p>
@@ -59,6 +59,16 @@
           >
           <el-option :label="$t('app.all')" value="" />
           <el-option v-for="dept in departmentList" :key="dept.id" :label="dept.name" :value="dept.id" />
+        </el-select>
+        <!-- P1C-075: 课程类型筛选 -->
+        <el-select
+          v-model="searchForm.courseType" placeholder="课程类型" clearable title="课程类型"
+          class="type-select" aria-label="课程类型" @change="handleSearch"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="视频课" value="VIDEO" />
+          <el-option label="互动课" value="INTERACTIVE" />
+          <el-option label="线下课" value="OFFLINE" />
         </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
           <el-radio-group
@@ -198,7 +208,6 @@ class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
                 <el-tag v-if="course.categoryName" class="category-chip" type="info" effect="plain" size="small">{{ course.categoryName }}</el-tag>
-                <el-tag v-if="course.freeAccessScopeLabel" class="free-chip" type="success" effect="dark" size="small">{{ course.freeAccessScopeLabel }}</el-tag>
                 <span v-if="course.difficulty" class="difficulty-label" :class="'difficulty-label--' + getDifficultyType(course.difficulty)">{{ getDifficultyLabel(course.difficulty) }}</span>
                 <span
 v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
@@ -477,19 +486,20 @@ const selectedCategoryId = ref('')
 const searchForm = reactive({
   keyword: '',
   difficulty: '',
-  offerDepartmentId: ''
+  offerDepartmentId: '',
+  courseType: ''
 })
 
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
-bindToQuery(page, size, searchForm, ['keyword', 'difficulty', 'offerDepartmentId'])
+bindToQuery(page, size, searchForm, ['keyword', 'difficulty', 'offerDepartmentId', 'courseType'])
 
 // 课程排序
 const courseSort = ref('')
 
 // 是否有筛选条件（区分两种空状态）
 const isSearchActive = computed(
-  () => !!(searchForm.keyword || searchForm.difficulty || selectedCategoryId.value || searchForm.offerDepartmentId)
+  () => !!(searchForm.keyword || searchForm.difficulty || selectedCategoryId.value || searchForm.offerDepartmentId || searchForm.courseType)
 )
 
 // 难度映射（1 初级 / 2 中级 / 3 高级）
@@ -566,6 +576,7 @@ const fetchCourses = async () => {
     if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
     if (searchForm.difficulty) params.difficulty = searchForm.difficulty
     if (searchForm.offerDepartmentId) params.offerDepartmentId = searchForm.offerDepartmentId
+    if (searchForm.courseType) params.courseType = searchForm.courseType
     if (courseSort.value === 'hot') { params.sortBy = 'studentCount'; params.sortOrder = 'desc' }
     if (courseSort.value === 'new') { params.sortBy = 'createdAt'; params.sortOrder = 'desc' }
 
@@ -631,6 +642,7 @@ const handleReset = () => {
   searchForm.keyword = ''
   searchForm.difficulty = ''
   searchForm.offerDepartmentId = ''
+  searchForm.courseType = ''
   selectedCategoryId.value = ''
   page.value = 1
   fetchCourses()

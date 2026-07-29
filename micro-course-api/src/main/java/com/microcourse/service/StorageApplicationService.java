@@ -2,6 +2,7 @@ package com.microcourse.service;
 
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.storage.*;
+import com.microcourse.entity.MicroSpecialtyProposal;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
@@ -16,7 +17,7 @@ public interface StorageApplicationService {
     Long initDraft(Long userId);
 
     /** 2. 获取我的申请列表（分页） */
-    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size);
+    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status);
 
     /** 3. 获取详情（含所有子表） */
     StorageApplicationVO getDetail(Long proposalId, Long userId);
@@ -60,4 +61,17 @@ public interface StorageApplicationService {
      * 解析学校名称（用于导出的文件名），对标题进行安全过滤。
      */
     String resolveSchoolName(Long proposalId);
+
+    /**
+     * R-008: 基于已加载的实体解析学校名称 — 避免多一次 selectById。
+     */
+    String resolveSchoolName(MicroSpecialtyProposal proposal);
+
+    /**
+     * R-008: 基于已加载的原始字段值解析学校名称（用于 Controller 拿到 VO 后直接调用，无需额外查询）。
+     *
+     * @param universityFullName 申报高校全称（可为 null/空）
+     * @param fallbackTitle      universityFullName 为空时的 fallback 标题
+     */
+    String resolveSchoolName(String universityFullName, String fallbackTitle);
 }

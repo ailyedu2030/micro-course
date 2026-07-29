@@ -303,7 +303,12 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
-import { sanitizeHtml, escapeHtml } from '@/utils/xss'
+import DOMPurify from 'dompurify'
+
+const sanitizeHtml = (html) => {
+  if (!html) return ''
+  return DOMPurify.sanitize(html, { ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'a', 'blockquote', 'pre', 'code'], ALLOWED_ATTR: ['href', 'target', 'rel'] })
+}
 
 const route = useRoute()
 const loading = ref(true)

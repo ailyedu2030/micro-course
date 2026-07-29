@@ -26,4 +26,10 @@ public interface CourseQueryService {
      * P1 Stage 5: 按 hid 查询课程(幂等性,Trae 用来检测课程是否已创建)
      */
     CourseVO getByHid(String hid);
+
+    /**
+     * 查询推荐课程列表（首页热点数据，带 Redis 缓存）
+     * @param limit 返回条数上限
+     */
+    java.util.List<CourseVO> listRecommendedTop(int limit);
 }

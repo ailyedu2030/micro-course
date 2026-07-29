@@ -83,6 +83,18 @@ public class EnrollmentServiceImpl implements EnrollmentService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO enroll(EnrollmentCreateRequest request) {
+        // S-007: 快速路径 — 已选课且非 CANCELLED 则直接返回，避免行锁开销
+        // CANCELLED 仍需走完整流程（doEnroll 会物理删除后重选）
+        if (enrollmentRepository.existsByStudentIdAndCourseId(request.getUserId(), request.getCourseId())) {
+            Enrollment existing = enrollmentRepository.selectOne(
+                    new LambdaQueryWrapper<Enrollment>()
+                            .eq(Enrollment::getUserId, request.getUserId())
+                            .eq(Enrollment::getCourseId, request.getCourseId()));
+            if (existing != null && !EnrollmentStatus.CANCELLED.getValue().equals(existing.getEnrollmentStatus())) {
+                return convertToVO(existing);
+            }
+        }
+
         // ★ 业务逻辑审计 P0-2 增强：可观测性 — Timer 记录完整耗时（含行级锁）
         io.micrometer.core.instrument.Timer.Sample sample = io.micrometer.core.instrument.Timer.start();
         boolean success = false;

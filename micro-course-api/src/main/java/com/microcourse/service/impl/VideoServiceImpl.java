@@ -420,14 +420,10 @@ public class VideoServiceImpl implements VideoService {
         }
         return results;
     }
-    /**
-     * P0-3 修复：封面 URL 改为可访问的 API 路径
-     * P1-8 修复：封面文件魔数校验
-     */
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String uploadCover(Long videoId, MultipartFile file) {
-        // ★ Round 9-3 修复：空文件防御（Service 层兜底，防止保存 0 字节图片 → 友好 400）
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能为空");
         }
@@ -435,19 +431,29 @@ public class VideoServiceImpl implements VideoService {
         if (video == null) {
             throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
         }
-
-        // SECURITY: 只有课程教师或 ADMIN 可上传封面
         assertCourseOwnership(video.getCourseId());
-
-        // P1-8: 图片魔数校验
         validateImageMagic(file);
 
-        // 保存到 {coverDir}/{videoId}/
+        // P2 R-003 修复：删除旧封面文件，防止磁盘泄漏
+        String oldCoverUrl = video.getCoverUrl();
+        if (oldCoverUrl != null && oldCoverUrl.startsWith("/api/files/covers/")) {
+            String oldFileName = oldCoverUrl.substring(oldCoverUrl.lastIndexOf("/") + 1);
+            Path oldFilePath = Paths.get(coverDir, String.valueOf(videoId), oldFileName);
+            try {
+                java.io.File oldFile = oldFilePath.toFile();
+                if (oldFile.exists()) {
+                    boolean deleted = oldFile.delete();
+                    if (deleted) {
+                        log.debug("Deleted old cover file: {}", oldFilePath);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete old cover file: {}", oldFilePath, e);
+            }
+        }
+
         String baseDir = coverDir + "/" + videoId;
         String originalFilename = file.getOriginalFilename();
-        // Round 11-4 安全修复：封面文件名路径穿越防护。
-        // 原实现 ext 取自 originalFilename.substring(lastIndexOf(".")),恶意名如
-        // "x.jpg/../../evil" 会污染 Paths.get 落盘路径造成路径穿越,此处显式拒绝。
         if (originalFilename != null
                 && (originalFilename.contains("..") || originalFilename.contains("/")
                     || originalFilename.contains("\\") || originalFilename.indexOf('\u0000') >= 0)) {

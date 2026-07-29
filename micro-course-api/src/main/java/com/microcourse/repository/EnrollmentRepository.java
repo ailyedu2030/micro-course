@@ -130,6 +130,16 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
                                  @Param("sourceChannel") String sourceChannel);
 
     /**
+     * S-007: 检查学生是否已有有效选课记录（未软删除）。
+     * <p>利用部分唯一索引 uk_enrollments_user_course 进行快速存在性检查。
+     * 区别于 {@link BaseMapper#selectOne} 的 full row load，此方法仅返回布尔值，减少数据传输。</p>
+     */
+    @org.apache.ibatis.annotations.Select("SELECT COUNT(*) > 0 FROM enrollments " +
+            "WHERE user_id = #{userId} AND course_id = #{courseId} AND deleted_at IS NULL")
+    boolean existsByStudentIdAndCourseId(@Param("userId") Long userId,
+                                         @Param("courseId") Long courseId);
+
+    /**
      * 统计某课程 WAITLIST 状态的学生数（用于计算候补位置）
      */
     @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments " +

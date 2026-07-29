@@ -94,7 +94,7 @@ const localData = ref(JSON.parse(JSON.stringify(props.modelValue || [])))
 watch(
   () => props.modelValue,
   (v) => {
-    localData.value = JSON.parse(JSON.stringify(v || []))
+    localData.value = v || []
   },
   { deep: true }
 )
@@ -116,7 +116,7 @@ function onChange() {
 }
 
 function emitChange() {
-  emit('update:modelValue', JSON.parse(JSON.stringify(localData.value)))
+  emit('update:modelValue', localData.value)
 }
 </script>
 
