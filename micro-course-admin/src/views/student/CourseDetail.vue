@@ -136,13 +136,43 @@
       </div>
 
       <!-- ====== Tab 导航 ====== -->
-      <div class="tab-nav">
-        <button :class="{ active: activeTab === 'detail' }" @click="activeTab = 'detail'">课程详情</button>
-        <button :class="{ active: activeTab === 'review' }" @click="activeTab = 'review'">课程评价</button>
+      <div class="tab-nav" role="tablist" aria-label="课程内容">
+        <button
+          id="tab-detail"
+          role="tab"
+          :class="{ active: activeTab === 'detail' }"
+          :aria-selected="activeTab === 'detail'"
+          :tabindex="activeTab === 'detail' ? 0 : -1"
+          aria-controls="tabpanel-detail"
+          @click="activeTab = 'detail'"
+          @keydown.left.prevent="handleTabKeydown($event, 'detail')"
+          @keydown.right.prevent="handleTabKeydown($event, 'detail')"
+        >
+          课程详情
+        </button>
+        <button
+          id="tab-review"
+          role="tab"
+          :class="{ active: activeTab === 'review' }"
+          :aria-selected="activeTab === 'review'"
+          :tabindex="activeTab === 'review' ? 0 : -1"
+          aria-controls="tabpanel-review"
+          @click="activeTab = 'review'"
+          @keydown.left.prevent="handleTabKeydown($event, 'review')"
+          @keydown.right.prevent="handleTabKeydown($event, 'review')"
+        >
+          课程评价
+        </button>
       </div>
 
       <!-- ====== 主内容区 ====== -->
-      <div class="detail-body" v-if="activeTab === 'detail'">
+      <div
+        id="tabpanel-detail"
+        role="tabpanel"
+        aria-labelledby="tab-detail"
+        class="detail-body"
+        v-if="activeTab === 'detail'"
+      >
         <div class="detail-main">
           <!-- 课程介绍 -->
           <div class="section-card">
@@ -249,7 +279,13 @@
       </div>
 
       <!-- 评价 Tab -->
-      <div class="detail-body" v-if="activeTab === 'review'">
+      <div
+        id="tabpanel-review"
+        role="tabpanel"
+        aria-labelledby="tab-review"
+        class="detail-body"
+        v-if="activeTab === 'review'"
+      >
         <div class="detail-main">
           <div class="section-card">
             <div class="section-head">
@@ -382,6 +418,22 @@ const reviewSubmitting = ref(false)
 const rankingList = ref([])
 const activeChapters = ref([])
 const activeTab = ref('detail')
+const tabNames = ['detail', 'review']
+
+function handleTabKeydown(e, currentTab) {
+  const idx = tabNames.indexOf(currentTab)
+  let nextIdx = -1
+  if (e.key === 'ArrowRight') {
+    nextIdx = (idx + 1) % tabNames.length
+  } else if (e.key === 'ArrowLeft') {
+    nextIdx = (idx - 1 + tabNames.length) % tabNames.length
+  }
+  if (nextIdx >= 0) {
+    const nextTab = tabNames[nextIdx]
+    activeTab.value = nextTab
+    document.getElementById('tab-' + nextTab)?.focus()
+  }
+}
 
 const reviewForm = ref({ rating: 5, content: '' })
 const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
