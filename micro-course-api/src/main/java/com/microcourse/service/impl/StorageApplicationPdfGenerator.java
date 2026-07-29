@@ -298,13 +298,13 @@ public class StorageApplicationPdfGenerator {
                         doc.add(new Paragraph("负责人签字：" + sig.getSignatureText(), bodyFont));
                     } else if ("IMAGE".equals(sig.getSignatureType()) && sig.getSignatureImageUrl() != null) {
                         try {
-                            URL imgUrl = new URL(sig.getSignatureImageUrl());
-                            // SSRF protection: block private/internal IP ranges
-                            String host = imgUrl.getHost();
-                            if (host == null || host.equals("localhost") || host.equals("127.0.0.1") || host.startsWith("10.") || host.startsWith("172.16.") || host.startsWith("192.168.") || host.equals("[::1]") || host.endsWith(".local")) {
-                                log.warn("SSRF blocked: rejecting private URL host={}", host);
+                            String imgUrlStr = sig.getSignatureImageUrl();
+                            // S-003 SSRF 修复: 仅允许 /uploads/storage/ 相对路径，禁止外部 URL
+                            if (imgUrlStr == null || !imgUrlStr.startsWith("/uploads/storage/") || imgUrlStr.contains("://")) {
+                                log.warn("SSRF blocked: signature URL not relative path: {}", imgUrlStr);
                                 doc.add(new Paragraph("[签名图片-地址无效]", bodyFont));
                             } else {
+                                URL imgUrl = new URL("file:" + imgUrlStr);
                                 Image img = Image.getInstance(imgUrl);
                                 img.scaleToFit(100, 40);
                                 doc.add(img);
@@ -315,18 +315,15 @@ public class StorageApplicationPdfGenerator {
                         }
                     }
 
-                    // 公章图片 — P1 SSRF 修复：与签名图片保持一致的 URL 验证
+                    // 公章图片 — S-003 SSRF 修复: 仅允许 /uploads/storage/ 相对路径
                     if (sig.getSealImageUrl() != null && !sig.getSealImageUrl().isEmpty()) {
                         try {
-                            URL sealUrl = new URL(sig.getSealImageUrl());
-                            String sealHost = sealUrl.getHost();
-                            if (sealHost == null || sealHost.equals("localhost") || sealHost.equals("127.0.0.1")
-                                    || sealHost.startsWith("10.") || sealHost.startsWith("172.16.")
-                                    || sealHost.startsWith("192.168.") || sealHost.equals("[::1]")
-                                    || sealHost.endsWith(".local")) {
-                                log.warn("SSRF blocked [seal]: rejecting private URL host={}", sealHost);
+                            String sealUrlStr = sig.getSealImageUrl();
+                            if (!sealUrlStr.startsWith("/uploads/storage/") || sealUrlStr.contains("://")) {
+                                log.warn("SSRF blocked [seal]: seal URL not relative path: {}", sealUrlStr);
                                 doc.add(new Paragraph("[公章图片-地址无效]", bodyFont));
                             } else {
+                                URL sealUrl = new URL("file:" + sealUrlStr);
                                 Image seal = Image.getInstance(sealUrl);
                                 seal.scaleToFit(80, 80);
                                 doc.add(seal);
