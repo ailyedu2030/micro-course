@@ -5,6 +5,7 @@ import com.lowagie.text.pdf.*;
 import com.microcourse.dto.storage.*;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import org.jsoup.Jsoup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -196,17 +197,17 @@ public class StorageApplicationPdfGenerator {
             addPair(infoTable, "产教合作单位", notNull(data.getIndustryPartners()), "", "");
             doc.add(infoTable);
 
-            // 富文本区域
+            // 富文本区域 — S-002 修复: stripHtml 防止 HTML 标签写入
             doc.add(new Paragraph("\n微专业介绍：", bodyFont));
-            doc.add(new Paragraph(notNull(data.getIntroduction()), bodyFont));
+            doc.add(new Paragraph(stripHtml(notNull(data.getIntroduction())), bodyFont));
             doc.add(new Paragraph("\n社会需求及就业前景分析：", bodyFont));
-            doc.add(new Paragraph(notNull(data.getMarketDemandAnalysis()), bodyFont));
+            doc.add(new Paragraph(stripHtml(notNull(data.getMarketDemandAnalysis())), bodyFont));
             doc.add(new Paragraph("\n微专业简介（专业定位、培养目标...）：", bodyFont));
-            doc.add(new Paragraph(notNull(data.getSpecialtyOverview()), bodyFont));
+            doc.add(new Paragraph(stripHtml(notNull(data.getSpecialtyOverview())), bodyFont));
             doc.add(new Paragraph("\n课程体系设置情况：", bodyFont));
-            doc.add(new Paragraph(notNull(data.getCurriculumDesign()), bodyFont));
+            doc.add(new Paragraph(stripHtml(notNull(data.getCurriculumDesign())), bodyFont));
             doc.add(new Paragraph("\n建设条件保障：", bodyFont));
-            doc.add(new Paragraph(notNull(data.getConstructionGuarantee()), bodyFont));
+            doc.add(new Paragraph(stripHtml(notNull(data.getConstructionGuarantee())), bodyFont));
 
             // === 课程体系动态表格 ===
             if (data.getCourses() != null && !data.getCourses().isEmpty()) {
@@ -247,8 +248,8 @@ public class StorageApplicationPdfGenerator {
             addPair(leadTable, "职务", notNull(data.getLeadPosition()), "联系电话", notNull(data.getLeadPhone()));
             doc.add(leadTable);
 
-            doc.add(new Paragraph("主要研究方向：" + notNull(data.getLeadResearchDirection()), bodyFont));
-            doc.add(new Paragraph("承担主要任务与主讲课程：" + notNull(data.getLeadMainTasks()), bodyFont));
+            doc.add(new Paragraph("主要研究方向：" + stripHtml(notNull(data.getLeadResearchDirection())), bodyFont));
+            doc.add(new Paragraph("承担主要任务与主讲课程：" + stripHtml(notNull(data.getLeadMainTasks())), bodyFont));
 
             // 近三年主讲课程（最多5条）
             if (data.getLeadCourses() != null && !data.getLeadCourses().isEmpty()) {
@@ -292,7 +293,7 @@ public class StorageApplicationPdfGenerator {
                         continue; // shared unit signatures handled in module 5
                     }
                     doc.add(new Paragraph("\n" + getSignLevelLabel(sig.getSignLevel()) + "：", bodyFont));
-                    doc.add(new Paragraph("意见：" + notNull(sig.getOpinionText()), bodyFont));
+                    doc.add(new Paragraph("意见：" + stripHtml(notNull(sig.getOpinionText())), bodyFont));
 
                     if ("TEXT".equals(sig.getSignatureType()) && sig.getSignatureText() != null) {
                         doc.add(new Paragraph("负责人签字：" + sig.getSignatureText(), bodyFont));
@@ -363,8 +364,8 @@ public class StorageApplicationPdfGenerator {
                             if ("SHARED_UNIT".equals(sig.getSignLevel()) &&
                                 unit.getSortOrder() != null && sig.getUnitSeq() != null &&
                                 unit.getSortOrder().equals(sig.getUnitSeq())) {
-                                doc.add(new Paragraph("意见：" + notNull(sig.getOpinionText()), bodyFont));
-                                doc.add(new Paragraph("备注：" + notNull(sig.getRemark()), bodyFont));
+                                doc.add(new Paragraph("意见：" + stripHtml(notNull(sig.getOpinionText())), bodyFont));
+                                doc.add(new Paragraph("备注：" + stripHtml(notNull(sig.getRemark())), bodyFont));
                             }
                         }
                     }
@@ -400,6 +401,12 @@ public class StorageApplicationPdfGenerator {
         addCell(table, value1);
         addCell(table, label2);
         addCell(table, value2);
+    }
+
+    // S-002 修复: 用 Jsoup 提取纯文本，防止 HTML 标签写入
+    private String stripHtml(String s) {
+        if (s == null || s.isEmpty()) return "";
+        return Jsoup.parse(s).text();
     }
 
     private String notNull(String s) { return s != null ? s : ""; }

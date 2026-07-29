@@ -248,7 +248,9 @@ public class StorageApplicationWordGenerator {
         XWPFRun r = p.createRun();
         r.setFontSize(10);
         r.setFontFamily("宋体");
-        r.setText(text != null ? text : "");
+        // S-002 修复: 移除 HTML 标签防止 XSS/VBA 注入
+        String cleanText = text != null ? Jsoup.parse(text).text() : "";
+        r.setText(cleanText);
     }
 
     private void addRichTextParagraph(XWPFDocument doc, String label, String content) {
