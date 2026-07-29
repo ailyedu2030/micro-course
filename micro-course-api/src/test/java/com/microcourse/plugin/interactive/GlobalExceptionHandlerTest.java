@@ -40,14 +40,16 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
-    @DisplayName("BusinessException → 400 BAD_REQUEST, code+message 透传")
-    void businessException400() {
+    @DisplayName("BusinessException → ErrorCode.httpStatus, code+message 透传")
+    void businessExceptionUsesHttpStatus() {
+        // SLIDE_PAGE_NOT_FOUND httpStatus=404
         BusinessException ex = new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "PPT page not found: 99");
         MockHttpServletRequest req = new MockHttpServletRequest("GET", "/api/courses/1/ppt/pages/99");
 
         ResponseEntity<R<Object>> resp = handler.handleBusinessException(ex, req);
 
-        assertEquals(HttpStatus.BAD_REQUEST, resp.getStatusCode());
+        // 【P0 修复】 handler 现在正确使用 ex.getHttpStatus() 而非固定 400
+        assertEquals(HttpStatus.NOT_FOUND, resp.getStatusCode());
         assertNotNull(resp.getBody());
         R<Object> body = resp.getBody();
         // R 有 getMessage(), 没 getCode(), 但 toString() 输出含 message
