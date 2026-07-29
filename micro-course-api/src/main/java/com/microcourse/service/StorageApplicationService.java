@@ -16,7 +16,7 @@ public interface StorageApplicationService {
     Long initDraft(Long userId);
 
     /** 2. 获取我的申请列表（分页） */
-    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size);
+    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status);
 
     /** 3. 获取详情（含所有子表） */
     StorageApplicationVO getDetail(Long proposalId, Long userId);

@@ -71,12 +71,12 @@ public class UserController {
     /**
      * GET /api/users/{id}
      * 权限矩阵 v4.1: TEACHER 仅可访问自己的 + 自己的学生 (数据范围), 否则 403
-     * 当前实现: TEACHER 仅可访问自己 (#id == principal), 数据范围由 Service 层控制
-     * (UserServiceImpl.getUserById L93 TEACHER 检查)
+     * P1 修复: @PreAuthorize 放宽让 TEACHER 也能到达 Service 层，
+     * Service 层 getUserById 已有完整的 TEACHER 数据范围校验（可查看自己名下课程的学生）
      * ADMIN/ACADEMIC 可访问全部
      */
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated() and (#id == authentication.principal or hasRole('ADMIN') or hasRole('ACADEMIC'))")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC') or #id == authentication.principal")
     public R<UserVO> getById(@PathVariable Long id) {
         UserVO vo = userService.getUserById(id);
         return R.ok(vo);

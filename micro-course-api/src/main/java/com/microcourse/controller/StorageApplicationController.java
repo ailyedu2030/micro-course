@@ -65,9 +65,10 @@ public class StorageApplicationController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<StorageApplicationSummaryVO>> getMyDrafts(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size,
+            @RequestParam(required = false) String status) {
         Long userId = SecurityUtil.getCurrentUserId();
-        return R.ok(storageApplicationService.getMyDrafts(userId, page, size));
+        return R.ok(storageApplicationService.getMyDrafts(userId, page, size, status));
     }
 
     /**

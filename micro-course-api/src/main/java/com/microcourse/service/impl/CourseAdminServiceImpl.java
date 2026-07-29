@@ -552,7 +552,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         FileUploadUtil.assertSafeFilename(originalFilename);
         String ext = "";
         if (originalFilename != null && originalFilename.contains(".")) {
-            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
+            ext = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        }
+        if (!ext.matches("\\.(jpg|jpeg|png)")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面仅支持 JPG/PNG 格式");
         }
         String filename = UUID.randomUUID().toString() + ext;
         String coversDir = uploadBaseDir + "/covers";

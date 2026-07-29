@@ -150,8 +150,8 @@ public class StorageApplicationServiceImpl implements StorageApplicationService 
     // 2. getMyDrafts
     // ================================================================
     @Override
-    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
-        return queryService.getMyDrafts(userId, page, size);
+    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status) {
+        return queryService.getMyDrafts(userId, page, size, status);
     }
 
     // ================================================================

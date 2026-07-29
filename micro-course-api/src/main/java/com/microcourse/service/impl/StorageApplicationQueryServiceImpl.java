@@ -71,22 +71,28 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
     // 2. getMyDrafts
     // ================================================================
     @Override
-    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size) {
+    public PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status) {
         // I-05 fix: 如果请求页码越界（page >= totalPages 且 totalPages > 0），自动回退到最后一页
+        LambdaQueryWrapper<MicroSpecialtyProposal> wrapper = new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                .eq(MicroSpecialtyProposal::getProposerId, userId)
+                .orderByDesc(MicroSpecialtyProposal::getUpdatedAt);
+        if (status != null && !status.isBlank()) {
+            wrapper.eq(MicroSpecialtyProposal::getStatus, status);
+        }
         IPage<MicroSpecialtyProposal> ipage = proposalRepository.selectPage(
                 new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                        .eq(MicroSpecialtyProposal::getProposerId, userId)
-                        .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+                wrapper);
 
         if (ipage.getPages() > 0 && page >= ipage.getPages()) {
             int lastPage = (int) ipage.getPages() - 1;
             log.warn("getMyDrafts: page {} out of bounds (totalPages={}), re-querying last page {}", page, ipage.getPages(), lastPage);
-            ipage = proposalRepository.selectPage(
-                    new Page<>(lastPage + 1, size),
-                    new LambdaQueryWrapper<MicroSpecialtyProposal>()
-                            .eq(MicroSpecialtyProposal::getProposerId, userId)
-                            .orderByDesc(MicroSpecialtyProposal::getUpdatedAt));
+            LambdaQueryWrapper<MicroSpecialtyProposal> lastWrapper = new LambdaQueryWrapper<MicroSpecialtyProposal>()
+                    .eq(MicroSpecialtyProposal::getProposerId, userId)
+                    .orderByDesc(MicroSpecialtyProposal::getUpdatedAt);
+            if (status != null && !status.isBlank()) {
+                lastWrapper.eq(MicroSpecialtyProposal::getStatus, status);
+            }
+            ipage = proposalRepository.selectPage(new Page<>(lastPage + 1, size), lastWrapper);
             page = lastPage;
         }
 
@@ -379,6 +385,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
         vo.setConstructionGuarantee(proposal.getConstructionGuarantee());
         vo.setLeadTitle(proposal.getLeadTitle());
         vo.setLeadPosition(proposal.getLeadPosition());
+        vo.setLeadPhone(proposal.getLeadPhone());
         vo.setLeadResearchDirection(proposal.getLeadResearchDirection());
         vo.setLeadMainTasks(proposal.getLeadMainTasks());
 

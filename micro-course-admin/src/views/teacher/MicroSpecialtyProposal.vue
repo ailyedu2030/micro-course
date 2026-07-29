@@ -162,12 +162,12 @@
         <el-row :gutter="20">
           <el-col :span="8">
             <el-form-item label="招生名额">
-              <el-input-number v-model="form.enrollmentQuota" :min="0" :max="10000" class="full-width" controls-position="right" />
+              <el-input-number v-model="form.enrollmentQuota" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="成班人数">
-              <el-input-number v-model="form.classSize" :min="0" :max="10000" class="full-width" controls-position="right" />
+              <el-input-number v-model="form.classSize" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">

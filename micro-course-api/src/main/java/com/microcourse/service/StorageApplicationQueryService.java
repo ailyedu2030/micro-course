@@ -12,7 +12,7 @@ import com.microcourse.dto.storage.*;
 public interface StorageApplicationQueryService {
 
     /** 获取我的申请列表（分页） */
-    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size);
+    PageResult<StorageApplicationSummaryVO> getMyDrafts(Long userId, int page, int size, String status);
 
     /** P1C-091: 获取待审批列表（ACADEMIC） */
     PageResult<StorageApplicationSummaryVO> getPendingList(int page, int size);

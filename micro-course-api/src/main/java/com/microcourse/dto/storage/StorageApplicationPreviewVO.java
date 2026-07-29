@@ -36,6 +36,7 @@ public class StorageApplicationPreviewVO {
 
     private String leadTitle;
     private String leadPosition;
+    private String leadPhone;
     private String leadResearchDirection;
     private String leadMainTasks;
 
@@ -109,6 +110,8 @@ public class StorageApplicationPreviewVO {
     public void setLeadTitle(String leadTitle) { this.leadTitle = leadTitle; }
     public String getLeadPosition() { return leadPosition; }
     public void setLeadPosition(String leadPosition) { this.leadPosition = leadPosition; }
+    public String getLeadPhone() { return leadPhone; }
+    public void setLeadPhone(String leadPhone) { this.leadPhone = leadPhone; }
     public String getLeadResearchDirection() { return leadResearchDirection; }
     public void setLeadResearchDirection(String leadResearchDirection) { this.leadResearchDirection = leadResearchDirection; }
 

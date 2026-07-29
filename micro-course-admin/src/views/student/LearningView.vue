@@ -40,7 +40,17 @@
     </div>
 
     <!-- ===================== 3. 主体内容 ===================== -->
-    <div class="learning-body" v-loading="loading" element-loading-text="正在加载课程..." element-loading-background="var(--el-bg-color-page)">
+    <div class="learning-body" v-loading="loading && !loadError" element-loading-text="正在加载课程..." element-loading-background="var(--el-bg-color-page)">
+      <!-- P1: loadCourse 失败时显示错误覆层 + 重试入口 -->
+      <div v-if="loadError" class="load-error-overlay">
+        <el-result icon="error" title="加载失败" sub-title="课程数据加载失败，请检查网络后重试">
+          <template #extra>
+            <el-button type="primary" @click="retryLoad">重新加载</el-button>
+            <el-button @click="goBack">返回课程</el-button>
+          </template>
+        </el-result>
+      </div>
+
       <!-- 左：主内容区（60%） -->
       <main class="content-main">
         <!-- 视频播放器 — 仅 VIDEO 章节显示 -->
@@ -175,6 +185,7 @@ const chapters = ref([])
 const progressMap = ref({}) // sectionId -> progress
 const progressRawList = ref([]) // 原始进度列表，用于 chapterId 维度查询（非 VIDEO 章节）
 const loading = ref(true)
+const loadError = ref(false)
 const drawerOpen = ref(false)
 const expandedChapters = ref([])
 
@@ -307,6 +318,13 @@ function buildProgressMap(progressList) {
 }
 
 // ==================== API 加载（修复 N+1） ====================
+async function retryLoad() {
+  if (!courseId.value) return
+  loadError.value = false
+  loading.value = true
+  await loadCourse(courseId.value)
+}
+
 async function loadCourse(cid) {
   loading.value = true
   try {
@@ -413,7 +431,8 @@ async function loadCourse(cid) {
     }
   } catch (err) {
     console.error('loadCourse error:', err)
-    ElMessage.error('加载课程失败')
+    loadError.value = true
+    ElMessage.error('加载课程失败，请检查网络后重试')
   } finally {
     loading.value = false
   }
@@ -769,5 +788,12 @@ onBeforeUnmount(() => {
     color: var(--color-primary-dark);
     font-weight: var(--weight-bold);
   }
+}
+.load-error-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  padding: var(--space-8);
 }
 </style>
