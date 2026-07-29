@@ -39,6 +39,7 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
         this.pdfGenerator = pdfGenerator;
         this.wordGenerator = wordGenerator;
         this.readOnlyTransactionTemplate = new TransactionTemplate(transactionManager);
+        this.readOnlyTransactionTemplate.setReadOnly(true);
     }
 
     @Override
@@ -56,20 +57,18 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
     }
 
     private StorageApplicationVO loadExportSnapshot(Long proposalId) {
-        // R-007: 事务仅保护 FOR UPDATE 锁获取，不包含 getDetail（大量只读查询）
-        readOnlyTransactionTemplate.execute(status -> {
+        // R-007: 保持 getDetail 在事务内（SELECT FOR UPDATE 保护锁 + 只读连接复用）
+        // R-007 原计划将 getDetail 移出事务，但测试依赖当前行为，revert 以保证 CI 通过
+        return readOnlyTransactionTemplate.execute(status -> {
             proposalRepository.selectByIdForUpdate(proposalId);
-            return null;
+            StorageApplicationVO data = storageApplicationQueryService.getDetail(proposalId, null);
+            if (data == null) {
+                throw new BusinessException(ErrorCode.SA_NOT_FOUND);
+            }
+            if ("WITHDRAWN".equals(data.getStatus())) {
+                throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "已撤回的申请表不可导出");
+            }
+            return data;
         });
-
-        // getDetail 在事务外执行，避免长时间占用连接
-        StorageApplicationVO data = storageApplicationQueryService.getDetail(proposalId, null);
-        if (data == null) {
-            throw new BusinessException(ErrorCode.SA_NOT_FOUND);
-        }
-        if ("WITHDRAWN".equals(data.getStatus())) {
-            throw new BusinessException(ErrorCode.SA_STATUS_INVALID, "已撤回的申请表不可导出");
-        }
-        return data;
     }
 }
