@@ -253,7 +253,7 @@ v-if="page.hasAnimation || page.hasEmbeddedMedia"
               <el-button size="small" @click="showScriptDialog = true" :icon="Edit">编辑</el-button>
             </div>
           </div>
-          <div class="script-preview" @click="showScriptDialog = true">
+          <div class="script-preview" role="button" tabindex="0" @click="showScriptDialog = true" @keydown.enter="showScriptDialog = true" @keydown.space.prevent="showScriptDialog = true">
             <p v-if="editingScript" class="script-text">{{ editingScript }}</p>
             <p v-else class="script-placeholder">点击「AI 生成」自动生成讲述稿，或点击编辑手动输入...</p>
           </div>
@@ -531,6 +531,26 @@ async function handleUpload(file) {
       && file.size > 5 * 1024 * 1024) {
     ElMessage.warning('HTML 文件不能超过 5MB')
     return false
+  }
+  // PPTX 文件：校验 MIME 类型 + magic bytes (ZIP 头 PK\x03\x04)
+  if (lowerName.endsWith('.pptx')) {
+    const validMime = file.type === '' || file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    if (file.type && !validMime) {
+      ElMessage.warning('PPTX 文件 MIME 类型不匹配，请检查文件格式')
+      return false
+    }
+    try {
+      const slice = file.slice(0, 4)
+      const buf = await slice.arrayBuffer()
+      const header = new Uint8Array(buf)
+      if (header[0] !== 0x50 || header[1] !== 0x4B || header[2] !== 0x03 || header[3] !== 0x04) {
+        ElMessage.warning('PPTX 文件头校验失败：文件可能已损坏或不是有效的 PPTX 格式')
+        return false
+      }
+    } catch {
+      ElMessage.warning('PPTX 文件校验失败，请重试')
+      return false
+    }
   }
   uploading.value = true
   uploadProgress.value = 0

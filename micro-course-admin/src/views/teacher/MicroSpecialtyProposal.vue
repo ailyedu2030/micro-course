@@ -986,19 +986,19 @@ const formDirtySnapshot = computed(() => {
 })
 watch(formDirtySnapshot, scheduleAutoSave)
 
-// Rich text fields: watch string length only (not deep) to detect edits
-watch(() => form.value.introduction?.length, scheduleAutoSave)
-watch(() => form.value.marketDemandAnalysis?.length, scheduleAutoSave)
-watch(() => form.value.specialtyOverview?.length, scheduleAutoSave)
-watch(() => form.value.curriculumDesign?.length, scheduleAutoSave)
-watch(() => form.value.constructionGuarantee?.length, scheduleAutoSave)
-
-// Sub-table arrays: deep watch via JSON (captures cell edits, not just add/remove)
-watch(() => JSON.stringify(courses.value), scheduleAutoSave)
-watch(() => JSON.stringify(leadCourses.value), scheduleAutoSave)
-watch(() => JSON.stringify(teamMembers.value), scheduleAutoSave)
-watch(() => JSON.stringify(signatures.value), scheduleAutoSave)
-watch(() => JSON.stringify(sharedUnits.value), scheduleAutoSave)
+// Consolidated: merge 10 individual watches into 1 (PERF-015/016)
+watch(() => [
+  form.value.introduction?.length,
+  form.value.marketDemandAnalysis?.length,
+  form.value.specialtyOverview?.length,
+  form.value.curriculumDesign?.length,
+  form.value.constructionGuarantee?.length,
+  JSON.stringify(courses.value),
+  JSON.stringify(leadCourses.value),
+  JSON.stringify(teamMembers.value),
+  JSON.stringify(signatures.value),
+  JSON.stringify(sharedUnits.value),
+], scheduleAutoSave)
 
 // Phase 2: 自动维护 teamMembers._index — P1-UX: 修复递归更新死循环
 // Vue 3 watch 会对整个数组重新触发 (包括 deep 修改成员 _index)

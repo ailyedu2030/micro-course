@@ -21,7 +21,7 @@
     </section>
 
     <!-- ============ Hero + Search ============ -->
-    <section class="hero-section" aria-label="课程发现">
+    <section class="hero-section" aria-label="课程广场 — 发现并搜索你感兴趣的课程">
       <div class="hero-content">
         <h1 class="hero-title">{{ $t('course.discover') }}</h1>
         <p class="hero-subtitle">{{ $t('course.startJourney') }}</p>
@@ -208,7 +208,6 @@ class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="
                 <div class="cover-placeholder" aria-hidden="true"><el-icon :size="48"><VideoPlay /></el-icon></div>
                 <img v-if="course.coverUrl" :src="course.coverUrl" :alt="course.title" loading="lazy" class="cover-img" @error="handleImgError" />
                 <el-tag v-if="course.categoryName" class="category-chip" type="info" effect="plain" size="small">{{ course.categoryName }}</el-tag>
-                <el-tag v-if="course.freeAccessScopeLabel" class="free-chip" type="success" effect="dark" size="small">{{ course.freeAccessScopeLabel }}</el-tag>
                 <span v-if="course.difficulty" class="difficulty-label" :class="'difficulty-label--' + getDifficultyType(course.difficulty)">{{ getDifficultyLabel(course.difficulty) }}</span>
                 <span
 v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
