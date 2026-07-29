@@ -180,7 +180,12 @@ v-for="page in pages" :key="page.pageNumber"
           @keydown.enter="batchMode ? toggleBatchSelect(page) : selectPage(page)"
           @keydown.space.prevent="batchMode ? toggleBatchSelect(page) : selectPage(page)"
 >
-          <div class="batch-checkbox" v-if="batchMode" @click.stop="toggleBatchSelect(page)">
+          <div
+            class="batch-checkbox" v-if="batchMode" role="checkbox" tabindex="0"
+            :aria-checked="batchSelected.has(page.pageNumber)"
+            @click.stop="toggleBatchSelect(page)"
+            @keydown.enter="toggleBatchSelect(page)"
+            @keydown.space.prevent="toggleBatchSelect(page)">
             <el-checkbox :model-value="batchSelected.has(page.pageNumber)" />
           </div>
           <div class="thumb-img-wrap">

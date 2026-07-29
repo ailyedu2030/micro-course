@@ -31,7 +31,13 @@
             </ol>
             <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">立即申报微专业</el-button>
           </el-empty>
-            <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
+            <div
+              v-for="item in list" :key="item.id" class="ms-card"
+              role="button" tabindex="0"
+              :aria-label="'微专业：' + item.title + '，状态：' + statusLabel(item.status)"
+              @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
+              @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
+              style="cursor:pointer">
               <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
             <div class="card-body">
               <div class="card-header-row">
@@ -59,19 +65,25 @@
        <el-tab-pane label="我参与的" name="participating">
          <div v-loading="loading" class="card-grid">
            <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
-           <div v-for="item in list" :key="item.id" class="ms-card" @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')" style="cursor:pointer">
-             <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
-             <div class="card-body">
-               <div class="card-header-row">
-                 <span class="card-title">{{ item.title }}</span>
-                 <el-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
-               </div>
-               <div class="card-meta">
-                 <span>{{ item.departmentName || '-' }}</span>
-                 <span>{{ item.totalEnrollments || 0 }} 人选修</span>
-                 <span>{{ item.courseCount || 0 }} 门课</span>
-               </div>
-                               <div class="card-actions">
+            <div
+              v-for="item in list" :key="item.id" class="ms-card"
+              role="button" tabindex="0"
+              :aria-label="'微专业：' + item.title + '，状态：' + statusLabel(item.status)"
+              @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
+              @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
+              style="cursor:pointer">
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+              <div class="card-body">
+                <div class="card-header-row">
+                  <span class="card-title">{{ item.title }}</span>
+                  <el-tag :type="statusType(item.status)" size="small">{{ statusLabel(item.status) }}</el-tag>
+                </div>
+                <div class="card-meta">
+                  <span>{{ item.departmentName || '-' }}</span>
+                  <span>{{ item.totalEnrollments || 0 }} 人选修</span>
+                  <span>{{ item.courseCount || 0 }} 门课</span>
+                </div>
+                                <div class="card-actions">
                   <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">查看详情</el-button>
                 </div>
              </div>

@@ -78,7 +78,7 @@
           <el-button type="primary" @click="handleReset">清除筛选</el-button>
         </template>
       </el-empty>
-      <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef">
+      <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef" @row-click="handleRowClick" @row-keydown.enter="handleRowClick">
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column label="封面" width="80" align="center">
           <template #default="{ row }">
@@ -559,6 +559,10 @@ const handleRemoveCover = () => {
 
 const handleEdit = (row) => {
   router.push(courseEditPath(row.id))
+}
+
+const handleRowClick = (row) => {
+  router.push(courseDetailPath(row.id))
 }
 
 const handleView = (row) => {

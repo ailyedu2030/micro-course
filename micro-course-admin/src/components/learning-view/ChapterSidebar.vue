@@ -41,6 +41,7 @@
               :class="{ active: currentLessonId === lesson.id, completed: lesson.status === 'COMPLETED' }"
               role="button"
               tabindex="0"
+              :aria-expanded="currentLessonId === lesson.id ? 'true' : 'false'"
               @click="$emit('select-lesson', lesson)"
               @keydown.enter="$emit('select-lesson', lesson)"
               @keydown.space.prevent="$emit('select-lesson', lesson)"
