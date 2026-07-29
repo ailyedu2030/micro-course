@@ -91,7 +91,13 @@
                   <template #append><el-button :loading="chapterSearchLoading" size="small" @click="searchPlatformChapters">搜索</el-button></template>
                 </el-input>
                 <div v-if="chapterSearchResults.length" class="search-results">
-                  <div v-for="r in chapterSearchResults" :key="r.chapterId" class="search-result-item" @click="row.sourceChapterId=r.chapterId;row.sourceChapterTitle=r.chapterTitle;chapterSearchResults=[]">
+                  <div
+                    v-for="r in chapterSearchResults" :key="r.chapterId" class="search-result-item"
+                    role="button" tabindex="0"
+                    :aria-label="r.courseTitle + ' / ' + r.chapterTitle + '，' + r.duration + '学时'"
+                    @click="row.sourceChapterId=r.chapterId;row.sourceChapterTitle=r.chapterTitle;chapterSearchResults=[]"
+                    @keydown.enter="row.sourceChapterId=r.chapterId;row.sourceChapterTitle=r.chapterTitle;chapterSearchResults=[]"
+                    @keydown.space.prevent="row.sourceChapterId=r.chapterId;row.sourceChapterTitle=r.chapterTitle;chapterSearchResults=[]">
                     <span>{{ r.courseTitle }} / {{ r.chapterTitle }}</span>
                     <el-tag size="small">{{ r.duration }}学时</el-tag>
                   </div>
