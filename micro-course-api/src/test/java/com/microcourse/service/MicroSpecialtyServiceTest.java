@@ -5,6 +5,7 @@ import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyVO;
 import com.microcourse.entity.MicroSpecialty;
 import com.microcourse.entity.MicroSpecialtyTeacher;
+import com.microcourse.enums.MicroSpecialtyStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -350,6 +351,131 @@ class MicroSpecialtyServiceTest {
         doThrow(new BusinessException(ErrorCode.MS_STATUS_INVALID)).when(adminService).archive(1L);
         BusinessException ex = assertThrows(BusinessException.class, () -> service.archive(1L));
         assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
+    }
+
+    // ==================== reopen() ====================
+
+    @Test
+    @DisplayName("reopen: CANCELLED → APPROVED 正常重新开课（ACADEMIC）")
+    void reopen_cancelledToApproved() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("CANCELLED");
+        ms.setVersion(5);
+        ms.setLeadTeacherId(10L);
+        ms.setTitle("测试微专业");
+        when(msRepository.selectById(1L)).thenReturn(ms);
+        when(msRepository.update(any(), any())).thenReturn(1);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(false);
+            su.when(() -> SecurityUtil.hasRole("ACADEMIC")).thenReturn(true);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            service.reopen(1L);
+
+            verify(msRepository).update(any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("reopen: COMPLETED → APPROVED 正常重新开课")
+    void reopen_completedToApproved() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("COMPLETED");
+        ms.setVersion(5);
+        ms.setLeadTeacherId(10L);
+        ms.setTitle("测试微专业");
+        when(msRepository.selectById(1L)).thenReturn(ms);
+        when(msRepository.update(any(), any())).thenReturn(1);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(true);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            service.reopen(1L);
+
+            verify(msRepository).update(any(), any());
+        }
+    }
+
+    @Test
+    @DisplayName("reopen: DRAFT 状态抛出 MS_STATUS_INVALID")
+    void reopen_invalidStatus_throws() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("DRAFT");
+        ms.setVersion(0);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(true);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> service.reopen(1L));
+            assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
+        }
+    }
+
+    @Test
+    @DisplayName("reopen: ARCHIVED 抛出 MS_STATUS_INVALID（终态不可 reopen）")
+    void reopen_archived_throws() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("ARCHIVED");
+        ms.setVersion(5);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(true);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> service.reopen(1L));
+            assertEquals(ErrorCode.MS_STATUS_INVALID.getCode(), ex.getCode());
+        }
+    }
+
+    @Test
+    @DisplayName("reopen: 非 ACADEMIC/ADMIN 角色抛出 NO_PERMISSION")
+    void reopen_unauthorizedRole_throws() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("COMPLETED");
+        ms.setVersion(5);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(false);
+            su.when(() -> SecurityUtil.hasRole(anyString())).thenReturn(false);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> service.reopen(1L));
+            assertEquals(ErrorCode.NO_PERMISSION.getCode(), ex.getCode());
+        }
+    }
+
+    @Test
+    @DisplayName("reopen: 乐观锁冲突抛出 MS_CONCURRENT_MODIFICATION")
+    void reopen_concurrentConflict_throws() {
+        MicroSpecialty ms = new MicroSpecialty();
+        ms.setId(1L);
+        ms.setStatus("COMPLETED");
+        ms.setVersion(5);
+        when(msRepository.selectById(1L)).thenReturn(ms);
+        when(msRepository.update(any(), any())).thenReturn(0);
+
+        try (MockedStatic<SecurityUtil> su = Mockito.mockStatic(SecurityUtil.class)) {
+            su.when(SecurityUtil::isAdmin).thenReturn(true);
+            su.when(SecurityUtil::getCurrentUserId).thenReturn(5L);
+
+            BusinessException ex = assertThrows(BusinessException.class,
+                    () -> service.reopen(1L));
+            assertEquals(ErrorCode.MS_CONCURRENT_MODIFICATION.getCode(), ex.getCode());
+        }
     }
 
     // ==================== transferLeadership() ====================

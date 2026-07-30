@@ -24,7 +24,7 @@ public class ServerTimeController {
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @GetMapping("/server-time")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("permitAll()")
     public R<Map<String, Object>> getServerTime() {
         LocalDate today = LocalDate.now(CN_ZONE);
         Map<String, Object> result = new HashMap<>();

@@ -122,6 +122,7 @@ public abstract class BaseIntegrationTest {
 
     protected String bearerAdmin() throws Exception {
         if (cachedAdminToken == null) {
+            // p0-seed.sql 中 admin(id=1) 密码已显式重置为 BCrypt('admin123', cost=12)
             cachedAdminToken = loginAs("admin", "admin123");
         }
         return "Bearer " + cachedAdminToken;
