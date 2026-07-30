@@ -287,7 +287,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <excludedGroups>${surefire.excludedGroups}</excludedGroups>
-                    <argLine>-Dnet.bytebuddy.experimental=true -Xmx1500m -Djdk.attach.allowAttachSelf=true</argLine>
+                    <!-- R5 修复: 引入 jacoco 的 argLine，否则 JaCoCo agent 无法注入到测试 JVM，jacoco.exec 不会生成。
+                         实际效果：CI 真实覆盖率可被检查（之前 BUILD SUCCESS 但 jacoco.exec missing 是 silent failure）。 -->
+                    <argLine>@{argLine} -Dnet.bytebuddy.experimental=true -Xmx1500m -Djdk.attach.allowAttachSelf=true</argLine>
                     <!-- CI 慢根因修复尝试(agent 报告 P0-1):
                          后端 246 测试串行 ~50s,CI 慢 3-5x.
                          ★ 纪律 2 警示: 开启 <parallel>classes</parallel> 后

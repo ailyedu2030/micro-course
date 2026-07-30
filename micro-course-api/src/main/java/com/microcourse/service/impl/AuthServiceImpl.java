@@ -507,15 +507,17 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public UserApiKeyResponse getMyApiKey() {
-        // 归属层: Service — 查询当前用户 API Key（脱敏返回），Controller 层仅做路由
+        // 归属层: Service — 查询当前用户 API Key 是否存在（通过 hash 判断），Controller 层仅做路由
         Long currentUserId = SecurityUtil.getCurrentUserId();
         User user = userRepository.selectById(currentUserId);
         if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        if (user.getApiKey() == null) {
+        // S-004 Phase 2: api_key_hash 非空 = API Key 已生成（明文不再持久化，
+        // 无法展示脱敏值，仅返回创建时间戳表示 key 存在）
+        if (user.getApiKeyHash() == null) {
             return null;
         }
         return UserApiKeyResponse.maskedOnly(
-                UserApiKeyResponse.mask(user.getApiKey()),
+                null, // 明文未持久化，无法生成脱敏展示
                 user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null);
     }
 

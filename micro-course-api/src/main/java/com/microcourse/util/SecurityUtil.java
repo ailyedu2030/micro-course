@@ -117,8 +117,17 @@ public final class SecurityUtil {
         }
     }
 
+    /**
+     * 判断当前用户是否为 ACADEMIC（教务）角色
+     *
+     * @return true 表示拥有 ACADEMIC 权限
+     */
+    public static boolean isAcademic() {
+        return hasRole("ACADEMIC");
+    }
+
     public static boolean isAdminOrAcademic() {
-        return isAdmin() || hasRole("ACADEMIC");
+        return isAdmin() || isAcademic();
     }
 
     /**

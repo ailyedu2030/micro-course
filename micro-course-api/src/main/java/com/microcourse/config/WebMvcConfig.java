@@ -13,18 +13,38 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * P0-3: 封面文件静态资源映射
+ * 文件资源静态映射（P0-SEC-001：收窄为公开类别白名单，移除通配 /api/files/** 越权映射）。
  *
- * /api/files/** → file:./uploads/
- * 使封面 URL（如 /api/files/covers/{videoId}/{filename}）可直接由浏览器访问
+ * <h3>映射规则</h3>
+ * <pre>
+ *   公开（permitAll，直接由 WebMvc 静态资源处理器）：
+ *     /api/files/covers/**  → file:./uploads/covers/    — 视频封面（{@code &lt;img :src&gt;}）
+ *     /api/files/avatars/** → file:./uploads/avatars/   — 用户头像（{@code &lt;el-avatar :src&gt;}）
+ *     /api/files/banners/** → file:./uploads/banners/   — 公开轮播图
+ *     /api/files/system/**  → file:./uploads/system/    — 平台 Logo / 系统资源（前瞻白名单）
+ *     /api/files/videos/**  → file:./uploads/videos/    — 视频文件（HTML5 {@code &lt;video&gt;} 无 Auth 载体）
  *
- * Phase D-1 P3-6: 注册 {@link RequireRoleInterceptor}，启用 {@code @RequireRole}
- * 自定义权限注解（叠加于 {@code @PreAuthorize}，渐进迁移，零行为变化）。
+ *   私有（需经 {@link com.microcourse.controller.FileAccessController} 对象级授权）：
+ *     /api/files/slides/**  — 课件文件（需课程 Owner / 选课校验）
+ *     /api/files/storage/** — 申报图片（需提案 Owner 校验）
+ *     其余未显式映射的 /api/files/** 路径 → 404（无 Controller、无静态目录）
+ * </pre>
  *
- * Round 5 P1-11: 注册 {@link FileAccessRateLimitInterceptor}，对
+ * <h3>安全理由</h3>
+ * 旧配置使用通配 {@code /api/files/** → file:./uploads/}，使 {@code uploads/} 下所有文件
+ * 均可通过静态资源处理器直接访问，绕过了 Controller 层的 {@code @PreAuthorize} 与对象级
+ * Owner 校验。私有文件（slides、storage）可被任意认证用户通过 URL 遍历下载，构成越权漏洞。
+ * 修复后每个公开类别显式注册，私有类别由 {@link com.microcourse.controller.FileAccessController}
+ * 统一处理，实现静态资源路径与 Controller 授权路径分离的纵深防御。
+ *
+ * <h3>限速与审计</h3>
+ * Round 5 P1-11: {@link FileAccessRateLimitInterceptor} 仅对
  * {@code /api/files/covers/**} 做 IP 维度限速 + 访问审计，防封面 URL 批量枚举。
- * 依赖（{@link RedisUtil} / {@link FileAccessLogger}）经构造器注入，遵循项目
- * "构造器注入、禁止字段注入" 约定。
+ * 依赖（{@link RedisUtil} / {@link FileAccessLogger}）经构造器注入。
+ *
+ * <h3>Phase D-1 P3-6</h3>
+ * 注册 {@link RequireRoleInterceptor}，启用 {@code @RequireRole} 自定义权限注解
+ * （叠加于 {@code @PreAuthorize}，渐进迁移，零行为变化）。
  */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
@@ -44,8 +64,18 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        registry.addResourceHandler("/api/files/**")
-                .addResourceLocations("file:./uploads/");
+        // 公开类别白名单：仅以下 5 类通过 WebMvc 静态资源映射直接对外暴露。
+        // 私有类别（slides、storage 等）经 FileAccessController 对象级授权后访问。
+        registry.addResourceHandler("/api/files/covers/**")
+                .addResourceLocations("file:./uploads/covers/");
+        registry.addResourceHandler("/api/files/avatars/**")
+                .addResourceLocations("file:./uploads/avatars/");
+        registry.addResourceHandler("/api/files/banners/**")
+                .addResourceLocations("file:./uploads/banners/");
+        registry.addResourceHandler("/api/files/system/**")
+                .addResourceLocations("file:./uploads/system/");
+        registry.addResourceHandler("/api/files/videos/**")
+                .addResourceLocations("file:./uploads/videos/");
     }
 
     @Override

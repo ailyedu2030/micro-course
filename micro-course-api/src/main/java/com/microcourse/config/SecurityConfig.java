@@ -27,14 +27,39 @@ import org.springframework.beans.factory.annotation.Value;
  * P0-3: 放行 /api/files/** 以便 img 标签加载封面
  *
  * P0-8 修复（Phase A-3）：/api/files/** 由通配 permitAll 收窄为分类授权
+ *
+ * P0-SEC-001 修复（文件资源安全边界）：WebMvcConfig 已移除 /api/files/** → file:./uploads/
+ * 通配静态映射，改为 5 类公开白名单（covers/avatars/banners/system/videos）显式注册。
+ * 私有类别（slides、storage）不再享有静态映射，改为经 FileAccessController 对象级授权。
+ * 本配置中的路径规则与 WebMvcConfig 的静态映射共同构成"路径级 + 对象级"纵深防御。
+ *
+ * 文件访问安全模型（三层防御）：
+ * ┌────────────────────────────────────────────────────────────┐
+ * │ Layer 1: SecurityConfig 路径级授权                         │
+ * │   - covers/avatars/banners/system/videos  → permitAll      │
+ * │   - 其余 /api/files/**（含 slides/storage）→ authenticated │
+ * ├────────────────────────────────────────────────────────────┤
+ * │ Layer 2: WebMvc 静态资源映射（仅公开类别）                 │
+ * │   - /api/files/covers/**  → file:./uploads/covers/        │
+ * │   - /api/files/avatars/** → file:./uploads/avatars/       │
+ * │   - /api/files/banners/** → file:./uploads/banners/       │
+ * │   - /api/files/system/**  → file:./uploads/system/        │
+ * │   - /api/files/videos/**  → file:./uploads/videos/        │
+ * │   （私有类别无静态映射 → 必须经 Controller）              │
+ * ├────────────────────────────────────────────────────────────┤
+ * │ Layer 3: FileAccessController 对象级授权                   │
+ * │   - slides: 课程 Owner / 选课校验                          │
+ * │   - storage: 申报表 Owner 校验                             │
+ * └────────────────────────────────────────────────────────────┘
+ *
  * - covers/**   （视频封面）：permitAll —— 前端 img :src 直接引用，物理无法携带 Auth 头
  * - avatars/**  （用户头像）：permitAll —— el-avatar :src 直接引用，且头像为公开展示数据
  * - banners/**  （公开轮播图）：permitAll —— 前端 img :src 直接引用
  * - system/**   （平台 Logo/系统资源）：permitAll —— 公开静态资源（前瞻白名单）
- * - videos/**   （视频文件）：permitAll —— HTML5 <video> 无法携带 Authorization header，nginx 层有 valid_referers 防盗链
- * - 其他（slides 课件、attachments 附件等私有文件）：authenticated
- *   —— 堵住 WebMvcConfig 将 /api/files/** 映射到 uploads/ 后对私有内容的静态越权下载；
- *      对象级 owner 校验在对应业务 Controller/Service 层执行
+ * - videos/**   （视频文件）：permitAll —— HTML5 &lt;video&gt; 无法携带 Authorization header，
+ *                nginx 层有 valid_referers 防盗链；课程元数据入口已有 @PreAuthorize 保护
+ * - 其他（slides 课件、storage 申报图片等私有文件）：authenticated
+ *   —— 在 FileAccessController 中执行对象级 owner 校验，完成 3 层纵深防御最后一道
  */
 @Configuration
 @EnableWebSecurity
@@ -145,10 +170,16 @@ public class SecurityConfig {
                         // 确保生产不暴露任何端点列表。非 prod 环境如需收紧，在对应 profile 中移除本行。
                         // springdoc-openapi 使用 /v3/api-docs 和 /swagger-ui 路径。
                         .requestMatchers("/v3/api-docs/**", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/webjars/**").permitAll()
+                        // R4 修复: Tomcat 转发 /error 也需 permitAll，否则 404/500 会被 line 193 files/** authenticated 拦截返 401
+                        // （covers/x.jpg 不存在 → ResourceHttpRequestHandler 返 404 → Tomcat 转发 /error → 401 误报）
+                        .requestMatchers("/error").permitAll()
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
                         // P0-07 修复：路径与 VideoStreamController @RequestMapping("/api/video-stream") 对齐
                         .requestMatchers("GET", "/api/video-stream/**").authenticated()
-                        // P0-8 修复：收窄 /api/files/** —— 按文件类型分类授权（白名单顺序须先于通配 authenticated）
+                        // P0-TEST-FIX: ServerTime 端点供前端做时钟对齐，无需认证
+                        .requestMatchers("GET", "/api/server-time").permitAll()
+                        // P0-8 修复 + P0-SEC-001 加固：文件分类授权（白名单顺序须先于通配 authenticated）
+                        // WebMvcConfig 中公开类别有对应的 per-category 静态映射，私有类别经 FileAccessController
                         // 封面图片：非敏感，前端 img :src 需无 Auth 访问
                         .requestMatchers("GET", "/api/files/covers/**").permitAll()
                         // 用户头像：公开展示数据，el-avatar :src 需无 Auth 访问
@@ -161,7 +192,7 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/videos/**").permitAll()
                         // 平台 Logo/系统资源（前瞻白名单）
                         .requestMatchers("GET", "/api/files/system/**").permitAll()
-                        // 其他文件（slides 课件、attachments 附件等私有资源）：需登录 + Controller 层 owner 校验
+                        // 其他文件（slides 课件、storage 申报图片等私有资源）：需登录 + FileAccessController 层 owner 校验
                         .requestMatchers("GET", "/api/files/**").authenticated()
                         // P0-SEC-FIX: 放行支付回调端点，外部支付网关无法携带 JWT
                         .requestMatchers("POST", "/api/orders/callback").permitAll()

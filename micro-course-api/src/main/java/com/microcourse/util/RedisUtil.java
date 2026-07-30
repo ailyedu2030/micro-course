@@ -30,6 +30,14 @@ public class RedisUtil {
     private static final long REFRESH_LIMIT_TTL_SECONDS = 3600L;
 
     /**
+     * Token generation TTL: 14 天。
+     * 覆盖 refreshToken 有效期（7 天）并有余量，保证 tokenGen key 在 refreshToken
+     * 整个生命周期内均可查询。即使活跃用户每天登录（递增 value），初始 TTL 不刷新，
+     * 确保过期后自动清理无界 key。
+     */
+    private static final long TOKEN_GEN_TTL_SECONDS = 14 * 24 * 3600L;
+
+    /**
      * 设置 Key-Value，使用默认 1 小时 TTL (3600s) 防止无界 key 增长。
      * 建议优先使用 {@link #set(String, Object, long, TimeUnit)} 明确指定过期时间。
      */
@@ -86,17 +94,14 @@ public class RedisUtil {
     }
 
     /**
-     * 获取登录失败次数（Redis 故障时返回 0，不阻塞登录）
+     * 获取登录失败次数。
+     *
+     * <p>Redis 故障时抛出异常不允许静默降级（fail-closed），由上层 {@code AuthQueryServiceImpl}
+     * 决定如何处理（本地缓存兜底 vs 抛出 503）。绝不允许在 Redis 不可用时返回 0 绕过锁检查。
      */
     public Integer getLoginFailureCount(String username) {
-        try {
-            Object val = get("mc:login:lock:" + username);
-            return val == null ? 0 : Integer.parseInt(val.toString());
-        } catch (Exception e) {
-            redisMetrics.recordLoginCheckError();
-            log.warn("[Redis] getLoginFailureCount 失败，降级为 0: {}", e.getMessage());
-            return 0;
-        }
+        Object val = get("mc:login:lock:" + username);
+        return val == null ? 0 : Integer.parseInt(val.toString());
     }
 
     public void clearLoginFailure(String username) {
@@ -125,27 +130,27 @@ public class RedisUtil {
     }
 
     /**
-     * 获取 refresh 限流次数
+     * 获取 refresh 限流次数。
+     *
+     * <p>Redis 故障时抛出异常不允许静默降级（fail-closed），由上层 {@code AuthQueryServiceImpl}
+     * 决定如何处理。绝不允许在 Redis 不可用时返回 0 绕过限流检查。
      */
     public Integer getRefreshCount(String clientIp) {
-        try {
-            Object val = get("mc:refresh:limit:" + clientIp);
-            return val == null ? 0 : Integer.parseInt(val.toString());
-        } catch (Exception e) {
-            redisMetrics.recordLoginCheckError();
-            log.warn("[Redis] getRefreshCount 失败,降级为 0: {}", e.getMessage());
-            return 0;
-        }
+        Object val = get("mc:refresh:limit:" + clientIp);
+        return val == null ? 0 : Integer.parseInt(val.toString());
     }
 
     // ==================== P0-S04: Token Generation(登录后旧 refreshToken 失效) ====================
 
     /**
-     * 递增用户 token 代数 — 每次登录 +1,旧 refreshToken 的 tokenGen < currentGen 即失效
+     * 递增用户 token 代数 — 每次登录 +1,旧 refreshToken 的 tokenGen < currentGen 即失效。
+     *
+     * <p>使用原子 INCR+EXPIRE（Lua 脚本），TTL=14 天覆盖 refreshToken 有效期（7 天）并有余量。
+     * 初始 INCR 设 EXPIRE，后续递增仅更新 value 不刷新 TTL，确保过期后自动清理。
      */
     public long incrementTokenGeneration(Long userId) {
         try {
-            Long val = incrementCounter("mc:user:token-gen:" + userId);
+            Long val = incrementWithExpire("mc:user:token-gen:" + userId, TOKEN_GEN_TTL_SECONDS);
             return val != null ? val : 0L;
         } catch (Exception e) {
             log.error("[Redis] incrementTokenGeneration 失败 userId={}", userId, e);

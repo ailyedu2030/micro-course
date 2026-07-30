@@ -90,8 +90,13 @@ public class UserStatusCheckFilter extends OncePerRequestFilter {
                 return;
             }
         } catch (Exception e) {
-            // fail-open 路径已明确放行，记录为 warn 避免把降级误报成主流程故障。
-            log.warn("用户状态检查异常（fail-open 放行）", e);
+            // P0-SEC-FAIL-CLOSED: 认证链上 fail-open 允许已禁用/已删除用户穿越。
+            // 安全闸不可降级为「乐观放行」，否则管理员的禁用操作形同虚设。
+            // 异常路径直接阻断请求并返回 401，要求客户端重新登录。
+            log.error("用户状态检查异常（fail-closed 阻断） userId={}", authentication.getPrincipal(), e);
+            SecurityContextHolder.clearContext();
+            writeErrorResponse(response, ErrorCode.SERVICE_UNAVAILABLE);
+            return;
         }
 
         chain.doFilter(request, response);

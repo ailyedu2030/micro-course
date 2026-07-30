@@ -28,7 +28,7 @@ public class CourseCategoryController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseCategoryVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 1000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
         PageResult<CourseCategoryVO> result = courseCategoryService.page(page, size);
         return R.ok(result);
     }

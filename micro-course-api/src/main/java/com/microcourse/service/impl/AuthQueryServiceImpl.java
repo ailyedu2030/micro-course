@@ -7,6 +7,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AuthQueryService;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,15 +61,15 @@ public class AuthQueryServiceImpl implements AuthQueryService {
 
     @Override
     public Long getCurrentUserId() {
-        var authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
+        // R3 防御性重构: 改用 SecurityUtil.getCurrentUserId() 而非强转 (Long) authentication.getPrincipal()
+        // — 后者会在 principal 为 String "anonymousUser" 或 null 时抛 ClassCastException，
+        // 触发 "未认证访问" 走 500 路径而非正确的 401 TOKEN_INVALID。
+        try {
+            return SecurityUtil.getCurrentUserId();
+        } catch (Exception e) {
+            log.debug("[Auth] getCurrentUserId 失败: {}", e.getMessage());
             throw new BusinessException(ErrorCode.TOKEN_INVALID);
         }
-        Object principal = authentication.getPrincipal();
-        if (principal == null) {
-            throw new BusinessException(ErrorCode.TOKEN_INVALID);
-        }
-        return (Long) principal;
     }
 
     @Override
@@ -78,7 +79,10 @@ public class AuthQueryServiceImpl implements AuthQueryService {
         } catch (Exception e) {
             log.warn("[Auth] Redis 不可用,回退本地限流缓存 key={}", key);
             LocalLoginFailureEntry entry = localLoginFailCache.get(key);
-            if (entry == null || entry.isExpired()) return 0;
+            if (entry == null || entry.isExpired()) {
+                // FAIL-CLOSED: Redis 不可用且本地无缓存 → 抛出 503 而非静默返回 0 绕锁定
+                throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "认证服务暂时不可用，请稍后重试");
+            }
             return entry.count;
         }
     }
@@ -116,7 +120,10 @@ public class AuthQueryServiceImpl implements AuthQueryService {
         } catch (Exception e) {
             log.warn("[Auth] Redis 不可用,回退本地限流缓存 key=refresh:{}", clientIp);
             LocalLoginFailureEntry entry = localLoginFailCache.get("refresh:" + clientIp);
-            if (entry == null || entry.isExpired()) return 0;
+            if (entry == null || entry.isExpired()) {
+                // FAIL-CLOSED: Redis 不可用且本地无缓存 → 抛出 503 而非静默返回 0 绕限流
+                throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "认证服务暂时不可用，请稍后重试");
+            }
             return entry.count;
         }
     }

@@ -188,10 +188,18 @@ public class User {
 
     /**
      * 设置 API Key 并自动计算 SHA-256 hash。
-     * hash 写入 api_key_hash 列用于安全查询，明文 api_key 保留用于首次展示。
+     *
+     * <p>S-004 安全增强 Phase 2: 明文 api_key 不再长期存储。
+     * <ul>
+     *   <li>hash 写入 api_key_hash 列用于安全查询</li>
+     *   <li>明文 {@code this.apiKey} 设为 null（不写入 DB），仅在生成时刻在内存中返回给用户</li>
+     *   <li>V324 迁移已清除所有历史明文 api_key</li>
+     * </ul>
+     *
+     * @param apiKey 原始 API Key（明文仅在此 setter 入参中存在，不会被持久化）
      */
     public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+        this.apiKey = null;  // 明文不持久化
         this.apiKeyHash = (apiKey != null) ? DigestUtils.sha256Hex(apiKey) : null;
     }
 
