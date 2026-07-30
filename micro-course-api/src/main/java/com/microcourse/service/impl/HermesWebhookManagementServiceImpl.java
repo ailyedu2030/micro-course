@@ -68,11 +68,10 @@ public class HermesWebhookManagementServiceImpl implements HermesWebhookManageme
             log.warn("[HermesWebhook] Missing X-API-Key header");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
         }
+        // S-004 Phase 2: 仅按 hash 查询。明文 fallback 已移除（V324 清空明文列，
+        // findByApiKeyHash 是唯一认证路径）
         String apiKeyHash = DigestUtils.sha256Hex(apiKey);
         Optional<User> callerOpt = userRepository.findByApiKeyHash(apiKeyHash);
-        if (callerOpt.isEmpty()) {
-            callerOpt = userRepository.findByApiKey(apiKey);
-        }
         if (callerOpt.isEmpty()) {
             log.warn("[HermesWebhook] API key not found or user inactive");
             throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);

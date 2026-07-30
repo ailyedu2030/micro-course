@@ -77,7 +77,7 @@ public class DashboardServiceImpl implements DashboardService {
         try {
             LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
             LambdaQueryWrapper<User> activeUsersWrapper = new LambdaQueryWrapper<>();
-            activeUsersWrapper.gt(User::getUpdatedAt, sevenDaysAgo);
+            activeUsersWrapper.gt(User::getLastLoginAt, sevenDaysAgo);
             vo.setActiveUsers7d(userRepository.selectCount(activeUsersWrapper));
         } catch (Exception e) {
             log.error("getOverview: activeUsers7d query failed", e);
@@ -129,13 +129,7 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         try {
-            LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
-            progressWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
-            List<LearningProgress> progressList = learningProgressRepository.selectList(progressWrapper);
-            long totalWatchTimeMinutes = progressList.stream()
-                    .filter(p -> p != null && p.getTotalWatchTime() != null)
-                    .mapToLong(p -> p.getTotalWatchTime() / 60)
-                    .sum();
+            Long totalWatchTimeMinutes = learningProgressRepository.sumTotalWatchTimeMinutes();
             vo.setTotalWatchTimeMinutes(totalWatchTimeMinutes);
         } catch (Exception e) {
             log.error("getOverview: totalWatchTimeMinutes query failed", e);
@@ -170,15 +164,7 @@ public class DashboardServiceImpl implements DashboardService {
 
         try {
             LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-            LambdaQueryWrapper<LearningProgress> activeWrapper = new LambdaQueryWrapper<>();
-            activeWrapper.gt(LearningProgress::getLastWatchAt, sevenDaysAgo);
-            activeWrapper.select(LearningProgress::getUserId);
-            List<LearningProgress> activeList = learningProgressRepository.selectList(activeWrapper);
-            long activeStudents = activeList.stream()
-                    .filter(p -> p != null && p.getUserId() != null)
-                    .map(LearningProgress::getUserId)
-                    .distinct()
-                    .count();
+            Long activeStudents = learningProgressRepository.countDistinctActiveUsersSince(sevenDaysAgo);
             vo.setActiveStudents(activeStudents);
         } catch (Exception e) {
             log.error("getProgress: activeStudents query failed", e);
@@ -211,28 +197,17 @@ public class DashboardServiceImpl implements DashboardService {
         }
 
         try {
-            LambdaQueryWrapper<Enrollment> progressWrapper = new LambdaQueryWrapper<>();
-            progressWrapper.select(Enrollment::getProgress);
-            List<Enrollment> enrollments = enrollmentRepository.selectList(progressWrapper);
-            double avgProgress = enrollments.stream()
-                    .filter(e -> e != null && e.getProgress() != null)
-                    .mapToDouble(Enrollment::getProgress)
-                    .average()
-                    .orElse(0.0);
-            vo.setAvgProgress(BigDecimal.valueOf(avgProgress).setScale(2, RoundingMode.HALF_UP));
+            // SQL 聚合替代全量加载到 Java 内存再求平均值（OOM 修复）
+            Double avgProgress = enrollmentRepository.avgProgress();
+            vo.setAvgProgress(BigDecimal.valueOf(avgProgress != null ? avgProgress : 0.0).setScale(2, RoundingMode.HALF_UP));
         } catch (Exception e) {
             log.error("getProgress: avgProgress query failed", e);
             vo.setAvgProgress(BigDecimal.ZERO);
         }
 
         try {
-            LambdaQueryWrapper<LearningProgress> timeWrapper = new LambdaQueryWrapper<>();
-            timeWrapper.select(com.microcourse.entity.LearningProgress::getTotalWatchTime);
-            List<LearningProgress> timeList = learningProgressRepository.selectList(timeWrapper);
-            long totalLearningMinutes = timeList.stream()
-                    .filter(p -> p != null && p.getTotalWatchTime() != null)
-                    .mapToLong(p -> p.getTotalWatchTime() / 60)
-                    .sum();
+            // SQL 聚合替代全量加载到 Java 内存再求和转换（OOM 修复）
+            Long totalLearningMinutes = learningProgressRepository.sumTotalWatchTimeMinutes();
             vo.setTotalLearningMinutes(totalLearningMinutes);
         } catch (Exception e) {
             log.error("getProgress: totalLearningMinutes query failed", e);

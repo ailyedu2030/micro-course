@@ -259,15 +259,12 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
             notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_OPENED,
                     "微专业已开课", "微专业《" + ms.getTitle() + "》已开放报名", id);
         }
-
-        List<MicroSpecialtyEnrollment> enrolledStudents = msEnrollmentRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, id)
-                        .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
-        for (MicroSpecialtyEnrollment en : enrolledStudents) {
-            notificationService.notifyAsync(en.getUserId(), NotificationType.MS_OPENED,
-                    "微专业已开课", "您修读的微专业《" + ms.getTitle() + "》已开放报名", id);
-        }
+        /* ---- 【Phase14-reopen fix】移除错误的已报名学生通知 ---- */
+        /* 【根因】open() 从 APPROVED→RECRUITING，此时不可能有已报名学生
+         *       （报名/班级导入均要求 RECRUITING 状态），所以 enrolledStudents
+         *       查询返回空列表。这段是死代码。
+         * 【修复】移除死代码段。
+         * 【防止再发】不要在 open 中通知"已报名"学生，正确的通知是发给 LEAD 的 MS_OPENED。 */
     }
 
     @Override
@@ -334,16 +331,27 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
         String safeReason = com.microcourse.util.XssSanitizer.sanitizePlainText(reason);
 
         int oldVersion = ms.getVersion();
-        int affected = msRepository.update(null,
-                new LambdaUpdateWrapper<MicroSpecialty>()
-                        .eq(MicroSpecialty::getId, id)
-                        .eq(MicroSpecialty::getVersion, oldVersion)
-                        .eq(MicroSpecialty::getStatus, ms.getStatus())
-                        .set(MicroSpecialty::getStatus, "CANCELLED")
-                        .set(MicroSpecialty::getCancelReason, safeReason)
-                        .set(MicroSpecialty::getClosedAt, LocalDateTime.now())
-                        .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
+
+        /* ---- Phase14-reopen fix: 合并 featured 清理到主状态更新中，消除竞态窗口 ---- */
+        /* 【根因】原 cancel() 先更新状态后单独清理 featured，使用 oldVersion+1 做乐观锁。
+         *        两次 UPDATE 之间如果有并发事务修改了该行，featured 清理静默失败（0 行），
+         *        取消后的微专业仍可能在广场展示。
+         * 【修复】将 is_featured/is_gold_featured 清理作为 SET 子句合并到主 UPDATE 中，
+         *        单条 SQL 原子操作，无竞态窗口。
+         * 【防止再发】所有进入终态的操作必须与展示位清理在同一 UPDATE 中完成。 */
+        LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
+                .eq(MicroSpecialty::getId, id)
+                .eq(MicroSpecialty::getVersion, oldVersion)
+                .eq(MicroSpecialty::getStatus, ms.getStatus())
+                .set(MicroSpecialty::getStatus, "CANCELLED")
+                .set(MicroSpecialty::getCancelReason, safeReason)
+                .set(MicroSpecialty::getClosedAt, LocalDateTime.now())
+                .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                .set(MicroSpecialty::getIsFeatured, false)
+                .set(MicroSpecialty::getIsGoldFeatured, false)
+                .set(MicroSpecialty::getFeaturedStatus, "NONE")
+                .setSql("version = version + 1");
+        int affected = msRepository.update(null, uw);
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
 
         // 级联：所有 PENDING/APPROVED/IN_PROGRESS enrollment → DROPPED（§9.8）
@@ -360,12 +368,18 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                             .set(MicroSpecialtyEnrollment::getDropReason, "SPECIALTY_CANCELLED")
                             .set(MicroSpecialtyEnrollment::getDroppedAt, LocalDateTime.now())
                             .setSql("version = version + 1"));
+            /* ---- 【Phase14-reopen fix】级联 enrollment 失败必须回滚 ---- */
+            /* 【根因】原逻辑只 log.warn 并继续，可能导致部分 enrollment 被设为 DROPPED
+             *        而部分保持原状态，产生数据不一致。
+             * 【修复】enAffected == 0 时抛出异常触发事务回滚。
+             * 【防止再发】所有级联操作失败必须抛出可回滚异常。 */
             if (enAffected == 0) {
-                log.warn("cancel() 级联 DROPPED 跳过: enrollment.id={} 已被其他操作修改", en.getId());
+                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                        "取消微专业时 enrollment.id=" + en.getId() + " 已被并发修改，事务回滚");
             }
         }
 
-        // 课程级 enrollment 级联清理
+        // 课程级 enrollment 级联清理（跳过 COMPLETED 课程）
         List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyCourse>()
                         .eq(MicroSpecialtyCourse::getMicroSpecialtyId, id));
@@ -377,35 +391,19 @@ public class MicroSpecialtyAdminServiceImpl implements MicroSpecialtyAdminServic
                                 .eq(Enrollment::getUserId, en.getUserId())
                                 .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.COMPLETED.getValue()));
                 if (courseEn != null && !EnrollmentStatus.CANCELLED.getValue().equals(courseEn.getEnrollmentStatus())) {
-                    enrollmentRepository.update(null,
+                    int courseAffected = enrollmentRepository.update(null,
                             new LambdaUpdateWrapper<Enrollment>()
                                     .eq(Enrollment::getId, courseEn.getId())
                                     .eq(Enrollment::getVersion, courseEn.getVersion())
                                     .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue())
                                     .set(Enrollment::getUpdatedAt, LocalDateTime.now())
                                     .setSql("version = version + 1"));
+                    /* ---- 【Phase14-reopen fix】课程级 enrollment 级联失败也必须回滚 ---- */
+                    if (courseAffected == 0) {
+                        throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
+                                "取消微专业时课程级 enrollment.id=" + courseEn.getId() + " 已被并发修改，事务回滚");
+                    }
                 }
-            }
-        }
-
-        /* ---- 【I-20修复】cancel() 未重置 is_featured/is_gold_featured ---- */
-        /* 【根因】cancel() 级联清理了 enrollment 和 course enrollment，
-         *        但未还原 is_featured/is_gold_featured 标记。取消后的微专业
-         *        不应再出现在置顶/金标展示位。
-         * 【修复】在级联清理后，重置 featured 标记
-         * 【防止再发】所有进入终态的操作必须同时清理展示位标记 */
-        if (ms.getIsFeatured() || ms.getIsGoldFeatured()) {
-            int featAffected = msRepository.update(null,
-                    new LambdaUpdateWrapper<MicroSpecialty>()
-                            .eq(MicroSpecialty::getId, id)
-                            .eq(MicroSpecialty::getVersion, oldVersion + 1)
-                            .set(MicroSpecialty::getIsFeatured, false)
-                            .set(MicroSpecialty::getIsGoldFeatured, false)
-                            .set(MicroSpecialty::getFeaturedStatus, "NONE")
-                            .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
-                            .setSql("version = version + 1"));
-            if (featAffected == 0) {
-                log.warn("cancel() 重置 featured 乐观锁冲突（不影响主流程）: msId={}", id);
             }
         }
 

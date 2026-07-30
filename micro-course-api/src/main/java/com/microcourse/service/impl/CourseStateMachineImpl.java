@@ -9,10 +9,12 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.CourseStateMachine;
+import com.microcourse.service.CourseStateMachine.TransitionGuardResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Primary;
@@ -145,18 +147,20 @@ public class CourseStateMachineImpl implements CourseStateMachine {
                     "不允许从 " + current + " 转换到 " + targetStatus);
         }
 
-        // Step 2: 自审批阻断
+        // Step 2: 自审批阻断 — 仅限制 TEACHER 角色，ADMIN/ACADEMIC 不受此限制
         if (actor != null && actor.getId() != null && actor.getId().equals(course.getTeacherId())
+                && !isAdminOrAcademic(actor)
                 && isSelfApprovalAction(current, targetStatus)) {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "不能对自己的课程执行审批操作");
         }
 
         // Step 3: 注册的业务守卫
-        TransitionGuardResult guardResult = runGuards(current, targetStatus, course, context);
-        if (guardResult != TransitionGuardResult.ALLOWED) {
-            // 守卫阻断: 业务条件不满足, 使用 BAD_REQUEST_PARAM 而非 INVALID_STATUS_TRANSITION
+        List<String> guardErrors = runGuardsWithErrors(current, targetStatus, course, context);
+        if (!guardErrors.isEmpty()) {
+            // 守卫阻断: 将具体错误信息拼入异常消息返回给用户，而非仅返回 BLOCKED_BY_GUARD
+            String errorDetail = String.join("; ", guardErrors);
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "业务守卫未通过: " + guardResult);
+                    "业务条件未满足: " + errorDetail);
         }
 
         // Step 4: 乐观锁 CAS 更新
@@ -224,8 +228,9 @@ public class CourseStateMachineImpl implements CourseStateMachine {
             return TransitionGuardResult.SELF_APPROVAL_BLOCKED;
         }
 
-        TransitionGuardResult guardResult = runGuards(current, targetStatus, course, context);
-        return guardResult;
+        List<String> guardErrors = runGuardsWithErrors(current, targetStatus, course, context);
+        if (!guardErrors.isEmpty()) return TransitionGuardResult.BLOCKED_BY_GUARD;
+        return TransitionGuardResult.ALLOWED;
     }
 
     @Override
@@ -236,30 +241,47 @@ public class CourseStateMachineImpl implements CourseStateMachine {
                 .add(guard);
     }
 
-    private TransitionGuardResult runGuards(CourseStatus from, CourseStatus to,
-                                            Course course, TransitionContext context) {
+    /**
+     * 运行注册的业务守卫，返回具体错误列表。
+     * 空列表 = 允许通过；非空列表 = 守卫阻断，并附上具体业务错误消息。
+     */
+    private List<String> runGuardsWithErrors(CourseStatus from, CourseStatus to,
+                                             Course course, TransitionContext context) {
         Map<CourseStatus, List<BiFunction<Course, TransitionContext, List<String>>>> toGuards = guards.get(from);
-        if (toGuards == null) return TransitionGuardResult.ALLOWED;
+        if (toGuards == null) return java.util.Collections.emptyList();
         List<BiFunction<Course, TransitionContext, List<String>>> guardList = toGuards.get(to);
-        if (guardList == null || guardList.isEmpty()) return TransitionGuardResult.ALLOWED;
+        if (guardList == null || guardList.isEmpty()) return java.util.Collections.emptyList();
+        List<String> allErrors = new ArrayList<>();
         for (BiFunction<Course, TransitionContext, List<String>> guard : guardList) {
             List<String> errors = guard.apply(course, context);
             if (errors != null && !errors.isEmpty()) {
-                LOG.warn("[CourseStateMachine] guard blocked courseId={} {}→{} errors={}",
-                        course.getId(), from, to, errors);
-                return TransitionGuardResult.BLOCKED_BY_GUARD;
+                allErrors.addAll(errors);
             }
         }
-        return TransitionGuardResult.ALLOWED;
+        if (!allErrors.isEmpty()) {
+            LOG.warn("[CourseStateMachine] guard blocked courseId={} {}→{} errors={}",
+                    course.getId(), from, to, allErrors);
+        }
+        return allErrors;
     }
 
     /**
-     * 自审批阻断: 教师/管理员不能审批/驳回/发布自己创建的课程
+     * 自审批阻断: 教师不能审批/驳回/发布自己创建的课程。
+     * ADMIN/ACADEMIC 不受此限制。
      */
     private boolean isSelfApprovalAction(CourseStatus from, CourseStatus to) {
         // 审批/驳回/发布/重审 这类"裁判员"操作
         return (from == CourseStatus.PENDING_REVIEW && to == CourseStatus.APPROVED)
                 || (from == CourseStatus.PENDING_REVIEW && to == CourseStatus.REJECTED)
                 || (to == CourseStatus.PUBLISHED);
+    }
+
+    /**
+     * 判断用户是否为 ADMIN 或 ACADEMIC 角色（不受自审批阻断限制）。
+     */
+    private boolean isAdminOrAcademic(User actor) {
+        if (actor == null || actor.getRole() == null) return false;
+        return actor.getRole() == UserRole.ADMIN
+                || actor.getRole() == UserRole.ACADEMIC;
     }
 }

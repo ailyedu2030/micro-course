@@ -295,9 +295,11 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         result.add(exerciseSubmit);
 
         // COMPLETED - count where completed = true
+        // P1I-049 修复：添加默认 365 天时间范围限制，防止大数据量全表扫描
         Long completedCount = learningProgressRepository.selectCount(
                 new LambdaQueryWrapper<LearningProgress>()
                         .eq(LearningProgress::getCompleted, true)
+                        .ge(LearningProgress::getCreatedAt, java.time.LocalDateTime.now().minusDays(365))
         );
         Map<String, Object> completed = new LinkedHashMap<>();
         completed.put("type", "COURSE_COMPLETED");

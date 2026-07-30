@@ -214,6 +214,16 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             }
         }
 
+        // Validate video→chapter ownership if sectionId is being updated
+        if (request.getSectionId() != null && progress.getChapterId() != null) {
+            LambdaQueryWrapper<Video> videoCheck = new LambdaQueryWrapper<>();
+            videoCheck.eq(Video::getId, request.getSectionId())
+                      .eq(Video::getChapterId, progress.getChapterId());
+            if (videoRepository.selectCount(videoCheck) == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "视频与章节归属不匹配");
+            }
+        }
+
         LambdaUpdateWrapper<LearningProgress> wrapper = new LambdaUpdateWrapper<>();
         if (request.getVideoProgress() != null) {
             wrapper.set(LearningProgress::getVideoProgress, request.getVideoProgress());
@@ -294,6 +304,16 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             CourseChapter chapter = courseChapterRepository.selectById(request.getChapterId());
             if (chapter == null) {
                 throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
+            }
+        }
+
+        // Validate sectionId (video/lesson) belongs to the given chapter if both provided
+        if (request.getSectionId() != null && request.getChapterId() != null) {
+            LambdaQueryWrapper<Video> videoCheck = new LambdaQueryWrapper<>();
+            videoCheck.eq(Video::getId, request.getSectionId())
+                      .eq(Video::getChapterId, request.getChapterId());
+            if (videoRepository.selectCount(videoCheck) == 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "视频与章节归属不匹配");
             }
         }
 

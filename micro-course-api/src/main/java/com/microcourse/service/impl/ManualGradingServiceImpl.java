@@ -17,6 +17,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.GradeRepository;
+import com.microcourse.repository.WrongQuestionRepository;
 import com.microcourse.service.ManualGradingService;
 import com.microcourse.service.NotificationService;
 import com.microcourse.service.ScoreHistoryService;
@@ -49,6 +50,7 @@ public class ManualGradingServiceImpl implements ManualGradingService {
     private final EnrollmentRepository enrollmentRepository;
     private final ExerciseRecordRepository exerciseRecordRepository;
     private final CourseRepository courseRepository;
+    private final WrongQuestionRepository wrongQuestionRepository;
     private final NotificationService notificationService;
     private final ObjectMapper objectMapper;
     private final ScoreHistoryService scoreHistoryService;
@@ -59,6 +61,7 @@ public class ManualGradingServiceImpl implements ManualGradingService {
             EnrollmentRepository enrollmentRepository,
             ExerciseRecordRepository exerciseRecordRepository,
             CourseRepository courseRepository,
+            WrongQuestionRepository wrongQuestionRepository,
             NotificationService notificationService,
             ObjectMapper objectMapper,
             ScoreHistoryService scoreHistoryService) {
@@ -67,6 +70,7 @@ public class ManualGradingServiceImpl implements ManualGradingService {
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.courseRepository = courseRepository;
+        this.wrongQuestionRepository = wrongQuestionRepository;
         this.notificationService = notificationService;
         this.objectMapper = objectMapper;
         this.scoreHistoryService = scoreHistoryService;
@@ -138,6 +142,22 @@ public class ManualGradingServiceImpl implements ManualGradingService {
         target.put("comment", safeComment);
         target.put("isCorrect", score > 0);
         target.put("needsManualGrading", false);
+
+        // 同步错题本：当手动批改判定为错题（score <= 0 或题目判定错误）时，写入 wrong_questions 表
+        // 与批改事务一致（同 @Transactional），出错抛异常回滚批改
+        boolean isWrong = score <= 0 || (target.get("isCorrect") != null && !Boolean.TRUE.equals(target.get("isCorrect")));
+        if (isWrong) {
+            try {
+                wrongQuestionRepository.upsertWrongQuestion(
+                        record.getUserId(),
+                        questionId,
+                        exercise.getCourseId()
+                );
+            } catch (Exception e) {
+                log.error("[ManualGrading] 同步错题本失败 userId={} questionId={}", record.getUserId(), questionId, e);
+                throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "错题记录同步失败，批改已回滚");
+            }
+        }
 
         // 重算记录总得分
         int total = 0;

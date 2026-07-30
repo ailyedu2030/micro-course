@@ -42,7 +42,9 @@ public class SectionSlideServiceImpl implements SectionSlideService {
         // 1) 鉴权: API Key 或 JWT 二选一
         Long callerUserId = null;
         if (apiKey != null && !apiKey.isBlank()) {
-            Optional<User> caller = userRepository.findByApiKey(apiKey);
+            // S-004 Phase 2: 仅按 hash 查询（明文 fallback 已移除）
+            String hash = org.apache.commons.codec.digest.DigestUtils.sha256Hex(apiKey);
+            Optional<User> caller = userRepository.findByApiKeyHash(hash);
             if (caller.isEmpty()) {
                 throw new BusinessException(ErrorCode.HERMES_INVALID_API_KEY);
             }
