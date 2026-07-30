@@ -1,5 +1,6 @@
 import js from '@eslint/js'
 import vue from 'eslint-plugin-vue'
+import tseslint from 'typescript-eslint'
 
 const browserGlobals = {
   // Window & DOM
@@ -37,6 +38,19 @@ const browserGlobals = {
 export default [
   js.configs.recommended,
   ...vue.configs['flat/recommended'],
+  // Phase6: TypeScript ESLint 集成 (typescript-eslint)
+  // 为 .ts 文件配置 TypeScript 解析器，与现有 JS/Vue 解析隔离
+  {
+    files: ['**/*.ts', '**/*.tsx', '**/*.mts'],
+    ...tseslint.configs.base,
+    rules: {
+      // Phase6: 宽松模式 — 逐步迁移，不阻塞现有开发
+      '@typescript-eslint/no-unused-vars': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+      '@typescript-eslint/no-require-imports': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
+    }
+  },
   {
     languageOptions: {
       ecmaVersion: 2024,
@@ -72,7 +86,7 @@ export default [
     }
   },
   {
-    files: ['src/**/*.{js,vue}'],
+    files: ['src/**/*.{js,ts,vue,tsx,mts}'],
     ignores: ['**/dist/**', '**/node_modules/**', 'e2e/**', 'coverage/**', '*.config.js']
   },
   {

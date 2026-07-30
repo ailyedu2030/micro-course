@@ -607,7 +607,7 @@ const handleCopy = async () => {
 
 // ===== 编辑提交 =====
 const handleCoverChange = (file) => {
-  if (file.raw && file.raw.size > 5 * 1024 * 1024) {
+  if (file.raw && file.raw.size > 2 * 1024 * 1024) {
     ElMessage.warning('封面图片不能超过 2MB')
     coverUploadRef.value?.clearFiles()
     return

@@ -12,6 +12,7 @@ export default defineConfig({
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     globals: true,
     css: false,  // ignore CSS imports (element-plus theme-chalk etc.)
+    setupFiles: ['./test-setup.js'],  // R4: 全局安装 vue-i18n，修复 15 个 mount 测试的 "$t not defined" 错误
     server: {
       deps: {
         inline: ['element-plus'],

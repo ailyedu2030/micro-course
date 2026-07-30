@@ -21,74 +21,74 @@
   <!-- modelValue 是响应式对象，v-model 嵌套属性是 Element Plus 标准表单模式 -->
   <el-card class="search-card" shadow="never">
     <el-form :inline="true" :model="modelValue" @submit.prevent>
-      <el-form-item label="关键字">
+      <el-form-item :label="$t('userSearch.keyword')">
         <el-input
           v-model="modelValue.keyword"
-          placeholder="账号/姓名"
+          :placeholder="$t('userSearch.placeholder')"
           clearable
           class="filter-input"
           @clear="$emit('search')"
           @keyup.enter="$emit('search')"
         />
       </el-form-item>
-      <el-form-item label="角色">
+      <el-form-item :label="$t('userSearch.role')">
         <el-select
           v-model="modelValue.role"
-          placeholder="请选择"
+          :placeholder="$t('userSearch.pleaseSelect')"
           clearable
           class="filter-select"
-          @change="$emit('search')"
+          @change="debouncedEmit('search')"
         >
-          <el-option label="学生" value="STUDENT" />
-          <el-option label="教师" value="TEACHER" />
-          <el-option label="管理员" value="ADMIN" />
-          <el-option label="教务" value="ACADEMIC" />
+          <el-option :label="$t('userSearch.student')" value="STUDENT" />
+          <el-option :label="$t('userSearch.teacher')" value="TEACHER" />
+          <el-option :label="$t('userSearch.admin')" value="ADMIN" />
+          <el-option :label="$t('userSearch.academic')" value="ACADEMIC" />
         </el-select>
       </el-form-item>
-      <el-form-item label="状态">
+      <el-form-item :label="$t('userSearch.status')">
         <el-select
           v-model="modelValue.status"
-          placeholder="请选择"
+          :placeholder="$t('userSearch.pleaseSelect')"
           clearable
           class="filter-select"
-          @change="$emit('search')"
+          @change="debouncedEmit('search')"
         >
-          <el-option label="未激活" :value="0" />
-          <el-option label="启用" :value="1" />
-          <el-option label="禁用" :value="2" />
-          <el-option label="已删除" :value="3" />
+          <el-option :label="$t('userSearch.statusInactive')" :value="0" />
+          <el-option :label="$t('userSearch.statusActive')" :value="1" />
+          <el-option :label="$t('userSearch.statusDisabled')" :value="2" />
+          <el-option :label="$t('userSearch.statusDeleted')" :value="3" />
         </el-select>
       </el-form-item>
 
       <!-- 院系/专业/班级级联（可选） -->
       <template v-if="showDeptCascade">
-        <el-form-item label="院系">
+        <el-form-item :label="$t('userSearch.department')">
           <el-select
             v-model="modelValue.departmentId"
-            placeholder="请选择院系"
+            :placeholder="$t('userSearch.department')"
             clearable
             class="filter-select"
-            @change="$emit('department-change', modelValue.departmentId)"
+            @change="debouncedEmit('department-change', modelValue.departmentId)"
           >
             <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="专业">
+        <el-form-item :label="$t('userSearch.major')">
           <el-select
             v-model="modelValue.majorId"
-            placeholder="请选择专业"
+            :placeholder="$t('userSearch.major')"
             clearable
             class="filter-select"
             :disabled="!modelValue.departmentId"
-            @change="$emit('major-change', modelValue.majorId)"
+            @change="debouncedEmit('major-change', modelValue.majorId)"
           >
             <el-option v-for="m in majors" :key="m.id" :label="m.name" :value="m.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="班级">
+        <el-form-item :label="$t('userSearch.classLabel')">
           <el-select
             v-model="modelValue.classId"
-            placeholder="请选择班级"
+            :placeholder="$t('userSearch.classLabel')"
             clearable
             class="filter-select"
             :disabled="!modelValue.majorId"
@@ -99,15 +99,17 @@
       </template>
 
       <el-form-item>
-        <el-button type="primary" @click="$emit('search')">查询</el-button>
-        <el-button @click="$emit('reset')">重置</el-button>
+        <el-button type="primary" @click="$emit('search')">{{ $t('userSearch.query') }}</el-button>
+        <el-button @click="$emit('reset')">{{ $t('userSearch.reset') }}</el-button>
       </el-form-item>
     </el-form>
   </el-card>
 </template>
 
 <script setup>
-defineProps({
+import { ref, onUnmounted } from 'vue'
+
+const props = defineProps({
   modelValue: { type: Object, required: true },
   departments: { type: Array, default: () => [] },
   majors: { type: Array, default: () => [] },
@@ -115,10 +117,27 @@ defineProps({
   showDeptCascade: { type: Boolean, default: false }
 })
 
-defineEmits(['search', 'reset', 'department-change', 'major-change'])
+const emit = defineEmits(['search', 'reset', 'department-change', 'major-change'])
 
 // vue/no-mutating-props: modelValue 是响应式对象引用，
 // v-model 绑定嵌套属性是 Element Plus 表单的标准模式，父组件自动同步。
+
+// P1-UX: 筛选变更防抖 300ms，避免快速切换时重复触发 API
+let debounceTimer = null
+function debouncedEmit(event, ...args) {
+  if (debounceTimer) clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    emit(event, ...args)
+    debounceTimer = null
+  }, 300)
+}
+
+// 重写快捷 emit：select-change 走防抖
+const handleSelectChange = (event, ...args) => debouncedEmit(event, ...args)
+
+onUnmounted(() => {
+  if (debounceTimer) clearTimeout(debounceTimer)
+})
 </script>
 
 <style scoped>

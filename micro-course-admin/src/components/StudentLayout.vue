@@ -37,16 +37,25 @@
         class="icon-btn hamburger-btn"
         @click="hamburgerOpen = !hamburgerOpen"
         aria-label="菜单"
+        :aria-expanded="String(hamburgerOpen)"
       />
 
       <!-- P0-2: 1024px 以下汉堡菜单下拉 -->
       <transition name="slide-down">
-        <div v-if="hamburgerOpen && isTablet" class="hamburger-dropdown" @click="hamburgerOpen = false">
+        <div
+          v-if="hamburgerOpen && isTablet"
+          class="hamburger-dropdown"
+          role="menu"
+          aria-label="主导航菜单"
+          @click="hamburgerOpen = false"
+          @keydown.escape="closeHamburger"
+        >
           <router-link
             v-for="item in menuItems"
             :key="item.path"
             :to="item.path"
             class="hamburger-item"
+            role="menuitem"
             :class="{ 'is-active': isActive(item.path) }"
           >
             <el-icon :size="18"><component :is="item.icon" /></el-icon>
@@ -122,7 +131,7 @@
     </header>
 
     <!-- ====== 主体内容区 ====== -->
-    <main class="layout-main" :class="{ 'has-tabbar': isMobile }">
+    <main class="layout-main" :class="{ 'has-tabbar': isMobile }" :inert="hamburgerOpen && isTablet || undefined">
       <div class="layout-content">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
@@ -152,7 +161,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, markRaw } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, markRaw } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Grid, DataLine, Bell, User, Star, Setting, Reading, VideoPlay,
@@ -190,6 +199,33 @@ const router = useRouter()
 const isMobile = ref(window.innerWidth <= 768)
 const isTablet = ref(window.innerWidth <= 1024 && window.innerWidth > 768)
 const hamburgerOpen = ref(false)
+
+// P1-UX: 关闭汉堡菜单并将焦点归还按钮
+function closeHamburger() {
+  hamburgerOpen.value = false
+  nextTick(() => {
+    const btn = document.querySelector('.hamburger-btn')
+    if (btn) btn.focus()
+  })
+}
+
+// P1-UX: 汉堡菜单打开时焦点移入首项
+watch(hamburgerOpen, (open) => {
+  if (open && isTablet.value) {
+    nextTick(() => {
+      const firstItem = document.querySelector('.hamburger-dropdown .hamburger-item')
+      if (firstItem) firstItem.focus()
+    })
+  }
+})
+
+// P1-UX: 全局 Escape 关闭汉堡菜单
+function onGlobalKeydown(e) {
+  if (hamburgerOpen.value && isTablet.value && e.key === 'Escape') {
+    e.preventDefault()
+    closeHamburger()
+  }
+}
 let resizeRafId = null
 
 function onResize() {
@@ -203,9 +239,13 @@ function onResize() {
   })
 }
 
-onMounted(() => window.addEventListener('resize', onResize))
+onMounted(() => {
+  window.addEventListener('resize', onResize)
+  window.addEventListener('keydown', onGlobalKeydown)
+})
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', onGlobalKeydown)
   if (resizeRafId) cancelAnimationFrame(resizeRafId)
 })
 

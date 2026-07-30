@@ -21,7 +21,9 @@ export const useNotificationStore = defineStore('notification', {
     /** @private visibilitychange 回调引用 */
     _visibilityHandler: null,
     /** @private 轮询是否被 visibility 暂停 */
-    _pausedByVisibility: false
+    _pausedByVisibility: false,
+    /** @private 代际计数器：每次 start/stop 递增，_pollLoop 检查以阻止陈旧 timer */
+    _pollGeneration: 0
   }),
 
   actions: {
@@ -101,11 +103,14 @@ export const useNotificationStore = defineStore('notification', {
 
     /** 内部轮询循环 */
     async _pollLoop() {
+      const gen = this._pollGeneration
       if (!isAuthenticated()) {
         this.stopPolling()
         return
       }
       await this.fetchUnreadCount()
+      // 代际检查：如果 polling 已在 await 期间被 stop/restart，不再调度下一轮
+      if (gen !== this._pollGeneration) return
       const interval = this._getBackoffInterval()
       this.pollingTimer = setTimeout(() => this._pollLoop(), interval)
     },
@@ -152,12 +157,14 @@ export const useNotificationStore = defineStore('notification', {
       if (!isAuthenticated()) return
       this._baseInterval = intervalMs
       this._failCount = 0
+      this._pollGeneration++  // 递增代际，使当前 in-flight 的 _pollLoop 失效
       this._startVisibilityListener()
       this._startPollingInternal()
     },
 
     /** 公开 API：停止轮询（完全清理） */
     stopPolling() {
+      this._pollGeneration++  // 递增代际，使当前 in-flight 的 _pollLoop 失效
       this._stopPollingInternal()
       this._stopVisibilityListener()
       this._pausedByVisibility = false

@@ -44,6 +44,7 @@ export const useUserStore = defineStore('user', {
       }
     },
     async refreshAccessToken() {
+      if (!this.refreshToken) return null
       try {
         const res = await refreshTokenApi(this.refreshToken)
         const newToken = res.data.accessToken
@@ -53,10 +54,13 @@ export const useUserStore = defineStore('user', {
         this.token = newToken
         this.refreshToken = newRefreshToken
         return newToken
-      } catch {
-        // P1-I: 瞬态网络错误不攻击性清空全部 localStorage，
-        // 仅清空 token 让 router 守卫 next(false) 处理导航中断，
-        // 用户可手动刷新重试，而非直接被强制登出。
+      } catch (e) {
+        // P1-I: 瞬态网络错误/5xx 不攻击性清空 localStorage，
+        // 保留 token 让调用方决定是否重试，而非直接被强制登出。
+        if (!e?.response || e?.response?.status >= 500 || e?.code === 'ECONNABORTED') {
+          return null  // 保留 token，调用方重试
+        }
+        // 401/403: refresh token 失效，清理凭证
         removeToken()
         removeRefreshToken()
         this.token = ''

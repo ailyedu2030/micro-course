@@ -7,7 +7,7 @@
   <el-container class="layout-container">
     <!-- D3: 移动端遮罩层 -->
     <transition name="mobile-fade">
-      <div v-show="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" @keydown.escape="closeMobileMenu" tabindex="0" aria-hidden="true" />
+      <div v-show="isMobile && mobileMenuOpen" class="mobile-overlay" @click="closeMobileMenu" @keydown.escape="closeMobileMenu" tabindex="0" role="dialog" aria-label="关闭菜单" />
     </transition>
 
     <!-- 侧边栏 -->
@@ -42,7 +42,7 @@
       </el-menu>
     </el-aside>
 
-    <el-container class="layout-body">
+    <el-container class="layout-body" :aria-hidden="isMobile && mobileMenuOpen || undefined" :inert="isMobile && mobileMenuOpen || undefined">
       <!-- 顶部 Header -->
       <el-header class="layout-header" role="banner" aria-label="页面顶部栏">
         <!-- 左侧：折叠按钮 + 面包屑 + 移动端汉堡 -->
@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/store/user'
 import { useNotificationStore } from '@/store/notification'
@@ -228,10 +228,22 @@ function checkResponsive() {
 
 function handleMobileMenuToggle() {
   mobileMenuOpen.value = !mobileMenuOpen.value
+  // P1-UX: 移动端侧边栏打开时焦点移入菜单首项
+  if (mobileMenuOpen.value) {
+    nextTick(() => {
+      const firstMenuItem = document.querySelector('.layout-aside.is-mobile-open .el-menu-item')
+      if (firstMenuItem) firstMenuItem.focus()
+    })
+  }
 }
 
 function closeMobileMenu() {
   mobileMenuOpen.value = false
+  // 焦点回到汉堡按钮
+  nextTick(() => {
+    const hamburgerBtn = document.querySelector('.header-mobile-btn')
+    if (hamburgerBtn) hamburgerBtn.focus()
+  })
 }
 let resizeRafId = null
 function handleWindowResize() {

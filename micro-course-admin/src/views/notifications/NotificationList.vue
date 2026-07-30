@@ -19,12 +19,13 @@
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <!-- 类型过滤标签页 -->
-      <div class="type-filter-bar">
+      <div class="type-filter-bar" role="group" aria-label="通知类型过滤">
         <el-button
           v-for="tab in typeTabs"
           :key="tab.value"
           :type="typeFilter === tab.value ? 'primary' : 'default'"
           size="small"
+          :aria-pressed="typeFilter === tab.value"
           @click="handleTypeChange(tab.value)"
         >
 {{ tab.label }}
@@ -112,8 +113,9 @@
               v-if="!row.isRead"
               type="primary"
               link
-              size="small"
+              :size="isMobile ? 'default' : 'small'"
               @click.stop="handleMarkRead(row)"
+              class="mark-read-btn"
             >
 {{ $t('notification.markRead') }}
 </el-button>
@@ -572,6 +574,19 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* P1-UX: 移动端标记已读按钮最小触控 44×44px */
+.mark-read-btn {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.mark-read-btn:focus-visible {
+  outline: 2px solid var(--role-primary);
+  outline-offset: 2px;
 }
 
 @media (max-width: 768px) {
