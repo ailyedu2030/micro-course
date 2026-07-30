@@ -430,7 +430,7 @@ ok "测试 DB 已重置为干净状态"
 # ════════════════════════════════════════════════════════════════
 section "9. 质量门禁"
 
-PRECHECK_SCRIPT=".agents/skills/microcourse/scripts/precheck.sh"
+PRECHECK_SCRIPT=".claude/skills/microcourse/scripts/precheck.sh"
 if [ -f "$PRECHECK_SCRIPT" ]; then
   if bash "$PRECHECK_SCRIPT" > /tmp/precheck.out 2>&1; then
     ok "precheck 通过"

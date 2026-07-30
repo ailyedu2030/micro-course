@@ -26,13 +26,13 @@ ROOT = Path("/Users/jackie/微课平台")  # R5: hardcoded to avoid symlink/path
 
 # 映射表: references 路径 -> (真文档路径, 文档名称)
 MAPPING = [
-    (ROOT / ".agents/skills/microcourse/references/data-contract.md",
+    (ROOT / ".claude/skills/microcourse/references/data-contract.md",
      ROOT / "docs/数据字典.md",
      "数据字典"),
-    (ROOT / ".agents/skills/microcourse/references/api-contract.md",
+    (ROOT / ".claude/skills/microcourse/references/api-contract.md",
      ROOT / "docs/API契约-Phase1.md",
      "API契约"),
-    (ROOT / ".agents/skills/microcourse/references/permission-matrix.md",
+    (ROOT / ".claude/skills/microcourse/references/permission-matrix.md",
      ROOT / "docs/权限矩阵.md",
      "权限矩阵"),
 ]
@@ -120,7 +120,7 @@ def main() -> int:
             fail += 1
         print(f"  {status} {label}:")
         print(f"     真文档: docs/{doc_path.relative_to(ROOT / 'docs')} v{doc_v or '(未声明)'}")
-        print(f"     references: {ref_path.relative_to(ROOT / '.agents/skills/microcourse/references')} 声明 v{ref_v or '(未声明)'}")
+        print(f"     references: {ref_path.relative_to(ROOT / '.claude/skills/microcourse/references')} 声明 v{ref_v or '(未声明)'}")
         print()
     print("=" * 56)
     print(f"  fail={fail}, skip={skip}, mode={'STRICT' if strict else 'advisory'}")

@@ -23,7 +23,7 @@ echo "============================================"
 # Step 1: precheck
 echo ""
 echo "--- Step 1/4: precheck ---"
-if [ -f .agents/skills/microcourse/scripts/precheck.sh ] && bash .agents/skills/microcourse/scripts/precheck.sh 2>&1; then
+if [ -f .claude/skills/microcourse/scripts/precheck.sh ] && bash .claude/skills/microcourse/scripts/precheck.sh 2>&1; then
     echo "  ✅ precheck 通过"
     PASS=$((PASS+1))
 else

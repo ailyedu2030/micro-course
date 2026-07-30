@@ -279,7 +279,7 @@ section "7. 质量门禁"
 # 7.1 precheck
 # 强制 cd 到项目根 (避免前面 cd micro-course-api 后没回退)
 cd "$ROOT_DIR" 2>/dev/null || true
-PRECHECK_SCRIPT=".agents/skills/microcourse/scripts/precheck.sh"
+PRECHECK_SCRIPT=".claude/skills/microcourse/scripts/precheck.sh"
 if [ -f "$PRECHECK_SCRIPT" ]; then
   if bash "$PRECHECK_SCRIPT" > /tmp/precheck.out 2>&1; then
     log_pass "precheck 通过"

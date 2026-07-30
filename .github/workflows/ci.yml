@@ -68,7 +68,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Precheck (治理门禁)
-        run: bash .agents/skills/microcourse/scripts/precheck.sh
+        run: bash .claude/skills/microcourse/scripts/precheck.sh
 
       - name: Backend Test
         run: mvn -B verify
@@ -309,7 +309,7 @@ jobs:
         run: |
           python3 scripts/check-references-sync.py || {
             echo "❌ CI 阻断: references/ 与真文档版本号不一致"
-            echo "  修复: 同步 .agents/skills/microcourse/references/{data-contract,api-contract,permission-matrix}.md 的源文档版本号"
+            echo "  修复: 同步 .claude/skills/microcourse/references/{data-contract,api-contract,permission-matrix}.md 的源文档版本号"
             exit 1
           }
           echo "✅ references/ 与真文档版本号一致"
