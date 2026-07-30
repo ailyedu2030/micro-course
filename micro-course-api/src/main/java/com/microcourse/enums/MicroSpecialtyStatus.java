@@ -59,15 +59,16 @@ public enum MicroSpecialtyStatus {
     }
 
     /**
-     * ★ 业务逻辑审计 P2-2 修复：微专业主表状态机集中白名单。
+     * ★ 业务逻辑审计 P2-2 修复：微专业主表状态机集中白名单 + Phase14-reopen。
      * <p>对齐 docs/开发规划/phase14-micro-specialty-spec.md §2.1 状态机：</p>
      * <ul>
      *   <li>DRAFT → PENDING_REVIEW（LEAD 提交审核）</li>
      *   <li>PENDING_REVIEW → APPROVED / REJECTED（ACADEMIC 审批）</li>
-     *   <li>REJECTED → DRAFT / PENDING_REVIEW（重提）</li>
+     *   <li>REJECTED → DRAFT / PENDING_REVIEW（重提；DRAFT 为"修改后再提"预留路径，当前 submit API 使用 PENDING_REVIEW）</li>
      *   <li>APPROVED → RECRUITING（招生）</li>
      *   <li>RECRUITING → COMPLETED（结业）</li>
      *   <li>COMPLETED → ARCHIVED（归档）</li>
+     *   <li>COMPLETED / CANCELLED → APPROVED（reopen 重新开课，ACADEMIC/ADMIN 操作）</li>
      *   <li>任意 → CANCELLED（教务处强制）</li>
      *   <li>终态：CANCELLED / ARCHIVED</li>
      * </ul>
@@ -76,7 +77,7 @@ public enum MicroSpecialtyStatus {
         if (target == null || target == this) {
             return false;
         }
-        // CANCELLED 可从任何非终态转换
+        // CANCELLED 可从任何非终态转换（ARCHIVED 除外：更安全的隔离）
         if (target == CANCELLED) {
             return this != CANCELLED && this != ARCHIVED;
         }
@@ -92,8 +93,11 @@ public enum MicroSpecialtyStatus {
             case RECRUITING:
                 return target == COMPLETED;
             case COMPLETED:
-                return target == ARCHIVED;
-            case CANCELLED:  // 终态
+                // COMPLETED→ARCHIVED（归档） 或 COMPLETED→APPROVED（reopen）
+                return target == ARCHIVED || target == APPROVED;
+            case CANCELLED:
+                // CANCELLED→APPROVED（reopen）
+                return target == APPROVED;
             case ARCHIVED:   // 终态
             default:
                 return false;

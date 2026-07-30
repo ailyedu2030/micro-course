@@ -1,4 +1,4 @@
--- V165__fix_mst_unique_index.sql
+-- V168__fix_mst_unique_index.sql
 -- 【I-22修复】uk_mst_active 唯一索引含 nullable course_id
 --
 -- 【根因】PostgreSQL 对唯一索引中的 NULL 值视为互不相等，

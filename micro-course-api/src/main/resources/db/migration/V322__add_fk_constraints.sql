@@ -10,13 +10,23 @@
 -- 先添加 enrollment_id 列（V19 建表时遗漏）
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS enrollment_id BIGINT;
 
-ALTER TABLE certificates
-    ADD CONSTRAINT fk_certificates_enrollment
-    FOREIGN KEY (enrollment_id) REFERENCES enrollments(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_certificates_enrollment') THEN
+        ALTER TABLE certificates
+            ADD CONSTRAINT fk_certificates_enrollment
+            FOREIGN KEY (enrollment_id) REFERENCES enrollments(id);
+    END IF;
+END $$;
 
-ALTER TABLE certificates
-    ADD CONSTRAINT fk_certificates_user
-    FOREIGN KEY (user_id) REFERENCES users(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_certificates_user') THEN
+        ALTER TABLE certificates
+            ADD CONSTRAINT fk_certificates_user
+            FOREIGN KEY (user_id) REFERENCES users(id);
+    END IF;
+END $$;
 
 -- =============================================================================
 -- B2: discussion_comment_likes FK 约束
@@ -24,10 +34,20 @@ ALTER TABLE certificates
 --   user_id → users(id) 约束。
 -- =============================================================================
 
-ALTER TABLE discussion_comment_likes
-    ADD CONSTRAINT fk_dcl_comment
-    FOREIGN KEY (comment_id) REFERENCES discussion_comments(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_dcl_comment') THEN
+        ALTER TABLE discussion_comment_likes
+            ADD CONSTRAINT fk_dcl_comment
+            FOREIGN KEY (comment_id) REFERENCES discussion_comments(id);
+    END IF;
+END $$;
 
-ALTER TABLE discussion_comment_likes
-    ADD CONSTRAINT fk_dcl_user
-    FOREIGN KEY (user_id) REFERENCES users(id);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_dcl_user') THEN
+        ALTER TABLE discussion_comment_likes
+            ADD CONSTRAINT fk_dcl_user
+            FOREIGN KEY (user_id) REFERENCES users(id);
+    END IF;
+END $$;

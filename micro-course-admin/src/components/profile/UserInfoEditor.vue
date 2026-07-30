@@ -2,13 +2,14 @@
   基本资料编辑器（Round 11-3 从 Profile.vue 拆分）
   自包含表单逻辑：profileForm / 校验 / 提交
   通过 isMobile prop 还原 PC / 移动端的 label-width 与 size 差异
+  R4 修复: 所有 label/placeholder/message 走 i18n，英文用户也能用
   Author: jackie
 -->
 <template>
   <el-card class="profile-card" shadow="never">
     <template #header>
       <div class="card-header">
-        <span>基本资料</span>
+        <span>{{ $t('user.basicInfo') }}</span>
       </div>
     </template>
     <el-form
@@ -18,23 +19,23 @@
       :label-width="isMobile ? '70px' : '80px'"
       :size="isMobile ? 'small' : ''"
     >
-      <el-form-item label="用户名">
-        <el-input :model-value="userStore.userInfo?.username" disabled />
+      <el-form-item :label="$t('user.username')">
+        <el-input :model-value="userStore.userInfo?.username" disabled :aria-label="$t('user.username')" />
       </el-form-item>
-      <el-form-item label="姓名" prop="realName">
-        <el-input v-model="profileForm.realName" placeholder="请输入姓名" />
+      <el-form-item :label="$t('user.realName')" prop="realName">
+        <el-input v-model="profileForm.realName" :placeholder="$t('user.pleaseInputRealName')" :aria-label="$t('user.realName')" />
       </el-form-item>
-      <el-form-item label="邮箱" prop="email">
-        <el-input v-model="profileForm.email" placeholder="请输入邮箱" />
+      <el-form-item :label="$t('user.email')" prop="email">
+        <el-input v-model="profileForm.email" :placeholder="$t('user.pleaseInputEmail')" :aria-label="$t('user.email')" />
       </el-form-item>
-      <el-form-item label="手机号" prop="phone">
-        <el-input v-model="profileForm.phone" placeholder="请输入手机号" />
+      <el-form-item :label="$t('user.phone')" prop="phone">
+        <el-input v-model="profileForm.phone" :placeholder="$t('user.pleaseInputPhone')" :aria-label="$t('user.phone')" />
       </el-form-item>
-      <el-form-item label="性别" prop="gender">
-        <el-select v-model="profileForm.gender" placeholder="请选择性别">
-          <el-option label="保密" value="SECRET" />
-          <el-option label="男" value="MALE" />
-          <el-option label="女" value="FEMALE" />
+      <el-form-item :label="$t('user.gender')" prop="gender">
+        <el-select v-model="profileForm.gender" :placeholder="$t('user.pleaseSelectGender')" :aria-label="$t('user.gender')">
+          <el-option :label="$t('user.genderSecret')" value="SECRET" />
+          <el-option :label="$t('user.genderMale')" value="MALE" />
+          <el-option :label="$t('user.genderFemale')" value="FEMALE" />
         </el-select>
       </el-form-item>
       <el-form-item>
@@ -44,7 +45,7 @@
           :loading="profileLoading"
           :size="isMobile ? 'default' : ''"
         >
-          保存修改
+          {{ $t('user.saveChanges') }}
         </el-button>
       </el-form-item>
     </el-form>
@@ -54,8 +55,11 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/store/user'
 import { updateProfile } from '@/api/auth'
+
+const { t } = useI18n()
 
 defineProps({
   isMobile: {
@@ -78,13 +82,13 @@ const profileForm = ref({
 
 const profileRules = {
   realName: [
-    { required: true, message: '请输入姓名', trigger: 'blur' }
+    { required: true, message: () => t('user.pleaseInputRealName'), trigger: 'blur' }
   ],
   email: [
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+    { type: 'email', message: () => t('user.pleaseInputValidEmail'), trigger: 'blur' }
   ],
   phone: [
-    { pattern: /^\+?[1-9]\d{4,14}$/, message: '请输入正确的手机号（国际格式，5-15位数字）', trigger: 'blur' }
+    { pattern: /^\+?[1-9]\d{4,14}$/, message: () => t('user.pleaseInputValidPhone'), trigger: 'blur' }
   ]
 }
 
@@ -120,10 +124,10 @@ const handleUpdateProfile = async () => {
     // 修复: getInfo 失败时明确告知用户,避免数据不一致错觉
     try {
       await userStore.getInfo()
-      ElMessage.success('资料更新成功')
+      ElMessage.success(t('user.profileUpdateSuccess'))
     } catch (refreshErr) {
       console.warn('[Profile] 后端已更新但本地刷新失败', refreshErr)
-      ElMessage.warning('资料已保存,但页面需手动刷新才能看到最新信息')
+      ElMessage.warning(t('user.profileUpdateNeedRefresh'))
       // 强制刷新页面,确保用户看到一致数据
       setTimeout(() => window.location.reload(), 1500)
     }
