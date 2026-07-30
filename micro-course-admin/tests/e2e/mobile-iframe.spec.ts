@@ -29,7 +29,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // ──────────────────────────────────────────────
 async function loginAsStudent(page: Page) {
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 10000 });
+  await page.waitForSelector('#username', { timeout: 20000 });
   await page.fill('#username', 'student');
   await page.fill('#password', 'student123');
   const loginBtn = page.locator('.login-btn');
