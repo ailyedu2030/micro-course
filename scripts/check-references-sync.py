@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-ROOT = Path("/Users/jackie/微课平台")  # R5: hardcoded to avoid symlink/path issues
+ROOT = Path(__file__).resolve().parent.parent  # R5: hardcoded to avoid symlink/path issues
 
 # 映射表: references 路径 -> (真文档路径, 文档名称)
 MAPPING = [

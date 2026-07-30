@@ -29,26 +29,40 @@ case "${1:-check}" in
     echo "🔒 生产门禁已关闭"
     ;;
   status)
-    if [ -f "$GATE_PATH" ]; then
-      open_ts=$(cat "$GATE_PATH")
-      now=$(date +%s)
-      elapsed=$(( (now - open_ts) / 60 ))
-      remaining=$(( GATE_TTL - elapsed ))
-      if [ $remaining -gt 0 ]; then
-        echo "✅ 门禁状态: 开启 (已开 ${elapsed}m, 剩余 ${remaining}m)"
-        echo "   开门时间: $(date -r "$open_ts" '+%Y-%m-%d %H:%M:%S')"
-      else
-        echo "❌ 门禁状态: 已过期 (已开 ${elapsed}m, 超时 $(( elapsed - GATE_TTL ))m)"
-        rm -f "$GATE_PATH"
-        exit 1
-      fi
-    else
+    if [ ! -f "$GATE_PATH" ]; then
       echo "🔒 门禁状态: 关闭"
       echo ""
       echo "   请先运行: bash scripts/local-dev-deploy.sh"
       echo "   全部 PASS 后门禁自动打开，方可操作生产"
       exit 1
     fi
+    open_ts=$(cat "$GATE_PATH")
+    now=$(date +%s)
+    elapsed=$(( (now - open_ts) / 60 ))
+    remaining=$(( GATE_TTL - elapsed ))
+    if [ $remaining -gt 0 ]; then
+      echo "✅ 门禁状态: 开启 (已开 ${elapsed}m, 剩余 ${remaining}m)"
+      echo "   开门时间: $(date -r "$open_ts" '+%Y-%m-%d %H:%M:%S')"
+    else
+      echo "❌ 门禁状态: 已过期 (已开 ${elapsed}m, 超时 $(( elapsed - GATE_TTL ))m)"
+      rm -f "$GATE_PATH"
+      exit 1
+    fi
+    # R5: 部署前验证 CHANGE_ME 占位符
+    echo ""
+    echo "   ── 部署密钥占位符检查 (R5) ──"
+    if bash scripts/verify-secrets.sh --strict > /tmp/verify-secrets.out 2>&1; then
+      echo "   ✅ 部署密钥占位符检查通过"
+    else
+      echo "   ❌ 部署密钥占位符检查失败 — 阻断部署"
+      cat /tmp/verify-secrets.out | tail -20
+      rm -f /tmp/verify-secrets.out
+      echo "   ────────────────────────────"
+      echo "   请修复后重新开门: bash scripts/local-dev-deploy.sh"
+      exit 1
+    fi
+    rm -f /tmp/verify-secrets.out
+    echo "   ────────────────────────────"
     ;;
   check)
     if [ ! -f "$GATE_PATH" ]; then
@@ -73,6 +87,21 @@ case "${1:-check}" in
       exit 1
     fi
     echo "✅ [门禁] 门禁有效 (已开 ${elapsed}m, 剩余 $(( GATE_TTL - elapsed ))m)"
+    # R5: 部署前验证 CHANGE_ME 占位符
+    echo ""
+    echo "   ── 部署密钥占位符检查 (R5) ──"
+    if bash scripts/verify-secrets.sh --strict > /tmp/verify-secrets.out 2>&1; then
+      echo "   ✅ 部署密钥占位符检查通过"
+    else
+      echo "   ❌ 部署密钥占位符检查失败 — 阻断部署"
+      cat /tmp/verify-secrets.out | tail -20
+      rm -f /tmp/verify-secrets.out
+      echo "   ────────────────────────────"
+      echo "   请修复后重新开门: bash scripts/local-dev-deploy.sh"
+      exit 1
+    fi
+    rm -f /tmp/verify-secrets.out
+    echo "   ────────────────────────────"
     exit 0
     ;;
   *)

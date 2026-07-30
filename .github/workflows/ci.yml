@@ -16,6 +16,7 @@ jobs:
   # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:17-alpine
@@ -82,6 +83,7 @@ jobs:
   # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -104,6 +106,7 @@ jobs:
   e2e:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:17-alpine
@@ -239,6 +242,7 @@ jobs:
   docker:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -254,6 +258,7 @@ jobs:
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -279,37 +284,35 @@ jobs:
             echo "✅ $f — valid"
           done
 
-  # R5 治理: 部署密钥占位符检查 — 阻断未替换的 CHANGE_ME 进入生产
-  # 设计: 默认 advisory (开发环境可用占位符)，--strict 模式 (CI 部署门禁) 阻断
-  # 真实生产部署应在 deploy-gate.sh 中调用此脚本 --strict
+  # R5 治理: 部署密钥占位符检查 — PR 阶段 advisory，部署前 deploy-gate.sh --strict 阻断
+  # 设计: --ci 模式 (同 default advisory) 不阻断 PR 合并；
+  #       生产部署在 deploy-gate.sh 中调用 --strict 做硬阻断
   secrets-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify no CHANGE_ME placeholders in secrets (strict)
+      - name: Verify no CHANGE_ME placeholders in secrets (advisory)
         run: |
-          bash scripts/verify-secrets.sh --strict || {
-            echo "❌ CI 阻断: 部署密钥存在占位符，必须在部署前替换"
-            echo "  修复: 更新 monitoring/alertmanager/alertmanager.yml 的 Slack/PagerDuty/SMTP 占位符"
-            echo "  或更新 micro-course-api/src/main/resources/application.yml 的 REDIS_PASSWORD / JWT_SECRET / PAYMENT_CALLBACK_SECRET 默认值"
-            exit 1
+          bash scripts/verify-secrets.sh --ci || {
+            echo "⚠️  advisory: 部署密钥存在占位符，建议部署前替换"
+            echo "  部署门禁: bash scripts/verify-secrets.sh --strict"
+            exit 0  # advisory 永不阻断 CI
           }
-          echo "✅ 所有部署密钥占位符已替换 (或非生产环境)"
 
   # R5 治理: references 同步 CI gate — 防 R2 报告 P2 漂移再发
+  # check-references-sync.py 默认 advisory 模式 (exit 0 不阻断)
+  # 通过 --strict 可硬阻断，用于部署前验证
   references-sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Check references/ matches 真文档版本号
+      - name: Check references/ matches 真文档版本号 (advisory)
         run: |
-          python3 scripts/check-references-sync.py || {
-            echo "❌ CI 阻断: references/ 与真文档版本号不一致"
-            echo "  修复: 同步 .claude/skills/microcourse/references/{data-contract,api-contract,permission-matrix}.md 的源文档版本号"
-            exit 1
-          }
-          echo "✅ references/ 与真文档版本号一致"
+          python3 scripts/check-references-sync.py
+          echo "✅ references-sync 完成 (advisory 模式 — 漂移 warning 不阻断 CI)"

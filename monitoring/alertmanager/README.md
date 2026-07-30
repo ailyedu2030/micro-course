@@ -7,15 +7,28 @@
 
 ## 部署前必做
 
-### 1. 替换占位符
+### 1. 配置环境变量
 
-`alertmanager.yml` 包含 8 处 `CHANGE_ME_*` 占位符，**部署前必须全部替换**：
+Alertmanager **原生不支持** `alertmanager.yml` 内的环境变量展开。
+本项目通过 `entrypoint.sh` 在容器启动时用 `sed` 替换占位符。
 
-| 占位符 | 位置 | 替换为 | 获取方式 |
-|--------|------|--------|---------|
-| `CHANGE_ME_BEFORE_DEPLOY` | smtp_auth_password | SMTP 真实密码 | 运维管理 |
-| `CHANGE_ME_SLACK` (×5) | slack_configs[*].api_url | Slack Webhook URL | Slack App → Incoming Webhooks |
-| `CHANGE_ME_PAGERDUTY` | pagerduty_configs.service_key | PagerDuty 集成密钥 | PagerDuty → Developer Tools → Service Directories |
+```bash
+# 1. 复制环境变量模板
+cp monitoring/alertmanager/alerts.env.example alerts.env
+
+# 2. 编辑 alerts.env 填入真实值
+#    需要 3 个环境变量:
+#    - SLACK_WEBHOOK_URL: Slack Webhook URL
+#    - PAGERDUTY_SERVICE_KEY: PagerDuty 集成密钥 (Events API v2)
+#    - SMTP_PASSWORD: SMTP 密码
+
+# 3. 部署
+docker compose up -d alertmanager
+
+# 4. 验证
+bash scripts/verify-secrets.sh --strict
+# 应显示: ✅ 未发现 CHANGE_ME / 占位符
+```
 
 ### 2. 配置文件验证
 
@@ -26,39 +39,26 @@ amtool check-config alertmanager.yml
 # 预期输出: "SUCCESS: 0 errors, 0 warnings"
 ```
 
-### 3. 生产环境变量注入
+### 3. 生产环境变量注入机制
 
-Alertmanager **不支持** `alertmanager.yml` 内的环境变量展开。生产部署建议：
+| 环境变量 | 占位符 | 替换位置 | 用途 |
+|---------|--------|---------|------|
+| `SLACK_WEBHOOK_URL` | `CHANGE_ME_SLACK` (×4) | default-receiver, p0-oncall, p1-oncall, p2-summary | Slack 通知 |
+| `PAGERDUTY_SERVICE_KEY` | `CHANGE_ME_PAGERDUTY` (×1) | p0-oncall | PagerDuty P0 告警 |
+| `SMTP_PASSWORD` | `CHANGE_ME_BEFORE_DEPLOY` (×1) | global | SMTP 邮件通知 |
 
-#### 方案 A: 部署脚本替换（推荐）
-```bash
-# deploy.sh 中使用 sed 替换占位符为真实值
-sed -i "s|CHANGE_ME_SLACK|${SLACK_WEBHOOK_URL}|g" alertmanager.yml
-sed -i "s|CHANGE_ME_BEFORE_DEPLOY|${SMTP_PASSWORD}|g" alertmanager.yml
-sed -i "s|CHANGE_ME_PAGERDUTY|${PAGERDUTY_SERVICE_KEY}|g" alertmanager.yml
+注入流程:
+```
+容器启动
+  ↓
+entrypoint.sh 读取环境变量
+  ↓
+sed 替换 /etc/alertmanager/alertmanager.yml 中的占位符
+  ↓
+exec /bin/alertmanager --config.file=...
 ```
 
-#### 方案 B: ConfigMap/Secret 注入（K8s 环境）
-```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: alertmanager-secrets
-stringData:
-  alertmanager.yml: |
-    # 完整 alertmanager.yml 内容，已替换真实值
-```
-
-#### 方案 C: Docker Compose volume 挂载
-```yaml
-services:
-  alertmanager:
-    image: prom/alertmanager:v0.27.0
-    volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-    command:
-      - --config.file=/etc/alertmanager/alertmanager.yml
-```
+如果某个环境变量未设置，对应占位符保持不动。Alertmanager 启动后日志会显示 `smtp_auth_password` 使用了 CHANGE_ME，但不会崩溃（只是邮件通知失败）。`verify-secrets.sh --strict` 会在 CI 门禁处阻断部署。
 
 ### 4. 门禁检查
 
@@ -72,7 +72,7 @@ bash scripts/verify-secrets.sh --strict
 
 ## 路由规则
 
-| 严重度 | Receiver | Slack Channel | PagerDuty | 响应时间 |
+| 优先级 | Receiver | Slack Channel | PagerDuty | 响应时间 |
 |--------|----------|---------------|-----------|---------|
 | P0 | p0-oncall | #incident | ✅ 触发 | 15 分钟 |
 | P1 | p1-oncall | #alerts | ❌ | 1 小时 |
@@ -85,7 +85,7 @@ bash scripts/verify-secrets.sh --strict
 
 当前配置的抑制规则：
 - `ApiDown` P0 告警抑制同 job 的所有 warning 级别告警（避免雪崩通知）
-- `HikariPoolExhausted` P0 告警抑制同 job 的 `PostgresActiveConnectionsHigh` 告警
+- `HikariPoolExhausted` 告警抑制同 job 的 `PostgresActiveConnectionsHigh` 告警
 
 ---
 
@@ -114,9 +114,10 @@ amtool alert list --alertmanager.url=http://localhost:9093
 
 ### 排查 Slack 通知失败
 
-1. 验证 `api_url` 格式正确: `https://hooks.slack.com/services/Txxx/Bxxx/xxxx`
-2. 检查 Alertmanager 日志: `docker logs micro-course-alertmanager-1 | grep -i slack`
-3. 使用 curl 测试 Webhook: `curl -X POST -H 'Content-Type: application/json' -d '{"text":"Hello"}' <SLACK_WEBHOOK_URL>`
+1. 确认 `SLACK_WEBHOOK_URL` 环境变量已设置: `docker inspect micro-course-alertmanager | grep SLACK_WEBHOOK`
+2. 检查 entrypoint 日志: `docker logs micro-course-alertmanager | grep entrypoint`
+3. 检查 Alertmanager 日志: `docker logs micro-course-alertmanager | grep -i slack`
+4. 使用 curl 测试 Webhook: `curl -X POST -H 'Content-Type: application/json' -d '{"text":"Hello"}' <SLACK_WEBHOOK_URL>`
 
 ---
 
@@ -124,5 +125,6 @@ amtool alert list --alertmanager.url=http://localhost:9093
 
 - 告警运维 SOP: `docs/operations/ALERT_SOP.md`
 - 部署门禁: `scripts/verify-secrets.sh`
+- 环境变量模板: `monitoring/alertmanager/alerts.env.example`
 - Prometheus 告警规则: `monitoring/prometheus/alerts.yml`
 - Grafana 面板: `monitoring/grafana/dashboards/`

@@ -128,7 +128,7 @@ services:
     restart: unless-stopped
 
   # ═══════════════════════════════════════════════════════════════
-  # W31 治理: Prometheus + Grafana 监控栈
+  # W31 治理: Prometheus + Grafana + Alertmanager 监控告警栈
   # ═══════════════════════════════════════════════════════════════
   prometheus:
     image: prom/prometheus:v2.55.0
@@ -180,6 +180,36 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════════
+  # Alertmanager — 告警通知路由（替换 CHANGE_ME 前不会生效）
+  # 环境变量: 见 monitoring/alertmanager/alerts.env.example
+  # ═══════════════════════════════════════════════════════════════
+  alertmanager:
+    build:
+      context: ./monitoring/alertmanager
+      dockerfile: Dockerfile
+    container_name: micro-course-alertmanager
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    environment:
+      # 以下环境变量由部署脚本或 .env 文件注入
+      # 未设置时 alertmanager 使用 CHANGE_ME 占位符（会被 verify-secrets.sh 阻断）
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      PAGERDUTY_SERVICE_KEY: ${PAGERDUTY_SERVICE_KEY:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+    ports:
+      - "9093:9093"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9093/-/healthy"]
       interval: 30s
       timeout: 10s
       retries: 3

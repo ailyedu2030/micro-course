@@ -43,9 +43,9 @@ curl -X POST http://localhost:8089/api/auth/login -H "Content-Type: application/
 
 ---
 
-## 2. 部署密钥替换 (12 处 CHANGE_ME)
+## 2. 部署密钥替换 (9 处 CHANGE_ME)
 
-`verify-secrets.sh --strict` 检测到 12 处占位符, **必须**在生产部署前替换。
+`verify-secrets.sh --strict` 检测到 9 处占位符 (alertmanager.yml 6 处 + application.yml 3 处), **必须**在生产部署前替换。
 
 ### 2.1 应用密钥 (application.yml 3 处)
 ```bash
@@ -63,22 +63,23 @@ java -jar target/micro-course-api-1.0.0.jar \
   --payment.callback-secret="${PAYMENT_CALLBACK_SECRET}"
 ```
 
-### 2.2 监控告警 (alertmanager.yml 5 处)
+### 2.2 监控告警 (alertmanager.yml 6 处)
 ```bash
-# Slack webhook
+# 方法 A（推荐）: 通过 .env 文件注入
+# 复制 alerts.env.example 并填入真实值:
+cp monitoring/alertmanager/alerts.env.example alerts.env
+# 编辑 alerts.env 填入真实 webhook URL / API key / 密码
+# 然后 docker compose 会自动载入:
+#   docker compose up -d alertmanager
+#  entrypoint.sh 会在启动时自动替换 CHANGE_ME 占位符
+
+# 方法 B: 直接设置环境变量
 export SLACK_WEBHOOK_URL="https://hooks.slack.com/services/T1234/B5678/abcdefghijkl"
-
-# PagerDuty integration key
 export PAGERDUTY_SERVICE_KEY="<PagerDuty Events API v2 integration key>"
-
-# SMTP 密码 (Gmail/Office 365/自建)
 export SMTP_PASSWORD="<SMTP auth password 或 App Password>"
 
-# 部署 alertmanager 时挂载这些 env
-docker run -d --name alertmanager \
-  -e SLACK_WEBHOOK_URL -e PAGERDUTY_SERVICE_KEY -e SMTP_PASSWORD \
-  -v /opt/micro-course/alertmanager.yml:/etc/alertmanager/alertmanager.yml \
-  -p 9093:9093 prom/alertmanager:v0.27.0
+# 部署 alertmanager（entrypoint.sh 自动替换占位符）
+docker compose up -d alertmanager
 ```
 
 ### 2.3 验证替换
@@ -104,7 +105,7 @@ git push origin main
 #    - docker build (含 docker compose build)
 #    - e2e test (含 Playwright)
 #    - monitoring-lint (含 promtool + amtool)
-#    - secrets-check (verify-secrets.sh --strict, 12 占位符应已替换)
+#    - secrets-check (verify-secrets.sh --strict, 9 占位符应已替换)
 #    - references-sync (check-references-sync.py, 应过)
 # 期望: 5/5 门禁 + 2/2 新增 job 全 PASS
 
@@ -144,7 +145,7 @@ bash scripts/gray-release.sh roll-out
 ### 4.1 立即验证
 ```bash
 # 后端 health
-curl -I https://microcourse.ailyedu.cn/api/actuator/health    # 应: 200
+curl -I https://microcourse.ailyedu.cn/actuator/health    # 应: 200
 
 # admin 真登录
 curl -X POST https://microcourse.ailyedu.cn/api/auth/login \
@@ -194,7 +195,7 @@ curl -I https://microcourse.ailyedu.cn/student/courses        # 应: 200
 ## 7. 常见问题
 
 ### Q: verify-secrets.sh 报 12 处占位符但生产是真有 alertmanager 和 slack 怎么破?
-A: verify-secrets.sh 检测 12 处是设计意图, strict 模式在 CI 部署门禁阻断. 生产部署前必须按 §2 替换 5 处 + 3 处应用密钥. 替换后重跑应显示 0 占位符 (除了注释里的字面量 "CHANGE_ME").
+A: verify-secrets.sh 检测 9 处是设计意图（alertmanager.yml 6 处 + application.yml 3 处），strict 模式在 CI 部署门禁阻断。生产部署前必须按 §2 替换 6 处 + 3 处应用密钥。替换后重跑应显示 0 占位符（除非个别 env 未设置导致 entrypoint.sh 未替换）。
 
 ### Q: 部署后 5xx 错误率突然上升怎么办?
 A: 见 ROLLBACK_PLAN.md 5 分钟回滚. 5 步:

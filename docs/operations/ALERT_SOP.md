@@ -253,7 +253,7 @@ LIMIT 20;
 **检查**:
 ```bash
 # 健康检查
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/api/actuator/health
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8088/admin/dashboard
 
 # 检查容器
