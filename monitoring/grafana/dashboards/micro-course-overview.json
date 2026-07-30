@@ -103,7 +103,7 @@
       "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 },
       "targets": [
         {
-          "expr": "pg_stat_activity_count",
+          "expr": "pg_stat_database_numbackends",
           "legendFormat": "active connections",
           "refId": "A"
         },

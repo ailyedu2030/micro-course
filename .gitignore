@@ -143,3 +143,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# unplugin-vue-components 自动生成的 type definitions (R7)
+micro-course-admin/auto-imports.d.ts
+micro-course-admin/components.d.ts

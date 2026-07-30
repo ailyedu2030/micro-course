@@ -4,12 +4,25 @@
 # 部署后立即运行，验证核心流程是否正常
 #
 # 使用方式: bash SMOKE_TEST.sh
-#
+#   安全约束:
+#     - 默认仅允许 localhost/127.0.0.1 地址
+#     - 注册测试账号需要显式设置 ALLOW_TEST_DATA=1
+#     - 非本地 BASE_URL 立即退出
 
-set -e
+set -euo pipefail
 
-API="http://localhost:8080/api"
-ADMIN_API="http://localhost:8080/api/admin"
+# ─── 安全门禁 ──────────────────────────────────────
+# 从环境变量或默认值获取 BASE_URL，但只允许本地地址
+BASE_URL="${BASE_URL:-http://localhost:8080}"
+if ! echo "$BASE_URL" | grep -qE '^https?://(localhost|127\.0\.0\.1)([:\?/]|$)'; then
+  echo "❌ [安全门禁] BASE_URL=$BASE_URL 不是本地地址！"
+  echo "   SMOKE_TEST.sh 仅允许 localhost/127.0.0.1，防止向未知环境写入测试数据。"
+  echo "   如确需非本地测试，请手动编辑 BASE_URL 并确认目标环境安全。"
+  exit 1
+fi
+
+API="${BASE_URL}/api"
+ADMIN_API="${BASE_URL}/api/admin"
 
 echo "=========================================="
 echo "  微课平台冒烟测试"
@@ -52,19 +65,26 @@ fi
 # ------------------------------------------------------------------------------
 echo ""
 echo "[2/10] 学生注册..."
-REGISTER_RESP=$(curl -s -X POST "$API/auth/register" \
-    -H "Content-Type: application/json" \
-    -d '{"username":"smoke_test_student","password":"Test123456","realName":"冒烟测试学生","studentNo":"SMOKE001","role":"STUDENT"}')
-REGISTER_CODE=$(echo "$REGISTER_RESP" | grep -o '"code":[0-9]*' | grep -o '[0-9]*' | head -1)
-if [ "$REGISTER_CODE" = "200" ] || [ "$REGISTER_CODE" = "201" ]; then
-    echo "  (新用户注册成功)"
-    check "学生注册" 0
-elif echo "$REGISTER_RESP" | grep -q "already"; then
-    echo "  (用户已存在，跳过注册)"
-    check "学生注册(已存在)" 0
+# 安全门禁: 注册测试账号需要显式 ALLOW_TEST_DATA=1
+if [ "${ALLOW_TEST_DATA:-0}" != "1" ]; then
+    echo "  ⚠ [安全门禁] 跳过注册 — 设置 ALLOW_TEST_DATA=1 允许向本地数据库写入测试账号"
+    echo "  (将使用预置 seed 账号继续测试)"
+    check "学生注册(跳过)" 0
 else
-    echo "  响应: $REGISTER_RESP"
-    check "学生注册" 1
+    REGISTER_RESP=$(curl -s -X POST "$API/auth/register" \
+        -H "Content-Type: application/json" \
+        -d '{"username":"smoke_test_student","password":"Test123456","realName":"冒烟测试学生","studentNo":"SMOKE001","role":"STUDENT"}')
+    REGISTER_CODE=$(echo "$REGISTER_RESP" | grep -o '"code":[0-9]*' | grep -o '[0-9]*' | head -1)
+    if [ "$REGISTER_CODE" = "200" ] || [ "$REGISTER_CODE" = "201" ]; then
+        echo "  (新用户注册成功)"
+        check "学生注册" 0
+    elif echo "$REGISTER_RESP" | grep -q "already"; then
+        echo "  (用户已存在，跳过注册)"
+        check "学生注册(已存在)" 0
+    else
+        echo "  响应: $REGISTER_RESP"
+        check "学生注册" 1
+    fi
 fi
 
 # ------------------------------------------------------------------------------
@@ -166,10 +186,14 @@ fi
 echo ""
 echo "[9/10] 教师登录..."
 
-# 注册教师（如果不存在）
+# 注册教师（如果不存在，需 ALLOW_TEST_DATA=1）
+if [ "${ALLOW_TEST_DATA:-0}" = "1" ]; then
 TEACHER_REG=$(curl -s -X POST "$API/auth/register" \
     -H "Content-Type: application/json" \
     -d '{"username":"smoke_test_teacher","password":"Test123456","realName":"冒烟测试教师","role":"TEACHER"}')
+else
+    TEACHER_REG='{"code":200,"message":"skip"}'
+fi
 
 TEACHER_LOGIN=$(curl -s -X POST "$API/auth/login" \
     -H "Content-Type: application/json" \
@@ -189,10 +213,14 @@ fi
 echo ""
 echo "[10/10] 管理员登录..."
 
-# 注册管理员（如果不存在）
+# 注册管理员（如果不存在，需 ALLOW_TEST_DATA=1）
+if [ "${ALLOW_TEST_DATA:-0}" = "1" ]; then
 ADMIN_REG=$(curl -s -X POST "$API/auth/register" \
     -H "Content-Type: application/json" \
     -d '{"username":"smoke_test_admin","password":"Test123456","realName":"冒烟测试管理员","role":"ADMIN"}')
+else
+    ADMIN_REG='{"code":200,"message":"skip"}'
+fi
 
 ADMIN_LOGIN=$(curl -s -X POST "$API/auth/login" \
     -H "Content-Type: application/json" \

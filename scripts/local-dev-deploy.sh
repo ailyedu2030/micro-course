@@ -430,11 +430,16 @@ ok "测试 DB 已重置为干净状态"
 # ════════════════════════════════════════════════════════════════
 section "9. 质量门禁"
 
-if bash .claude/skills/microcourse/scripts/precheck.sh > /tmp/precheck.out 2>&1; then
-  ok "precheck 通过"
+PRECHECK_SCRIPT=".agents/skills/microcourse/scripts/precheck.sh"
+if [ -f "$PRECHECK_SCRIPT" ]; then
+  if bash "$PRECHECK_SCRIPT" > /tmp/precheck.out 2>&1; then
+    ok "precheck 通过"
+  else
+    fail "precheck 失败"
+    cat /tmp/precheck.out | tail -10
+  fi
 else
-  fail "precheck 失败"
-  cat /tmp/precheck.out | tail -10
+  fail "precheck 脚本不存在 ($PRECHECK_SCRIPT)"
 fi
 
 (cd micro-course-admin && npx eslint src/components/storage/DatePickerYM.vue src/views/teacher/MicroSpecialtyProposal.vue 2>&1) && \

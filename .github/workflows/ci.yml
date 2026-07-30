@@ -67,6 +67,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Precheck (治理门禁)
+        run: bash .agents/skills/microcourse/scripts/precheck.sh
+
       - name: Backend Test
         run: mvn -B verify
         working-directory: ./micro-course-api
@@ -242,8 +245,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker (pull base images if available otherwise use cached)
-        run: docker compose pull --ignore-pull-failures 2>&1 || true; docker compose build
+      - name: Pull base images (non-blocking)
+        run: docker compose pull --ignore-pull-failures 2>&1 || true
+
+      - name: Build Docker images
+        run: docker compose build
 
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
@@ -272,3 +278,38 @@ jobs:
             jq -e '.title and .uid and .panels' "$f" > /dev/null || (echo "❌ Missing required fields in $f" && exit 1)
             echo "✅ $f — valid"
           done
+
+  # R5 治理: 部署密钥占位符检查 — 阻断未替换的 CHANGE_ME 进入生产
+  # 设计: 默认 advisory (开发环境可用占位符)，--strict 模式 (CI 部署门禁) 阻断
+  # 真实生产部署应在 deploy-gate.sh 中调用此脚本 --strict
+  secrets-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify no CHANGE_ME placeholders in secrets (strict)
+        run: |
+          bash scripts/verify-secrets.sh --strict || {
+            echo "❌ CI 阻断: 部署密钥存在占位符，必须在部署前替换"
+            echo "  修复: 更新 monitoring/alertmanager/alertmanager.yml 的 Slack/PagerDuty/SMTP 占位符"
+            echo "  或更新 micro-course-api/src/main/resources/application.yml 的 REDIS_PASSWORD / JWT_SECRET / PAYMENT_CALLBACK_SECRET 默认值"
+            exit 1
+          }
+          echo "✅ 所有部署密钥占位符已替换 (或非生产环境)"
+
+  # R5 治理: references 同步 CI gate — 防 R2 报告 P2 漂移再发
+  references-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check references/ matches 真文档版本号
+        run: |
+          python3 scripts/check-references-sync.py || {
+            echo "❌ CI 阻断: references/ 与真文档版本号不一致"
+            echo "  修复: 同步 .agents/skills/microcourse/references/{data-contract,api-contract,permission-matrix}.md 的源文档版本号"
+            exit 1
+          }
+          echo "✅ references/ 与真文档版本号一致"
