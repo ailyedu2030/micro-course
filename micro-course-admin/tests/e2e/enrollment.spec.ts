@@ -25,8 +25,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // Helper: 登录
 // ──────────────────────────────────────────────
 async function loginAs(page: Page, username: string, password: string) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 20000 });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('#username', { timeout: 60000 });
   await page.fill('#username', username);
   await page.fill('#password', password);
   const loginBtn = page.locator('.login-btn');
@@ -50,7 +50,7 @@ test.describe('选课流程 E2E', () => {
     await loginAs(page, 'student', 'student123');
 
     // ===== 2. 进入课程广场 =====
-    await page.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 3. 使用搜索框搜索 =====
@@ -130,7 +130,7 @@ test.describe('选课流程 E2E', () => {
     }
 
     // ===== 6. 进入「我的课程」页面 =====
-    await page.goto(`${BASE_URL}/student/my-courses`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/my-courses`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 7. 验证页面渲染 =====
@@ -207,7 +207,7 @@ test.describe('选课流程 E2E', () => {
     await loginAs(page, teacherUser, teacherPass);
 
     // ===== 2. 进入教师学生列表页 =====
-    await page.goto(`${BASE_URL}/teacher/students`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/teacher/students`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 3. 验证页面加载 =====

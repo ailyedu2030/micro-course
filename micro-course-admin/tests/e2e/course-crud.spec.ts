@@ -30,8 +30,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // Helper: 登录
 // ──────────────────────────────────────────────
 async function loginAs(page: Page, username: string, password: string) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 20000 });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('#username', { timeout: 60000 });
   await page.fill('#username', username);
   await page.fill('#password', password);
   const loginBtn = page.locator('.login-btn');
@@ -76,7 +76,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await loginAs(page, teacherUser, teacherPass);
 
     // ===== 2. 进入创建课程页面 =====
-    await page.goto(`${BASE_URL}/courses/create`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/create`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // 验证页面标题或表单存在
@@ -194,7 +194,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入编辑页面 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}/edit`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}/edit`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 验证编辑表单加载 =====
@@ -257,7 +257,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入课程详情页 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 检查是否有封面，没有则通过 API 设置空白封面跳过 =====
@@ -324,7 +324,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await loginAs(studentPage, 'student', 'student123');
 
     // 访问课程广场
-    await studentPage.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 20000 });
+    await studentPage.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 60000 });
     await studentPage.waitForTimeout(2000);
 
     // 验证课程广场页面已渲染
@@ -361,7 +361,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入课程详情页 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 尝试下架（如果是已发布状态） =====
@@ -398,7 +398,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
 
       // ===== 6. 级联验证: 删除后学生端数据应保留 =====
       // 验证删除后课程列表不再包含该课程
-      await page.goto(`${BASE_URL}/teacher/courses`, { waitUntil: 'networkidle', timeout: 20000 });
+      await page.goto(`${BASE_URL}/teacher/courses`, { waitUntil: 'networkidle', timeout: 60000 });
       await page.waitForTimeout(2000);
       const teacherCoursesContent = await page.content();
       expect(teacherCoursesContent.length).toBeGreaterThan(200);

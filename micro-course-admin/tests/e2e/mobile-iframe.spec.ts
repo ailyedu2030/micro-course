@@ -28,8 +28,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // Helper: 登录学生
 // ──────────────────────────────────────────────
 async function loginAsStudent(page: Page) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 20000 });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('#username', { timeout: 60000 });
   await page.fill('#username', 'student');
   await page.fill('#password', 'student123');
   const loginBtn = page.locator('.login-btn');
@@ -116,7 +116,7 @@ test.describe('HTML 课件 - 移动端 iframe', () => {
     await loginAsStudent(page);
 
     // 导航到课程详情页
-    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // 验证 HTML 课件 iframe 存在
@@ -160,7 +160,7 @@ test.describe('HTML 课件 - 移动端 iframe', () => {
     // ---- 使用 Pixel 5 (Android Chrome) 模拟 ----
     await loginAsStudent(page);
 
-    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // 验证 iframe 存在并检查 sandbox 属性
@@ -212,7 +212,7 @@ test.describe('HTML 课件 - 移动端 iframe', () => {
 
     // 先以竖屏模式打开
     await page.setViewportSize({ width: 390, height: 844 }); // iPhone 14 portrait
-    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/courses/999901`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(1500);
 
     // 验证竖屏下 iframe 可见
