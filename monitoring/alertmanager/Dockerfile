@@ -1,8 +1,8 @@
 FROM prom/alertmanager:v0.27.0
 
 # 入口脚本 — 在容器启动时将 CHANGE_ME 占位符替换为环境变量
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+# 使用 --chmod 避免 RUN chmod（prom/alertmanager 基础镜像末尾设置了 USER nobody, RUN 会以 nobody 身份执行导致 Permission denied）
+COPY --chmod=0755 entrypoint.sh /entrypoint.sh
 
 COPY alertmanager.yml /etc/alertmanager/alertmanager.yml
 
