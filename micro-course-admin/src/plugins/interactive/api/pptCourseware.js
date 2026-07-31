@@ -16,59 +16,59 @@ import request from '@/utils/request'
 // === PPT 页面 CRUD ===
 
 export function listPptPages(courseId, sectionId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/sections/${sectionId}/pages` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/sections/${sectionId}/pages` })
 }
 
 export function createPptPage(courseId, sectionId, dto) {
-  return request({ method: 'POST', url: `/api/courses/${courseId}/ppt/sections/${sectionId}/pages`, data: dto })
+  return request({ method: 'POST', url: `/courses/${courseId}/ppt/sections/${sectionId}/pages`, data: dto })
 }
 
 export function getPptPage(courseId, pageId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/pages/${pageId}` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/pages/${pageId}` })
 }
 
 export function updatePptPage(courseId, pageId, dto) {
-  return request({ method: 'PUT', url: `/api/courses/${courseId}/ppt/pages/${pageId}`, data: dto })
+  return request({ method: 'PUT', url: `/courses/${courseId}/ppt/pages/${pageId}`, data: dto })
 }
 
 export function deletePptPage(courseId, pageId) {
-  return request({ method: 'DELETE', url: `/api/courses/${courseId}/ppt/pages/${pageId}` })
+  return request({ method: 'DELETE', url: `/courses/${courseId}/ppt/pages/${pageId}` })
 }
 
 // === PPT 讲述稿 ===
 
 export function getActivePptScript(courseId, pageId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/pages/${pageId}/scripts/active` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/pages/${pageId}/scripts/active` })
 }
 
 export function listPptScriptHistory(courseId, pageId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/pages/${pageId}/scripts` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/pages/${pageId}/scripts` })
 }
 
 export function savePptScript(courseId, pageId, { scriptText, voice, ttsModel, createdBy }) {
-  return request({ method: 'PUT', url: `/api/courses/${courseId}/ppt/pages/${pageId}/scripts`, data: { scriptText, voice, ttsModel, createdBy } })
+  return request({ method: 'PUT', url: `/courses/${courseId}/ppt/pages/${pageId}/scripts`, data: { scriptText, voice, ttsModel, createdBy } })
 }
 
 // === PPT 音频 ===
 
 export function listPptAudios(courseId, scriptId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/scripts/${scriptId}/audios` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/scripts/${scriptId}/audios` })
 }
 
 export function generatePptAudio(courseId, scriptId, { voice, model, ttsParams }) {
-  return request({ method: 'POST', url: `/api/courses/${courseId}/ppt/scripts/${scriptId}/audios`, data: { voice, model, ttsParams } })
+  return request({ method: 'POST', url: `/courses/${courseId}/ppt/scripts/${scriptId}/audios`, data: { voice, model, ttsParams } })
 }
 
 export function getPptAudio(courseId, audioId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/audios/${audioId}` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/audios/${audioId}` })
 }
 
 // === PPT 页间跳转 (NEXT/BRANCH/SKIP) ===
 
 export function listPptFlows(courseId, sectionId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/ppt/sections/${sectionId}/flows` })
+  return request({ method: 'GET', url: `/courses/${courseId}/ppt/sections/${sectionId}/flows` })
 }
 
 export function createPptFlow(courseId, sectionId, dto) {
-  return request({ method: 'POST', url: `/api/courses/${courseId}/ppt/sections/${sectionId}/flows`, data: dto })
+  return request({ method: 'POST', url: `/courses/${courseId}/ppt/sections/${sectionId}/flows`, data: dto })
 }

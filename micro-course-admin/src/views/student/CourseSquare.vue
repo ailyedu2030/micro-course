@@ -345,10 +345,10 @@ v-model="showAllMS" title="全部微专业" width="900px"
 >
       <div class="ms-all-filter-bar mg-bottom-12">
         <el-radio-group v-model="dialogFilter" size="small">
-          <el-radio-button label="">全部</el-radio-button>
-          <el-radio-button label="RECRUITING">招生中</el-radio-button>
-          <el-radio-button label="APPROVED">报名中</el-radio-button>
-          <el-radio-button label="COMPLETED">已结业</el-radio-button>
+          <el-radio-button value="">全部</el-radio-button>
+          <el-radio-button value="RECRUITING">招生中</el-radio-button>
+          <el-radio-button value="APPROVED">报名中</el-radio-button>
+          <el-radio-button value="COMPLETED">已结业</el-radio-button>
         </el-radio-group>
       </div>
       <div v-loading="allMSLoading" class="ms-all-grid">
