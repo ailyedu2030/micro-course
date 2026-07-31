@@ -80,7 +80,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await page.waitForTimeout(2000);
 
     // 验证页面标题或表单存在
-    const formTitle = page.locator('.card-title:has-text("基本信息")').or(page.locator('h1:has-text("创建课程")')).or(page.locator('text=课程标题'));
+    const formTitle = page.locator('.card-title:has-text("基本信息")').or(page.locator('h1:has-text("创建课程")')).or(page.locator('text=课程名称'));
     await expect(formTitle.first()).toBeVisible({ timeout: 5000 });
 
     // ===== 3. 获取分类列表 =====
@@ -88,8 +88,8 @@ test.describe('课程 CRUD 流程 E2E', () => {
     console.log(`[course-crud] 获取到 ${categories.length} 个课程分类`);
 
     // ===== 4. 填写表单 =====
-    // 课程标题
-    const titleInput = page.locator('input[aria-label="课程标题"], input[placeholder*="课程标题"]');
+    // 课程名称
+    const titleInput = page.locator('input[aria-label="课程名称"], input[placeholder*="课程名称"]');
     await expect(titleInput.first()).toBeVisible({ timeout: 5000 });
     await titleInput.first().fill(courseTitle);
 
@@ -198,7 +198,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await page.waitForTimeout(2000);
 
     // ===== 4. 验证编辑表单加载 =====
-    const titleInput = page.locator('input[aria-label="课程标题"], input[placeholder*="课程标题"]');
+    const titleInput = page.locator('input[aria-label="课程名称"], input[placeholder*="课程名称"]');
     if (await titleInput.isVisible({ timeout: 5000 }).catch(() => false)) {
       // 修改标题追加标记
       const updatedTitle = courseTitle + ' [已编辑]';
