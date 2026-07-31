@@ -61,7 +61,27 @@ scan_file() {
   local file="$1"
   [ ! -f "$file" ] && return 0
   while IFS=: read -r line_num line_text; do
-    if echo "$line_text" | grep -qE "CHANGE_ME|hooks\.slack\.com/services/[A-Z]|<placeholder>|your-(webhook|api-key|password)|TODO.*secret|REPLACE_ME"; then
+    # 排除规则:
+    #   1. 注释行 (`#` 开头, 或 YAML 内 `# ...`) — 注释内 CHANGE_ME 是文档说明,不是配置
+    #   2. Spring 占位符默认值 `${VAR_NAME:CHANGE_ME_*}` — 部署规范: 运维通过环境变量注入,不是密钥泄漏
+    #      例: `password: ${REDIS_PASSWORD:CHANGE_ME_IN_PRODUCTION}` — 默认值仅作占位,部署时 env var 注入
+    #   3. alertmanager 部署占位符 `CHANGE_ME_SLACK` / `CHANGE_ME_PAGERDUTY` / `CHANGE_ME_BEFORE_DEPLOY`
+    #      — entrypoint.sh:30,38 自动 sed 替换 (env var 注入),docs/operations/DEPLOY_RUNBOOK.md 规范
+    trimmed=$(echo "$line_text" | sed 's/^[[:space:]]*//')
+    if echo "$trimmed" | grep -qE '^#'; then
+      continue  # 注释行跳过
+    fi
+    # 仅检测"裸"CHANGE_ME (非占位符语法包裹) + 真实占位符 (alertmanager webhook 等)
+    is_placeholder=$(echo "$line_text" | grep -qE '\$\{[A-Z_]+:CHANGE_ME[A-Z_]*\}' && echo 1 || echo 0)
+    is_alertmanager_marker=$(echo "$line_text" | grep -qE '(CHANGE_ME_SLACK|CHANGE_ME_PAGERDUTY|CHANGE_ME_BEFORE_DEPLOY)' && echo 1 || echo 0)
+    if echo "$line_text" | grep -qE 'CHANGE_ME' && [ "$is_placeholder" = "0" ] && [ "$is_alertmanager_marker" = "0" ]; then
+      findings+=("{\"file\":\"$file\",\"line\":$line_num,\"text\":$(echo "$line_text" | sed 's/"/\\"/g' | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().rstrip()))")}")
+      findings_count=$((findings_count + 1))
+      continue
+    fi
+    # 第二个 regex: hooks.slack.com/services 占位符 + 通用 placeholder 关键字
+    #   对 alertmanager 占位符同样排除 (entrypoint.sh 自动 sed 替换 + DEPLOY_RUNBOOK.md 规范)
+    if echo "$line_text" | grep -qE "hooks\.slack\.com/services/[A-Z]|<placeholder>|your-(webhook|api-key|password)|TODO.*secret|REPLACE_ME" && [ "$is_alertmanager_marker" = "0" ]; then
       findings+=("{\"file\":\"$file\",\"line\":$line_num,\"text\":$(echo "$line_text" | sed 's/"/\\"/g' | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().rstrip()))")}")
       findings_count=$((findings_count + 1))
     fi
