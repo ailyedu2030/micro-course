@@ -43,6 +43,19 @@ export default defineConfig({
       }
     }
   },
+  // CI e2e job 跑 `npx vite preview --port 8088`，server.proxy 不会被 preview 读取，
+  // 必须显式声明 preview.proxy，否则 /api/* 请求会返回 SPA fallback HTML（vite 5 实际尝试 proxy 但 ECONNREFUSED → 500）
+  preview: {
+    port: 8088,
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_URL || 'http://localhost:8080',
+        changeOrigin: true,
+        timeout: 120000,
+        proxyTimeout: 120000
+      }
+    }
+  },
   build: {
     sourcemap: false,
     // P1-3: 生产构建自动去除 console.log/debug (保留 warn/error 便于线上排查)
