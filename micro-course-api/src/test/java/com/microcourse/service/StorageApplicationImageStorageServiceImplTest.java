@@ -6,6 +6,8 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.service.impl.StorageApplicationImageStorageServiceImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnJre;
+import org.junit.jupiter.api.condition.JRE;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -24,6 +26,7 @@ class StorageApplicationImageStorageServiceImplTest {
 
     @Test
     @DisplayName("storeImage 必须在清理旧文件后返回新的上传地址")
+    @EnabledOnJre({JRE.JAVA_17, JRE.JAVA_21})  // R14: 避免 macOS JDK 26 加载 libawt_lwawt.dylib 失败 (UnsatisfiedLinkError)
     void storeImageReplacesExistingTypeFile() throws Exception {
         StorageApplicationImageStorageServiceImpl service = new StorageApplicationImageStorageServiceImpl();
         String previousUserDir = System.getProperty("user.dir");

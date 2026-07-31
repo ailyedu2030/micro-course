@@ -1,4 +1,4 @@
--- V160: 修复选课状态 CHECK 约束（P0 遗留）
+-- V172: 修复选课状态 CHECK 约束添加 SUSPENDED 和 REENROLLING（P0 遗留）
 -- 问题: chk_enrollments_status 缺少 SUSPENDED 和 REENROLLING
 -- 后果: 该两个状态写入 enrollments 表时触发 CHECK 约束异常
 -- 修复: 删除旧约束重建含 9 个状态值的新约束

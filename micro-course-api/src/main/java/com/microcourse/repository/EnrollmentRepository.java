@@ -81,6 +81,13 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
     int physicalDeleteById(@Param("id") Long id);
 
     /**
+     * 物理删除指定用户的所有选课记录（绕过 @TableLogic 软删除）。
+     * 用于 UserRetentionCleanupJob 清理超过 90 天软删除用户的关联数据。
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM enrollments WHERE user_id = #{userId}")
+    int physicalDeleteByUserId(@Param("userId") Long userId);
+
+    /**
      * ★ 业务逻辑审计 DEVIATION-1 修复：原子容量检查 + 插入。
      * <p>原实现的 check-then-insert 是非原子的，高并发下可能超 max_students 上限。
      * 本方法在单条 INSERT ... SELECT ... WHERE 中同时检查：</p>
@@ -161,6 +168,27 @@ public interface EnrollmentRepository extends BaseMapper<Enrollment> {
                                            @Param("enrolled") String enrolled,
                                            @Param("approved") String approved,
                                            @Param("completed") String completed);
+
+    /**
+     * SQL聚合：统计选课进度平均值（progress 字段）— 替代全量加载到Java内存再求平均值（OOM修复）。
+     * 排除软删除记录及 progress 为 NULL 的记录。
+     */
+    @Select("SELECT COALESCE(AVG(progress), 0) FROM enrollments WHERE deleted_at IS NULL AND progress IS NOT NULL")
+    Double avgProgress();
+
+    /**
+     * SQL聚合：统计选课进度平均值（progress 字段），支持 enrollment_status 过滤。
+     * @param statusValues 可接受的状态值列表（如 ENROLLED, APPROVED, COMPLETED）
+     */
+    @Select("<script>"
+            + "SELECT COALESCE(AVG(progress), 0) FROM enrollments "
+            + "WHERE deleted_at IS NULL AND progress IS NOT NULL "
+            + "<if test='statuses != null and statuses.size > 0'>"
+            + "AND enrollment_status IN "
+            + "<foreach collection='statuses' item='s' open='(' separator=',' close=')'>#{s}</foreach>"
+            + "</if>"
+            + "</script>")
+    Double avgProgressByStatuses(@org.apache.ibatis.annotations.Param("statuses") List<String> statusValues);
 
     /** R12 P1-C-4: 统计教师在授课程中某一学生的选课数（>0 则有权查看） */
     @org.apache.ibatis.annotations.Select("SELECT COUNT(*) FROM enrollments e " +

@@ -18,25 +18,31 @@ public class CourseUpdateRequest {
     private String semester;
     private BigDecimal creditHours;
     private String courseNature;
+    // ===== 全部课程类型通用 =====
     private Integer maxStudents;
     private Integer difficulty;
     private String description;
     private String tags;
+    // ===== 全部课程类型通用（courseType 决定定价模式） =====
     private String courseType;
     private BigDecimal price;
     private Boolean isFree;
 
-    // Phase 4: 课程定价
+    // ===== 定价/免费策略：适用于所有含付费内容的课程类型 =====
     private String freeAccessScope;   // none | same_department | same_college | same_school
     private String freeDeptIds;       // JSON 字符串
     private String discountScope;     // none | same_college | same_school
+    // ===== 折扣百分比：适用于所有含付费内容的课程类型 =====
     private Integer discountPercent;  // 0-100
 
-    // ===== P1 Stage 1: 课程级元信息 =====
+    // ===== P1 Stage 1: 课程级元信息（所有课程类型通用） =====
     private String hid;
+    // ===== 线上课程（online-self-study）专用字段 =====
     private Integer totalHours;
     private Integer totalWeeks;
+    // ===== 线上课程（online-self-study）专用字段 =====
     private java.util.List<String> teachingPhilosophy;
+    // ===== 所有课程类型通用 =====
     private String learningMode;
     private String evaluationScheme;
 

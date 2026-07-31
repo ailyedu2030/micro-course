@@ -26,6 +26,7 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MajorRepository;
 import com.microcourse.repository.OrderRepository;
 import com.microcourse.repository.UserRepository;
+import org.springframework.context.annotation.Lazy;
 import com.microcourse.service.BadgeService;
 import com.microcourse.service.CertificateService;
 import com.microcourse.service.CourseService;
@@ -71,6 +72,13 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
     private final CertificateService certificateService;
     private final BadgeService badgeService;
     private final OrderRepository orderRepository;
+    /**
+     * R3 修复: OrderService 依赖 EnrollmentService（order.paymentCallback → enrollBundleCourses/autoEnroll），
+     * EnrollmentService 依赖 EnrollmentLifecycleService，EnrollmentLifecycleService 依赖 OrderService — 形成循环。
+     * 加 @Lazy 打破循环注入。R1 已通过 REFUND_REENTRANT ThreadLocal 防止退款时业务重入，
+     * 但 Spring Bean 创建期无法重入，必须用 @Lazy 解决。
+     */
+    @Lazy
     private final OrderService orderService;
     private final CourseService courseService;
     private final NotificationService notificationService;
@@ -86,7 +94,7 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
                                           CertificateService certificateService,
                                           BadgeService badgeService,
                                           OrderRepository orderRepository,
-                                          OrderService orderService,
+                                          @Lazy OrderService orderService,
                                           CourseService courseService,
                                           NotificationService notificationService,
                                           EnrollmentMetrics metrics) {
@@ -109,6 +117,7 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
     // ============ 1. 选课 ============
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public EnrollmentVO doEnroll(EnrollmentCreateRequest request) {
         // ★ 业务逻辑审计 P0-3 增强：功能开关（紧急回滚）
         if (!com.microcourse.config.EnrollmentFeatureFlag.isDynamicallyEnabled()) {
@@ -240,7 +249,13 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
                     "课程" + describeCourseStatus(lockedStatus) + "或已选过，无法选课");
         }
         // 双闸门：原子增计数也带容量检查（防御深度）
-        courseRepository.atomicIncrementIfNotFull(request.getCourseId());
+        // 【并发安全修复】必须检查 affected rows：若返回 0 表示该行已被其他事务先增了计数（student_count >= max_students），
+        // 此时 enrollment 已插入但 student_count 未增加，需回滚事务避免数据不一致。
+        int countingAffected = courseRepository.atomicIncrementIfNotFull(request.getCourseId());
+        if (countingAffected == 0) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_PUBLISHED,
+                    "课程已满员或计数异常，选课失败");
+        }
         // 查询刚插入的 enrollment
         Enrollment newEnrollment = enrollmentRepository.selectOne(new LambdaQueryWrapper<Enrollment>()
                 .eq(Enrollment::getUserId, request.getUserId())
@@ -527,7 +542,19 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
             return;
         }
         // 5. 增计数 (因晋升,student_count +1)
-        courseRepository.atomicIncrementIfNotFull(courseId);
+        // 【并发安全修复】必须检查 affected rows：若返回 0 表示 promotion 到另一个晋升线程之间的间隙
+        // 课程已满员, student_count 未增加。此时应回滚 CAS 状态变更，下次 cancel 再试。
+        int incrementAffected = courseRepository.atomicIncrementIfNotFull(courseId);
+        if (incrementAffected == 0) {
+            LOG.warn("候补晋升 student_count 已达上限, 回滚 CAS: courseId={}, enrollmentId={}", courseId, next.getId());
+            // 回滚 enrollment 状态（WAITLIST 不恢复则永久失活，但因仍为 WAITLIST 下次可再晋升）
+            enrollmentRepository.update(null,
+                    new LambdaUpdateWrapper<Enrollment>()
+                            .eq(Enrollment::getId, next.getId())
+                            .set(Enrollment::getEnrollmentStatus, EnrollmentStatus.WAITLIST.getValue())
+                            .set(Enrollment::getUpdatedAt, LocalDateTime.now()));
+            return;
+        }
         // 6. 写历史
         recordHistory(next.getId(), fromStatus, EnrollmentStatus.APPROVED, null, "WAITLIST_PROMOTE");
         // 7. 通知晋升学生

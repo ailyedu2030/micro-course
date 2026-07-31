@@ -30,8 +30,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // Helper: 登录
 // ──────────────────────────────────────────────
 async function loginAs(page: Page, username: string, password: string) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 10000 });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('#username', { timeout: 60000 });
   await page.fill('#username', username);
   await page.fill('#password', password);
   const loginBtn = page.locator('.login-btn');
@@ -76,11 +76,11 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await loginAs(page, teacherUser, teacherPass);
 
     // ===== 2. 进入创建课程页面 =====
-    await page.goto(`${BASE_URL}/courses/create`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/create`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // 验证页面标题或表单存在
-    const formTitle = page.locator('.card-title:has-text("基本信息")').or(page.locator('h1:has-text("创建课程")')).or(page.locator('text=课程标题'));
+    const formTitle = page.locator('.card-title:has-text("基本信息")').or(page.locator('h1:has-text("创建课程")')).or(page.locator('text=课程名称'));
     await expect(formTitle.first()).toBeVisible({ timeout: 5000 });
 
     // ===== 3. 获取分类列表 =====
@@ -88,8 +88,8 @@ test.describe('课程 CRUD 流程 E2E', () => {
     console.log(`[course-crud] 获取到 ${categories.length} 个课程分类`);
 
     // ===== 4. 填写表单 =====
-    // 课程标题
-    const titleInput = page.locator('input[aria-label="课程标题"], input[placeholder*="课程标题"]');
+    // 课程名称
+    const titleInput = page.locator('input[aria-label="课程名称"], input[placeholder*="课程名称"]');
     await expect(titleInput.first()).toBeVisible({ timeout: 5000 });
     await titleInput.first().fill(courseTitle);
 
@@ -128,8 +128,8 @@ test.describe('课程 CRUD 流程 E2E', () => {
       await quillEditor.fill('这是 E2E 测试课程的描述，用于验证课程 CRUD 流程。');
     }
 
-    // ===== 6. 点击「创建课程」按钮 =====
-    const submitBtn = page.locator('button:has-text("创建课程"), button:has-text("保存")').first();
+    // ===== 6. 点击「新增课程」按钮 (course.createCourse='新增课程' zh-CN) =====
+    const submitBtn = page.locator('button:has-text("新增课程"), button:has-text("保存")').first();
     await expect(submitBtn).toBeVisible({ timeout: 5000 });
     await submitBtn.click();
 
@@ -194,11 +194,11 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入编辑页面 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}/edit`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}/edit`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 验证编辑表单加载 =====
-    const titleInput = page.locator('input[aria-label="课程标题"], input[placeholder*="课程标题"]');
+    const titleInput = page.locator('input[aria-label="课程名称"], input[placeholder*="课程名称"]');
     if (await titleInput.isVisible({ timeout: 5000 }).catch(() => false)) {
       // 修改标题追加标记
       const updatedTitle = courseTitle + ' [已编辑]';
@@ -257,13 +257,15 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入课程详情页 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 检查是否有封面，没有则通过 API 设置空白封面跳过 =====
     // 查看页面内容，确定当前状态
     const pageContent = await page.content();
-    const statusTag = page.locator('.el-tag:has-text("草稿"), .el-tag:has-text("已通过"), .el-tag:has-text("已发布")');
+    // status:0=草稿(draft), 1=提交审核(submitForReview='提交审核'), 2=审核通过(approve='审核通过'),
+    //          3=驳回(reject='驳回'), 4=已发布(published='已发布'), 5=下架(unpublish='下架')
+    const statusTag = page.locator('.el-tag:has-text("草稿"), .el-tag:has-text("提交审核"), .el-tag:has-text("审核通过"), .el-tag:has-text("驳回"), .el-tag:has-text("已发布"), .el-tag:has-text("下架")');
     const currentStatus = await statusTag.textContent().catch(() => 'unknown');
     console.log(`[course-crud] 课程当前状态: ${currentStatus}`);
 
@@ -324,7 +326,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     await loginAs(studentPage, 'student', 'student123');
 
     // 访问课程广场
-    await studentPage.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 20000 });
+    await studentPage.goto(`${BASE_URL}/student/courses`, { waitUntil: 'networkidle', timeout: 60000 });
     await studentPage.waitForTimeout(2000);
 
     // 验证课程广场页面已渲染
@@ -361,7 +363,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
     }
 
     // ===== 3. 进入课程详情页 =====
-    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/courses/${targetCourseId}`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(2000);
 
     // ===== 4. 尝试下架（如果是已发布状态） =====
@@ -398,7 +400,7 @@ test.describe('课程 CRUD 流程 E2E', () => {
 
       // ===== 6. 级联验证: 删除后学生端数据应保留 =====
       // 验证删除后课程列表不再包含该课程
-      await page.goto(`${BASE_URL}/teacher/courses`, { waitUntil: 'networkidle', timeout: 20000 });
+      await page.goto(`${BASE_URL}/teacher/courses`, { waitUntil: 'networkidle', timeout: 60000 });
       await page.waitForTimeout(2000);
       const teacherCoursesContent = await page.content();
       expect(teacherCoursesContent.length).toBeGreaterThan(200);

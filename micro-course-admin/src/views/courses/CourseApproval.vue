@@ -38,7 +38,7 @@
         </el-button>
       </div>
       <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无待审核课程" :image-size="120" />
+      <el-empty v-else-if="tableData.length === 0" :description="emptyDescription" :image-size="120" />
       <el-table v-else ref="tableRef" :data="tableData" stripe border class="data-table" @selection-change="handleSelectionChange">
         <el-table-column type="selection" width="50" align="center" />
         <el-table-column type="index" label="#" width="50" align="center" />
@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourses, getPendingReviewCourses, approveCourse, rejectCourse, publishCourse, batchApproveCourses, batchRejectCourses } from '@/api/course'
@@ -108,6 +108,11 @@ const selectedRows = ref([])
 const tableRef = ref(null)
 
 const statusMap = { pending: 1, approved: 2, rejected: 3 }
+
+const emptyDescription = computed(() => {
+  const map = { pending: '暂无待审核课程', approved: '暂无已通过课程', rejected: '暂无已驳回课程' }
+  return map[activeTab.value] || '暂无数据'
+})
 
 function handleSelectionChange(rows) {
   selectedRows.value = rows
@@ -200,7 +205,7 @@ async function handleBatchReject() {
   const ids = selectedRows.value.map(r => r.id)
   try {
     const result = await batchRejectCourses(ids, reason)
-    ElMessage.success(`批量驳回完成：成功 ${result.success}，失败 ${result.failed}`)
+    ElMessage.success(`批量驳回完成：成功 ${result.data.successCount}，失败 ${result.data.failCount}`)
     selectedRows.value = []
     fetchData()
   } catch (e) {

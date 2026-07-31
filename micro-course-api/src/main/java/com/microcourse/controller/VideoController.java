@@ -60,7 +60,7 @@ public class VideoController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
         if (courseId == null) {
             return R.ok(PageResult.of(List.of(), 0L, page, size));
         }
@@ -81,7 +81,7 @@ public class VideoController {
      * 权限：TEACHER（课程创建者）/ ADMIN
      */
     @GetMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<VideoStatusVO> getStatus(@PathVariable Long id) {
         return R.ok(videoService.getStatus(id));
     }
@@ -92,21 +92,21 @@ public class VideoController {
      * 权限：TEACHER（课程创建者）/ ADMIN
      */
     @GetMapping("/status/batch")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<java.util.List<VideoStatusVO>> getStatusBatch(
             @RequestParam("ids") java.util.List<@jakarta.validation.constraints.Positive Long> ids) {
         return R.ok(videoService.getStatusBatch(ids));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<VideoVO> create(@Valid @RequestBody VideoCreateRequest request) {
         VideoVO vo = videoService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<VideoVO> update(@PathVariable Long id,
                              @Valid @RequestBody VideoUpdateRequest request) {
         VideoVO vo = videoService.update(id, request);
@@ -114,7 +114,7 @@ public class VideoController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         videoService.delete(id);
         return R.ok();
@@ -129,7 +129,7 @@ public class VideoController {
      * P2 修复：MD5 重复上传校验
      */
     @PostMapping("/upload")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("上传视频")
     public R<VideoVO> upload(
             @RequestParam("file") MultipartFile file,
@@ -175,7 +175,7 @@ public class VideoController {
      * 【V4 修复】Controller 层文件大小 + contentType 校验下沉到 FileUploadUtil
      */
     @PostMapping("/{id}/cover")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<String> uploadCover(@PathVariable Long id, @RequestParam("file") MultipartFile file) {
         com.microcourse.util.FileUploadUtil.assertImage(file, com.microcourse.util.FileUploadUtil.DEFAULT_VIDEO_COVER_MAX_BYTES);
         String coverUrl = videoService.uploadCover(id, file);
@@ -235,7 +235,7 @@ public class VideoController {
      * 权限：TEACHER(创建者) / ADMIN
      */
     @PostMapping("/{id}/retry")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("视频重试转码")
     public R<VideoVO> retryTranscode(@PathVariable Long id) {
         return R.ok(videoService.retryTranscode(id));
@@ -247,7 +247,7 @@ public class VideoController {
      * 权限：TEACHER(创建者) / ADMIN
      */
     @GetMapping("/{id}/analytics")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<com.microcourse.dto.VideoAnalyticsVO> getAnalytics(@PathVariable Long id) {
         return R.ok(videoService.getAnalytics(id));
     }
@@ -258,7 +258,7 @@ public class VideoController {
      * 权限：TEACHER(创建者) / ADMIN
      */
     @PostMapping("/batch-upload")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<List<VideoVO>> batchUpload(@RequestParam("files") MultipartFile[] files,
                                         @RequestParam("courseId") Long courseId,
                                         @RequestParam(value = "chapterId", required = false) Long chapterId) {

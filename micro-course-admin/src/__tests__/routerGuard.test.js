@@ -373,7 +373,12 @@ describe('router beforeEach - token refresh + network glitch', () => {
   // ── Test 2: 401 场景 → refresh 失败 → 清除 token 并跳转登录 ──
   it('clears token and redirects to login when refresh fails (401)', async () => {
     mockUserStore.getInfo.mockRejectedValueOnce(new Error('401 Unauthorized'))
-    mockUserStore.refreshAccessToken.mockResolvedValueOnce(null) // refresh 返回 null 表示失败
+    // 使用 mockImplementationOnce 模拟 refreshAccessToken 在 401 后清除 store token 的行为
+    mockUserStore.refreshAccessToken.mockImplementationOnce(() => {
+      mockUserStore.token = ''
+      mockUserStore.refreshToken = ''
+      return Promise.resolve(null)
+    })
 
     await router.push({ path: '/teacher/dashboard' })
 
@@ -382,7 +387,24 @@ describe('router beforeEach - token refresh + network glitch', () => {
     expect(router.currentRoute.value.path).toBe('/login')
   })
 
-  // ── Test 3: refresh_token 不存在 → 直接清除并跳转登录 ──
+  // ── Test 3: refresh 网络中断 → token 保留，导航中止 ──
+  it('keeps token and aborts navigation when refresh fails with network error', async () => {
+    mockUserStore.getInfo.mockRejectedValueOnce(new Error('Network Error'))
+    // 模拟 refreshAccessToken 网络失败：返回 null 但保留 store token
+    mockUserStore.refreshAccessToken.mockImplementationOnce(() => {
+      return Promise.resolve(null) // token 不变（保留 'mock-token'）
+    })
+
+    await router.push({ path: '/teacher/dashboard' })
+
+    expect(mockUserStore.refreshAccessToken).toHaveBeenCalledTimes(1)
+    // token 应被保留（未被清除）
+    expect(mockUserStore.token).toBe('mock-token')
+    // 导航被 next(false) 中止，不跳登录
+    expect(router.currentRoute.value.path).toBe('/micro-specialties')
+  })
+
+  // ── Test 4: refresh_token 不存在 → 直接清除并跳转登录 ──
   it('redirects to login when no refresh token available', async () => {
     mockUserStore.refreshToken = ''
 

@@ -57,6 +57,13 @@ app:
     field-encryption-key: test-32-char-key-for-encryption-!!!!!
     field-encryption-salt: 0123456789abcdef
 
+# P0-TEST-HMAC: 测试环境禁用支付回调签名校验（dev mock 模式）
+# 主 application.yml 默认 callback-secret=CHANGE_ME_IN_PRODUCTION（非空），会让 OrderController 强制要求 X-Signature header。
+# 集成测试仍 mock 支付回调，HMAC 不是测试目标。显式覆盖为空字符串跳过 HMAC 校验。
+# 如有需要专门测试 HMAC 校验的测试，在该测试的 @TestPropertySource 中显式注入真 secret。
+payment:
+  callback-secret: ""
+
 logging:
   level:
     com.microcourse: warn

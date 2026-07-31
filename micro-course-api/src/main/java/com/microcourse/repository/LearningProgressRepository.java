@@ -53,4 +53,29 @@ public interface LearningProgressRepository extends BaseMapper<LearningProgress>
      */
     @Select("SELECT COUNT(*) FROM learning_progress WHERE chapter_id = #{chapterId} AND completed = TRUE AND deleted_at IS NULL")
     Long countCompletedByChapterId(Long chapterId);
+
+    /**
+     * SQL聚合查询总观看时长（秒），支持时间范围过滤 — 替代全量加载到Java内存再求和（OOM修复）。
+     * 与 sumTotalWatchTime() 的区别：本方法接受可选的起始时间下限，调用方可传递时间范围缩小扫描行数。
+     * 当 since 为 NULL 时行为与 sumTotalWatchTime() 一致（全表SUM）。
+     */
+    @Select("SELECT COALESCE(SUM(total_watch_time), 0) FROM learning_progress WHERE deleted_at IS NULL "
+            + "AND (#{since} IS NULL OR created_at >= #{since})")
+    Long sumTotalWatchTimeSince(@org.apache.ibatis.annotations.Param("since") java.time.LocalDateTime since);
+
+    /**
+     * SQL聚合查询总观看时长（分钟级别，SQL中完成 /60 转换）— 替代 Java 流式 sum/60。
+     */
+    @Select("SELECT COALESCE(SUM(total_watch_time) / 60, 0) FROM learning_progress WHERE deleted_at IS NULL")
+    Long sumTotalWatchTimeMinutes();
+
+    /**
+     * SQL聚合：统计指定时间范围内有观看记录的去重用户数 — 替代全量加载 + Java distinct count。
+     * @param since 起始时间（含），为 NULL 时不限制
+     * @return 去重用户数
+     */
+    @Select("SELECT COUNT(DISTINCT user_id) FROM learning_progress "
+            + "WHERE last_watch_at IS NOT NULL AND deleted_at IS NULL "
+            + "AND (#{since} IS NULL OR last_watch_at >= #{since})")
+    Long countDistinctActiveUsersSince(@org.apache.ibatis.annotations.Param("since") java.time.LocalDateTime since);
 }

@@ -279,16 +279,21 @@ section "7. 质量门禁"
 # 7.1 precheck
 # 强制 cd 到项目根 (避免前面 cd micro-course-api 后没回退)
 cd "$ROOT_DIR" 2>/dev/null || true
-if bash .claude/skills/microcourse/scripts/precheck.sh > /tmp/precheck.out 2>&1; then
-  log_pass "precheck 14/14 通过"
-else
-  # 退化路径: 当 /tmp/precheck.out 不存在或 precheck 异常退出时,显示更友好的错误
-  if [ ! -s /tmp/precheck.out ]; then
-    log_fail "precheck 失败 (脚本未产生输出,可能环境异常,当前目录=$(pwd))"
+PRECHECK_SCRIPT=".claude/skills/microcourse/scripts/precheck.sh"
+if [ -f "$PRECHECK_SCRIPT" ]; then
+  if bash "$PRECHECK_SCRIPT" > /tmp/precheck.out 2>&1; then
+    log_pass "precheck 通过"
   else
-    FAIL_PRE=$(grep -c "✗" /tmp/precheck.out 2>/dev/null || echo "?")
-    log_fail "precheck 失败 ($FAIL_PRE 项,详情见 /tmp/precheck.out,当前目录=$(pwd))"
+    # 退化路径: 当 /tmp/precheck.out 不存在或 precheck 异常退出时,显示更友好的错误
+    if [ ! -s /tmp/precheck.out ]; then
+      log_fail "precheck 失败 (脚本未产生输出,可能环境异常,当前目录=$(pwd))"
+    else
+      FAIL_PRE=$(grep -c "✗" /tmp/precheck.out 2>/dev/null || echo "?")
+      log_fail "precheck 失败 ($FAIL_PRE 项,详情见 /tmp/precheck.out)"
+    fi
   fi
+else
+  log_fail "precheck 脚本不存在 ($PRECHECK_SCRIPT)"
 fi
 
 # 7.2 编译

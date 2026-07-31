@@ -41,7 +41,8 @@ public class QuestionController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100000) int size) {
+            // P0-DoS-001 修复: size 上限收紧到 200,避免 size=100000 触发全表扫内存 OOM
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, chapterId, page, size);
         return R.ok(result);
     }
@@ -54,14 +55,14 @@ public class QuestionController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<QuestionVO> create(@Valid @RequestBody QuestionCreateRequest request) {
         QuestionVO vo = questionService.create(request);
         return R.ok(vo);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<QuestionVO> update(@PathVariable Long id,
                                 @Valid @RequestBody QuestionUpdateRequest request) {
         QuestionVO vo = questionService.update(id, request);
@@ -69,7 +70,7 @@ public class QuestionController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<Void> delete(@PathVariable Long id) {
         questionService.delete(id);
         return R.ok();
@@ -83,7 +84,7 @@ public class QuestionController {
      * @param courseId 课程ID（路径参数）
      */
     @PostMapping("/batch/import")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<BatchImportResultVO> batchImport(
             @RequestParam("file") MultipartFile file,
             @RequestParam Long courseId) {
@@ -109,7 +110,7 @@ public class QuestionController {
      * @param chapterId 章节筛选（可选）
      */
     @GetMapping("/export")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public void export(
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) String questionType,

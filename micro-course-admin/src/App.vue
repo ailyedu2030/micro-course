@@ -36,7 +36,7 @@ import { ref, computed, onErrorCaptured, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from './store/user'
-import { isAuthenticated } from './utils/auth'
+import { isAuthenticated, removeToken, removeRefreshToken } from './utils/auth'
 import { reportError } from './utils/errorReport'
 import Layout from './components/Layout.vue'
 import StudentLayout from './components/StudentLayout.vue'
@@ -79,11 +79,27 @@ function handleOnline() {
 }
 
 function handleStorageChange(e) {
+  // 跨 tab 登出检测: token 被移除 → 完全清理登录态
+  if (e.key === 'micro_course_token' && !e.newValue && e.oldValue) {
+    userStore.token = ''
+    userStore.refreshToken = ''
+    userStore.userInfo = null
+    removeRefreshToken()
+    if (router.currentRoute.value.path !== '/login') {
+      router.push('/login')
+    }
+    return
+  }
+  // 跨 tab token 变更同步
   if (e.key === 'micro_course_token' && e.newValue !== e.oldValue) {
     if (e.newValue !== userStore.token) {
       userStore.token = e.newValue || ''
       userStore.userInfo = null
     }
+  }
+  // 跨 tab refreshToken 变更同步
+  if (e.key === 'micro_course_refresh_token') {
+    userStore.refreshToken = e.newValue || ''
   }
 }
 
@@ -176,6 +192,11 @@ function fixQuillToolbarAria() {
 
 onBeforeUnmount(() => {
   unregisterGlobalListeners()
+  // 断开 Quill 无障碍 MutationObserver，防止内存泄漏
+  if (window.__quillObserver) {
+    window.__quillObserver.disconnect()
+    window.__quillObserver = null
+  }
 })
 </script>
 

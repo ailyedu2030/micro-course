@@ -1,6 +1,6 @@
 # 微课管理平台 · API 契约文档 · Phase 1
 
-> 版本：v2.2（2026-07-07 用户管理域 P1-C 修复同步）
+> 版本：v2.3（2026-07-30 Batch D 修复：讨论区 API 路径同步）
 > 日期：2026-06-11  
 > 状态：正式发布  
 > 范围：用户认证、院系管理、专业管理、班级管理、用户管理（共 27 个 API）
@@ -1906,25 +1906,44 @@
 
 ## 附录 A：讨论区 API 接口（已实现 + 权限同步）
 
-> **v1.8 同步**（2026-07-27）：讨论区端点已在 Phase 1 后实现，路径以权限矩阵 v2.0 §1.10 `discussion` 为准，附录原"Phase 2 预留"声明已废止。
+> **v2.3 同步**（2026-07-30 Batch D 修复）：更新为与实际 Controller 路径一致的版本。实际实现使用 `/api/discussions/posts`（帖子）和 `/api/discussions/comments`（评论）路径，与原文档的 `/api/discussions/{id}/comments` 层级路径有差异。
 
-| 方法 | 路径 | 说明 | 权限要求（参照权限矩阵 §1.10） |
-|------|------|------|--------------------------------|
-| GET | `/api/chapters/{id}/discussions` | 获取章节讨论区（学生/教师） | `isAuthenticated()` |
-| POST | `/api/chapters/{id}/discussions` | 发布讨论帖（学生/教师） | `hasAnyRole('STUDENT','TEACHER')` |
-| GET | `/api/discussions` | 获取讨论帖列表（分页） | `isAuthenticated()` |
-| GET | `/api/discussions/{id}` | 获取讨论帖详情 | `isAuthenticated()` |
-| POST | `/api/discussions` | 发布讨论帖（学生/教师） | `hasAnyRole('STUDENT','TEACHER')` |
-| PUT | `/api/discussions/{id}` | 更新讨论帖（作者/教师） | `@PreAuthorize("isOwnerOrAdmin(#id)")` |
-| DELETE | `/api/discussions/{id}` | 删除讨论帖（作者/管理员） | `@PreAuthorize("isOwnerOrAdmin(#id)")` |
-| POST | `/api/discussions/{id}/pin` | 置顶讨论帖（教师/管理员） | `hasAnyRole('TEACHER','ADMIN')` |
-| POST | `/api/discussions/{id}/essence` | 标记精华（教师/管理员） | `hasAnyRole('TEACHER','ADMIN')` |
-| POST | `/api/discussions/{id}/like` | 点赞讨论帖 | `isAuthenticated()` |
-| GET | `/api/discussions/{id}/comments` | 获取评论列表（分页） | `isAuthenticated()` |
-| POST | `/api/discussions/{id}/comments` | 发布评论（支持匿名 `isAnonymous`） | `hasAnyRole('STUDENT','TEACHER')` |
-| PUT | `/api/discussions/{id}/comments/{commentId}` | 更新评论（作者/教师） | `@PreAuthorize("isOwnerOrAdmin(#commentId)")` |
-| DELETE | `/api/discussions/{id}/comments/{commentId}` | 删除评论（作者/管理员） | `@PreAuthorize("isOwnerOrAdmin(#commentId)")` |
-| POST | `/api/discussions/{id}/comments/{commentId}/like` | 点赞评论 | `isAuthenticated()` |
+### 讨论帖子（DiscussionPostController — `/api/discussions/posts`）
+
+| 方法 | 路径 | 说明 | 权限要求 |
+|------|------|------|----------|
+| GET | `/api/discussions/posts` | 获取讨论帖列表（分页，支持 `chapterId` 筛选） | `isAuthenticated()` |
+| GET | `/api/discussions/posts/{id}` | 获取讨论帖详情 | `isAuthenticated()` |
+| POST | `/api/discussions/posts` | 发布讨论帖 | `isAuthenticated()` |
+| PUT | `/api/discussions/posts/{id}` | 更新讨论帖（作者本人） | `isAuthenticated()` |
+| DELETE | `/api/discussions/posts/{id}` | 删除讨论帖（作者本人/管理员） | `isAuthenticated()` |
+| PUT | `/api/discussions/posts/{id}/pin` | 置顶/取消置顶讨论帖 | `hasAnyRole('ACADEMIC','TEACHER','ADMIN')` |
+| PUT | `/api/discussions/posts/{id}/essence` | 标记/取消精华 | `hasAnyRole('ACADEMIC','TEACHER','ADMIN')` |
+| POST | `/api/discussions/posts/{id}/like` | 点赞讨论帖 | `isAuthenticated()` |
+
+### 评论（DiscussionCommentController — `/api/discussions`）
+
+| 方法 | 路径 | 说明 | 权限要求 |
+|------|------|------|----------|
+| GET | `/api/discussions/comments?postId=` | 获取评论列表（通过 `postId` 查询参数筛选） | `isAuthenticated()` |
+| POST | `/api/discussions/comments` | 发布评论（`postId` 在请求体中，支持 `isAnonymous`） | `isAuthenticated()` |
+| DELETE | `/api/discussions/comments/{id}` | 删除评论（作者本人/管理员/教师） | `isAuthenticated()` |
+| POST | `/api/discussions/comments/{id}/like` | 点赞评论 | `isAuthenticated()` |
+
+> **注意**：评论 API 路径为扁平结构（`/api/discussions/comments`），非层级结构（`/api/discussions/{postId}/comments`）。`postId` 通过查询参数或请求体传递。更新评论端点（PUT）尚未实现。
+
+### 管理端（DiscussionAdminController — `/api/admin/discussions`）
+
+| 方法 | 路径 | 说明 | 权限要求 |
+|------|------|------|----------|
+| GET | `/api/admin/discussions` | 管理端讨论列表（支持 `keyword/courseId/status` 筛选） | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| GET | `/api/admin/discussions/{id}` | 管理端讨论详情 | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| PUT | `/api/admin/discussions/{id}/approve` | 审核通过 | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| PUT | `/api/admin/discussions/{id}/reject` | 审核驳回（必填驳回原因） | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| DELETE | `/api/admin/discussions/{id}` | 管理端删除讨论 | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| GET | `/api/admin/discussions/comments` | 管理端评论列表（支持 `keyword/postId` 筛选） | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| DELETE | `/api/admin/discussions/comments/{id}` | 管理端删除评论 | `hasAnyRole('ADMIN','ACADEMIC','TEACHER')` |
+| PUT | `/api/admin/discussions/comments/{id}/pin` | 置顶/取消置顶评论 | `hasAnyRole('ADMIN','ACADEMIC')` |
 
 **响应格式**：列表分页采用统一 `{ items, total, page, size, totalPages }` 五字段格式（参照 §1.4 通用响应）。
 
@@ -1936,6 +1955,7 @@
 
 | 版本 | 日期 | 说明 | 作者 |
 |------|------|------|------|
+| v2.3 | 2026-07-30 | Batch-D 修复：附录 A 更新为与实际 Controller 路径一致（DiscussionPostController → `/api/discussions/posts`、DiscussionCommentController → 扁平 `/api/discussions/comments`、新增 DiscussionAdminController 管理端点），标注差异 | 总工程师 |
 | v1.8 | 2026-07-27 | discussion-domain-drift-fix 同步：附录 A 由"Phase 2 预留"改为"已实现"，讨论区 15 个端点全量补登（路径以权限矩阵 v2.0 §1.10 为准），含权限要求、状态机引用 | 总工程师 |
 | v1.7 | 2026-07-17 | P1 Stage 4-5 增量：路径别名(POST /courses/{cid}/chapters、/sections/{sid}/{html|ppt})、幂等性(GET /courses?hid=xxx)、批量化(POST chapters/batch、sections/batch) | opencode |
 | v1.6 | 2026-07-17 | P1 Stage 3 增量：POST /courses/{cid}/trainings、POST /courses/{cid}/final-project、V200/201 migration(2 张新表) | opencode |

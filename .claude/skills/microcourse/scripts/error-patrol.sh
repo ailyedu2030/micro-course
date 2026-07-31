@@ -157,8 +157,16 @@ echo ""
 
 # ──────────────────────────────────────────────────────────────
 # Stage 6: 生产环境 7×24 监控
+# ⚠️  P0 安全提醒: 以下操作通过 ssh 连接到生产服务器(100.74.122.13)
+#    并执行 docker exec。这是只读监控操作,不会修改生产配置。
+#    请确保:
+#      1. 已在本地 local-dev-deploy.sh 通过验证且门禁已开
+#      2. 不在高峰期执行此巡检
+#      3. 不会误触生产 docker restart/stop/rm 操作
+#    违反上述任何一条 = P0 事故。必须立即停止 + 报告用户。
 # ──────────────────────────────────────────────────────────────
 echo "▍ Stage 6: 生产环境监控"
+echo "  ⚠️  P0 提醒: 此阶段通过 ssh 连接 100.74.122.13 生产机,只读检查"
 if command -v ssh &>/dev/null; then
     CONTAINERS=$(ssh ubuntu@100.74.122.13 'docker ps --format "{{.Names}}\t{{.Status}}" 2>/dev/null' 2>/dev/null)
     UNHEALTHY=$(echo "$CONTAINERS" | grep -c "unhealthy" || echo 0)

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -162,11 +163,10 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("Redis 与 DB 双重故障时 fail-open 放行，不阻塞合法用户主流程")
-    void redisFailureDoesNotBlockMainFlow() throws Exception {
-        // 不使用 Mockito（当前 JVM=Java 26，ByteBuddy inline mock 无法 mock 具体类 RedisUtil）：
-        // 改用 JDK 动态代理伪造「DB 故障」的 UserRepository + 继承式伪造「Redis 故障」的 RedisUtil，
-        // 与 JVM 版本无关、零额外依赖。
+    @DisplayName("Redis 与 DB 双重故障时 fail-closed 阻断（安全闸不可降级）")
+    void redisAndDbFailureClosesConnection() throws Exception {
+        // P0-SEC-FAIL-CLOSED: 状态校验在认证链上是安全闸，
+        // 异常路径必须阻断请求而非 fail-open 放行（否则管理员禁用形同虚设）。
         UserRepository failingRepo = (UserRepository) java.lang.reflect.Proxy.newProxyInstance(
                 getClass().getClassLoader(),
                 new Class[]{UserRepository.class},
@@ -187,9 +187,12 @@ class UserStatusCheckFilterTest extends BaseIntegrationTest {
 
             filter.doFilter(req, res, chain);
 
-            // fail-open：请求被放行至后续过滤链，且未被 401 拦截
-            assertNotNull(chain.getRequest(), "fail-open 时请求应被放行到后续链");
-            assertNotEquals(401, res.getStatus(), "fail-open 时不应返回 401");
+            // fail-closed: 请求被阻断（无 chain 转发），并返回 401 + SERVICE_UNAVAILABLE 业务码
+            assertNull(chain.getRequest(), "fail-closed 时请求不应被放行到后续链");
+            assertEquals(401, res.getStatus(), "fail-closed 时应返回 401（业务码 SERVICE_UNAVAILABLE）");
+            String body = res.getContentAsString();
+            org.junit.jupiter.api.Assertions.assertTrue(body.contains("1008") || body.contains("SERVICE_UNAVAILABLE") || body.contains("服务"),
+                    "fail-closed 响应应说明服务不可用原因，body=" + body);
         } finally {
             SecurityContextHolder.clearContext();
         }

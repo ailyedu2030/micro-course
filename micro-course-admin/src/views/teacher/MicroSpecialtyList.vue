@@ -38,7 +38,7 @@
               @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               style="cursor:pointer">
-              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="'微专业封面：' + item.title" />
             <div class="card-body">
               <div class="card-header-row">
                 <span class="card-title">{{ item.title }}</span>
@@ -72,7 +72,7 @@
               @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               style="cursor:pointer">
-              <el-image :src="item.coverUrl" fit="cover" class="card-cover" />
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="'微专业封面：' + item.title" />
               <div class="card-body">
                 <div class="card-header-row">
                   <span class="card-title">{{ item.title }}</span>
@@ -188,7 +188,7 @@ const createRules = { title: [{ required: true, message: '请输入标题', trig
 const colleges = ref([])
 
 const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
-const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: '', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
+const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: 'success', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
 const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
 
@@ -275,6 +275,7 @@ onMounted(() => { fetchList('leading'); fetchColleges() })
 .mg-top-16 { margin-top: var(--space-4); }
 .full-width { width: 100%; }
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--space-4); min-height: 200px; }
+@media (max-width: 400px) { .card-grid { grid-template-columns: 1fr; } }
 .ms-card { border: 1px solid var(--el-border-color-lighter); border-radius: var(--el-border-radius-base); overflow: hidden; transition: box-shadow var(--el-transition-duration) var(--el-transition-function-ease-in-out-bezier); }
 .ms-card:hover { box-shadow: var(--el-box-shadow-light); }
 .card-cover { width: 100%; height: 160px; }

@@ -55,7 +55,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      # P1C-4 安全加固：Redis 密码默认值改为强行提醒占位，生产环境必须通过 REDIS_PASSWORD 环境变量设置实际密码
+      # 若未配置环境变量启动将使用 CHANGE_ME_IN_PRODUCTION，强行提醒开发者注意——不修改配置则永远不过审
+      password: ${REDIS_PASSWORD:CHANGE_ME_IN_PRODUCTION}
       database: ${REDIS_DB:0}
       timeout: 2000ms
       lettuce:
@@ -107,7 +109,10 @@ mybatis-plus:
 
 jwt:
   # R8 修复 P0-1: 本地开发允许无 JWT_SECRET（JwtUtil.init 兜底），生产必须显式设置
-  secret: ${JWT_SECRET:}
+  # 【B5 P1-I 修复 2026-07-30】空兜底改为 CHANGE_ME_IN_PRODUCTION，防止意外使用空密钥启动
+  # 未配置 JWT_SECRET 环境变量启动 → JwtUtil.init 检测到该占位符 → 使用开发兜底密钥并打印警告
+  # 生产环境必须设置 JWT_SECRET 环境变量（至少 32 字符 HMAC-SHA256 密钥）
+  secret: ${JWT_SECRET:CHANGE_ME_IN_PRODUCTION}
   # 生产建议: JWT_EXPIRATION=1800000(30分), refresh=604800000(7天)
   expiration: ${JWT_EXPIRATION:1800000}
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
@@ -186,7 +191,9 @@ plugin:
 # J9-01: 支付模式配置 — mock 模式（默认）dev 可用，生产部署时设为 real
 payment:
   mode: ${PAY_MODE:mock}   # mock | real
-  callback-secret: ${PAYMENT_CALLBACK_SECRET:}  # 支付回调签名密钥
+  # P1C-5 安全加固：支付回调签名密钥默认值改为强行提醒占位
+  # 回调密钥为空意味着任何人可伪造支付成功回调通知，生产环境必须通过 PAYMENT_CALLBACK_SECRET 环境变量设置
+  callback-secret: ${PAYMENT_CALLBACK_SECRET:CHANGE_ME_IN_PRODUCTION}
 
 # CORS (INFRA-NEW-4: 多个来源以逗号分隔,env 可覆盖)
 cors:
@@ -224,7 +231,10 @@ mybatis:
 # 【生产环境】必须通过环境变量 APP_SECURITY_FIELD_ENCRYPTION_KEY 和 APP_SECURITY_FIELD_ENCRYPTION_SALT 设置
 #   - APP_SECURITY_FIELD_ENCRYPTION_KEY: 至少 32 字符
 #   - APP_SECURITY_FIELD_ENCRYPTION_SALT: 至少 16 字符
-# 【本地开发】以下默认值仅用于开发环境，不可用于生产
+# 【本地开发】⚠️ 此默认值仅用于本地开发，生产环境必须通过环境变量覆盖！
+#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_KEY 至少 32 字符
+#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_SALT 至少 16 字符
+#   ⚠️  不覆盖 = 生产使用固定密钥 = 字段级加密形同虚设 = P0 级数据泄露事故
 app:
   security:
     field-encryption-key: ${APP_SECURITY_FIELD_ENCRYPTION_KEY:dev-32-char-key-not-for-production-!}

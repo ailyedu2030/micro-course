@@ -75,8 +75,8 @@ fi
 # ---- 3. 项目预检 ----
 echo ""
 echo "[3/5] 项目预检"
-if [ -f .claude/skills/microcourse/scripts/precheck.sh ]; then
-    if bash .claude/skills/microcourse/scripts/precheck.sh > /dev/null 2>&1; then
+if [ -f .agents/skills/microcourse/scripts/precheck.sh ]; then
+    if bash .agents/skills/microcourse/scripts/precheck.sh > /dev/null 2>&1; then
         check "预检脚本 (通过)" "true"
     else
         check "预检脚本 (失败)" "false"

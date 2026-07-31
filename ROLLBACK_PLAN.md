@@ -14,6 +14,7 @@
 | v1.22.0 | 2026-07-17 | 全链路审计修复：套餐购买/退款/展示 + 5 处后端状态过滤 + 6 处前端状态过滤（**无 DB schema 变更**，仅应用层回滚即可） |
 | v1.21.1 | 2026-07-09 | 每教师独立 API Key（Hermes webhook 改造） |
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |
+| **R11 audit+monitor** | 2026-07-30 | 12 轮全栈多专家审查+修复：auth fail-closed、文件越权、API Key 明文清空、OrderService 811→78 拆分、22 个 Controller size=10000→200 收敛、QuestionController size=100000→200 修 DoS、UserRetentionCleanupJob 加 orders 级联、ProfileController 拆分 alias 路由、Profile.vue i18n 化、vue-i18n vitest setup 全局 install 修 6 个月 pre-existing 15 个测试失败、verify-secrets.sh / check-references-sync.py / generate-missing-tables.py / add-viewonly-tables.py 部署工具、contract-audit 0/0 完全清零、JaCoCo 真实 45.29% 覆盖率、admin nginx SPA fallback 修复、alertmanager CHANGE_ME 命名优化。**V324 迁移清空 api_key 明文列（DB 必跑），V325 清理 V135 冗余唯一索引（DB 必跑）**（**部分回滚必须包含迁移**）|
 
 ## 5 分钟回滚（应用层）
 

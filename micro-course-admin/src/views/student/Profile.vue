@@ -11,11 +11,11 @@
     <template v-if="profileError">
       <el-result
         icon="error"
-        title="加载失败"
-        sub-title="个人信息获取异常，请检查网络后重试"
+        :title="$t('user.loadFailed')"
+        :sub-title="$t('user.loadFailedSubtitle')"
       >
         <template #extra>
-          <el-button type="primary" @click="profileError = false; userStore.getInfo().catch(() => { profileError = true })">重新加载</el-button>
+          <el-button type="primary" @click="profileError = false; userStore.getInfo().catch(() => { profileError = true })">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
     </template>
@@ -48,7 +48,7 @@
 
     <!-- PC 端布局 -->
     <template v-else-if="!isMobile">
-      <h2 class="page-title">个人中心</h2>
+      <h2 class="page-title">{{ $t('user.profile') }}</h2>
 
       <el-row :gutter="20">
         <el-col :span="16">
@@ -64,7 +64,7 @@
           <el-card class="profile-card" shadow="never">
             <template #header>
               <div class="card-header">
-                <span>头像设置</span>
+                <span>{{ $t('user.avatar') }}</span>
               </div>
             </template>
             <div class="avatar-section">
@@ -76,9 +76,9 @@
                 :on-change="handleAvatarChange"
                 ref="avatarUploadCompRef"
               >
-                <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" alt="头像" />
+                <el-avatar :size="80" :src="avatarPreview || userStore.userInfo?.avatar" :alt="$t('user.avatar')" />
               </el-upload>
-              <div class="avatar-tip">支持 JPG、PNG、WebP 格式，建议 200×200 像素，≤2MB</div>
+              <div class="avatar-tip">{{ $t('user.avatarTip') }}</div>
               <div class="avatar-actions">
                 <el-button
                   v-if="avatarPreview"
@@ -87,14 +87,14 @@
                   :loading="avatarLoading"
                   @click="handleSaveAvatar"
                 >
-                  保存头像
+                  {{ $t('user.saveAvatar') }}
                 </el-button>
                 <el-button
                   v-if="avatarPreview"
                   size="small"
                   @click="handleCancelAvatar"
                 >
-                  取消
+                  {{ $t('app.cancel') }}
                 </el-button>
               </div>
             </div>
@@ -104,20 +104,20 @@
           <el-card class="profile-card student-stat-card" shadow="never">
             <template #header>
               <div class="card-header">
-                <span>账号信息</span>
+                <span>{{ $t('user.accountInfo') }}</span>
               </div>
             </template>
             <div class="info-list">
               <div class="info-item">
-                <span class="info-label">用户ID</span>
+                <span class="info-label">{{ $t('user.userId') }}</span>
                 <span class="info-value">{{ userStore.userInfo?.id }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">角色</span>
+                <span class="info-label">{{ $t('user.role') }}</span>
                 <span class="info-value">{{ userStore.userInfo?.role }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">注册时间</span>
+                <span class="info-label">{{ $t('user.registerTime') }}</span>
                 <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
               </div>
             </div>
@@ -139,7 +139,7 @@
 
     <!-- 移动端布局 -->
     <template v-else>
-      <h2 class="page-title page-title--mobile">个人中心</h2>
+      <h2 class="page-title page-title--mobile">{{ $t('user.profile') }}</h2>
 
       <!-- 用户信息卡片 -->
       <el-card class="profile-card user-info-card" shadow="never">
@@ -152,7 +152,7 @@
             :on-change="handleAvatarChange"
             ref="avatarUploadMobileRef"
           >
-            <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" alt="头像" />
+            <el-avatar :size="60" :src="avatarPreview || userStore.userInfo?.avatar" :alt="$t('user.avatar')" />
           </el-upload>
           <div class="user-info-text">
             <div class="user-info-name">{{ userStore.userInfo?.realName || userStore.userInfo?.username }}</div>
@@ -160,8 +160,8 @@
           </div>
         </div>
         <div v-if="avatarPreview" class="avatar-actions-mobile">
-          <el-button type="primary" size="small" :loading="avatarLoading" @click="handleSaveAvatar">保存头像</el-button>
-          <el-button size="small" @click="handleCancelAvatar">取消</el-button>
+          <el-button type="primary" size="small" :loading="avatarLoading" @click="handleSaveAvatar">{{ $t('user.saveAvatar') }}</el-button>
+          <el-button size="small" @click="handleCancelAvatar">{{ $t('app.cancel') }}</el-button>
         </div>
       </el-card>
 
@@ -172,16 +172,16 @@
       <el-card class="profile-card student-stat-card" shadow="never">
         <template #header>
           <div class="card-header">
-            <span>账号信息</span>
+            <span>{{ $t('user.accountInfo') }}</span>
           </div>
         </template>
         <div class="info-list">
           <div class="info-item">
-            <span class="info-label">用户ID</span>
+            <span class="info-label">{{ $t('user.userId') }}</span>
             <span class="info-value">{{ userStore.userInfo?.id }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">注册时间</span>
+            <span class="info-label">{{ $t('user.registerTime') }}</span>
             <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
           </div>
         </div>
@@ -216,10 +216,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
+import { ref, h, onMounted, onBeforeUnmount, nextTick, defineAsyncComponent } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { uploadAvatar } from '../../api/auth'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
+// R2: 异步组件加载失败的 fallback 组件
+const AsyncErrorStub = {
+  name: 'AsyncErrorStub',
+  setup() {
+    const { t } = useI18n()
+    return () => h('div', { class: 'error-stub' }, t('user.componentLoadFailed'))
+  }
+}
 
 // P1-1: 嵌套子组件改为 defineAsyncComponent 懒加载
 //   - UserInfoEditor: 编辑个人信息(40K) - 进入编辑时才加载
@@ -228,11 +240,27 @@ import { uploadAvatar } from '../../api/auth'
 //   - WrongQuestionsCard: 错题本(25K) - 滚动到才加载
 //   - CertificatesCard: 证书墙(20K) - 滚动到才加载
 // 客户体验: Profile 首屏从 130K 降至 60K, 移动端首屏速度提升 50%
-const UserInfoEditor = defineAsyncComponent(() => import('@/components/profile/UserInfoEditor.vue'))
-const PasswordEditor = defineAsyncComponent(() => import('@/components/profile/PasswordEditor.vue'))
-const AchievementBadges = defineAsyncComponent(() => import('@/components/profile/AchievementBadges.vue'))
-const WrongQuestionsCard = defineAsyncComponent(() => import('@/components/profile/WrongQuestionsCard.vue'))
-const CertificatesCard = defineAsyncComponent(() => import('@/components/profile/CertificatesCard.vue'))
+// R2: 添加 errorComponent 防止 chunk 加载失败导致全页崩溃
+const UserInfoEditor = defineAsyncComponent({
+  loader: () => import('@/components/profile/UserInfoEditor.vue'),
+  errorComponent: AsyncErrorStub
+})
+const PasswordEditor = defineAsyncComponent({
+  loader: () => import('@/components/profile/PasswordEditor.vue'),
+  errorComponent: AsyncErrorStub
+})
+const AchievementBadges = defineAsyncComponent({
+  loader: () => import('@/components/profile/AchievementBadges.vue'),
+  errorComponent: AsyncErrorStub
+})
+const WrongQuestionsCard = defineAsyncComponent({
+  loader: () => import('@/components/profile/WrongQuestionsCard.vue'),
+  errorComponent: AsyncErrorStub
+})
+const CertificatesCard = defineAsyncComponent({
+  loader: () => import('@/components/profile/CertificatesCard.vue'),
+  errorComponent: AsyncErrorStub
+})
 
 const userStore = useUserStore()
 
@@ -249,11 +277,11 @@ const handleAvatarChange = (uploadFile) => {
   const file = uploadFile?.raw
   if (!file) return
   if (file.size > avatarMaxSize) {
-    ElMessage.error('图片大小不能超过 2MB')
+    ElMessage.error(t('user.avatarTooLarge'))
     return
   }
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-    ElMessage.error('只支持 JPG、PNG、WebP 格式')
+    ElMessage.error(t('user.avatarFormatError'))
     return
   }
   avatarFile.value = file
@@ -286,7 +314,7 @@ const compressAvatar = (file) => {
           if (blob) {
             resolve(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }))
           } else {
-            reject(new Error('图片压缩失败'))
+            reject(new Error(t('user.avatarCompressFailed')))
           }
         },
         'image/jpeg',
@@ -295,7 +323,7 @@ const compressAvatar = (file) => {
     }
     img.onerror = () => {
       URL.revokeObjectURL(img.src)  // 及时释放 blob URL
-      reject(new Error('图片加载失败'))
+      reject(new Error(t('user.avatarLoadFailed')))
     }
     img.src = URL.createObjectURL(file)
   })
@@ -303,7 +331,7 @@ const compressAvatar = (file) => {
 
 const handleSaveAvatar = async () => {
   if (!avatarFile.value) {
-    ElMessage.warning('请先选择头像')
+    ElMessage.warning(t('user.avatarSelectFirst'))
     return
   }
   avatarLoading.value = true
@@ -313,13 +341,13 @@ const handleSaveAvatar = async () => {
     await userStore.getInfo()
     avatarPreview.value = ''
     avatarFile.value = null
-    ElMessage.success('头像更新成功')
+    ElMessage.success(t('user.avatarUpdateSuccess'))
   } catch (e) {
-    const msg = e?.message || '头像更新失败'
+    const msg = e?.message || t('user.avatarUpdateFailed')
     if (msg.includes('格式')) {
-      ElMessage.error('图片格式不支持，请使用 JPG/PNG/WebP')
+      ElMessage.error(t('user.formatNotSupported'))
     } else if (msg.includes('大小') || msg.includes('2MB') || msg.includes('2 MB')) {
-      ElMessage.error('图片过大，请使用不超过 2MB 的图片')
+      ElMessage.error(t('user.imageTooLarge'))
     } else {
       // 拦截器已展示后端错误，避免重复
     }
@@ -341,7 +369,7 @@ const checkMobile = () => {
 }
 
 onMounted(async () => {
-  document.title = '个人中心 - 微课平台'
+  document.title = t('user.profile') + ' - ' + t('app.title')
   checkMobile()
   window.addEventListener('resize', checkMobile)
 
@@ -361,7 +389,7 @@ onMounted(async () => {
   nextTick(() => {
     document.querySelectorAll('.avatar-uploader .el-upload[role="button"], .avatar-uploader-mobile .el-upload[role="button"]').forEach(el => {
       if (!el.getAttribute('aria-label')) {
-        el.setAttribute('aria-label', '上传头像')
+        el.setAttribute('aria-label', t('user.uploadAvatar'))
       }
     })
   })
@@ -538,6 +566,17 @@ onBeforeUnmount(() => {
 /* === Profile Skeleton (Mobile) === */
 .profile-skeleton-mobile {
   padding: var(--space-3);
+}
+
+/* === Async Component Error Fallback === */
+.error-stub {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
+  background: var(--el-fill-color-lighter);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-5);
 }
 
 /* === Mobile Responsive === */

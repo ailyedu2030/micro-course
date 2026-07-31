@@ -577,7 +577,7 @@ const handleApprove = async () => {
 const handleReject = async () => {
   // eslint-disable-next-line no-useless-assignment -- reason 在 try 块内被用户输入覆盖
   let reason = ''
-  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea', inputValidator: (v) => { if (!v || v.trim().length < 10) { return '驳回原因至少10个字' } return true } }); reason = res.value }
+  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea', inputProps: { maxlength: 500, showWordLimit: true }, inputValidator: (v) => { if (!v || v.trim().length < 10) { return '驳回原因至少10个字' } if (v.trim().length > 500) { return '驳回原因不能超过500字' } return true } }); reason = res.value }
   catch { return }
   try { await rejectCourse(courseId.value, reason); ElMessage.success('已驳回'); fetchCourse() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
@@ -607,7 +607,7 @@ const handleCopy = async () => {
 
 // ===== 编辑提交 =====
 const handleCoverChange = (file) => {
-  if (file.raw && file.raw.size > 5 * 1024 * 1024) {
+  if (file.raw && file.raw.size > 2 * 1024 * 1024) {
     ElMessage.warning('封面图片不能超过 2MB')
     coverUploadRef.value?.clearFiles()
     return

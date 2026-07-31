@@ -147,14 +147,14 @@ class ApiKeyAuthenticationFilterTest {
         assertTrue(body.contains("API Key 仅限教师或管理员使用") || body.contains("NO_PERMISSION"),
                 "错误信息应提及权限问题");
         verify(userRepository).findByApiKeyHash(expectedHash);
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 
     @Test
-    @DisplayName("无效 X-API-Key（不存在）→ 401 返回 21001（hash + fallback 均未命中）")
+    @DisplayName("无效 X-API-Key（不存在）→ 401 返回 21001（hash 未命中，无 fallback）")
     void invalidApiKeyReturnsUnauthorized() throws Exception {
         String expectedHash = DigestUtils.sha256Hex("invalid-key");
         when(userRepository.findByApiKeyHash(expectedHash)).thenReturn(Optional.empty());
-        when(userRepository.findByApiKey("invalid-key")).thenReturn(Optional.empty());
         request.addHeader("X-API-Key", "invalid-key");
 
         filter.doFilterInternal(request, response, filterChain);
@@ -166,7 +166,7 @@ class ApiKeyAuthenticationFilterTest {
         assertTrue(body.contains("无效的 Hermes API Key") || body.contains("Hermes API Key"),
                 "错误信息应说明 API Key 无效");
         verify(userRepository).findByApiKeyHash(expectedHash);
-        verify(userRepository).findByApiKey("invalid-key");
+        verify(userRepository, never()).findByApiKey(anyString());
     }
 
     @Test

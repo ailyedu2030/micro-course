@@ -59,7 +59,7 @@ public class DiscussionPostController {
     }
 
     @PutMapping("/{id}/pin")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<Void> pin(@PathVariable Long id,
                        @RequestParam(required = false) Boolean pinned) {
         if (pinned != null) {
@@ -71,7 +71,7 @@ public class DiscussionPostController {
     }
 
     @PutMapping("/{id}/essence")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     public R<Void> essence(@PathVariable Long id, @RequestParam boolean essence) {
         postService.updateEssence(id, essence);
         return R.ok();

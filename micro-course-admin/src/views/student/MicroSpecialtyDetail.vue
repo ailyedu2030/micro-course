@@ -317,7 +317,7 @@
             >
               当前未开放重新报名
             </el-button>
-            <!-- 未报名 -->
+            <!-- 未报名 — 显示明确引导 -->
             <el-button
               v-else
               type="primary"
@@ -326,7 +326,7 @@
               :disabled="!canEnroll"
               @click="handleApply"
             >
-              {{ canEnroll ? '立即报名' : '当前不可报名' }}
+              {{ canEnroll ? '立即报名' : (!isStudent ? '仅学生可报名' : (ms?.status === 'RECRUITING' ? '请先登录' : '当前不可报名')) }}
             </el-button>
           </div>
         </div>
@@ -897,5 +897,11 @@ onMounted(async () => {
 }
 .ms-bottom-sep {
   color: var(--el-border-color);
+}
+
+/* R2: Bottom CTA buttons focus-visible */
+.ms-bottom-bar :deep(.el-button:focus-visible) {
+  outline: 2px solid var(--role-primary);
+  outline-offset: 2px;
 }
 </style>

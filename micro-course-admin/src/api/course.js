@@ -71,14 +71,13 @@ export function batchApproveCourses(ids, idVersionMap) {
   })
 }
 
-// 批量驳回（串行调用）
+// 批量驳回（调用后端批量端点 POST /api/courses/batch-reject）
 export async function batchRejectCourses(ids, reason) {
-  let success = 0; let failed = 0
-  for (const id of ids) {
-    try { await rejectCourse(id, reason); success++ }
-    catch { failed++ }
-  }
-  return { success, failed }
+  return request({
+    method: 'POST',
+    url: '/courses/batch-reject',
+    data: { ids, reason }
+  })
 }
 
 // Phase 4: 课程定价

@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.apache.ibatis.annotations.Update;
 
+import java.util.List;
 import java.util.Optional;
 
 @Mapper
@@ -51,4 +52,17 @@ public interface UserRepository extends BaseMapper<User> {
      */
     @Select("SELECT * FROM users WHERE api_key_hash = #{hash} AND deleted_at IS NULL AND status = 1 LIMIT 1")
     Optional<User> findByApiKeyHash(@Param("hash") String hash);
+
+    /**
+     * 查询软删除超过 90 天的用户记录（物理清理用）。
+     * 绕过 @TableLogic 逻辑删除过滤，直接查询 deleted_at 非空的记录。
+     */
+    @Select("SELECT * FROM users WHERE deleted_at IS NOT NULL AND deleted_at < NOW() - INTERVAL '90 days'")
+    List<User> selectSoftDeletedOlderThan90Days();
+
+    /**
+     * 物理删除用户记录（绕过 @TableLogic 软删除）。
+     */
+    @org.apache.ibatis.annotations.Delete("DELETE FROM users WHERE id = #{id}")
+    int physicalDeleteById(@Param("id") Long id);
 }

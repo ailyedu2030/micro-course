@@ -148,13 +148,28 @@ request.interceptors.response.use(response => {
         const queue = pendingRequests.slice()
         pendingRequests = []
         queue.forEach(({ reject }) => reject(e))
+        // 网络错误分类: 仅真正 401/403 清除 token，网络超时/5xx 保留 token
+        const refreshStatus = e?.response?.status
+        if (!refreshStatus || refreshStatus >= 500) {
+          // 网络中断/5xx: 保留 token，不跳登录，仅拒绝队列
+          return Promise.reject(e)
+        }
+        // 401/403: refresh token 失效，清理凭证
         removeToken()
         removeRefreshToken()
+        if (router.currentRoute.value.path !== '/login') {
+          const currentPath = router.currentRoute.value.fullPath
+          router.push({ path: '/login', query: { redirect: currentPath } })
+          ElMessage.warning('登录已过期，请重新登录')
+        }
+        return Promise.reject(e)
       } finally {
         isRefreshing = false
       }
     }
+    // 无可用的 refreshToken → 直接清理并跳转
     removeToken()
+    removeRefreshToken()
     if (router.currentRoute.value.path !== '/login') {
       const currentPath = router.currentRoute.value.fullPath
       router.push({ path: '/login', query: { redirect: currentPath } })

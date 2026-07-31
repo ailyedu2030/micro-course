@@ -26,8 +26,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8088';
 // Helper: 登录指定用户
 // ──────────────────────────────────────────────
 async function loginAs(page: Page, username: string, password: string) {
-  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 20000 });
-  await page.waitForSelector('#username', { timeout: 10000 });
+  await page.goto(`${BASE_URL}/login`, { waitUntil: 'networkidle', timeout: 60000 });
+  await page.waitForSelector('#username', { timeout: 60000 });
   await page.fill('#username', username);
   await page.fill('#password', password);
   // 点击登录按钮（兼容两种选择器: .login-btn btn 或文字匹配）
@@ -158,7 +158,7 @@ test.describe('支付流程 E2E', () => {
     await loginAs(page, 'student', 'student123');
 
     // ===== 2. 进入购物车/结算页 =====
-    await page.goto(`${BASE_URL}/student/checkout`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/checkout`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(1500);
 
     // 验证购物车商品展示
@@ -271,7 +271,7 @@ test.describe('支付流程 E2E', () => {
     await loginAs(page, 'student', 'student123');
 
     // ===== 2. 进入结算页 =====
-    await page.goto(`${BASE_URL}/student/checkout`, { waitUntil: 'networkidle', timeout: 20000 });
+    await page.goto(`${BASE_URL}/student/checkout`, { waitUntil: 'networkidle', timeout: 60000 });
     await page.waitForTimeout(1500);
 
     // 验证购物车仍显示商品

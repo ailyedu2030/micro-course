@@ -12,13 +12,8 @@ import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
 import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserVO;
-import com.microcourse.entity.User;
-import com.microcourse.exception.BusinessException;
-import com.microcourse.exception.ErrorCode;
-import com.microcourse.repository.UserRepository;
 import com.microcourse.service.AdminSettingService;
 import com.microcourse.service.AuthService;
-import com.microcourse.util.SecurityUtil;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -41,13 +36,10 @@ public class AuthController {
 
     private final AuthService authService;
     private final AdminSettingService adminSettingService;
-    private final UserRepository userRepository;
 
-    public AuthController(AuthService authService, AdminSettingService adminSettingService,
-                           UserRepository userRepository) {
+    public AuthController(AuthService authService, AdminSettingService adminSettingService) {
         this.authService = authService;
         this.adminSettingService = adminSettingService;
-        this.userRepository = userRepository;
     }
 
     /**
@@ -143,15 +135,8 @@ public class AuthController {
     @GetMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> getMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        if (user.getApiKey() == null) {
-            return R.ok(null);
-        }
-        return R.ok(UserApiKeyResponse.maskedOnly(
-                UserApiKeyResponse.mask(user.getApiKey()),
-                user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null));
+        UserApiKeyResponse result = authService.getMyApiKey();
+        return R.ok(result);
     }
 
     /**
@@ -161,21 +146,8 @@ public class AuthController {
     @PostMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<UserApiKeyResponse> generateMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
-                + java.util.UUID.randomUUID().toString().replace("-", "");
-        user.setApiKey(newKey);
-        user.setUpdatedAt(java.time.LocalDateTime.now());
-        int rows = userRepository.updateById(user);
-        if (rows == 0) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成 API Key 失败（乐观锁或无记录），请重试");
-        }
-        return R.ok(UserApiKeyResponse.full(
-                newKey,
-                UserApiKeyResponse.mask(newKey),
-                user.getUpdatedAt().toString()));
+        UserApiKeyResponse result = authService.generateMyApiKey();
+        return R.ok(result);
     }
 
     /**
@@ -185,15 +157,8 @@ public class AuthController {
     @DeleteMapping("/me/api-key")
     @PreAuthorize("hasAnyRole('TEACHER', 'ADMIN')")
     public R<Void> revokeMyApiKey() {
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        User user = userRepository.selectById(currentUserId);
-        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        user.setApiKey(null);
-        user.setUpdatedAt(java.time.LocalDateTime.now());
-        int rows = userRepository.updateById(user);
-        if (rows == 0) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "撤销 API Key 失败（乐观锁或无记录）");
-        }
+        authService.revokeMyApiKey();
         return R.ok();
     }
+
 }

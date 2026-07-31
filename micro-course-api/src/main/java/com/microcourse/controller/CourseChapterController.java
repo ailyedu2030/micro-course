@@ -36,7 +36,7 @@ public class CourseChapterController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<ChapterVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size,
             @RequestParam(required = false) Long courseId) {
         if (courseId == null) {
             throw new com.microcourse.exception.BusinessException(com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "courseId 不能为空");
@@ -53,7 +53,7 @@ public class CourseChapterController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("创建章节")
     public R<ChapterVO> create(@Valid @RequestBody ChapterCreateRequest request) {
         ChapterVO vo = chapterService.create(request);
@@ -61,7 +61,7 @@ public class CourseChapterController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("更新章节")
     public R<ChapterVO> update(@PathVariable Long id,
                                @Valid @RequestBody ChapterUpdateRequest request) {
@@ -71,7 +71,7 @@ public class CourseChapterController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("删除章节")
     public R<Void> delete(@PathVariable Long id) {
         chapterService.delete(id);
@@ -79,7 +79,7 @@ public class CourseChapterController {
     }
 
     @PutMapping("/sort")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("章节排序")
     public R<Void> sort(@Valid @RequestBody List<ChapterSortRequest> requests) {
         chapterService.sort(requests);

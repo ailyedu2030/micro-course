@@ -244,6 +244,11 @@ router.beforeEach(async (to, from, next) => {
               NProgress.done()
               return next(false)
             }
+          } else if (userStore.token) {
+            // refresh 失败（网络中断/5xx），token 仍在 → 中断导航，不登出
+            console.warn('[router] 静默刷新失败（网络中断），保留当前 token', userStore.token)
+            NProgress.done()
+            return next(false)
           }
         }
       } catch (refreshError) {

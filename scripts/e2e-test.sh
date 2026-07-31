@@ -55,8 +55,8 @@ GRD_CODE=$(curl_code "$BASE/api/grades" -H "Authorization: Bearer $TOKEN")
 echo ""
 echo "--- Flow C: 内容管理 ---"
 
-# 8. Chapters
-CHP_CODE=$(curl_code "$BASE/api/chapters?page=0&size=5" -H "Authorization: Bearer $TOKEN")
+# 8. Chapters (requires courseId — use course 1 from seed data)
+CHP_CODE=$(curl_code "$BASE/api/chapters?courseId=1&page=0&size=5" -H "Authorization: Bearer $TOKEN")
 [ "$CHP_CODE" = "200" ] && ok "Chapters list (200)" || fail "Chapters list ($CHP_CODE)"
 
 # 9. Videos
@@ -70,8 +70,8 @@ QST_CODE=$(curl_code "$BASE/api/questions?page=0&size=5" -H "Authorization: Bear
 echo ""
 echo "--- Flow D: 互动管理 ---"
 
-# 11. Discussions
-DSC_CODE=$(curl_code "$BASE/api/discussions" -H "Authorization: Bearer $TOKEN")
+# 11. Discussions (DiscussionPostController maps to /api/discussions/posts)
+DSC_CODE=$(curl_code "$BASE/api/discussions/posts" -H "Authorization: Bearer $TOKEN")
 [ "$DSC_CODE" = "200" ] && ok "Discussions (200)" || fail "Discussions ($DSC_CODE)"
 
 # 12. Reviews

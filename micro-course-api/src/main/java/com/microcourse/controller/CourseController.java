@@ -111,7 +111,7 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("创建课程")
         @Operation(summary = "创建课程 (TEACHER 创建者自动绑定, OFFLINE 不需要插件授权, INTERACTIVE 需要)")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
@@ -146,7 +146,7 @@ public class CourseController {
      * 权限：TEACHER（课程创建者，Service 层 isOwnerOrAdmin 校验）
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("更新课程信息")
         @Operation(summary = "更新课程信息 (TEACHER owner, Service 层 isOwnerOrAdmin 校验)")
     public R<CourseVO> update(@PathVariable Long id,

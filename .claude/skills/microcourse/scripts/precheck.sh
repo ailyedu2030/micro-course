@@ -115,7 +115,7 @@ check_outdated_path() {
 check_business_code() {
     local hits=0
     # Phase 3+ 合法 Controller（在白名单中豁免）
-     local whitelist="AuthController\|DepartmentController\|MajorController\|ClassController\|UserController\|CourseCategoryController\|CourseController\|CourseChapterController\|TagController\|EnrollmentController\|CourseFavoriteController\|VideoController\|QuestionController\|ExerciseController\|ExerciseRecordController\|WrongQuestionController\|DiscussionPostController\|DiscussionCommentController\|DiscussionAdminController\|LearningProgressController\|CheckInController\|NotificationController\|NotificationPreferenceController\|CourseReviewController\|MyReviewController\|AdminSettingsController\|OperationLogController\|AdminStatsController\|VideoTranscodeController\|BadgeController\|CertificateController\|TeacherController\|GradeController\|TeachingClassController\|AcademicStatsController\|AdminBannerController\|VideoBookmarkController\|VideoStreamController\|SlideController\|NarrationController\|TtsController\|AdminTtsController\|AudioUploadController\|LessonController\|OrderController\|CourseBundleController\|NarrationSettingController\|EnumExportController\|SystemConfigController\|FrontendErrorController\|ExamController\|CourseReviewLogController\|MicroSpecialtyController\|MicroSpecialtyEnrollmentController\|MicroSpecialtyFeaturedController\|MicroSpecialtyInviteController\|MicroSpecialtyProposalController\|BannerPublicController\|CartController\|StorageApplicationController\|PlatformShareConfigController\|TeacherRatingController\|OfflineSessionController\|ReportController\|ServerTimeController\|HermesWebhookController\|HermesEventController\|SectionController\|DashboardController\|InteractiveCoursewareController\|StudentController\|CoursePublishController\|CourseStudentController\|CourseExerciseController\|CourseVideoController\|CourseOfflineSessionController\|ProfileController\|SectionResourceController\|CourseResourceController\|AliasController\|PptCoursewareController\|HtmlCoursewareController\|CoursewareQueryController\|CoursewareDeleteController\|MicroSpecialtyTeacherController\|SectionSlideController"
+     local whitelist="HermesEventController\|AuthController\|DepartmentController\|MajorController\|ClassController\|UserController\|UserLearningProgressAliasController\|CourseCategoryController\|CourseController\|CourseChapterController\|TagController\|EnrollmentController\|CourseFavoriteController\|VideoController\|QuestionController\|ExerciseController\|ExerciseRecordController\|WrongQuestionController\|DiscussionPostController\|DiscussionCommentController\|DiscussionAdminController\|LearningProgressController\|CheckInController\|NotificationController\|NotificationPreferenceController\|CourseReviewController\|MyReviewController\|AdminSettingsController\|OperationLogController\|AdminStatsController\|VideoTranscodeController\|BadgeController\|CertificateController\|TeacherController\|GradeController\|TeachingClassController\|AcademicStatsController\|AdminBannerController\|VideoBookmarkController\|VideoStreamController\|SlideController\|NarrationController\|TtsController\|AdminTtsController\|AudioUploadController\|LessonController\|OrderController\|CourseBundleController\|NarrationSettingController\|EnumExportController\|SystemConfigController\|FrontendErrorController\|ExamController\|CourseReviewLogController\|MicroSpecialtyController\|MicroSpecialtyEnrollmentController\|MicroSpecialtyFeaturedController\|MicroSpecialtyInviteController\|MicroSpecialtyProposalController\|BannerPublicController\|CartController\|StorageApplicationController\|PlatformShareConfigController\|TeacherRatingController\|OfflineSessionController\|ReportController\|ServerTimeController\|HermesWebhookController\|SectionController\|DashboardController\|InteractiveCoursewareController\|StudentController\|CoursePublishController\|CourseStudentController\|CourseExerciseController\|CourseVideoController\|CourseOfflineSessionController\|ProfileController\|SectionResourceController\|CourseResourceController\|AliasController\|PptCoursewareController\|HtmlCoursewareController\|CoursewareQueryController\|CoursewareDeleteController\|MicroSpecialtyTeacherController\|SectionSlideController\|FileAccessController"
     # Controller
     hits=$(grep -rln "public class.*Controller" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
@@ -123,14 +123,14 @@ check_business_code() {
         FAIL=1
     fi
     # Service（有 Service 接口 + ServiceImpl 实现类是 Phase 3 预期状态）
-    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl\|CourseCategoryService\|CourseCategoryServiceImpl\|CourseService\|CourseServiceImpl\|CourseChapterService\|CourseChapterServiceImpl\|TagService\|TagServiceImpl\|EnrollmentLifecycleService\|EnrollmentLifecycleServiceImpl\|EnrollmentService\|EnrollmentServiceImpl\|CourseFavoriteService\|CourseFavoriteServiceImpl\|VideoService\|VideoServiceImpl\|VideoAccessService\|VideoAccessServiceImpl\|QuestionService\|QuestionServiceImpl\|ExerciseService\|ExerciseServiceImpl\|ExerciseRecordService\|ExerciseRecordServiceImpl\|WrongQuestionService\|WrongQuestionServiceImpl\|DiscussionPostService\|DiscussionPostServiceImpl\|DiscussionCommentService\|DiscussionCommentServiceImpl\|LearningProgressService\|LearningProgressServiceImpl\|CheckInService\|CheckInServiceImpl\|NotificationService\|NotificationServiceImpl\|NotificationPreferenceService\|NotificationPreferenceServiceImpl\|CourseReviewService\|CourseReviewServiceImpl\|AdminSettingService\|AdminSettingServiceImpl\|AdminStatsService\|AdminStatsServiceImpl\|VideoTranscodeService\|VideoTranscodeServiceImpl\|BadgeService\|BadgeServiceImpl\|CertificateService\|CertificateServiceImpl\|TeacherService\|TeacherServiceImpl\|GradeService\|GradeServiceImpl\|ManualGradingService\|ManualGradingServiceImpl\|TeachingClassService\|TeachingClassServiceImpl\|AcademicStatsService\|AcademicStatsServiceImpl\|BannerService\|BannerServiceImpl\|VideoBookmarkService\|VideoBookmarkServiceImpl\|SlideService\|SlideServiceImpl\|NarrationService\|NarrationServiceImpl\|SlideRenderService\|LessonService\|LessonServiceImpl\|TtsService\|TtsServiceImpl\|AudioUploadService\|AudioUploadServiceImpl\|OrderService\|OrderServiceImpl\|CourseBundleService\|CourseBundleServiceImpl\|NarrationSettingService\|NarrationSettingServiceImpl\|FrontendErrorService\|FrontendErrorServiceImpl\|CourseReviewLogService\|CourseReviewLogServiceImpl\|MicroSpecialtyService\|MicroSpecialtyServiceImpl\|MicroSpecialtyEnrollmentService\|MicroSpecialtyEnrollmentServiceImpl\|MicroSpecialtyFeaturedService\|MicroSpecialtyFeaturedServiceImpl\|MicroSpecialtyInviteService\|MicroSpecialtyInviteServiceImpl\|MicroSpecialtyProposalService\|MicroSpecialtyProposalServiceImpl\|MicroSpecialtyQualityScoreService\|MicroSpecialtyQualityScoreServiceImpl\|CartService\|CartServiceImpl\|StorageApplicationService\|StorageApplicationServiceImpl\|StorageApplicationExportService\|StorageApplicationExportServiceImpl\|MicroSpecialtyMaterializationService\|MicroSpecialtyMaterializationServiceImpl\|PlatformShareConfigService\|PlatformShareConfigServiceImpl\|TeacherRatingService\|TeacherRatingServiceImpl\|OfflineSessionService\|OfflineSessionServiceImpl\|CoursePricingService\|CoursePricingServiceImpl\|EnrollmentStatsService\|EnrollmentStatsServiceImpl\|CourseQueryService\|CourseQueryServiceImpl\|CourseAdminService\|CourseAdminServiceImpl\|EnrollmentQueryService\|EnrollmentQueryServiceImpl\|MicroSpecialtyQueryService\|MicroSpecialtyQueryServiceImpl\|MicroSpecialtyAdminService\|MicroSpecialtyAdminServiceImpl\|StorageApplicationQueryService\|StorageApplicationQueryServiceImpl\|StorageApplicationCudService\|StorageApplicationCudServiceImpl\|StorageApplicationImageStorageService\|StorageApplicationImageStorageServiceImpl\|UserQueryService\|UserQueryServiceImpl\|AuthQueryService\|AuthQueryServiceImpl\|AuthCasLoginService\|AuthCasLoginServiceImpl\|CasTicketValidationService\|CasTicketValidationServiceImpl\|UserAvatarStorageService\|UserAvatarStorageServiceImpl\|MicroSpecialtyEnrollmentQueryService\|MicroSpecialtyEnrollmentQueryServiceImpl\|MicroSpecialtyProgressService\|MicroSpecialtyProgressServiceImpl\|ScoreHistoryService\|ScoreHistoryServiceImpl\|ReportService\|ReportServiceImpl\|CourseAuditService\|CourseAuditServiceImpl\|UserStatusService\|UserStatusServiceImpl\|UserBatchImportService\|UserBatchImportServiceImpl\|WaitlistPromotionService\|SectionService\|SectionServiceImpl\|HermesCourseSyncService\|HermesCourseSyncServiceImpl\|HermesWebhookCoursewareService\|HermesWebhookCoursewareServiceImpl\|DashboardService\|DashboardServiceImpl\|CourseStudentService\|CourseStudentServiceImpl\|SectionResourceService\|SectionResourceServiceImpl\|PptCoursewareService\|PptCoursewareServiceImpl\|HtmlCoursewareService\|HtmlCoursewareServiceImpl\|CoursewareQueryService\|CoursewareQueryServiceImpl\|CoursewareDeleteService\|CoursewareDeleteServiceImpl\|AudioQueryService\|AudioStorageService\|AudioTokenService\|DomainEventPublisher\|DeadLetterService"
+    local svc_whitelist="AuthService\|AuthServiceImpl\|DepartmentService\|DepartmentServiceImpl\|MajorService\|MajorServiceImpl\|ClassService\|ClassServiceImpl\|UserService\|UserServiceImpl\|OperationLogService\|OperationLogServiceImpl\|CourseCategoryService\|CourseCategoryServiceImpl\|CourseService\|CourseServiceImpl\|CourseChapterService\|CourseChapterServiceImpl\|TagService\|TagServiceImpl\|EnrollmentService\|EnrollmentServiceImpl\|CourseFavoriteService\|CourseFavoriteServiceImpl\|VideoService\|VideoServiceImpl\|VideoAccessService\|VideoAccessServiceImpl\|QuestionService\|QuestionServiceImpl\|ExerciseService\|ExerciseServiceImpl\|ExerciseRecordService\|ExerciseRecordServiceImpl\|WrongQuestionService\|WrongQuestionServiceImpl\|DiscussionPostService\|DiscussionPostServiceImpl\|DiscussionCommentService\|DiscussionCommentServiceImpl\|LearningProgressService\|LearningProgressServiceImpl\|CheckInService\|CheckInServiceImpl\|NotificationService\|NotificationServiceImpl\|NotificationPreferenceService\|NotificationPreferenceServiceImpl\|CourseReviewService\|CourseReviewServiceImpl\|AdminSettingService\|AdminSettingServiceImpl\|AdminStatsService\|AdminStatsServiceImpl\|VideoTranscodeService\|VideoTranscodeServiceImpl\|BadgeService\|BadgeServiceImpl\|CertificateService\|CertificateServiceImpl\|TeacherService\|TeacherServiceImpl\|GradeService\|GradeServiceImpl\|TeachingClassService\|TeachingClassServiceImpl\|AcademicStatsService\|AcademicStatsServiceImpl\|BannerService\|BannerServiceImpl\|VideoBookmarkService\|VideoBookmarkServiceImpl\|SlideService\|SlideServiceImpl\|NarrationService\|NarrationServiceImpl\|SlideRenderService\|LessonService\|LessonServiceImpl\|TtsService\|TtsServiceImpl\|AudioUploadService\|AudioUploadServiceImpl\|OrderService\|OrderServiceImpl\|OrderPaymentService\|OrderPaymentServiceImpl\|OrderQueryService\|OrderQueryServiceImpl\|OrderRefundService\|OrderRefundServiceImpl\|CourseBundleService\|CourseBundleServiceImpl\|NarrationSettingService\|NarrationSettingServiceImpl\|FrontendErrorService\|FrontendErrorServiceImpl\|CourseReviewLogService\|CourseReviewLogServiceImpl\|MicroSpecialtyService\|MicroSpecialtyServiceImpl\|MicroSpecialtyEnrollmentService\|MicroSpecialtyEnrollmentServiceImpl\|MicroSpecialtyFeaturedService\|MicroSpecialtyFeaturedServiceImpl\|MicroSpecialtyInviteService\|MicroSpecialtyInviteServiceImpl\|MicroSpecialtyProposalService\|MicroSpecialtyProposalServiceImpl\|MicroSpecialtyQualityScoreService\|MicroSpecialtyQualityScoreServiceImpl\|CartService\|CartServiceImpl\|StorageApplicationService\|StorageApplicationServiceImpl\|StorageApplicationExportService\|StorageApplicationExportServiceImpl\|MicroSpecialtyMaterializationService\|MicroSpecialtyMaterializationServiceImpl\|PlatformShareConfigService\|PlatformShareConfigServiceImpl\|TeacherRatingService\|TeacherRatingServiceImpl\|OfflineSessionService\|OfflineSessionServiceImpl\|CoursePricingService\|CoursePricingServiceImpl\|EnrollmentStatsService\|EnrollmentStatsServiceImpl\|CourseQueryService\|CourseQueryServiceImpl\|CourseAdminService\|CourseAdminServiceImpl\|EnrollmentQueryService\|EnrollmentQueryServiceImpl\|MicroSpecialtyQueryService\|MicroSpecialtyQueryServiceImpl\|MicroSpecialtyAdminService\|MicroSpecialtyAdminServiceImpl\|StorageApplicationQueryService\|StorageApplicationQueryServiceImpl\|StorageApplicationCudService\|StorageApplicationCudServiceImpl\|StorageApplicationImageStorageService\|StorageApplicationImageStorageServiceImpl\|UserQueryService\|UserQueryServiceImpl\|AuthQueryService\|AuthQueryServiceImpl\|AuthCasLoginService\|AuthCasLoginServiceImpl\|CasTicketValidationService\|CasTicketValidationServiceImpl\|UserAvatarStorageService\|UserAvatarStorageServiceImpl\|MicroSpecialtyEnrollmentQueryService\|MicroSpecialtyEnrollmentQueryServiceImpl\|MicroSpecialtyProgressService\|MicroSpecialtyProgressServiceImpl\|ScoreHistoryService\|ScoreHistoryServiceImpl\|ReportService\|ReportServiceImpl\|CourseAuditService\|CourseAuditServiceImpl\|UserStatusService\|UserStatusServiceImpl\|UserBatchImportService\|UserBatchImportServiceImpl\|WaitlistPromotionService\|SectionService\|SectionServiceImpl\|HermesCourseSyncService\|HermesCourseSyncServiceImpl\|HermesWebhookCoursewareService\|HermesWebhookCoursewareServiceImpl\|DashboardService\|DashboardServiceImpl\|CourseStudentService\|CourseStudentServiceImpl\|SectionResourceService\|SectionResourceServiceImpl\|PptCoursewareService\|PptCoursewareServiceImpl\|HtmlCoursewareService\|HtmlCoursewareServiceImpl\|CoursewareQueryService\|CoursewareQueryServiceImpl\|CoursewareDeleteService\|CoursewareDeleteServiceImpl\|AudioQueryService\|AudioStorageService\|AudioTokenService\|DomainEventPublisher\|DeadLetterService\|ManualGradingServiceImpl\|EnrollmentLifecycleServiceImpl\|HermesWebhookManagementService\|HermesWebhookManagementServiceImpl\|SectionSlideService\|SectionSlideServiceImpl"
     hits=$(grep -rln "public class.*Service" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$svc_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Service 出现（$hits 个文件，不在白名单）")
         FAIL=1
     fi
     # Entity（BaseMapper 实体类是预期）
-    local entity_whitelist="User\|Department\|Major\|Classes\|CourseCategory\|Course\|CourseTagRelation\|CourseChapter\|OperationLog\|Tag\|Enrollment\|CourseFavorite\|Video\|VideoStatus\|Question\|Exercise\|ExerciseChapter\|ExerciseQuestion\|ExerciseRecord\|WrongQuestion\|DiscussionPost\|DiscussionComment\|LearningProgress\|CheckIn\|Notification\|NotificationPreference\|CourseReview\|AdminSetting\|Badge\|Certificate\|Grade\|TeachingClass\|TeachingClassStudent\|ClassSchedule\|Achievement\|BadgeDefinition\|Banner\|VideoBookmark\|Attachment\|ScoreHistory\|CourseNote\|CoursePrerequisite\|CourseReviewLog\|EnrollmentHistory\|GradeComponent\|QuestionTagRelation\|UserFollow\|PluginGrant\|CourseSlide\|SlidePage\|Order\|Payment\|CourseBundle\|CourseBundleItem\|NarrationSetting\|QuestionChapter\|MicroSpecialty\|MicroSpecialtyCourse\|MicroSpecialtyTeacher\|MicroSpecialtyEnrollment\|MicroSpecialtyProposal\|MicroSpecialtyFeaturedAudit\|CartItem\|ProposalCourse\|ProposalLeadCourse\|ProposalTeamMember\|ProposalSignature\|ProposalSharedUnit\|MicroSpecialtyCourseChapter\|ChapterTeacherAssignment\|ProposalChapter\|PlatformShareConfig\|TeacherRating\|TeacherTierLog\|ChapterOfflineSession\|AttendanceRecord\|ReviewReport\|HermesCourseMapping\|CourseSection\|SectionQuiz\|SectionTask\|SectionReflection\|CourseTraining\|CourseFinalProject"
+    local entity_whitelist="User\|Department\|Major\|Classes\|CourseCategory\|Course\|CourseTagRelation\|CourseChapter\|OperationLog\|Tag\|Enrollment\|CourseFavorite\|Video\|VideoStatus\|Question\|Exercise\|ExerciseChapter\|ExerciseQuestion\|ExerciseRecord\|WrongQuestion\|DiscussionPost\|DiscussionComment\|DiscussionCommentLike\|LearningProgress\|CheckIn\|Notification\|NotificationPreference\|CourseReview\|AdminSetting\|Badge\|Certificate\|Grade\|TeachingClass\|TeachingClassStudent\|ClassSchedule\|Achievement\|BadgeDefinition\|Banner\|VideoBookmark\|Attachment\|ScoreHistory\|CourseNote\|CoursePrerequisite\|CourseReviewLog\|EnrollmentHistory\|GradeComponent\|QuestionTagRelation\|UserFollow\|PluginGrant\|CourseSlide\|SlidePage\|Order\|Payment\|CourseBundle\|CourseBundleItem\|NarrationSetting\|QuestionChapter\|MicroSpecialty\|MicroSpecialtyCourse\|MicroSpecialtyTeacher\|MicroSpecialtyEnrollment\|MicroSpecialtyProposal\|MicroSpecialtyFeaturedAudit\|CartItem\|ProposalCourse\|ProposalLeadCourse\|ProposalTeamMember\|ProposalSignature\|ProposalSharedUnit\|MicroSpecialtyCourseChapter\|ChapterTeacherAssignment\|ProposalChapter\|PlatformShareConfig\|TeacherRating\|TeacherTierLog\|ChapterOfflineSession\|AttendanceRecord\|ReviewReport\|HermesCourseMapping\|CourseSection\|SectionQuiz\|SectionTask\|SectionReflection\|CourseTraining\|CourseFinalProject\|SlideHtmlSegmentAudio\|SlideHtmlUnit\|SlidePptFlow\|SlideHtmlSegmentScript\|SlidePptPageScript\|SlidePptPageAudio\|SlidePptPage\|DomainEventDeadLetter\|DomainEventOutbox\|DomainEventDedup"
     hits=$(grep -rln "public class.*Entity\|@TableName" "$ROOT/micro-course-api/src/" 2>/dev/null | grep -v "$entity_whitelist" | wc -l | tr -d ' ')
     if [ "$hits" -gt 0 ]; then
         FAILS+=("[结构] 非预期 Entity 出现（$hits 个文件）")
@@ -449,16 +449,10 @@ check_entity_updated_at() {
 check_service_class_size() {
     local max_lines=800
     local hits=0
-    local advisory_hits=0
     while IFS= read -r file; do
         local lines
         lines=$(wc -l < "$file" 2>/dev/null | tr -d ' ')
         if [ "$lines" -gt "$max_lines" ]; then
-            if [ "${file#$ROOT/}" = "micro-course-api/src/main/java/com/microcourse/service/impl/AuthServiceImpl.java" ]; then
-                echo "  ${file#$ROOT/}  ${lines}行（超过 ${max_lines} 行限制，pre-existing advisory）" >&2
-                advisory_hits=$((advisory_hits+1))
-                continue
-            fi
             echo "  ${file#$ROOT/}  ${lines}行（超过 ${max_lines} 行限制）" >&2
             hits=$((hits+1))
         fi
@@ -467,9 +461,6 @@ check_service_class_size() {
         FAILS+=("[自愈] $hits 个 ServiceImpl 超过 ${max_lines} 行限制，应考虑拆分")
         FAIL=1
     else
-        if [ "$advisory_hits" -gt 0 ]; then
-            WARN=$((WARN+1))
-        fi
         PASS=$((PASS+1))
     fi
 }
@@ -562,6 +553,60 @@ check_contract_audit() {
 }
 
 check_contract_audit
+
+# ----------------------------------------------------------------------------
+# R5 修复: 部署密钥占位符检查
+# 依据: 2026-07-31 alertmanager.yml 6 处 CHANGE_ME + application.yml 3 处 CHANGE_ME_IN_PRODUCTION
+#       占位符若直接部署 → Slack/PagerDuty/SMTP 告警静默失败，运维盲区。
+# 行为: 默认 advisory（不阻塞开发），CI 部署门禁必须用 --strict 阻断。
+# ----------------------------------------------------------------------------
+check_production_secrets() {
+    local verifier="$ROOT/scripts/verify-secrets.sh"
+    if [ ! -f "$verifier" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    # 默认 advisory 模式 — 不阻断 precheck
+    local out
+    out=$(bash "$verifier" 2>&1) || true
+    local cnt
+    cnt=$(echo "$out" | grep -cE "•" || echo "0")
+    if [ "$cnt" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [SECRETS] 发现 $cnt 处占位符 (CHANGE_ME)。CI 部署门禁用: bash $verifier --strict"
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+check_production_secrets
+
+# ----------------------------------------------------------------------------
+# R5 修复: references 同步门禁 (真文档 vs 引用视图)
+# 依据: references/ 头部声明的源文档版本号应与 docs/ 真文档一致，避免 AI 编码用过期契约。
+# 行为: 默认 advisory（不阻塞 precheck），CI strict 模式阻断。
+# ----------------------------------------------------------------------------
+check_references_sync() {
+    local verifier="$ROOT/scripts/check-references-sync.py"
+    if [ ! -f "$verifier" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    local out
+    out=$(python3 "$verifier" 2>&1) || true
+    # 解析 fail 数
+    local cnt
+    cnt=$(echo "$out" | grep -oE "fail=[0-9]+" | head -1 | cut -d= -f2)
+    if [ -z "$cnt" ]; then cnt=0; fi
+    if [ "$cnt" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [REFERENCES] references 同步漂移: $cnt 个文件与真文档版本号不一致"
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+check_references_sync
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"

@@ -42,7 +42,11 @@ export default defineConfig({
         browserName: 'chromium',
         viewport: { width: 1440, height: 900 },
         launchOptions: {
-          executablePath: '/Users/jackie/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+          // CI 上使用 Playwright 自动安装的浏览器（npx playwright install chromium）
+          // 本地开发使用开发者本机安装的浏览器
+          ...(process.env.CI ? {} : {
+            executablePath: '/Users/jackie/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing',
+          }),
           args: ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage'],
         },
       },

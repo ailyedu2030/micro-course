@@ -26,6 +26,10 @@ public class User {
     @TableField(value = "email", updateStrategy = com.baomidou.mybatisplus.annotation.FieldStrategy.ALWAYS)
     private String email;
     private String phone;
+    /**
+     * 性别：MALE / FEMALE。
+     * 与数据字典 v0.5 一致。
+     */
     private String gender;
     private String avatar;
     private UserRole role;
@@ -38,6 +42,9 @@ public class User {
 
     @TableField("class_id")
     private Long classId;
+    /**
+     * 年级（如 "2024"）。
+     */
     private String grade;
 
     @TableField("enrollment_year")
@@ -46,6 +53,9 @@ public class User {
     @TableField("graduation_year")
     private String graduationYear;
 
+    /**
+     * 政治面貌（如 "共青团员"、"中共党员"、"群众" 等）。
+     */
     @TableField("political_status")
     private String politicalStatus;
 
@@ -54,6 +64,10 @@ public class User {
 
     @TableField("teacher_no")
     private String teacherNo;
+    /**
+     * 用户状态：0=INACTIVE（未激活）, 1=ACTIVE（正常）, 2=DISABLED（禁用）, 3=DELETED（已删除/180 天保留）。
+     * 与数据字典 v0.5 §2.5 状态机一致。NOT NULL, default 1。
+     */
     private Integer status;
 
     @TableField("cas_bound")
@@ -62,6 +76,10 @@ public class User {
     @TableField("last_login_at")
     private LocalDateTime lastLoginAt;
 
+    /**
+     * 教师审核状态（V24 新增）：0=未申请, 1=待审核, 2=已通过, 3=已驳回。
+     * 仅教师角色有效。default 0。
+     */
     @TableField("teacher_status")
     private Integer teacherStatus;
 
@@ -170,10 +188,18 @@ public class User {
 
     /**
      * 设置 API Key 并自动计算 SHA-256 hash。
-     * hash 写入 api_key_hash 列用于安全查询，明文 api_key 保留用于首次展示。
+     *
+     * <p>S-004 安全增强 Phase 2: 明文 api_key 不再长期存储。
+     * <ul>
+     *   <li>hash 写入 api_key_hash 列用于安全查询</li>
+     *   <li>明文 {@code this.apiKey} 设为 null（不写入 DB），仅在生成时刻在内存中返回给用户</li>
+     *   <li>V324 迁移已清除所有历史明文 api_key</li>
+     * </ul>
+     *
+     * @param apiKey 原始 API Key（明文仅在此 setter 入参中存在，不会被持久化）
      */
     public void setApiKey(String apiKey) {
-        this.apiKey = apiKey;
+        this.apiKey = null;  // 明文不持久化
         this.apiKeyHash = (apiKey != null) ? DigestUtils.sha256Hex(apiKey) : null;
     }
 

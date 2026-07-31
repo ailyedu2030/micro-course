@@ -32,6 +32,7 @@ public class PptCoursewareController {
     // ====== Pages ======
 
     @GetMapping("/sections/{sectionId}/pages")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<SlidePptPageDTO>> listPages(@PathVariable Long courseId,
                                                @PathVariable Long sectionId) {
         return R.ok(pptService.listPagesBySection(sectionId));
@@ -48,6 +49,7 @@ public class PptCoursewareController {
     }
 
     @GetMapping("/pages/{pageId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<SlidePptPageDTO> getPage(@PathVariable Long courseId,
                                        @PathVariable Long pageId) {
         return R.ok(pptService.getPage(pageId));
@@ -73,12 +75,14 @@ public class PptCoursewareController {
     // ====== Scripts ======
 
     @GetMapping("/pages/{pageId}/scripts/active")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PptScriptDTO> getActiveScript(@PathVariable Long courseId,
                                             @PathVariable Long pageId) {
         return R.ok(pptService.getActiveScript(pageId));
     }
 
     @GetMapping("/pages/{pageId}/scripts")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptScriptDTO>> listScriptHistory(@PathVariable Long courseId,
                                                     @PathVariable Long pageId) {
         return R.ok(pptService.listScriptHistory(pageId));
@@ -96,6 +100,7 @@ public class PptCoursewareController {
     // ====== Audios ======
 
     @GetMapping("/scripts/{scriptId}/audios")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptAudioDTO>> listAudios(@PathVariable Long courseId,
                                             @PathVariable Long scriptId) {
         return R.ok(pptService.listAudios(scriptId));
@@ -111,6 +116,7 @@ public class PptCoursewareController {
     }
 
     @GetMapping("/audios/{audioId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PptAudioDTO> getAudio(@PathVariable Long courseId,
                                     @PathVariable Long audioId) {
         return R.ok(pptService.getAudio(courseId, audioId));
@@ -119,6 +125,7 @@ public class PptCoursewareController {
     // ====== Flows ======
 
     @GetMapping("/sections/{sectionId}/flows")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptFlowDTO>> listFlows(@PathVariable Long courseId,
                                           @PathVariable Long sectionId) {
         return R.ok(pptService.listFlowsBySection(sectionId));

@@ -195,12 +195,16 @@ const rules = {
   password: PASSWORD_VALIDATORS
 }
 
-const quickAccounts = import.meta.env.DEV ? [
-  { label: '管理员', type: 'danger', username: import.meta.env.VITE_DEMO_ADMIN_USER || 'admin', password: import.meta.env.VITE_DEMO_ADMIN_PASS || 'admin123' },
-  { label: '教务处', type: 'warning', username: import.meta.env.VITE_DEMO_ACADEMIC_USER || 'academic', password: import.meta.env.VITE_DEMO_ACADEMIC_PASS || 'password123' },
-  { label: '教师', type: 'success', username: import.meta.env.VITE_DEMO_TEACHER_USER || 'p0_teacher', password: import.meta.env.VITE_DEMO_TEACHER_PASS || 'teacher123' },
-  { label: '学生', type: 'primary', username: import.meta.env.VITE_DEMO_STUDENT_USER || 'student', password: import.meta.env.VITE_DEMO_STUDENT_PASS || 'student123' }
-] : []
+// P1 SECURITY: 演示账号仅通过明确的环境变量 VITE_DEMO_ENABLED=true 启用
+// 禁止硬编码 fallback 凭据 — 生产构建 (import.meta.env.PROD) 恒为 []
+const quickAccounts = import.meta.env.DEV && import.meta.env.VITE_DEMO_ENABLED === 'true' && import.meta.env.VITE_DEMO_ADMIN_USER && import.meta.env.VITE_DEMO_ADMIN_PASS
+  ? [
+      { label: '管理员', type: 'danger', username: import.meta.env.VITE_DEMO_ADMIN_USER, password: import.meta.env.VITE_DEMO_ADMIN_PASS },
+      { label: '教务处', type: 'warning', username: import.meta.env.VITE_DEMO_ACADEMIC_USER, password: import.meta.env.VITE_DEMO_ACADEMIC_PASS },
+      { label: '教师', type: 'success', username: import.meta.env.VITE_DEMO_TEACHER_USER, password: import.meta.env.VITE_DEMO_TEACHER_PASS },
+      { label: '学生', type: 'primary', username: import.meta.env.VITE_DEMO_STUDENT_USER, password: import.meta.env.VITE_DEMO_STUDENT_PASS }
+    ]
+  : []
 
 const fillAccount = (acc) => {
   form.username = acc.username

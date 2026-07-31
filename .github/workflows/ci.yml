@@ -16,6 +16,7 @@ jobs:
   # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     services:
       postgres:
         image: postgres:17-alpine
@@ -67,6 +68,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
+      - name: Precheck (治理门禁)
+        run: bash .claude/skills/microcourse/scripts/precheck.sh
+
       - name: Backend Test
         run: mvn -B verify
         working-directory: ./micro-course-api
@@ -79,6 +83,7 @@ jobs:
   # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -96,32 +101,164 @@ jobs:
           npm run build
         working-directory: ./micro-course-admin
 
-  # e2e: TEMPORARILY DISABLED — e2e tests are blocking merge. Re-enable after fixing.
-  # TODO(re-enable): restore full e2e job after e2e-test.sh is stabilized
+  # P1C-14: 恢复 E2E 测试 — API 冒烟测试 + Playwright 浏览器 E2E
+  # 并行启动后端 API 服务 + 前端 Preview，覆盖 API 层面和浏览器 UI 层面
   e2e:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
-    steps:
-      - name: E2E tests skipped (temporarily disabled)
-        run: bash -c "echo e2e-tests-temporarily-disabled"
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine
         env:
-          SKIP_E2E: "true"
+          POSTGRES_DB: micro_course
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Cache Maven
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: micro-course-admin/package-lock.json
+
+      - name: Build Backend JAR
+        run: mvn -B package -DskipTests -q
+        working-directory: ./micro-course-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+
+      - name: Start Backend
+        run: |
+          java -jar target/*.jar --server.port=8080 &
+          echo "Waiting for backend..."
+          for i in $(seq 1 30); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/actuator/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ]; then
+              echo "Backend ready (health: 200)"
+              break
+            fi
+            echo "  attempt $i: HTTP $HTTP_CODE"
+            sleep 3
+          done
+        working-directory: ./micro-course-api
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_PASSWORD: postgres
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          REDIS_PASSWORD: ""
+          JWT_SECRET: ci-test-jwt-secret-key-32-chars-for-testing-only
+          VIDEO_SIGN_SECRET: ci-test-video-sign-secret-key-32-char
+
+      - name: Install PostgreSQL Client
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Seed E2E Test Data
+        run: PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -f src/test/resources/sql/p0-seed.sql
+        working-directory: ./micro-course-api
+
+      - name: API 冒烟测试
+        run: bash scripts/e2e-test.sh
+        env:
+          BASE_URL: http://localhost:8080
+
+      - name: Install Frontend Dependencies
+        run: npm ci
+        working-directory: ./micro-course-admin
+
+      - name: Build Frontend
+        run: npm run build
+        working-directory: ./micro-course-admin
+
+      - name: Start Frontend Preview
+        run: |
+          npx vite preview --port 8088 --host 0.0.0.0 &
+          for i in $(seq 1 15); do
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8088 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" != "000" ]; then
+              echo "Frontend ready"
+              break
+            fi
+            echo "  attempt $i: HTTP $HTTP_CODE"
+            sleep 2
+          done
+        working-directory: ./micro-course-admin
+
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: ./micro-course-admin
+
+      - name: Run Playwright E2E Tests
+        run: npx playwright test --config=tests/e2e/e2e.config.ts
+        working-directory: ./micro-course-admin
+        env:
+          BASE_URL: http://localhost:8088
+
+      - name: Upload Playwright Report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: micro-course-admin/test-results/
+          retention-days: 7
 
   docker:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker (pull base images if available otherwise use cached)
-        run: docker compose pull --ignore-pull-failures 2>&1 || true; docker compose build
+      - name: Pull base images (non-blocking)
+        run: docker compose pull --ignore-pull-failures 2>&1 || true
+
+      - name: Build Docker images
+        run: docker compose build
 
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
 
@@ -146,3 +283,36 @@ jobs:
             jq -e '.title and .uid and .panels' "$f" > /dev/null || (echo "❌ Missing required fields in $f" && exit 1)
             echo "✅ $f — valid"
           done
+
+  # R5 治理: 部署密钥占位符检查 — PR 阶段 advisory，部署前 deploy-gate.sh --strict 阻断
+  # 设计: --ci 模式 (同 default advisory) 不阻断 PR 合并；
+  #       生产部署在 deploy-gate.sh 中调用 --strict 做硬阻断
+  secrets-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify no CHANGE_ME placeholders in secrets (advisory)
+        run: |
+          bash scripts/verify-secrets.sh --ci || {
+            echo "⚠️  advisory: 部署密钥存在占位符，建议部署前替换"
+            echo "  部署门禁: bash scripts/verify-secrets.sh --strict"
+            exit 0  # advisory 永不阻断 CI
+          }
+
+  # R5 治理: references 同步 CI gate — 防 R2 报告 P2 漂移再发
+  # check-references-sync.py 默认 advisory 模式 (exit 0 不阻断)
+  # 通过 --strict 可硬阻断，用于部署前验证
+  references-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check references/ matches 真文档版本号 (advisory)
+        run: |
+          python3 scripts/check-references-sync.py
+          echo "✅ references-sync 完成 (advisory 模式 — 漂移 warning 不阻断 CI)"

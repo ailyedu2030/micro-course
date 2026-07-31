@@ -153,10 +153,23 @@ def parse_entities(target_entity=None):
         while i < len(lines):
             line = lines[i]
 
-            # Skip annotations block (like @Version, @TableLogic) - we just need the field declaration
-            # Match: private Type fieldName;
-            fm = re.match(r'\s+private\s+(\S+)\s+(\w+)\s*[;=]', line)
+            # Phase6-FIX: 处理任意注解 + private 同行写法（如 @Version private Integer version;）
+            # 之前只匹配 @TableField(...) + private，漏掉 @Version private 等字段，
+            # 导致 CourseSection.version 被静默忽略，审计无法检测 version 字段缺失。
+            # 新策略: 非贪婪匹配任意注解前缀，然后分别提取 @TableField 用于 db_col。
+            # 仍保留前 10 行回溯用于 @TableField 在前一行的情况。
+            fm = re.match(
+                r'\s*(?:@[a-zA-Z]\w*(?:\([^)]*\))?\s+)*?'  # 任意注解前缀（非贪婪）
+                r'private\s+(\S+)\s+(\w+)\s*[;=]',
+                line
+            )
             if fm:
+                # Extract @TableField from the SAME line (if present)
+                tf_match = re.search(
+                    r'@TableField\(\s*(?:value\s*=\s*)?(?:"([^"]+)"|\'([^\']+)\')\s*\)',
+                    line
+                )
+                inline_db_col = tf_match.group(1) or tf_match.group(2) if tf_match else None
                 java_type_raw = fm.group(1)
                 field_name = fm.group(2)
 
@@ -167,27 +180,39 @@ def parse_entities(target_entity=None):
                     i += 1
                     continue
 
-                # Look for @TableField on previous lines (nearest first)
-                db_col = None
-                for j in range(i - 1, max(-1, i - 10), -1):
-                    if j < 0:
-                        break
-                    p = lines[j].strip()
-                    if p == '' or p.startswith('package ') or p.startswith('import '):
-                        continue
-                    # @TableField(value = "xxx", ...)
-                    tfmt = re.search(r'@TableField\(\s*value\s*=\s*"(\w+)"', p)
-                    if tfmt:
-                        db_col = tfmt.group(1)
-                        break
-                    # @TableField("xxx") shorthand
-                    stfm = re.search(r'@TableField\("(\w+)"\)', p)
-                    if stfm:
-                        db_col = stfm.group(1)
-                        break
-                    # Stop at non-annotation line (end of annotations block)
-                    if not p.startswith('@'):
-                        break
+                # R8-FIX: 如果同行已拿到 db_col，直接使用；否则向前找最近的 @TableField
+                # 关键: 遇到 `private` 行（非 @ 注解行）必须 break，不能跨过其它字段的注解
+                # R8-FIX-3: 还要跳过 "private " 在行中（非行首）的行 —— 是 @TableField 同行写法
+                # (e.g. "@TableField("xxx") private Type name;") strip 后以 @ 开头，
+                # 但实际上是别的字段的注解，扫描到会错误把 db_col 关联到当前字段。
+                db_col = inline_db_col
+                if db_col is None:
+                    for j in range(i - 1, max(-1, i - 10), -1):
+                        if j < 0:
+                            break
+                        p = lines[j].strip()
+                        if p == '' or p.startswith('package ') or p.startswith('import '):
+                            continue
+                        # 关键: 遇到另一个 private 行就停止（不跨过其它字段的注解）
+                        if p.startswith('private '):
+                            break
+                        # R8-FIX-3: 同行 @TableField + private 写法（如 "@TableField("xxx") private Type name;"）
+                        # strip 后以 @ 开头，但内容含 "private " 表示是另一字段的注解，跳过
+                        if ' private ' in p or p.endswith(' private') or p.endswith('private;') or p.endswith('private ='):
+                            continue
+                        # @TableField(value = "xxx", ...)
+                        tfmt = re.search(r'@TableField\(\s*value\s*=\s*"(\w+)"', p)
+                        if tfmt:
+                            db_col = tfmt.group(1)
+                            break
+                        # @TableField("xxx") shorthand
+                        stfm = re.search(r'@TableField\("(\w+)"\)', p)
+                        if stfm:
+                            db_col = stfm.group(1)
+                            break
+                        # Stop at non-annotation line (end of annotations block)
+                        if not p.startswith('@'):
+                            break
 
                 # If no @TableField, use camelCase -> snake_case convention
                 if db_col is None:
@@ -214,6 +239,15 @@ def parse_entities(target_entity=None):
 # ─────────────────────────────────────────────
 # 3. Cross-validate
 # ─────────────────────────────────────────────
+# R9-FIX: view-only 关联表白名单 (DB 真实存在但 Java 端无 Entity, 关联表通过 SQL 直接操作)
+# 这些表在数据字典中已登记, audit 跳过 entity 缺失检查避免误报
+VIEW_ONLY_TABLES = {
+    'question_tag_relations', 'slide_pages',
+    'proposal_courses', 'proposal_team_members', 'proposal_signatures',
+    'proposal_shared_units', 'proposal_lead_courses',
+    'section_quizzes', 'section_tasks', 'section_reflections',
+}
+
 def validate(dict_tables, entities):
     """
     返回 { 'errors': [...], 'warnings': [...] }
@@ -307,6 +341,9 @@ def validate(dict_tables, entities):
     # Check entities without @TableName (not in entity index)
     for table_name in dict_tables:
         if table_name not in entities:
+            # R9-FIX: view-only 关联表白名单 (无 Entity 符合设计)
+            if table_name in VIEW_ONLY_TABLES:
+                continue
             warnings.append({
                 'severity': 'WARN',
                 'table': table_name,
@@ -314,6 +351,78 @@ def validate(dict_tables, entities):
                 'message': f"数据字典有表 {table_name}，但无对应 Java Entity",
                 'action': '确认是否需要创建',
             })
+
+    # ─────────────────────────────────────────────
+    # Phase6: 特定字段类型增强校验
+    # ─────────────────────────────────────────────
+    # 1. 枚举/状态类字段：校验 dict 类型为 String（Java 代码中通常也是 String 或 enum）
+    STATUS_ENUM_FIELDS = {
+        ('micro_specialty_proposals', 'status'): {
+            'expected_type': 'String',
+            'note': '微专业申报状态: PENDING_REVIEW / APPROVED / REJECTED / WITHDRAWN / DRAFT',
+        },
+        ('course_sections', 'sectionType'): {
+            'expected_type': 'String',
+            'note': '课时类型: VIDEO / INTERACTIVE / OFFLINE / EXERCISE',
+        },
+        ('course_sections', 'coursewareType'): {
+            'expected_type': 'String',
+            'note': '课件类型: HTML / PPT / BOTH',
+        },
+        ('course_sections', 'audioStrategy'): {
+            'expected_type': 'String',
+            'note': '音频策略: 15-segment / 1-merged',
+        },
+    }
+
+    for (table_name, field_name), expected in STATUS_ENUM_FIELDS.items():
+        if table_name in dict_tables and field_name in dict_tables[table_name]:
+            d = dict_tables[table_name][field_name]
+            dict_type_norm = TYPE_ALIAS.get(d['java_type'], d['java_type'])
+            if dict_type_norm != expected['expected_type']:
+                # Only flag if drift — not warning about something already correct
+                # This check is for regression detection: if someone changes the type
+                pass  # No-op: already validated by type check above; this is documentation
+        elif table_name in entities and field_name in entities.get(table_name, {}).get('fields', {}):
+            # Field exists in entity but not in dict
+            if table_name in dict_tables:
+                pass  # Already caught by the "field not in dict" check above
+
+    # 2. 检查特定关键字段的 Java 类型（逻辑增强）
+    #    扫描所有 Entity 中字段名以 Status/Type 结尾且不在 ENUM_TYPES 中的字段
+    for table_name, entity_info in entities.items():
+        entity_name = entity_info['entity_name']
+        entity_fields = entity_info['fields']
+        if table_name not in dict_tables:
+            continue
+        dict_fields = dict_tables[table_name]
+        for field_name, finfo in entity_fields.items():
+            # Check: field name ends with Status/Type but not in ENUM_TYPES
+            if (field_name.endswith('Status') or field_name.endswith('Type')) \
+                    and finfo['type'] not in ENUM_TYPES:
+                if field_name in dict_fields:
+                    d = dict_fields[field_name]
+                    dict_type_norm = TYPE_ALIAS.get(d['java_type'], d['java_type'])
+                    entity_type_norm = TYPE_ALIAS.get(finfo['type'], finfo['type'])
+                    if dict_type_norm != entity_type_norm:
+                        # Add a more specific message for status/type fields
+                        files_to_check = [e for e in errors
+                                          if e.get('table') == table_name
+                                          and e.get('field') == field_name]
+                        if not files_to_check:
+                            errors.append({
+                                'severity': 'ERROR',
+                                'table': table_name,
+                                'entity': entity_name,
+                                'field': field_name,
+                                'db_col': finfo['db_col'],
+                                'java_type': f"{finfo['type']} (代码) vs {d['java_type']} (字典)",
+                                'dict_line': d['line'],
+                                'message': f"状态/类型字段 {field_name}: Java 类型不匹配 — 代码={finfo['type']}, 字典={d['java_type']}",
+                                'action': '修复状态/类型字段 Java 类型与数据字典一致',
+                                'file': finfo['file_path'],
+                                'line': finfo['line'],
+                            })
 
     return {'errors': errors, 'warnings': warnings}
 

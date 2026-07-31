@@ -137,6 +137,26 @@ public class UserServiceImpl implements UserService {
             throw new BusinessException(ErrorCode.USERNAME_EXISTS);
         }
 
+        // P1C-12: 邮箱唯一性预检查（email 可为空/BLANK，空值绕过 UNIQUE 约束）
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            Long emailCount = userRepository.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getEmail, request.getEmail().trim()));
+            if (emailCount > 0) {
+                throw new BusinessException(ErrorCode.EMAIL_EXISTS);
+            }
+        }
+
+        // P1C-12: 学号唯一性预检查（studentNo 可为空/BLANK，空值绕过 UNIQUE 约束）
+        if (request.getStudentNo() != null && !request.getStudentNo().isBlank()) {
+            Long studentNoCount = userRepository.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getStudentNo, request.getStudentNo().trim()));
+            if (studentNoCount > 0) {
+                throw new BusinessException(ErrorCode.STUDENT_NO_EXISTS);
+            }
+        }
+
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
@@ -173,6 +193,28 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.selectById(id);
         if (user == null || user.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // P1C-12: 邮箱修改时检查唯一性（排除自身）
+        if (request.getEmail() != null && !request.getEmail().isBlank()) {
+            Long emailCount = userRepository.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getEmail, request.getEmail().trim())
+                            .ne(User::getId, id));
+            if (emailCount > 0) {
+                throw new BusinessException(ErrorCode.EMAIL_EXISTS);
+            }
+        }
+
+        // P1C-12: 学号修改时检查唯一性（排除自身）
+        if (request.getStudentNo() != null && !request.getStudentNo().isBlank()) {
+            Long studentNoCount = userRepository.selectCount(
+                    new LambdaQueryWrapper<User>()
+                            .eq(User::getStudentNo, request.getStudentNo().trim())
+                            .ne(User::getId, id));
+            if (studentNoCount > 0) {
+                throw new BusinessException(ErrorCode.STUDENT_NO_EXISTS);
+            }
         }
 
         if (request.getRealName() != null) {

@@ -6,6 +6,7 @@ import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCourseVO;
+import com.microcourse.enums.MicroSpecialtyStatus;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyCreateRequest;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyDetailVO;
 import com.microcourse.dto.microSpecialty.MicroSpecialtyLeadTransferRequest;
@@ -23,6 +24,7 @@ import com.microcourse.entity.MicroSpecialtyEnrollment;
 import com.microcourse.entity.MicroSpecialtyTeacher;
 import com.microcourse.entity.proposal.ChapterTeacherAssignment;
 import com.microcourse.entity.proposal.ProposalChapter;
+import com.microcourse.enums.MicroSpecialtyStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -333,18 +335,49 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     public void reopen(Long id) {
         MicroSpecialty ms = msRepository.selectById(id);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
-        String status = ms.getStatus();
-        if (!MS_STATUS_COMPLETED.equals(status) && !MS_STATUS_CANCELLED.equals(status)) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已结业或已取消的微专业可重新开课");
+
+        /* ---- 【Phase14-reopen fix】使用状态枚举 canTransitionTo() ---- */
+        /* 【根因】原实现用字符串比较 status == 'COMPLETED' || status == 'CANCELLED'，
+         *        绕过了 MicroSpecialtyStatus.canTransitionTo()。当状态机新增/删除
+         *        转换时，reopen 会与状态机漂移。
+         * 【修复】使用 MicroSpecialtyStatus.fromString() + canTransitionTo()，
+         *        与状态机保持单一真实来源。
+         * 【防止再发】所有状态转换判定必须基于枚举的 canTransitionTo()。 */
+        MicroSpecialtyStatus current = MicroSpecialtyStatus.fromString(ms.getStatus());
+        if (current == null || !current.canTransitionTo(MicroSpecialtyStatus.APPROVED)) {
+            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅已结业或已取消状态可重新开课");
         }
+
+        // 角色校验：仅 ACADEMIC/ADMIN 可执行 reopen（Controller @PreAuthorize 二次确认）
+        if (!SecurityUtil.isAdmin() && !SecurityUtil.hasRole("ACADEMIC")) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅教务处或管理员可重新开课");
+        }
+
         int oldVersion = ms.getVersion();
-        int affected = msRepository.update(null,
-                new LambdaUpdateWrapper<MicroSpecialty>()
-                        .eq(MicroSpecialty::getId, id)
-                        .eq(MicroSpecialty::getVersion, oldVersion)
-                        .set(MicroSpecialty::getStatus, "APPROVED")
-                        .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
-                        .setSql("version = version + 1"));
+
+        /* ---- 【Phase14-reopen fix】从 CANCELLED 恢复时清理 featured 标记 ---- */
+        /* 【根因】CANCELLED→APPROVED 的 reopen 时，如果之前 cancel() 的 featured
+         *        清理失败了（见 cancel 合并修复），此处应再次清理以确保干净。
+         * 【修复】reopen 时一并重置 featured/is_gold_featured，单条 UPDATE 原子完成。 */
+        String targetStatus = "APPROVED";
+        LambdaUpdateWrapper<MicroSpecialty> uw = new LambdaUpdateWrapper<MicroSpecialty>()
+                .eq(MicroSpecialty::getId, id)
+                .eq(MicroSpecialty::getVersion, oldVersion)
+                .eq(MicroSpecialty::getStatus, ms.getStatus())
+                .set(MicroSpecialty::getStatus, targetStatus)
+                .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
+                .setSql("version = version + 1");
+
+        // 从 CANCELLED 恢复时清理展示位标记（幂等：已经是 false/NONE 也不影响）
+        if (current == MicroSpecialtyStatus.CANCELLED) {
+            uw.set(MicroSpecialty::getIsFeatured, false);
+            uw.set(MicroSpecialty::getIsGoldFeatured, false);
+            uw.set(MicroSpecialty::getFeaturedStatus, "NONE");
+        }
+
+        // 从 COMPLETED 恢复时不清除 featured（已完成微专业可能有置顶记录需要保留）
+
+        int affected = msRepository.update(null, uw);
         if (affected == 0) throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION);
     }
 

@@ -70,4 +70,24 @@ public interface AuthService {
 
     /** 测试支持：清除登录失败缓存 **/
     void resetLoginLockout();
+
+    /**
+     * 获取当前用户的 API Key（脱敏）。
+     * 归属层: Service — API Key 生命周期管理业务逻辑，供 AuthController 调用。
+     * @return 脱敏后的 API Key 响应；未生成时返回 data=null
+     */
+    com.microcourse.dto.UserApiKeyResponse getMyApiKey();
+
+    /**
+     * 生成/重新生成当前用户的 Hermes API Key。
+     * 归属层: Service — 生成随机 Key + 自动计算 SHA-256 hash，供 AuthController 调用。
+     * @return 明文 API Key 响应（仅此一次）
+     */
+    com.microcourse.dto.UserApiKeyResponse generateMyApiKey();
+
+    /**
+     * 撤销当前用户的 Hermes API Key。
+     * 归属层: Service — 将 api_key 置 null + 清空 hash，供 AuthController 调用。
+     */
+    void revokeMyApiKey();
 }

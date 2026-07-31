@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
  * <p>工作原理：
  * <ol>
  *   <li>从请求头读取 {@code X-API-Key}</li>
- *   <li>通过 UserRepository.findByApiKey(apiKey) 查找关联用户</li>
+ *   <li>通过 UserRepository.findByApiKeyHash(hash) 查找关联用户</li>
  *   <li>验证用户角色为 TEACHER 或 ADMIN</li>
  *   <li>设置 SecurityContext（与 JwtAuthenticationFilter 等价），使 @PreAuthorize 生效</li>
  *   <li>若 X-API-Key 无效，返回 401 JSON 错误（不触发下一个 Filter）</li>
@@ -74,12 +74,10 @@ public class ApiKeyAuthenticationFilter extends OncePerRequestFilter {
         Optional<User> callerOpt;
         try {
             String trimmedKey = apiKey.trim();
-            // S-004: 优先按 hash 查询，未命中则 fallback 到明文（兼容未跑 V319 migration 的环境）
+            // S-004 Phase 2: 仅按 hash 查询。明文 fallback 已移除（V324 迁移清空明文列，
+            // findByApiKeyHash 是唯一认证路径）
             String apiKeyHash = DigestUtils.sha256Hex(trimmedKey);
             callerOpt = userRepository.findByApiKeyHash(apiKeyHash);
-            if (callerOpt.isEmpty()) {
-                callerOpt = userRepository.findByApiKey(trimmedKey);
-            }
         } catch (Exception e) {
             log.warn("[ApiKey] DB error looking up API key: {}", e.getMessage());
             writeErrorResponse(response, ErrorCode.HERMES_INVALID_API_KEY);

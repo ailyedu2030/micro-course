@@ -68,7 +68,7 @@ public class CourseFavoriteController {
      */
     @Deprecated
     @PostMapping("/favorites")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<Map<String, Object>> favorite(@Valid @RequestBody FavoriteCreateRequest request) {
         return favoriteCourse(request.getCourseId());
     }
@@ -78,7 +78,7 @@ public class CourseFavoriteController {
      */
     @Deprecated
     @DeleteMapping("/favorites/{id}")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<Void> unfavorite(@PathVariable Long id) {
         return unfavoriteCourse(id);
     }
@@ -88,7 +88,7 @@ public class CourseFavoriteController {
      */
     @Deprecated
     @GetMapping("/favorites/my")
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('STUDENT')")
     public R<List<CourseFavoriteVO>> getMyFavoritesOld() {
         return getMyFavorites();
     }

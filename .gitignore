@@ -66,6 +66,7 @@ pnpm-debug.log*
 .env
 .env.local
 .env.*.local
+alerts.env
 memories/
 
 # 数据库 / 临时
@@ -143,3 +144,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# unplugin-vue-components 自动生成的 type definitions (R7)
+micro-course-admin/auto-imports.d.ts
+micro-course-admin/components.d.ts

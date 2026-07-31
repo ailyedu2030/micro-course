@@ -49,6 +49,24 @@ SET username   = EXCLUDED.username,
     department_id = EXCLUDED.department_id,
     updated_at = CURRENT_TIMESTAMP;
 
+-- 2b) P0-ROOT-FIX: V1 init 的 admin 密码 hash 与 BaseIntegrationTest.bearerAdmin 用的 'admin123' 不匹配，
+--     导致约 60 个集成测试在 BaseIntegrationTest.loginAs('admin','admin123') 处失败（运行时数据库无 admin123 凭据）。
+--     显式重置 admin(id=1) 密码为 BCrypt('admin123', cost=12)，保留原 'admin123' 凭据以兼容
+--     AuthIntegrationTest/AuthFlowIntegrationTest 等 13 个硬编码 'admin123' 的测试。
+--     ON CONFLICT DO UPDATE：每次测试前强制覆盖 V1/V12 留下的历史 hash。
+INSERT INTO users (id, username, password, real_name, role, status, cas_bound, department_id, created_at, updated_at)
+VALUES (1, 'admin',
+        '$2b$12$jc4j8gxT53NETPW0PS7N6OpvNU/ex64b2GWCqf85jvH9VXXLStJZ.',
+        'P0测试管理员', 'ADMIN', 1, FALSE, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+ON CONFLICT (id) DO UPDATE
+SET username   = EXCLUDED.username,
+    password   = EXCLUDED.password,
+    real_name  = EXCLUDED.real_name,
+    role       = EXCLUDED.role,
+    status     = EXCLUDED.status,
+    cas_bound  = EXCLUDED.cas_bound,
+    updated_at = CURRENT_TIMESTAMP;
+
 -- 3) 学生账号 student/student123（EnrollmentP0ConcurrencyTest 以此登录，且 body userId=7）
 --    关键:同样强制重置 password
 INSERT INTO users (id, username, password, real_name, role, status, cas_bound, created_at, updated_at)

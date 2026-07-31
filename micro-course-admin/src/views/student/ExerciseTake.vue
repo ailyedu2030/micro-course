@@ -551,10 +551,10 @@
             <span>答题卡</span>
           </button>
           <transition name="fade">
-            <div v-if="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
+            <div v-show="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
           </transition>
           <transition name="slide-up">
-            <div v-if="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
+            <div v-show="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
               <div class="answer-sheet-header">
                 <span>答题卡</span>
                 <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
@@ -978,47 +978,46 @@ function nextQuestion() {
 
 // ===== 提交 =====
 async function handleSubmit() {
-  if (submitting.value) return // 防重复提交（在 confirm 前即锁定）
+  // 检查是否所有题都答了（包括多选题）
+  const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
+  if (unanswered.length > 0) {
+    try {
+      await ElMessageBox.confirm(
+        `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
+        '未完成提示',
+        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+      )
+    } catch {
+      // 用户选择继续答题 → 跳转到第一个未答题目
+      const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
+      if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
+      return
+    }
+  }
+  // 检查多选题是否完整作答（仅选1项可能不完整）
+  const partialMultiples = questionIds.value.filter(id => {
+    const q = questions.value.find(q => q.id === id)
+    if (!q || q.questionType !== 'MULTIPLE') return false
+    const arr = multipleAnswers[id]
+    return Array.isArray(arr) && arr.length === 1
+  })
+  if (partialMultiples.length > 0) {
+    try {
+      await ElMessageBox.confirm(
+        `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
+        '多选题提示',
+        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+      )
+    } catch {
+      const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
+      if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
+      return
+    }
+  }
+  // P1-UX: 提交锁设置在 confirm 回调全部通过之后，避免 confirm 期间按钮锁定
+  if (submitting.value) return // 幂等守卫
   submitting.value = true
   try {
-    // 检查是否所有题都答了（包括多选题）
-    const unanswered = questionIds.value.filter(id => !isQuestionAnswered(id))
-    if (unanswered.length > 0) {
-      try {
-        await ElMessageBox.confirm(
-          `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
-          '未完成提示',
-          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-        )
-      } catch {
-        // 用户选择继续答题 → 跳转到第一个未答题目
-        const firstUnansweredIdx = questionIds.value.findIndex(id => !isQuestionAnswered(id))
-        if (firstUnansweredIdx >= 0) currentIndex.value = firstUnansweredIdx
-        submitting.value = false
-        return
-      }
-    }
-    // 检查多选题是否完整作答（仅选1项可能不完整）
-    const partialMultiples = questionIds.value.filter(id => {
-      const q = questions.value.find(q => q.id === id)
-      if (!q || q.questionType !== 'MULTIPLE') return false
-      const arr = multipleAnswers[id]
-      return Array.isArray(arr) && arr.length === 1
-    })
-    if (partialMultiples.length > 0) {
-      try {
-        await ElMessageBox.confirm(
-          `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
-          '多选题提示',
-          { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
-        )
-      } catch {
-        const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
-        if (firstPartialIdx >= 0) currentIndex.value = firstPartialIdx
-        submitting.value = false
-        return
-      }
-    }
     await doSubmit()
   } catch (e) {
     submitting.value = false
@@ -1027,9 +1026,7 @@ async function handleSubmit() {
 }
 
 async function doSubmit() {
-  // submitting 已由 handleSubmit 在 confirm 前设置为 true，此处确保状态
-  submitting.value = true
-
+  // submitting 已由 handleSubmit 在 confirm 回调全部通过后设置为 true
   if (!currentExercise.value?.id) {
     ElMessage.error('练习信息缺失，请刷新重试')
     submitting.value = false
@@ -1153,7 +1150,7 @@ function isMultipleCorrect(value, answer) {
 }
 
 function questionTypeLabel(type) {
-  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题' }
+  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题', SHORT_ANSWER: '简答题' }
   return map[type] || type
 }
 
@@ -1917,8 +1914,21 @@ function formatCorrectAnswer(q) {
 .q-dot:focus-visible,
 .answer-sheet-fab:focus-visible,
 .answer-sheet-item:focus-visible {
-  outline: 3px solid #facc15;
+  outline: 2.5px solid var(--role-primary, #6366f1);
   outline-offset: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--role-primary) 20%, transparent);
+  border-color: var(--role-primary, #6366f1);
+}
+
+/* P1-UX: prefers-reduced-motion 时用高对比度实线代替动画焦点 */
+@media (prefers-reduced-motion: reduce) {
+  .q-dot:focus-visible,
+  .answer-sheet-fab:focus-visible,
+  .answer-sheet-item:focus-visible {
+    outline: 3px solid #1a56db;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
 }
 
 /* 过渡动画 */

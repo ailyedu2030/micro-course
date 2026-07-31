@@ -251,14 +251,26 @@ public class ExhaustiveStateMachineTest extends BaseIntegrationTest {
                 entry.record(from, to, expected, expected);
             }
         }
-        // 终态锁定
-        for (MicroSpecialtyStatus terminal : List.of(MicroSpecialtyStatus.CANCELLED, MicroSpecialtyStatus.ARCHIVED)) {
+        // 终态锁定（reopen 例外：CANCELLED→APPROVED 是允许的历史恢复路径）
+        for (MicroSpecialtyStatus terminal : List.of(MicroSpecialtyStatus.ARCHIVED)) {
             for (MicroSpecialtyStatus to : states) {
                 if (to == terminal) continue;
                 boolean can = terminal.canTransitionTo(to);
                 assertFalse(can, terminal + " 终态不应允许→" + to);
                 entry.recordTerminal(terminal, to, !can);
             }
+        }
+        // CANCELLED 仅允许 →APPROVED（reopen）
+        for (MicroSpecialtyStatus to : states) {
+            if (to == MicroSpecialtyStatus.CANCELLED) continue;
+            boolean can = MicroSpecialtyStatus.CANCELLED.canTransitionTo(to);
+            if (to == MicroSpecialtyStatus.APPROVED) {
+                assertTrue(can, "CANCELLED→APPROVED 应允许（reopen）");
+            } else {
+                assertFalse(can, "CANCELLED→" + to + " 不应允许");
+            }
+            entry.recordTerminal(MicroSpecialtyStatus.CANCELLED, to,
+                    to == MicroSpecialtyStatus.APPROVED ? can : !can);
         }
         entry.done();
     }

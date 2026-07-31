@@ -5,6 +5,7 @@ import com.microcourse.dto.LoginRequest;
 import com.microcourse.dto.LoginResponse;
 import com.microcourse.dto.RegisterRequest;
 import com.microcourse.dto.UpdateProfileRequest;
+import com.microcourse.dto.UserApiKeyResponse;
 import com.microcourse.dto.UserVO;
 import com.microcourse.entity.User;
 import com.microcourse.enums.UserStatus;
@@ -24,6 +25,7 @@ import com.microcourse.util.IpUtil;
 import com.microcourse.util.JwtUtil;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.LogSanitizer;
+import com.microcourse.util.SecurityUtil;
 import com.microcourse.util.XssSanitizer;
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -501,5 +503,57 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resetLoginLockout() {
         queryService.resetLoginLockout();
+    }
+
+    @Override
+    public UserApiKeyResponse getMyApiKey() {
+        // 归属层: Service — 查询当前用户 API Key 是否存在（通过 hash 判断），Controller 层仅做路由
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        // S-004 Phase 2: api_key_hash 非空 = API Key 已生成（明文不再持久化，
+        // 无法展示脱敏值，仅返回创建时间戳表示 key 存在）
+        if (user.getApiKeyHash() == null) {
+            return null;
+        }
+        return UserApiKeyResponse.maskedOnly(
+                null, // 明文未持久化，无法生成脱敏展示
+                user.getUpdatedAt() != null ? user.getUpdatedAt().toString() : null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public UserApiKeyResponse generateMyApiKey() {
+        // 归属层: Service — 生成随机 UUID Key + 自动计算 SHA-256 hash 持久化，Controller 层仅做路由
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        String newKey = java.util.UUID.randomUUID().toString().replace("-", "")
+                + java.util.UUID.randomUUID().toString().replace("-", "");
+        user.setApiKey(newKey);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "生成 API Key 失败（乐观锁或无记录），请重试");
+        }
+        return UserApiKeyResponse.full(
+                newKey,
+                UserApiKeyResponse.mask(newKey),
+                user.getUpdatedAt().toString());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void revokeMyApiKey() {
+        // 归属层: Service — 置空 api_key + 自动清空 hash，Controller 层仅做路由
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        User user = userRepository.selectById(currentUserId);
+        if (user == null) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        user.setApiKey(null);
+        user.setUpdatedAt(java.time.LocalDateTime.now());
+        int rows = userRepository.updateById(user);
+        if (rows == 0) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "撤销 API Key 失败（乐观锁或无记录）");
+        }
     }
 }

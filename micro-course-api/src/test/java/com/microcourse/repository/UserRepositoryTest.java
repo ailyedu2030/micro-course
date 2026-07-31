@@ -99,21 +99,22 @@ class UserRepositoryTest {
         assertEquals(0, affected);
     }
 
-    // ==================== findByApiKey（plaintext） ====================
+    // ==================== findByApiKey（plaintext — 已废弃，V324 迁移清空 api_key 列） ====================
 
     @Test
-    @DisplayName("findByApiKey: 通过 apiKey 查找到用户")
-    void findByApiKey_returnsUser() {
-        User user = createUserWithApiKey("test_user_key", "test-api-key-12345");
+    @DisplayName("findByApiKey(plaintext) 已废弃：V324 清空明文后永远返回 empty")
+    void findByApiKey_returnsEmpty_afterV324Migration() {
+        // P0-S004-2 修复: V324 迁移清空 api_key 明文列后，明文查找永远不命中。
+        // 此测试验证 V324 修复实际生效（防止回归）。
+        User user = createUserWithApiKey("plaintext_lookup_user", "test-api-key-12345");
         userRepository.insert(user);
-
-        Optional<User> found = userRepository.findByApiKey("test-api-key-12345");
-        assertTrue(found.isPresent());
-        assertEquals("test_user_key", found.get().getUsername());
+        // api_key_hash 已自动写入，但 api_key 列被 User.setApiKey 设为 null
+        Optional<User> byPlain = userRepository.findByApiKey("test-api-key-12345");
+        assertFalse(byPlain.isPresent(), "明文 api_key 列 NULL，findByApiKey 应返回 empty（V324 修复生效）");
     }
 
     @Test
-    @DisplayName("findByApiKey: apiKey 不匹配返回 empty")
+    @DisplayName("findByApiKey: 不存在的明文 key 返回 empty（保留兼容测试）")
     void findByApiKey_noMatch_returnsEmpty() {
         Optional<User> found = userRepository.findByApiKey("nonexistent-api-key");
         assertFalse(found.isPresent());
