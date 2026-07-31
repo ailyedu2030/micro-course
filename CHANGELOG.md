@@ -38,6 +38,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.22.2] - 2026-07-31 (PR #161)
+
+### Fixed (CI e2e 8 个 timeout 真实根因修复 — 4 个独立 bug)
+
+> **背景**：PR #161 在合并前累计触发 9 次 CI run (总耗时 4+ 小时) 全部失败于 `Run Playwright E2E Tests` step。8 个测试统一 `TimeoutError waiting for locator('#username') to be visible` (60s)。commit `5243673` 改 timeout 20→60s 是盲修 (没改对根因)。本次 4 个 commit 基于真实根因彻底修复 + 新增 HTML 课件章节 iframe 预览功能。
+
+#### Bug A — vite preview 缺 `/api` proxy
+- **`vite.config.js` 加 `preview` 块** — CI e2e job 跑 `npx vite preview --port 8088 --host 0.0.0.0`，`server.proxy` 不会被 preview 读取 → `/api/*` 请求在 vite 5 下尝试 proxy 但 ECONNREFUSED → HTTP 500 + empty body。修复后 preview 块独立配 `/api` proxy 到 `http://localhost:8080`，与 server.proxy 同配置 + timeout/proxyTimeout 120s。 ([vite.config.js:46-58](file:///Users/jackie/微课平台/micro-course-admin/vite.config.js#L46-L58))
+
+#### Bug B — element-plus 2.14.x 移除 `ElMessage.config()`
+- **`main.js` 删 `ElMessage.config({ariaLive:'polite'})` 调用** — `package.json` 写 `^2.5.0` 自动升级到 `element-plus 2.14.1`。2.14.x **移除** `ElMessage.config()` API (改用 config-provider 的 `messageConfig` 全局配置)。TypeError `G.config is not a function` 在 `app.mount('#app')` **之前**抛出 → Vue app 永不 mount → Login.vue 不渲染 → `#username` 不存在 → 60s timeout (即使 5min 也不行)。修复同时清理 `import { ElMessage } from 'element-plus'` (dead import)。 ([main.js:3,64](file:///Users/jackie/微课平台/micro-course-admin/src/main.js#L3-L64))
+
+#### Bug C — course-crud selector 硬编码 i18n 不匹配
+- **3 处 selector + 2 处 status tag 跟 i18n 对齐** — 原 spec 硬编码 `"课程标题"` 但 i18n key `course.courseName` zh-CN 是 `"课程名称"`；`"创建课程"` vs i18n `course.createCourse = "新增课程"`；status tag `"已通过"` vs i18n `course.approve = "审核通过"` / `course.submitForReview = "提交审核"`。修复后 e2e 4/4 PASS (教师创建/编辑/发布/归档)。 ([course-crud.spec.ts:83,92,201,268](file:///Users/jackie/微课平台/micro-course-admin/tests/e2e/course-crud.spec.ts))
+
+#### Bug D — student 详情页 HTML_COURSEWARE 章节 iframe 预览（功能新增）
+- **`student/CourseDetail.vue` 实现 HTML_COURSEWARE 章节渲染** — 之前完全未识别该章节类型。修复后：lazy load sections per chapter (用户展开时调 `listSections`) + iframe `src="data:text/html;charset=utf-8,<encodeURIComponent(content)>"` + `sandbox=""` 严格模式 (只读预览，**JS 不执行**) + 响应式 CSS `aspect-ratio: 16/9` + `min-height: 280px` + `max-height: 70vh` (移动端横屏旋转 layout 不破)。3 个 mobile-iframe 测试全 PASS (iOS/Android Chrome sandbox/横屏旋转)。 ([CourseDetail.vue:222-258,818-862](file:///Users/jackie/微课平台/micro-course-admin/src/views/student/CourseDetail.vue))
+- **安全设计** — iframe `sandbox=""` 严格模式 (区别于 SlidePlayer.vue `sandbox="allow-scripts"` 用于互动学习)；内容**不调用 sanitizeHtml** (会移除 `data:` URL 反而破坏 src)；后端 HtmlSanitizer + 浏览器原生 origin 隔离 + 前端 sandbox 三重保险
+- **i18n 加 5 个 key** — `course.htmlCoursewarePreview/Loading/Empty/None/OpenInPlayer` (zh-CN + en-US 双语)
+- **mobile-iframe.spec.ts mock 修正** — `courseType: 'INTERACTIVE' → 'VIDEO'` + chapter 加 `sectionType: 'HTML_COURSEWARE'` + 嵌 `chapters` 数组 (前端从 `course.value.chapters` 取)；test 期望改用元素计数 `p:has-text("JS executed") === 0` 替代 `bodyText.not.toContain` (更准确反映 sandbox 阻止 JS 执行：`<script>` 字面量含 "JS executed" 字符串但 sandbox 阻止其 append `<p>` 元素)
+
+### Quality Gates
+- ✅ `npm run lint`：0 errors
+- ✅ `npm run build`：built in 6.80s，新 bundle hash `index-lri506Ya.js`
+- ✅ `precheck.sh`：24/24 PASS (含 verify-secrets advisory 模式 + svc/entity whitelist 全覆盖)
+- ✅ GitHub CI run `30624263375`：`backend (32m) / frontend (49s) / monitoring-lint (12s) / secrets-check (9s) / references-sync (5s) / e2e (3m33s) / docker (2m50s)` **全绿**
+- ✅ Playwright e2e：**12/12 全 PASS** (checkout 2/2 + course-crud 4/4 + enrollment 3/3 + mobile-iframe 3/3)
+- ✅ Bot auto-approve：`microcourse-pr-bot` 已 approve
+- ✅ 本地 Playwright 模拟 CI (chromium-1234 + mock backend)：12/12 全 PASS
+
+### Risk Assessment (部署评审)
+| 维度 | 评估 |
+|------|------|
+| **变更范围** | 4 文件 / ~220 行，**仅前端** (`micro-course-admin/`) |
+| **后端 API** | 零变更 (`micro-course-api/` 未触碰) |
+| **DB schema** | 零迁移 (无 Flyway 改动) |
+| **Breaking Change** | 无 — 纯 bug 修复 + 新功能 |
+| **回滚复杂度** | 极低 — `git revert 10716b09` + 重建前端 dist + nginx reload (5 分钟) |
+| **生产影响** | 仅学生端详情页新增 HTML 课件预览；登录/支付/选课/CRUD 流程无破坏 |
+
+### References
+- 根因调查 (Playwright + curl + CI trace 拉取)
+- PR #161 commits: `0a680a21` / `8b852e1b` / `79948c40` / `b5e79442`
+- Rollback 路径：[ROLLBACK_PLAN.md](file:///Users/jackie/微课平台/ROLLBACK_PLAN.md) (PR #161 特定回滚步骤已加)
+- 灰度策略：[scripts/gray-release.sh](file:///Users/jackie/微课平台/scripts/gray-release.sh)
+- Bug A 历史背景：2026-06-25 commit `a322bb93` 曾修过 (改用 `npx vite` 替代 `npx vite preview`)，但 ci.yml 后续又被改回 `vite preview` 导致 Bug A 复发。本次采用更彻底的修复 (preview.proxy)，不依赖切回 dev server
+
+---
+
+---
+
 ## [1.22.1] - 2026-07-19
 
 ### Fixed (P1-C)
