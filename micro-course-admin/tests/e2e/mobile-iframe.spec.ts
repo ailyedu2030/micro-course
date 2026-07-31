@@ -45,18 +45,35 @@ async function loginAsStudent(page: Page) {
 // ──────────────────────────────────────────────
 // Mock 数据: HTML 课件课程
 // ──────────────────────────────────────────────
+// 修复: 原 spec 用 courseType='INTERACTIVE' + chapter 无 sectionType,导致前端走 slides
+// 路径(调 /slides/pages),而非 chapters 路径(走 HTML_COURSEWARE iframe 渲染)。改为 VIDEO
+// + chapter sectionType='HTML_COURSEWARE' 触发 student/CourseDetail.vue 的 iframe 渲染。
+// chapters 字段嵌在 course 对象里(前端 course.value.chapters),也保留独立 /chapters API mock
+// 兼容未来扩展。
 const MOCK_COURSE = {
   id: 999901,
   title: 'E2E HTML 课件测试课程',
   description: '<p>测试 HTML 课件在移动端的渲染</p>',
   status: 4,
   difficulty: 1,
-  courseType: 'INTERACTIVE',
+  courseType: 'VIDEO',
   coverUrl: '',
   teacherName: 'p0_teacher',
   categoryName: '测试分类',
   studentCount: 10,
   creditHours: 2,
+  // 嵌套 chapters,前端从 course.value.chapters 取
+  chapters: [
+    {
+      id: 9999011,
+      courseId: 999901,
+      title: '第一章 · HTML 课件',
+      sortOrder: 1,
+      duration: 30,
+      sectionType: 'HTML_COURSEWARE',
+      description: '本章为 HTML 课件章节',
+    },
+  ],
 };
 
 const MOCK_CHAPTERS = [
@@ -66,6 +83,8 @@ const MOCK_CHAPTERS = [
     title: '第一章 · HTML 课件',
     sortOrder: 1,
     duration: 30,
+    sectionType: 'HTML_COURSEWARE',
+    description: '本章为 HTML 课件章节',
   },
 ];
 
@@ -175,13 +194,15 @@ test.describe('HTML 课件 - 移动端 iframe', () => {
     expect(sandboxAttr).not.toBeNull();
     console.log('[mobile-iframe] Android: iframe sandbox 属性存在:', sandboxAttr);
 
-    // 验证 JS 未执行: MOCK_SECTIONS 的 script 标签添加了 "<p>JS executed</p>"
-    // 由于 sandbox 限制,这段文本不应出现在 iframe 内容中
+    // 验证 JS 未执行: MOCK_SECTIONS 的 script 标签设计为 append "<p>JS executed</p>",
+    // sandbox 阻止脚本执行 → <p>JS executed</p> 元素不应存在于 iframe DOM
+    // 注意: script 标签的字面文本里仍含 'JS executed' 字串 (textContent),所以不能用
+    // bodyText.not.toContain 检查。改用元素计数。
     const iframe = page.frameLocator('iframe[src*="data:text/html"]');
-    const bodyText = await iframe.locator('body').textContent().catch(() => '');
-    // sandbox 阻止了 script 执行,所以 "JS executed" 不应出现
-    expect(bodyText).not.toContain('JS executed');
-    console.log('[mobile-iframe] Android: sandbox 阻止了 JS 执行');
+    const jsExecutedPara = iframe.locator('p:has-text("JS executed")');
+    const jsExecutedCount = await jsExecutedPara.count();
+    expect(jsExecutedCount).toBe(0);
+    console.log('[mobile-iframe] Android: sandbox 阻止了 JS 执行 (p:has-text("JS executed") 计数=0)');
   });
 
   test('移动端: 横屏旋转布局适应', async ({ page }) => {

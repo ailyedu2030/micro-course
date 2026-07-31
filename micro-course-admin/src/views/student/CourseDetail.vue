@@ -215,7 +215,7 @@
               </template>
               <!-- 视频课程: 章节手风琴 -->
               <template v-else>
-                <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters">
+                <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters" @change="handleChapterChange">
                   <el-collapse-item v-for="(ch, idx) in courseChapters" :key="ch.id" :name="ch.id">
                     <template #title>
                       <span class="outline-idx">{{ idx + 1 }}</span>
@@ -223,12 +223,59 @@
                       <el-tag v-if="ch.sectionType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
                       <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
                       <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'HTML_COURSEWARE'" size="small" type="info" effect="plain">📄 HTML 课件</el-tag>
                       <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
                     <p v-if="ch.description" class="outline-desc">{{ ch.description }}</p>
-                    <el-button size="small" type="primary" text @click.stop="handleChapterClick(ch)">开始学习</el-button>
+                    <!-- HTML 课件章节: 内嵌 iframe 预览 (移动端 mobile-iframe.spec.ts 用) -->
+                    <div v-if="ch.sectionType === 'HTML_COURSEWARE'" class="html-courseware-preview">
+                      <div class="html-courseware-header">
+                        <el-icon :size="16"><Notebook /></el-icon>
+                        <span class="html-courseware-title">{{ $t('course.htmlCoursewarePreview') }}</span>
+                        <el-tag size="small" type="info" effect="plain">sandbox</el-tag>
+                      </div>
+                      <div v-if="chapterSectionsLoading[ch.id]" v-loading="true" class="html-courseware-loading">
+                        {{ $t('course.htmlCoursewareLoading') }}
+                      </div>
+                      <div v-else-if="chapterSectionsError[ch.id]" class="html-courseware-error">
+                        <el-icon :size="20"><WarningFilled /></el-icon>
+                        <span>{{ chapterSectionsError[ch.id] }}</span>
+                        <el-button size="small" link @click.stop="loadChapterSections(ch.id)">{{ $t('common.retry') }}</el-button>
+                      </div>
+                      <template v-else>
+                        <div
+                          v-for="sec in (chapterSections[ch.id] || []).filter(s => s.sectionType === 'HTML_COURSEWARE')"
+                          :key="sec.id"
+                          class="html-courseware-item"
+                        >
+                          <h4 class="html-courseware-section-title">{{ sec.title }}</h4>
+                          <!--
+                            sandbox="" 严格模式: 详情页只读预览, JS 不执行 (mobile-iframe.spec.ts:136)
+                            src="data:text/html;charset=utf-8,<encoded>" (mobile-iframe.spec.ts:91)
+                            内容不经过 sanitizeHtml: iframe 隔离 origin 已保护父页, sanitize 会移除 data: URL 反而破坏
+                          -->
+                          <iframe
+                            v-if="sec.content"
+                            :src="buildCoursewareSrc(sec.content)"
+                            sandbox=""
+                            :title="sec.title"
+                            class="html-courseware-iframe"
+                            loading="lazy"
+                            referrerpolicy="no-referrer"
+                          ></iframe>
+                          <p v-else class="html-courseware-empty">{{ $t('course.htmlCoursewareEmpty') }}</p>
+                          <el-button size="small" type="primary" text class="html-courseware-action" @click.stop="handleChapterClick(ch)">
+                            {{ $t('course.htmlCoursewareOpenInPlayer') }}
+                          </el-button>
+                        </div>
+                        <p v-if="!(chapterSections[ch.id] || []).some(s => s.sectionType === 'HTML_COURSEWARE')" class="html-courseware-empty">
+                          {{ $t('course.htmlCoursewareNone') }}
+                        </p>
+                      </template>
+                    </div>
+                    <el-button v-else size="small" type="primary" text @click.stop="handleChapterClick(ch)">{{ $t('course.startLearning') }}</el-button>
                   </el-collapse-item>
                 </el-collapse>
                 <el-empty v-else description="暂无章节" :image-size="60" />
@@ -371,11 +418,12 @@
 import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight } from '@element-plus/icons-vue'
+import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight, WarningFilled } from '@element-plus/icons-vue'
 import { getCourseById, getMyCoursePrice } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
 import { getVideos } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
+import { listSections } from '@/api/section'
 import { useCartStore } from '@/store/cart'
 import { createOrder, payOrder } from '@/api/order'
 import { getDefaultCover } from '@/utils/coverHelper'
@@ -771,7 +819,65 @@ const handleSubmitReview = async () => {
 
 const fetchSlides = async () => { slidesLoading.value = true; try { const { data } = await getSlidePages(courseId.value); slides.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchSlides 获取课件失败', e); slides.value = [] } finally { slidesLoading.value = false } }
 
-onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; if (isInteractive.value) fetchSlides(); reviewPage.value = 0; await Promise.all([fetchTeacher(), checkEnrollment(), checkProgress(), fetchReviews(), fetchRanking(), fetchPricingInfo()]) })
+// P0-2: HTML 课件章节 sections 加载 (mobile-iframe.spec.ts:91/136/187)
+//      iframe src 用 data:text/html,<encoded>, sandbox="" 严格模式 (只读预览)
+//      设计原则: 详情页只读预览, 学习互动在 SlidePlayer.vue (sandbox=allow-scripts)
+const chapterSections = reactive({})
+const chapterSectionsLoading = reactive({})
+const chapterSectionsError = reactive({})
+const loadChapterSections = async (chapterId) => {
+  if (!courseId.value || !chapterId) return
+  if (chapterSections[chapterId] || chapterSectionsLoading[chapterId]) return
+  chapterSectionsLoading[chapterId] = true
+  chapterSectionsError[chapterId] = ''
+  try {
+    const { data } = await listSections(courseId.value, chapterId, { page: 0, size: 100 })
+    chapterSections[chapterId] = data?.items || data || []
+  } catch (e) {
+    console.warn('[CourseDetail] loadChapterSections 失败', e)
+    chapterSections[chapterId] = []
+    chapterSectionsError[chapterId] = '加载 HTML 课件失败,请稍后重试'
+  } finally {
+    chapterSectionsLoading[chapterId] = false
+  }
+}
+const buildCoursewareSrc = (content) => {
+  if (!content) return 'about:blank'
+  // 用 encodeURIComponent 编码完整 HTML (兼容中文/特殊字符),生成 data URL
+  // 注意: sanitizeHtml 会移除 data: URL,所以这里**不调用** sanitizeHtml (iframe 隔离 origin 已保护父页)
+  // 后端 Section content 已通过后端 HtmlSanitizer 清洗 (见 plugins/interactive/components/HtmlBlockEditor.vue)
+  return `data:text/html;charset=utf-8,${encodeURIComponent(content)}`
+}
+const handleChapterChange = (activeNames) => {
+  // 章节展开时 lazy load sections (HTML_COURSEWARE 章节才有意义,其他类型跳过)
+  if (!Array.isArray(activeNames)) return
+  activeNames.forEach((name) => {
+    const ch = courseChapters.value.find((c) => c.id === name)
+    if (ch && ch.sectionType === 'HTML_COURSEWARE') loadChapterSections(name)
+  })
+}
+// UX 默认展开: HTML 课件章节自动展开+加载 (mobile-iframe.spec.ts 期望无需点击即可见 iframe)
+const autoExpandHtmlCourseware = () => {
+  const htmlChapters = courseChapters.value.filter((c) => c.sectionType === 'HTML_COURSEWARE')
+  if (htmlChapters.length === 0) return
+  // 把 HTML_COURSEWARE 章节 id 加入 activeChapters (不覆盖用户已展开的)
+  const next = new Set(Array.isArray(activeChapters.value) ? activeChapters.value : [activeChapters.value].filter(Boolean))
+  htmlChapters.forEach((c) => {
+    next.add(c.id)
+    loadChapterSections(c.id)  // 同时立即加载 sections
+  })
+  activeChapters.value = Array.from(next)
+}
+
+onMounted(async () => {
+  await fetchCourse()
+  if (courseNotFound.value) return
+  if (isInteractive.value) fetchSlides()
+  // P0-2: HTML 课件章节自动展开 + 加载 sections (mobile-iframe.spec.ts)
+  autoExpandHtmlCourseware()
+  reviewPage.value = 0
+  await Promise.all([fetchTeacher(), checkEnrollment(), checkProgress(), fetchReviews(), fetchRanking(), fetchPricingInfo()])
+})
 </script>
 
 <style scoped>
@@ -1098,6 +1204,66 @@ onMounted(async () => { await fetchCourse(); if (courseNotFound.value) return; i
   padding-left: 38px;
   margin: 0 0 var(--space-2);
 }
+
+/* ====== P0-2 HTML 课件预览 (mobile-iframe.spec.ts) ====== */
+.html-courseware-preview {
+  padding: var(--space-3) 38px var(--space-3);
+  border-top: 1px solid var(--el-border-color-lighter);
+}
+.html-courseware-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+}
+.html-courseware-title {
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.html-courseware-loading,
+.html-courseware-error {
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
+  color: var(--el-text-color-secondary);
+  font-size: var(--text-sm);
+}
+.html-courseware-error { color: var(--el-color-danger); }
+.html-courseware-item { margin-bottom: var(--space-3); }
+.html-courseware-item:last-child { margin-bottom: 0; }
+.html-courseware-section-title {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+/* 关键: iframe 响应式 — 移动端横屏旋转 layout 不破 (mobile-iframe.spec.ts:187) */
+.html-courseware-iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 280px;
+  max-height: 70vh;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+  background: #fff;
+}
+.html-courseware-empty {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--el-text-color-secondary);
+  text-align: center;
+  background: var(--el-fill-color-light);
+  border-radius: 8px;
+}
+.html-courseware-action { margin-top: var(--space-2); }
 .el-collapse { border: none; }
 :deep(.el-collapse-item__header) {
   height: auto; min-height: 52px;
