@@ -128,8 +128,8 @@ test.describe('课程 CRUD 流程 E2E', () => {
       await quillEditor.fill('这是 E2E 测试课程的描述，用于验证课程 CRUD 流程。');
     }
 
-    // ===== 6. 点击「创建课程」按钮 =====
-    const submitBtn = page.locator('button:has-text("创建课程"), button:has-text("保存")').first();
+    // ===== 6. 点击「新增课程」按钮 (course.createCourse='新增课程' zh-CN) =====
+    const submitBtn = page.locator('button:has-text("新增课程"), button:has-text("保存")').first();
     await expect(submitBtn).toBeVisible({ timeout: 5000 });
     await submitBtn.click();
 
@@ -263,7 +263,9 @@ test.describe('课程 CRUD 流程 E2E', () => {
     // ===== 4. 检查是否有封面，没有则通过 API 设置空白封面跳过 =====
     // 查看页面内容，确定当前状态
     const pageContent = await page.content();
-    const statusTag = page.locator('.el-tag:has-text("草稿"), .el-tag:has-text("已通过"), .el-tag:has-text("已发布")');
+    // status:0=草稿(draft), 1=提交审核(submitForReview='提交审核'), 2=审核通过(approve='审核通过'),
+    //          3=驳回(reject='驳回'), 4=已发布(published='已发布'), 5=下架(unpublish='下架')
+    const statusTag = page.locator('.el-tag:has-text("草稿"), .el-tag:has-text("提交审核"), .el-tag:has-text("审核通过"), .el-tag:has-text("驳回"), .el-tag:has-text("已发布"), .el-tag:has-text("下架")');
     const currentStatus = await statusTag.textContent().catch(() => 'unknown');
     console.log(`[course-crud] 课程当前状态: ${currentStatus}`);
 
