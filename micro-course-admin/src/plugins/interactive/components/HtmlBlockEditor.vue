@@ -21,8 +21,8 @@
       </h3>
       <div class="hbe-actions">
         <el-radio-group v-model="editorMode" size="small">
-          <el-radio-button label="wysiwyg">富文本</el-radio-button>
-          <el-radio-button label="source">HTML 源码</el-radio-button>
+          <el-radio-button value="wysiwyg">富文本</el-radio-button>
+          <el-radio-button value="source">HTML 源码</el-radio-button>
         </el-radio-group>
         <el-button :icon="View" size="small" plain @click="previewOpen = true">预览</el-button>
         <el-button type="primary" size="small" :icon="Check" :loading="saving" @click="handleSave" :disabled="!htmlDirty">

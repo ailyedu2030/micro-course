@@ -16,7 +16,7 @@ import request from '@/utils/request'
  * type: "PPT" | "HTML" | "EMPTY"
  */
 export function getCoursewareTree(courseId, sectionId) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/courseware/${sectionId}` })
+  return request({ method: 'GET', url: `/courses/${courseId}/courseware/${sectionId}` })
 }
 
 /**
@@ -32,5 +32,5 @@ export function getAudioStreamUrl(courseId, token) {
  * 按 token 解析元数据 (非流式, 用于 UI 显示音频状态).
  */
 export function resolveAudioToken(courseId, token) {
-  return request({ method: 'GET', url: `/api/courses/${courseId}/courseware/audio/${token}` })
+  return request({ method: 'GET', url: `/courses/${courseId}/courseware/audio/${token}` })
 }

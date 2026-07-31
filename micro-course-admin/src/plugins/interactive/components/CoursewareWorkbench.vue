@@ -18,11 +18,11 @@
     <!-- Step 1: 课件类型选择 -->
     <div class="cw-step cw-type-select">
       <el-radio-group v-model="coursewareType" size="large">
-        <el-radio-button label="PPT">
+        <el-radio-button value="PPT">
           <el-icon><Picture /></el-icon>
           PPT 课件
         </el-radio-button>
-        <el-radio-button label="HTML">
+        <el-radio-button value="HTML">
           <el-icon><Document /></el-icon>
           HTML 课件
         </el-radio-button>
