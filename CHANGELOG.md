@@ -9,6 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Bug I - 30 处业务 catch 块 console.error 噪音 + precheck.sh 8 项加固)
+
+> **背景**: 用户多次截图生产前端 console 错误. Bug H (PR #165) 修了 enums.js fallback 噪音, 但发现 30+ 处业务 catch 块的 console.error 仍是用户截图噪音. PR #167 文档化的"防止再发"需要 precheck.sh 加 lint 检查.
+
+#### Bug I: 30 处业务 catch 块 console.error → console.debug
+- **16 个组件修改** (16 业务 Vue 组件 + utils/logger.js 保留):
+  - 修改: `console.error(...)` → `console.debug(...)` + `// eslint-disable-next-line no-console` 注释
+  - 保留 6 处核心 debug (App/useErrorHandler/logger/main/router, 开发者关键路径)
+- **业务 catch 块改 debug 的理由**:
+  - 业务错误通常已通过 ElMessage.toast 给用户提示
+  - console.error 是冗余噪音 → 用户截图时 console 显示大量红色错误
+  - 调试时仍可手动开启 console.debug 调查
+- **影响**:
+  - 生产 console 干净 (用户截图不再有 `[AchievementWall]` 等红色错误)
+  - 调试能力不变 (console.debug 仍可用)
+  - 业务错误用户感知不变 (ElMessage toast 已显示)
+
+#### precheck.sh 8 项加固 (P0-3 防再发)
+- **[4]** 禁止 `headers: {}` 显式空对象 (Bug G 防再发, axios 0.27+ 行为)
+- **[5]** 禁止 utils/request.js 之外直接 import axios (Bug G 防再发, 走 request instance)
+- **[6]** utils/ console.warn 检查 (Bug H 防再发, fallback 路径应 console.debug)
+- **[7]** 文档同步检查 (CHANGELOG.md + ROLLBACK_PLAN.md 是否提及修改的文件)
+- **[8]** src/ console.error 全局检查 (防止用户截图噪音, Bug I 防再发)
+- 颜色输出 (红/黄/绿) 方便识别警告 vs 错误
+
+#### 横向扫描
+- grep -rn `console\.error` src/ → 36 处 (改前) → 6 处 (改后, 仅核心 debug)
+- grep -rn `headers: *{}` src/ → 0 处 (Bug G 已修, precheck 加固防止新增)
+- grep -rn `import.*['"]axios['"]` src/ (除 utils/request.js) → 0 处 (Bug G 已修, precheck 加固)
+- 其他 utils/ 仍有 console.warn (logger.js wrapper definition, 加 eslint-disable)
+
+#### 防止再发
+- precheck.sh 4-8 项是"防再发"检查项, 任何未来 PR 触发警告 → 必须修
+- console.debug 加 `eslint-disable-next-line no-console` 注释说明是 fallback 路径
+- Bug I 模式: 业务 catch 块统一 console.debug (用户截图无噪音), 核心 debug 路径保留 console.error
+
+#### 风险评估
+| 维度 | 评估 |
+|------|------|
+| 变更范围 | 17 文件 / 200 行, 16 业务组件 + 1 precheck.sh |
+| 后端 / DB | 零变更 |
+| 现有部署影响 | 零 (console.debug 默认不输出) |
+| 回滚复杂度 | 极低 (git revert 1 个 commit) |
+
+### References
+- 部署: PR #168 已 merged to main (commit 99112b6e)
+- 部署 SOP: `scripts/deploy-frontend.sh` (11 步独立验证)
+- 备份链: 当前 (Bug I) → bak-pr161-3 (Bug E/F) → bak-pr161-2 (PR #161) → bak-pr161-dep (Phase 6)
+- 部署时间: 2026-08-01, 5 分钟监控 0 ERROR
+
 ### Fixed (Bug G/H - 生产 console 401 错误链根因修复)
 
 > **背景**: PR #163 部署后用户截图生产前端 console 仍出现连锁错误 (401×5, [enums] WARN, [App] ERR)。**根因不在前端业务代码，而在 axios 0.27+ 行为变更 + 业务代码误用**。
