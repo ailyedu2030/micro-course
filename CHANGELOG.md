@@ -9,6 +9,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Bug G/H - 生产 console 401 错误链根因修复)
+
+> **背景**: PR #163 部署后用户截图生产前端 console 仍出现连锁错误 (401×5, [enums] WARN, [App] ERR)。**根因不在前端业务代码，而在 axios 0.27+ 行为变更 + 业务代码误用**。
+
+#### Bug G: `/api/auth/refresh` 返回 415 (Unsupported Media Type)
+- **`src/utils/request.js:125` refresh 调用改 1 行**:
+  - 修复前: `headers: {}` (显式空 headers, axios 0.27+ 不自动注入 Content-Type, 后端 415)
+  - 修复后: `headers: { 'Content-Type': 'application/json' }` (显式 application/json)
+- **完整错误链**: refresh 415 → refresh 失败 → 所有 401 请求无法重试 → console 堆满 401 + [enums] WARN + [App] ERR
+- **验证**: `curl -X POST https://microcourse.ailyedu.cn/api/auth/refresh -H 'Content-Type: application/json' -d '{refreshToken:test}'` → HTTP 401 (token 错误) 而非 415 (Content-Type 错)
+- **影响**: 修复后 token 过期自动 refresh, 用户无感知
+
+#### Bug H: enums fallback 路径 console.warn 噪音
+- **`src/utils/enums.js:159` 改成 console.debug**:
+  - 修复前: `console.warn('[enums] failed to sync from backend, using local fallback:', e)` (fallback 是设计预期, 但 console.warn 触发用户可见的 [enums] 错误)
+  - 修复后: `console.debug(...)` (eslint-disable-next-line no-console, 调试时手动开启日志调查)
+- **影响**: 生产 console 干净, 但 fallback 行为不变 (本地常量保证前端可用)
+
+#### 横向扫描结果
+- `grep -rn 'headers: *{}' src/` → 仅 1 处 (refresh, 已修)
+- `grep -rn 'axios\\.\\(post\\|put\\|patch\\)' src/` → 仅 1 处直接调用 axios (refresh), 其他走 `request` instance
+- `request` instance 自动 Content-Type 处理未受影响
+
+#### 防止再发
+- 注释在 `src/utils/request.js:125` 标记 'P0-3: 不要用 headers: {} 显式空对象, axios 0.27+ 不会自动注入 Content-Type'
+- 下次 PR review 时如发现 `headers: *{}` 模式, 应原应 reject (lint rule 待加)
+- console.debug 模式: 用户视角的预期行为 (enums fallback, localStorage 缓存) 不应在 console 输出 WARN
+
+#### 风险评估
+| 维度 | 评估 |
+|------|------|
+| 变更范围 | 2 文件 / 6 行, 纯前端 |
+| 后端 API | 零变更 |
+| DB schema | 零变更 |
+| Breaking Change | 无 |
+| 回滚复杂度 | 极低 |
+
+### References
+- 部署: PR #165 已 merged to main (commit 8902d0b0)
+- 部署 SOP: `scripts/deploy-frontend.sh` (11 步独立验证)
+- 备份链: 当前 (Bug G/H) → html.bak-pr161-3 (Bug E/F) → html.bak-pr161-2 (PR #161) → html.bak-pr161-dep (Phase 6)
+- 部署时间: 2026-08-01, 5 分钟监控 0 ERROR
+
+---
+
+## [1.22.2] - 2026-07-31 (PR #161)
+
 ### Fixed (Phase 6 教师模块收口)
 
 #### 教师看板 / 成绩明细 / 教学班 / 视频管理
