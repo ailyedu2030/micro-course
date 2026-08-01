@@ -1662,7 +1662,11 @@ code {
   --sidebar-bg: #0f0f23;
   --sidebar-logo-bg: #0a0a1a;
   --sidebar-hover: #16213e;
-  --sidebar-text: #9ca3af;
+  /* P0-4: 修复侧边栏文字对比度 (Bug J)
+     原 #9ca3af 在深紫黑背景 #0f0f23 上 contrast 7.3 (过 WCAG AA 但用户截图"不清晰")
+     改 #e5e7eb (Tailwind gray-200) → contrast 16.2:1 (WCAG AAA + 视觉清晰)
+     https://webaim.org/resources/contrastchecker/ */
+  --sidebar-text: #e5e7eb;
 
   /* 输入框 */
   --el-input-bg-color: #16213e;
