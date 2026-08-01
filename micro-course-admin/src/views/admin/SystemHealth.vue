@@ -90,7 +90,8 @@ const fetchHealth = async () => {
       }
     }
   } catch (e) {
-    console.error('[SystemHealth] 加载失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[SystemHealth] 加载失败:', e)
   } finally {
     loading.value = false
   }

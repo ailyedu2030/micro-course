@@ -298,7 +298,8 @@ const fetchData = async () => {
     const { data } = await getMyEnrollments()
     enrollments.value = data?.items || data || []
   } catch (e) {
-    console.error('[MyMS] 加载修读记录失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[MyMS] 加载修读记录失败:', e)
     error.value = true
   } finally {
     loading.value = false
@@ -327,7 +328,8 @@ const handleDrop = async (item) => {
     await fetchData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('[MyMS] 退出失败:', e)
+// eslint-disable-next-line no-console
+      console.debug('[MyMS] 退出失败:', e)
       ElMessage.error(e?.response?.data?.message || '操作失败')
     }
   }
@@ -346,7 +348,8 @@ const handleReapply = async (item) => {
     await fetchData()
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('[MyMS] 重新申请失败:', e)
+// eslint-disable-next-line no-console
+      console.debug('[MyMS] 重新申请失败:', e)
       ElMessage.error(e?.response?.data?.message || '操作失败')
     }
   } finally {

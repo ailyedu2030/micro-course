@@ -304,7 +304,8 @@ async function fetchCourses() {
     const { data } = await getCourses({ size: 100, teacherId })
     courseOptions.value = data.items || []
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 获取课程列表失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 获取课程列表失败', error)
     coursesError.value = true
   } finally {
     loadingCourses.value = false
@@ -333,7 +334,8 @@ async function fetchClasses() {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 获取教学班列表失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 获取教学班列表失败', error)
     classesError.value = true
   } finally {
     loadingClasses.value = false
@@ -360,7 +362,8 @@ async function fetchStudents(cls, force = false) {
     const { data } = await getTeachingClassStudents(cls.id)
     studentData[cls.id] = Array.isArray(data) ? data : (data.items || [])
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 获取班级学生列表失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 获取班级学生列表失败', error)
     ElMessage.error(`获取班级学生列表失败`)
     studentData[cls.id] = []
   } finally {
@@ -422,7 +425,8 @@ async function handleSearchStudent() {
       addStudentForm.userId = null
     }
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 搜索学生失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 搜索学生失败', error)
     ElMessage.error('搜索学生失败')
   }
 }
@@ -448,7 +452,8 @@ async function confirmAddStudent() {
     delete studentData[currentClassForAdd.value.id]
     await fetchStudents(currentClassForAdd.value)
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 添加学生失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 添加学生失败', error)
     ElMessage.error('添加失败')
   } finally {
     addingStudent.value = false
@@ -466,7 +471,8 @@ async function handleRemoveStudent(cls, student) {
     await fetchStudents(cls)
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('[TeacherTeachingClasses] 移除学生失败', e)
+// eslint-disable-next-line no-console
+      console.debug('[TeacherTeachingClasses] 移除学生失败', e)
       ElMessage.error('移除失败')
     }
   }
@@ -496,7 +502,8 @@ async function confirmChangeStatus() {
     delete studentData[currentClassForStatus.value.id]
     await fetchStudents(currentClassForStatus.value)
   } catch (error) {
-    console.error('[TeacherTeachingClasses] 修改学生状态失败', error)
+// eslint-disable-next-line no-console
+    console.debug('[TeacherTeachingClasses] 修改学生状态失败', error)
     ElMessage.error('状态修改失败')
   } finally {
     changingStatus.value = false

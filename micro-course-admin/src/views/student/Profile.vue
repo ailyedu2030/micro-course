@@ -378,7 +378,8 @@ onMounted(async () => {
     try {
       await userStore.getInfo()
     } catch (e) {
-      console.error('[Profile] getInfo failed', e)
+// eslint-disable-next-line no-console
+      console.debug('[Profile] getInfo failed', e)
       userStore.userInfo = null
       profileError.value = true
     }

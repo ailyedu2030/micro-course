@@ -176,7 +176,8 @@ const handleReopen = async (row) => {
     ElMessage.success('已重新开课')
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+// eslint-disable-next-line no-console
+    if (e !== 'cancel') console.debug(e)
   }
 }
 

@@ -470,7 +470,8 @@ async function handleExport() {
     URL.revokeObjectURL(url)
     ElMessage.success('导出成功')
   } catch (e) {
-    console.error(e)
+// eslint-disable-next-line no-console
+    console.debug(e)
     ElMessage.error('导出失败')
   } finally {
     exporting.value = false

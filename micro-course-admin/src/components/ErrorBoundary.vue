@@ -99,7 +99,8 @@ function goHome() {
 // 暴露错误捕获方法
 defineExpose({
   captureError(err) {
-    console.error('[ErrorBoundary]', err)
+// eslint-disable-next-line no-console
+    console.debug('[ErrorBoundary]', err)
     hasError.value = true
     errorStack.value = sanitizeStack(err?.stack || String(err))
     reportError(err)
