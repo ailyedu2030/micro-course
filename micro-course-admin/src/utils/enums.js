@@ -153,7 +153,11 @@ export async function syncEnumsFromBackend() {
     const enumData = data && typeof data === 'object' && data.data ? data.data : data
     return enumData && typeof enumData === 'object' ? enumData : null
   } catch (e) {
-    console.warn('[enums] failed to sync from backend, using local fallback:', e)
+    // P0-3: enums 失败时 fallback 到本地常量是预期行为 (网络/认证失败),
+    // 不应在 console 输出 WARN 噪音 (用户截图显示 console 大量 enums 错误).
+    // 改为 console.debug 允许需要时手动开启日志调查.
+    // eslint-disable-next-line no-console
+    console.debug('[enums] failed to sync from backend, using local fallback:', e)
     return null
   }
 }
