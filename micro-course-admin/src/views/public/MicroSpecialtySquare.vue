@@ -146,7 +146,8 @@ const fetchData = async () => {
     featured.value = data?.featured || []
     recruiting.value = data?.recruiting || []
   } catch (e) {
-    console.error('[MicroSpecialtySquare] 加载失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[MicroSpecialtySquare] 加载失败:', e)
     error.value = true
   } finally {
     loading.value = false

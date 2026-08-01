@@ -326,7 +326,8 @@ async function fetchCourses() {
       searchForm.courseId = Number(route.query.courseId)
     }
   } catch (err) {
-    console.error('[StudentList] fetchCourses failed:', err)
+// eslint-disable-next-line no-console
+    console.debug('[StudentList] fetchCourses failed:', err)
     ElMessage.error('获取课程列表失败')
   }
 }
@@ -362,7 +363,8 @@ async function fetchData() {
     tableData.value = result.items || []
     totalElements.value = result.totalElements || tableData.value.length
   } catch (err) {
-    console.error('[StudentList] fetchData failed:', err)
+// eslint-disable-next-line no-console
+    console.debug('[StudentList] fetchData failed:', err)
     error.value = true
     ElMessage.error('获取学员列表失败')
   } finally {
@@ -401,7 +403,8 @@ async function handleViewDetail(row) {
     const { data } = await getStudentDetail(row.userId)
     currentStudent.value = { ...row, ...data }
   } catch (err) {
-    console.error('[StudentList] getStudentDetail failed:', err)
+// eslint-disable-next-line no-console
+    console.debug('[StudentList] getStudentDetail failed:', err)
     // fallback: 使用表格行数据
     currentStudent.value = row
   }
@@ -431,7 +434,8 @@ async function confirmSendMessage() {
     ElMessage.success('消息已发送')
     messageVisible.value = false
   } catch (err) {
-    console.error('[StudentList] sendNotification failed:', err)
+// eslint-disable-next-line no-console
+    console.debug('[StudentList] sendNotification failed:', err)
     ElMessage.error('发送失败，请稍后重试')
   } finally {
     sendingMessage.value = false

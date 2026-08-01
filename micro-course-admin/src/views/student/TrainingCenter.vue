@@ -122,7 +122,8 @@ async function fetchData() {
 
     enrollments.value = items
   } catch (e) {
-    console.error('[TrainingCenter] 训练中心加载失败', e)
+// eslint-disable-next-line no-console
+    console.debug('[TrainingCenter] 训练中心加载失败', e)
     error.value = true
     ElMessage.error('加载失败，请稍后重试')
   } finally {

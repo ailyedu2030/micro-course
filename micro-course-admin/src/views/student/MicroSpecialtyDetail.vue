@@ -430,7 +430,8 @@ const fetchDetail = async () => {
     teachers.value = detailRes.data?.teachers || []
     stats.value = detailRes.data?.stats || null
   } catch (e) {
-    console.error('[MSDetail] 加载详情失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[MSDetail] 加载详情失败:', e)
     ms.value = null
     courses.value = []
     teachers.value = []
@@ -477,7 +478,8 @@ const handleApply = async () => {
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('[MSDetail] 报名失败:', e)
+// eslint-disable-next-line no-console
+      console.debug('[MSDetail] 报名失败:', e)
       ElMessage.error(e?.response?.data?.message || '报名失败，请稍后重试')
     }
   } finally {
@@ -507,7 +509,8 @@ const handleReapply = async () => {
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
-      console.error('[MSDetail] 重新申请失败:', e)
+// eslint-disable-next-line no-console
+      console.debug('[MSDetail] 重新申请失败:', e)
       ElMessage.error(e?.response?.data?.message || '操作失败，请稍后重试')
     }
   } finally {

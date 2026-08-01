@@ -181,7 +181,8 @@ async function fetchData() {
     allDefinitions.value = defRes.data?.items || defRes.data || []
     myAchievements.value = achRes.data?.items || achRes.data || []
   } catch (e) {
-    console.error('[AchievementWall] 加载成就数据失败', e)
+// eslint-disable-next-line no-console
+    console.debug('[AchievementWall] 加载成就数据失败', e)
     error.value = true
     ElMessage.error('加载成就数据失败，请稍后重试')
   } finally {

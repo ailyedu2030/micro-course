@@ -588,7 +588,8 @@ const fetchCourses = async () => {
     }))
     totalElements.value = data?.totalElements || 0
   } catch (e) {
-    console.error('[CourseSquare] 课程加载失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[CourseSquare] 课程加载失败:', e)
     error.value = true
     ElMessage.error(ERROR_MESSAGES.LOAD_FAILED)
   } finally {
@@ -693,7 +694,8 @@ const fetchMicroSpecialties = async () => {
     featured.value = data?.featured || []
     recruiting.value = data?.recruiting || []
   } catch (e) {
-    console.error('[CourseSquare] 微专业加载失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[CourseSquare] 微专业加载失败:', e)
     msError.value = true
   } finally {
     msLoading.value = false

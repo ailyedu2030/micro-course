@@ -374,7 +374,8 @@ async function handleToggleStatus(row) {
     ElMessage.success(`${action}成功`)
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') console.error(e)
+// eslint-disable-next-line no-console
+    if (e !== 'cancel') console.debug(e)
     row.enabled = !newVal
   }
 }

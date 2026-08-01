@@ -430,7 +430,8 @@ async function loadCourse(cid) {
       }
     }
   } catch (err) {
-    console.error('loadCourse error:', err)
+// eslint-disable-next-line no-console
+    console.debug('loadCourse error:', err)
     loadError.value = true
     ElMessage.error('加载课程失败，请检查网络后重试')
   } finally {
@@ -473,7 +474,8 @@ async function loadProgress() {
       streakDays: (studyDaysRes.data?.totalDays) || 0
     }
   } catch (err) {
-    console.error('loadProgress error:', err)
+// eslint-disable-next-line no-console
+    console.debug('loadProgress error:', err)
     ElMessage.warning('学习进度加载失败，部分数据可能不完整')
   }
 }

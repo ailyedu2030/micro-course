@@ -82,7 +82,8 @@ const fetchBundles = async () => {
     bundles.value = data.items || []
     total.value = data.totalElements || 0
   } catch (e) {
-    console.error('[BundleSquare] 加载课程套件失败:', e)
+// eslint-disable-next-line no-console
+    console.debug('[BundleSquare] 加载课程套件失败:', e)
     error.value = true
   }
   finally { loading.value = false }
