@@ -122,7 +122,7 @@ request.interceptors.response.use(response => {
       }
       isRefreshing = true
       try {
-        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }, { _skipAuth: true, headers: {} })
+        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken }, { _skipAuth: true, headers: { 'Content-Type': 'application/json' } })
         const newToken = res.data?.data?.accessToken
         const newRefreshToken = res.data?.data?.refreshToken
         if (newToken) {
