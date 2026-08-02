@@ -120,6 +120,16 @@ export function initErrorReporting() {
   // 未处理的 Promise 异常
   window.addEventListener('unhandledrejection', function (event) {
     const reason = event.reason
+    // P0-6 (Bug K): 静默 401/403 AxiosError 噪音
+    // 原因: 401/403 是设计预期 (token 过期/无权限), 已通过 ElMessage.toast 给用户提示
+    //       不应在 console 输出 unhandled rejection (用户截图噪音)
+    //       5xx/网络错误仍正常 report
+    if (reason?.response?.status === 401 || reason?.response?.status === 403) {
+      event.preventDefault()  // 阻止浏览器默认 console error 输出
+      // eslint-disable-next-line no-console
+      console.debug('[errorReport] silent 401/403 unhandled rejection', reason)
+      return
+    }
     const message = reason?.message || String(reason)
     doReport(
       'PROMISE',
@@ -128,6 +138,15 @@ export function initErrorReporting() {
       window.location.href
     )
   })
+
+  // P0-6 (Bug K): 全局 onerror 静默 401/403 噪音
+  const originalOnError = window.onerror
+  window.onerror = function (message, source, lineno, colno, error) {
+    if (error?.response?.status === 401 || error?.response?.status === 403) {
+      return false  // 阻止浏览器默认 console error 输出
+    }
+    return originalOnError ? originalOnError(message, source, lineno, colno, error) : false
+  }
 }
 
 export function reportError(err) {
