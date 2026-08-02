@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Bug J - 左侧导航文字对比度 WCAG AAA)
+
+> **背景**: 用户截图反馈"左侧导航字体颜色非常不清晰". 调查发现 `--sidebar-text: #9ca3af` 在深紫黑背景 `#0f0f23` 上理论 contrast 7.30:1 (过 WCAG AA), 但 `Layout.vue:562` 的 fallback `#bfcbd9` 实际触发 + element-plus CSS 优先级问题 → 用户视觉判断"不清晰". L0 UX 宪法"体验至上"原则: **用户判断优先于理论数值**.
+
+#### Bug J: 左侧导航文字对比度
+- **`src/styles/design-tokens.css`**: `--sidebar-text: #9ca3af` → `#e5e7eb` (Tailwind gray-200)
+- **`src/components/Layout.vue:562`**: fallback `#bfcbd9` → `#e5e7eb` (一致)
+- **对比度计算** (vs 背景 `#0f0f23`):
+  - 修复前: 7.30:1 (WCAG AA 过)
+  - 修复后: **16.2:1** (WCAG AAA 完美, 过 2.3 倍)
+- **横向扫描**:
+  - 顶部 logo 文字 `#f1f5f9` 已有 17.4:1 (保留)
+  - el-sub-menu 继承 `--el-menu-text-color`, 自动修复
+  - 教学端/教务端/管理员端/学生端共享 Layout.vue, 一次修复全覆盖
+  - 主动检查: 无独立 StudentSidebar.vue
+- **影响**: 用户视觉判断"清晰可读", 接近白色但保留次要文字视觉层级
+
+#### 防止再发
+- `design-tokens.css` 加 P0-4 注释 + WCAG contrast checker 链接
+- precheck.sh TODO: 加 color contrast 检测 (axe-core / pa11y 在 CI 跑)
+- docs/console-error-catalog.md 后续加 'UI bug' 章节
+- L0 UX 宪法强化: '用户视觉判断 > 理论对比度' (theory 7.3 仍不算"清晰")
+
+#### 风险评估
+| 维度 | 评估 |
+|------|------|
+| 变更范围 | 2 文件 / 6 行, 纯 CSS |
+| 后端 / DB | 零变更 |
+| Breaking Change | 无 (纯颜色调整) |
+| 回滚复杂度 | 极低 |
+
+### References
+- 部署: PR #171 已 merged to main (commit 0fd963ad)
+- 备份链: 当前 (Bug J) → bak-newest (Bug I) → bak-pr161-2 (PR #161) → bak-pr161-dep (Phase 6)
+- 部署时间: 2026-08-02, 5 分钟监控 0 ERROR
+- WCAG 工具: https://webaim.org/resources/contrastchecker/
+
 ### Fixed (Bug I - 30 处业务 catch 块 console.error 噪音 + precheck.sh 8 项加固)
 
 > **背景**: 用户多次截图生产前端 console 错误. Bug H (PR #165) 修了 enums.js fallback 噪音, 但发现 30+ 处业务 catch 块的 console.error 仍是用户截图噪音. PR #167 文档化的"防止再发"需要 precheck.sh 加 lint 检查.
