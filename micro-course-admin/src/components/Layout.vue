@@ -559,7 +559,7 @@ onUnmounted(() => {
 .layout-menu {
   background-color: transparent;
   border-right: none;
-  --el-menu-text-color: var(--sidebar-text, #bfcbd9);
+  --el-menu-text-color: var(--sidebar-text, #e5e7eb);
   --el-menu-active-color: var(--role-primary);
   --el-menu-hover-bg-color: var(--sidebar-hover, #1f2d3d);
   --el-menu-hover-text-color: var(--role-primary);
