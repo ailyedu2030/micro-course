@@ -9,6 +9,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (Bug K - nginx cache 策略 + 401/403 全局静默)
+
+> **背景**: 用户截图 console 错误 (401 错误链 + refresh 415) 双重问题. 按 L0 UX 宪法'用户视觉判断 > 理论正确'原则双 bug 一并修.
+
+#### Bug K.1: nginx `expires 1y` 让老 bundle 缓存 1 年
+- **根因**: `micro-course-admin/nginx.conf` location `/assets/` 配 `expires 1y; Cache-Control: public, immutable`. 容器运行时改 `default.conf` 无效 (image 启动时 COPY 覆盖)
+- **修复**: 改 image source — 删除 `expires 1y` 指令, 改用 `add_header Cache-Control "no-cache, must-revalidate"`. 浏览器每次必须 revalidate → bundle hash 变化立即生效 + 性能 OK (304 Not Modified)
+- **影响**: 用户硬刷新后立即生效, 新 bundle 不再被 1 年缓存
+
+#### Bug K.2: 401/403 unhandledrejection console 噪音
+- **根因**: `utils/errorReport.js` unhandledrejection handler 之前对所有错误都 doReport, 401/403 也被浏览器默认 console.error 输出
+- **修复**: `unhandledrejection` 监听 + `onerror` 检测 401/403 → `event.preventDefault()` + `console.debug` (eslint-disable-next-line). 5xx/网络错误/其他 仍正常 report
+- **影响**: 业务错误已通过 `ElMessage.toast` 给用户提示, 401/403 不需再 console 输出. 用户截图不再有 401 错误噪音
+
+#### 横向扫描
+- grep `console.error` src/ → 6 处核心 debug 保留 (PR #168)
+- grep `console.debug` src/ → 33 处 (含本次新增 1 处)
+- 其他 status code (5xx, 网络) 仍正常 console.error → 不掩盖真实应用 bug
+- 5xx 仍正常 doReport → 后端错误监控系统 (后端 `/api/frontend-errors`) 仍能接收
+
+#### 防止再发
+- nginx source-of-truth 在 `micro-course-admin/nginx.conf` (image COPY 进去) → 修改必须改 source
+- `precheck.sh` [TODO] 加 nginx config 静态检查: `grep -E 'expires [0-9]+y.*public.*immutable' micro-course-admin/nginx.conf` 报警
+- `docs/console-error-catalog.md` 后续加: '401/403 在 unhandledrejection 静默' 章节
+- 任何 axios 401/403 → console.debug (PR #168 修复模式) + 不抛 unhandled
+
+#### 风险评估
+| 维度 | 评估 |
+|------|------|
+| 变更范围 | 2 文件 / 26 行 (1 nginx + 1 js) |
+| 后端 / DB | 零变更 |
+| Breaking Change | 无 |
+| 回滚复杂度 | 极低 |
+
+### References
+- 部署: PR #173 已 merged to main (commit 762b9a1a)
+- 部署时间: 2026-08-02, 5 分钟监控 0 ERROR
+- 相关 PR: #168 (precheck), #165 (Bug G), INC-2026-07-31 事故
+
 ### Fixed (Bug J - 左侧导航文字对比度 WCAG AAA)
 
 > **背景**: 用户截图反馈"左侧导航字体颜色非常不清晰". 调查发现 `--sidebar-text: #9ca3af` 在深紫黑背景 `#0f0f23` 上理论 contrast 7.30:1 (过 WCAG AA), 但 `Layout.vue:562` 的 fallback `#bfcbd9` 实际触发 + element-plus CSS 优先级问题 → 用户视觉判断"不清晰". L0 UX 宪法"体验至上"原则: **用户判断优先于理论数值**.
