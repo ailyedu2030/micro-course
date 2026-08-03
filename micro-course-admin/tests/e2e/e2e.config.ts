@@ -20,7 +20,9 @@ export default defineConfig({
   testMatch: ['*.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
+  // CI retries=2：慢 runner 下首跑偶发超时（2026-08-03 Bug-G 假失败），
+  // 1 次重试不足以覆盖，2 次在正常 3.5min 用例上成本可控
+  retries: process.env.CI ? 2 : 0,
   workers: 1,
   timeout: 120000,
   reporter: [
