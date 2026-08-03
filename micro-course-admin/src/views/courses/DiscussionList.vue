@@ -63,7 +63,7 @@
             {{ row.replyCount ?? 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="发布时间" width="170" />
+        <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.statusStr === 'PENDING'" type="warning" size="small">待审核</el-tag>

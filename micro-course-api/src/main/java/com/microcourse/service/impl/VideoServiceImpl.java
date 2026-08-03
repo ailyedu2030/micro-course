@@ -464,11 +464,11 @@ public class VideoServiceImpl implements VideoService {
             ext = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
         String savedFileName = java.util.UUID.randomUUID().toString().replace("-", "") + ext;
-        Path targetPath = Paths.get(baseDir, savedFileName);
+        Path targetPath = Paths.get(baseDir, savedFileName).toAbsolutePath().normalize();
 
-        try {
+        try (InputStream in = file.getInputStream()) {
             Files.createDirectories(targetPath.getParent());
-            file.transferTo(targetPath.toFile());
+            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面保存失败");
         }

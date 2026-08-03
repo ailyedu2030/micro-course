@@ -54,7 +54,7 @@
             <el-tag v-else type="info">草稿</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="提交时间" width="170" />
+        <el-table-column prop="updatedAt" label="提交时间" width="170" :formatter="$formatDateTime" />
         <el-table-column label="操作" width="260" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>

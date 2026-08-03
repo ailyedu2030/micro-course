@@ -41,7 +41,7 @@
           </el-table-column>
           <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
           <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
-          <el-table-column prop="createdAt" label="发布时间" width="170">
+          <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime">
             <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
           </el-table-column>
         </el-table>

@@ -118,7 +118,7 @@
               </div>
               <div class="info-item">
                 <span class="info-label">{{ $t('user.registerTime') }}</span>
-                <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+                <span class="info-value">{{ $formatDateTime(userStore.userInfo?.createdAt) || '-' }}</span>
               </div>
             </div>
           </el-card>
@@ -182,7 +182,7 @@
           </div>
           <div class="info-item">
             <span class="info-label">{{ $t('user.registerTime') }}</span>
-            <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+            <span class="info-value">{{ $formatDateTime(userStore.userInfo?.createdAt) || '-' }}</span>
           </div>
         </div>
       </el-card>

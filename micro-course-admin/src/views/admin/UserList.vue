@@ -341,7 +341,7 @@ function handleExport() {
     专业: item.majorName || '',
     班级: item.className || '',
     状态: getStatusLabel(item.status),
-    注册时间: item.createdAt || '-'
+    注册时间: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
   }))
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()

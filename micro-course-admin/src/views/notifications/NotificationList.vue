@@ -70,7 +70,7 @@
             {{ truncate(row.content, 50) }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" :label="$t('notification.time')" width="170" />
+        <el-table-column prop="createdAt" :label="$t('notification.time')" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="isRead" :label="$t('notification.status')" width="100" align="center">
           <template #default="{ row }">
             <el-badge v-if="!row.isRead" is-dot class="unread-dot">

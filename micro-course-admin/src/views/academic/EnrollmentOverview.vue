@@ -94,7 +94,7 @@
             <span>{{ row.progress != null ? row.progress + '%' : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="选课时间" width="170">
+        <el-table-column prop="createdAt" label="选课时间" width="170" :formatter="$formatDateTime">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
       </el-table>

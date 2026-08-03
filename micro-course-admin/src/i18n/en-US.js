@@ -151,6 +151,7 @@ export default {
     saveSort: 'Save Order',
     noChapters: 'No chapters yet. Click "Add Chapter" above to start.',
     studentPreview: 'Student Preview',
+    chapterName: 'Chapter Name',
     slideOverview: 'Slide Overview',
     submitForReview: 'Submit for Review',
     interactive: 'Interactive',

@@ -45,7 +45,7 @@
             {{ row.paymentMethod || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="时间" width="170" show-overflow-tooltip />
+        <el-table-column prop="createdAt" label="时间" width="170" show-overflow-tooltip :formatter="$formatDateTime" />
         <el-table-column label="操作" width="140" align="center" fixed="right">
           <template #default="{ row }">
             <el-button

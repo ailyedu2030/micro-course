@@ -145,7 +145,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="enrolledAt" label="选课时间" width="170">
+        <el-table-column prop="enrolledAt" label="选课时间" width="170" :formatter="$formatDateTime">
           <template #default="{ row }">
             <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
           </template>

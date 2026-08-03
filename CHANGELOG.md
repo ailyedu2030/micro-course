@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查 · P0 上传链路 + 随堂练习闭环 + 日期/UX 修复)
+
+> 2026-08-04 全页面审查-修复-优化（90 页面走查，admin/teacher/academic/student 四角色浏览器验证）。
+
+#### P0 修复
+- **课程/视频/申报图片上传 500**：`file.transferTo()` 相对路径被 multipart.location 前缀拼接
+  （`/data/uploads/tmp/uploads/covers/...`）→ 父目录不存在 → 封面/视频封面/申报图片上传必现
+  500；课程无法提交审核（审核前置校验要求封面）。修复：目标路径绝对化 +
+  `Files.copy` 直接复制输入流（CourseAdminServiceImpl / VideoServiceImpl /
+  StorageApplicationImageStorageServiceImpl），与既有 AudioUploadServiceImpl 修复模式对齐。
+- **随堂练习选项不可答**：答题页只匹配 `SINGLE/MULTIPLE/JUDGE/FILL/ESSAY`，且期望
+  `{value,label,text}` 结构；教师端创建的题目（`{label,correct}`）与字符串选项数组均无法渲染 →
+  选项空白、无 value 可选。修复：ExerciseTake 选项归一化（兼容 3 种格式）。
+- **答题提交后结果弹窗崩溃**：后端 `ExerciseRecordVO.answers` 为 JSON 字符串，
+  前端 `(answers || []).filter` 抛 "filter is not a function"。修复：computed 解析 JSON。
+- **小分值练习永远无法及格**：`passed = totalScore >= passScore` 按绝对分值比较，
+  与数据字典"pass_score 及格分（百分制）"契约冲突（2 题共 20 分永远 < 60 及格线）。
+  修复：按得分率比较 `totalScore/totalPossible*100 >= passScore`。
+
+#### P1-C 修复
+- 免费课程（price=0）定价状态 DRAFT 时误显示"¥0 / 定价待审批"（互相矛盾）。
+  修复：免费课程不参与定价审批门禁（CoursePricingServiceImpl 免费优先判定）。
+- 登录 IP 熔断（20 次/15 分钟）误报"用户名或密码错误"，用户被锁却不自知。
+  修复：明确提示"登录尝试过于频繁，请 15 分钟后再试"。
+- 约 25 处表格/详情直接渲染原始 ISO 时间戳（`2026-08-03T19:33:19.70208`）。
+  修复：全局 `$formatDateTime` / `$formatDate`（兼容 Element Plus formatter 签名），
+  统一格式化用户/部门/专业/班级/通知/选课/讨论/订单/微专业审核等列表。
+- 学生端"学习"导航 tab 点击后落到课程广场（无 courseId 兜底跳转）。
+  修复：menuTab 移至 /student/learning-stats（学习中心），/student/learning 保留为隐藏路由。
+- 章节新增弹窗输入框 placeholder/aria-label 误用"课程名称"（应为"章节名称"）。
+- i18n "學生預覽"繁体字 → "学生预览"。
+
+#### 验证
+- 后端 `mvn package` 0 ERROR；前端 `npm run build` 成功；precheck 全绿。
+- 浏览器全流程验证：封面上传→保存→提交审核→教务批准→学生选课→课程广场/详情/学习页→
+  练习答题（两种选项格式）→自动批改 20/20 通过→解析视图；讨论发帖；通知全部已读；资料保存。
+
 ### Fixed (部署事故修复 · Flyway 迁移漂移 + rollback 迁移自动执行 + FK 孤儿数据)
 
 > **背景**: 2026-08-04 生产部署连续受阻（checksum 漂移 → rollback 迁移被自动执行 →

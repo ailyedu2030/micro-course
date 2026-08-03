@@ -212,7 +212,15 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         }
 
         // 5. 计算总分，判断是否通过
-        boolean passed = totalScore >= exercise.getPassScore();
+        // 2026-08-04 修复：pass_score 数据字典定义为「及格分（百分制）」，
+        // 原实现按绝对分值比较（totalScore >= passScore），小分值练习（如 2 题共 20 分）
+        // 永远无法达到 60 及格线 → 学生永远「未通过」。
+        // 改为得分率比较：totalScore / totalPossible * 100 >= passScore。
+        int totalPossible = exerciseQuestions.stream()
+                .mapToInt(eq -> eq.getScore() == null ? 0 : eq.getScore())
+                .sum();
+        boolean passed = totalPossible > 0
+                && (totalScore * 100.0 / totalPossible) >= exercise.getPassScore();
 
         // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
         boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);

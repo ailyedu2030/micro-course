@@ -27,7 +27,7 @@
             <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="提交时间" width="130" align="center">
+        <el-table-column prop="updatedAt" label="提交时间" width="130" align="center" :formatter="$formatDateTime">
           <template #default="{ row }">{{ row.updatedAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="300" align="center" fixed="right">

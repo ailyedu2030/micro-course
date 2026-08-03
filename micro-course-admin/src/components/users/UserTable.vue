@@ -130,7 +130,7 @@
 
         <el-table-column label="注册时间" min-width="160">
           <template #default="{ row }">
-            <span class="text-secondary">{{ row.createdAt || '-' }}</span>
+            <span class="text-secondary">{{ $formatDateTime(row.createdAt) || '-' }}</span>
           </template>
         </el-table-column>
 

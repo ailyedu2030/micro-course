@@ -38,7 +38,7 @@
             <el-tag type="success" size="small">{{ row.correctAnswer }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="入库时间" width="170" />
+        <el-table-column prop="createdAt" label="入库时间" width="170" :formatter="$formatDateTime" />
         <el-table-column label="操作" width="100" align="center">
           <template #default="{ row }">
             <el-button

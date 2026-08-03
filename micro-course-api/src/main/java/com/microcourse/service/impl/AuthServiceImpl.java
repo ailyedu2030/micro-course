@@ -159,7 +159,11 @@ public class AuthServiceImpl implements AuthService {
             if (clientIp != null) {
                 int ipFailureCount = queryService.getLoginFailureCount("ip:" + clientIp);
                 if (ipFailureCount >= 20) {
-                    throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                    // P1-C 修复 (2026-08-04): 原提示"用户名或密码错误"误导用户——
+                    // 用户被 IP 熔断却以为密码错误，反复尝试无法登录。
+                    // 改为明确提示封禁状态与时长（与账号级 LOGIN_LOCKED 语义一致）。
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                            "登录尝试过于频繁，该网络地址已被临时限制，请 15 分钟后再试");
                 }
             }
 

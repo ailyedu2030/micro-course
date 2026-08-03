@@ -19,6 +19,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 /**
@@ -40,8 +41,11 @@ public class StorageApplicationImageStorageServiceImpl implements StorageApplica
         String lowerName = originalFilename.toLowerCase();
 
         try {
+            // P0 修复 (2026-08-04): 相对路径 + file.transferTo() 会被 multipart.location
+            // 前缀拼接（/data/uploads/tmp/uploads/storage/...），父目录不存在 → 500。
+            // 绝对化后与 FileAccessController 的读取路径（uploadBaseDir 绝对化）保持一致。
             String uploadDir = "uploads/storage/" + proposalId;
-            Path uploadPath = Paths.get(uploadDir);
+            Path uploadPath = Paths.get(uploadDir).toAbsolutePath().normalize();
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
             }
@@ -193,6 +197,8 @@ public class StorageApplicationImageStorageServiceImpl implements StorageApplica
         } catch (Exception e) {
             log.warn("Image resize failed, saving original: proposalId={}", proposalId, e);
         }
-        file.transferTo(destPath.toFile());
+        try (InputStream is = file.getInputStream()) {
+            Files.copy(is, destPath, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 }

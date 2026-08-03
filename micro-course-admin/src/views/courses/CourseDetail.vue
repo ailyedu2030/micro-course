@@ -305,7 +305,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
     <el-dialog v-model="chapterDialogVisible" :title="chapterDialogTitle" width="480px" @close="handleChapterDialogClose" :close-on-press-escape="true">
       <el-form ref="chapterFormRef" :model="chapterFormData" :rules="chapterFormRules" label-width="80px">
         <el-form-item :label="$t('course.courseName')" prop="title">
-          <el-input v-model="chapterFormData.title" :placeholder="$t('course.courseName')" :aria-label="$t('course.courseName')" />
+          <el-input v-model="chapterFormData.title" :placeholder="$t('course.chapterName')" :aria-label="$t('course.chapterName')" />
         </el-form-item>
         <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
           {{ $t('course.chapterTypeHint') }}

@@ -65,6 +65,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -573,9 +574,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         String filename = UUID.randomUUID().toString() + ext;
         String coversDir = uploadBaseDir + "/covers";
         try {
-            Files.createDirectories(Paths.get(coversDir));
-            Path dest = Paths.get(coversDir, filename);
-            file.transferTo(dest.toFile());
+            // P0 修复 (2026-08-04): file.transferTo() 对相对路径会按 multipart.location
+            // 拼接（例: /data/uploads/tmp/uploads/covers/...），导致父目录不存在而
+            // FileNotFoundException，封面上传 100% 失败 → 课程无法提交审核。
+            // 统一改为：目标路径绝对化 + Files.copy 直接复制输入流（与 VideoServiceImpl
+            // v1.7.0 / AudioUploadServiceImpl 的既有修复模式保持一致）。
+            Path dest = Paths.get(coversDir, filename).toAbsolutePath().normalize();
+            Files.createDirectories(dest.getParent());
+            try (java.io.InputStream in = file.getInputStream()) {
+                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+            }
             course.setCoverUrl("covers/" + filename);
             courseRepository.updateById(course);
         } catch (IOException e) {
