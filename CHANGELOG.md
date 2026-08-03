@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (CI flaky · Bug G 回归测试时序竞态)
+
+> **背景**: #180 合并到 main 后 main push CI e2e 三次全挂（PR 分支却全绿），
+> 交叉审查 + 本地复现定位为 Bug G 回归测试的**双重复现缺陷**。
+
+#### 根因 1：`page.goto('/')` 打断进行中的 login 请求
+- 测试点击登录后立即 `goto('/')`：导航会 abort 未完成的 login 请求
+  （或打断前端 setToken 处理）→ 登录失败 → 被重定向回登录页 → refresh 链路永不触发。
+  慢 runner / 热 disk cache 下导航先于 login 处理完成，必挂；
+  单独跑时 bundle 冷加载慢反而"侥幸"通过 → 同 commit PR CI 过、main push 挂。
+
+#### 根因 2：`waitForFunction` options 传参错误
+- `page.waitForFunction(fn, { timeout: 30000 })` 第二参数是 arg 而非 options，
+  30s 超时从未生效 → 失败被拖成 120s test timeout × 3 次重试。
+
+#### 修复
+- 以"login 响应已返回"（route 拦截事件）为同步点；不再 goto，
+  依赖真实用户路径：登录成功 SPA 自动跳转 → App.vue 调 getInfo(/api/auth/me)
+  → 401 → 自动 refresh（即测试验证对象），事件驱动等待 refresh 被拦截。
+- 顺带修掉 `let x = null` 的 no-useless-assignment。
+
+#### 防止再发
+- 测试注释固化时序根因；同类"等瞬态 localStorage"模式已全仓扫描（仅此一处）。
+
+#### 验证
+- 本地连续 2 轮完整 e2e 套件 15/15 全过（此前首跑必 flaky）；单跑 3 次全过。
+
 ### Fixed (P1-C · HLS 播放签名通道 + 播放器初始化回归)
 
 > **背景**: 将 #179 两大 P0 修复固化为 CI 播放回归 E2E 时，用真实浏览器复现出

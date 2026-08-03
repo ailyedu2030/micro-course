@@ -29,7 +29,7 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
 
   test('登录失败触发 refresh 时, 请求必须包含 Content-Type: application/json', async ({ page }) => {
     // 1. 拦截 /api/auth/refresh 请求, 捕获请求头
-    let refreshRequestHeaders: Record<string, string> | null = null;
+    let refreshRequestHeaders: Record<string, string> | null;
     // 事件驱动：refresh 请求被拦截即 resolve（替代固定 sleep；
     //     慢 runner 下固定 3s 等待必抖 → 2026-08-03 CI 假失败根因）
     const refreshSeenPromise = new Promise<Record<string, string> | null>((resolve) => {
@@ -46,6 +46,8 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
     });
 
     // 2. 拦截 /api/auth/login 请求, 模拟登录返回短期 token
+    let resolveLoginSeen: () => void = () => {};
+    const loginSeenPromise = new Promise<void>((resolve) => { resolveLoginSeen = resolve; });
     await page.route('**/api/auth/login', async (route) => {
       await route.fulfill({
         status: 200,
@@ -60,6 +62,7 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
           }
         })
       });
+      resolveLoginSeen();
     });
 
     // 3. 拦截 /api/auth/me 触发 401 (模拟 token 过期)
@@ -77,13 +80,25 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
     await page.locator('#password').fill('admin123');
     await page.locator('.login-btn').first().click();
 
-    // 5. 等待 localStorage 写入 token (login 成功)
-    // 慢 runner 下 mock 登录可能超过 10s，放宽到 30s（仅在本测试内，不影响其他用例）
-    await page.waitForFunction(() => localStorage.getItem('micro_course_token') !== null, { timeout: 30000 });
+    // 5. 等 login 响应已返回（前端正在写入 token 并跳转）。
+    //    关键时序: 若在 login 请求完成前执行 page.goto('/')，导航会 abort 进行中的
+    //    login 请求 → 登录失败 → 被重定向回登录页 → refresh 链路永不触发。
+    //    即使等 route 层响应返回，紧随的 goto 仍可能打断前端 setToken 处理。
+    //    这是 2026-08-03 main push CI 三次全挂的真实根因（慢 runner/热 cache 下
+    //    导航先于 login 处理完成；单独跑时 bundle 冷加载慢反而"侥幸"通过）。
+    await Promise.race([
+      loginSeenPromise,
+      new Promise<void>((resolve) => setTimeout(resolve, 30000))
+    ]);
 
-    // 6. 导航到任意页面, 触发 /api/auth/me → 401 → 自动 refresh
-    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    // 6b. 等待 refresh 请求被拦截（最多 30s，正常情况毫秒级返回；超时返回 null 由步骤 7 断言兜底）
+    // 6. 等待 refresh 请求被拦截（最多 30s，正常情况毫秒级返回；超时返回 null 由步骤 7 断言兜底）
+    //    注意: 不等待 localStorage token —— mock login 写入 token 后，前端会立即调
+    //    /api/auth/me(mock 401) → 自动 refresh(mock 401) → request.js 按产品逻辑
+    //    removeToken() 清空凭证。慢 runner 上"写入→清除"链路可能快于轮询，
+    //    导致 waitForFunction 观察到的始终是清空态而挂死（2026-08-03 main push CI 失败根因）。
+    //    refresh 请求本身是确定性事件（me 401 必然触发），直接以它为同步点。
+    //    不再 goto('/'): 登录成功后 SPA 自动 router.push → App.vue 挂载调 getInfo
+    //    (/api/auth/me) → 401 → 自动 refresh。这是真实用户路径，也避免导航打断登录处理。
     refreshRequestHeaders = await Promise.race([
       refreshSeenPromise,
       new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000))
