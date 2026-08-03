@@ -22,7 +22,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  *     /api/files/avatars/** → file:./uploads/avatars/   — 用户头像（{@code &lt;el-avatar :src&gt;}）
  *     /api/files/banners/** → file:./uploads/banners/   — 公开轮播图
  *     /api/files/system/**  → file:./uploads/system/    — 平台 Logo / 系统资源（前瞻白名单）
- *     /api/files/videos/**  → file:./uploads/videos/    — 视频文件（HTML5 {@code &lt;video&gt;} 无 Auth 载体）
+ *     /api/files/videos/**  → file:${video.storage-base-dir}/ — 视频文件（HTML5 {@code &lt;video&gt;} 无 Auth 载体）
  *
  *   私有（需经 {@link com.microcourse.controller.FileAccessController} 对象级授权）：
  *     /api/files/slides/**  — 课件文件（需课程 Owner / 选课校验）
@@ -53,6 +53,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final FileAccessLogger fileAccessLogger;
     private final AuditLogWriter auditLogWriter;
     private final ObjectMapper objectMapper;
+    /**
+     * P1-C 修复(2026-08-03): 与上传/转码共用同一配置源。
+     * 此前硬编码 ./uploads/videos/，一旦通过 VIDEO_STORAGE_BASE_DIR 覆写存储目录
+     * （CI / 容器 / 运维调整），mp4 直链静态映射与落盘目录漂移 → <video> 404。
+     */
+    @org.springframework.beans.factory.annotation.Value("${video.storage-base-dir:uploads/videos}")
+    private String videoStorageBaseDir;
 
     public WebMvcConfig(RedisUtil redisUtil, FileAccessLogger fileAccessLogger,
                         AuditLogWriter auditLogWriter, ObjectMapper objectMapper) {
@@ -75,7 +82,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/api/files/system/**")
                 .addResourceLocations("file:./uploads/system/");
         registry.addResourceHandler("/api/files/videos/**")
-                .addResourceLocations("file:./uploads/videos/");
+                .addResourceLocations("file:" + videoStorageBaseDir + "/");
     }
 
     @Override

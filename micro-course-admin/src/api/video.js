@@ -40,6 +40,26 @@ export function getVideoPlayUrl(id, sign) {
   return request({ method: 'GET', url: `/videos/${id}/play`, params: { sign } })
 }
 
+// P1-C 修复(2026-08-03): HLS 播放签名双通道。
+// 流端点强制校验签名（P1I-014），而 hls.js 加载 m3u8 时相对分片 URL
+// （如 index0.ts）无法继承 manifest 的 query → 仅给 manifest 加 ?sign= 不够，
+// 分片请求仍需 X-Video-Sign 请求头（见 useVideoSourceLifecycle / CourseDetail）。
+// 本函数给 manifest URL 附加 sign query，覆盖原生 <video src>（Safari HLS）场景；
+// 已含 sign 参数或非 m3u8 时原样返回。
+export async function buildSignedHlsUrl(id, url) {
+  if (!url || !/\.m3u8/i.test(url) || /\bsign=/.test(url)) return url
+  try {
+    const res = await getVideoSign(id)
+    const sign = res?.data
+    if (!sign) return url
+    const sep = url.includes('?') ? '&' : '?'
+    return `${url}${sep}sign=${encodeURIComponent(sign)}`
+  } catch {
+    // 签名获取失败：保持原样，交由播放器错误态提示，不吞掉可观测性
+    return url
+  }
+}
+
 // ==================== P0-5: 视频书签 ====================
 export function getVideoBookmarks(videoId) {
   return request({ method: 'GET', url: `/videos/${videoId}/bookmarks` })

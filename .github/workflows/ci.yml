@@ -191,9 +191,19 @@ jobs:
           REDIS_PASSWORD: ""
           JWT_SECRET: ci-test-jwt-secret-key-32-chars-for-testing-only
           VIDEO_SIGN_SECRET: ci-test-video-sign-secret-key-32-char
+          # ubuntu runner 无 /data（生产 Docker 镜像才有），multipart/上传/转码目录
+          # 全部落 runner.temp，否则视频上传 500 / 转码失败
+          MULTIPART_LOCATION: ${{ runner.temp }}/multipart
+          UPLOAD_BASE_DIR: ${{ runner.temp }}/uploads
+          VIDEO_STORAGE_BASE_DIR: ${{ runner.temp }}/videos
 
       - name: Install PostgreSQL Client
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      # P1-C 修复(2026-08-03): 视频播放回归 E2E 依赖真实转码链路，
+      # ubuntu-latest 镜像无 ffmpeg，缺装将导致转码 FAILED(3)
+      - name: Install FFmpeg (视频转码 E2E 依赖)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
       - name: Seed E2E Test Data
         run: PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -f src/test/resources/sql/p0-seed.sql

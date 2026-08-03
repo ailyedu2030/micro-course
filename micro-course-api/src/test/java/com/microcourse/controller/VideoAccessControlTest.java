@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.BaseIntegrationTest;
+import com.microcourse.util.VideoSignUtil;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -32,6 +33,9 @@ class VideoAccessControlTest extends BaseIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private VideoSignUtil videoSignUtil;
 
     private final List<Long> createdVideoIds = new ArrayList<>();
 
@@ -154,5 +158,32 @@ class VideoAccessControlTest extends BaseIntegrationTest {
                         .header("Authorization", studentToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value(8005));
+    }
+
+    // --------- 8 · 已选课学生 → HLS 流无签名 403 12003（P1-C 回归：签名为强制门禁） ---------
+    @Test
+    @DisplayName("8·已选课学生无签名访问 HLS 流 → 403 12003")
+    void enrolledStudentWithoutSignCannotStream() throws Exception {
+        long videoId = insertVideo(1, 1); // course 1
+        enrollStudent7(1);                // 已选课
+        mockMvc.perform(get("/api/video-stream/1/" + videoId + "/index.m3u8")
+                        .header("Authorization", studentToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(12003));
+    }
+
+    // --------- 9 · 已选课学生 → X-Video-Sign 请求头等价于 query（hls.js 分片双通道） ---------
+    @Test
+    @DisplayName("9·已选课学生经 X-Video-Sign 头访问 HLS 流 → 通过签名门禁")
+    void enrolledStudentCanStreamWithHeaderSign() throws Exception {
+        long videoId = insertVideo(1, 1); // course 1
+        enrollStudent7(1);                // 已选课
+        String sign = videoSignUtil.generateSign(videoId, 2);
+        // 签名校验通过后才会进入文件存在性检查（测试环境无真实 HLS 文件 → 404 VIDEO_NOT_FOUND）
+        mockMvc.perform(get("/api/video-stream/1/" + videoId + "/index.m3u8")
+                        .header("Authorization", studentToken())
+                        .header("X-Video-Sign", sign))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value(9004));
     }
 }

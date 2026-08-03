@@ -9,6 +9,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (P1-C · HLS 播放签名通道 + 播放器初始化回归)
+
+> **背景**: 将 #179 两大 P0 修复固化为 CI 播放回归 E2E 时，用真实浏览器复现出
+> VideoPlayer / 课程详情预览仍无法播放转码视频，实为 **3 个仍在线缺陷**叠加。
+
+#### HLS 签名通道缺失（5.1.1）
+- **症状**: `/student/courses/:id/play/:videoId` 与课程详情"播放预览"`<video>` 空 src、
+  readyState=0，后端日志 `12003 视频签名无效或已过期`
+- **根因**: 流端点（P1I-014）强制 `sign` 校验；hls.js 仅带 Authorization 头，
+  且相对分片 URL 无法继承 manifest query → m3u8/ts 全 403
+- **修复**:
+  - 前端 `useVideoSourceLifecycle` / `CourseDetail`：播放前 `GET /videos/{id}/sign`，
+    hls.js `xhrSetup` 增加 `X-Video-Sign` 头 + manifest 附加 `?sign=`（原生 HLS 降级）
+  - 后端 `VideoStreamService`：兼容读取 `X-Video-Sign` 请求头（与 query 同一
+    `verifySign` 校验，不降级安全）；新增集成测试 2 条
+
+#### 播放器永不初始化（5.1.2）
+- **根因**: `useVideoLoadOrchestrator` 在 `loading=true`（`<video>` 未挂载）时
+  调用 `initPlayer()` → `videoRef` 为空提前 return
+- **修复**: 先释放 loading → `nextTick` 等 `<video>` 挂载 → 再 `initPlayer()`
+
+#### hls.js 请求缺 Authorization（5.1.3）
+- **根因**: VideoPlayer 的 `useVideoSourceLifecycle` 未接线 `getAuthToken` → 流请求 401
+- **修复**: `getAuthToken: () => getToken()`
+
+#### 配置漂移：mp4 静态映射（5.1.4）
+- **根因**: `WebMvcConfig` 硬编码 `file:./uploads/videos/`，覆写
+  `VIDEO_STORAGE_BASE_DIR` 后 mp4 直链 404
+- **修复**: 静态映射改用同一 `video.storage-base-dir` 配置源
+
+#### 防止再发
+- 新增 CI 回归 `video-playback.spec.ts`：建课→上传→转码→发布→选课→
+  学习视图 mp4 播放推进 + VideoPlayer HLS 播放推进（currentTime>0）
+- CI e2e job 安装 `ffmpeg`；multipart/上传/转码目录落 runner.temp（ubuntu 无 `/data`）
+- 人工复核清单：`docs/qa/2026-08-03-manual-review-checklist.md`
+
 ### Fixed (Bug K - nginx cache 策略 + 401/403 全局静默)
 
 > **背景**: 用户截图 console 错误 (401 错误链 + refresh 415) 双重问题. 按 L0 UX 宪法'用户视觉判断 > 理论正确'原则双 bug 一并修.

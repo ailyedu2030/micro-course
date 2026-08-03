@@ -421,7 +421,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight, WarningFilled } from '@element-plus/icons-vue'
 import { getCourseById, getMyCoursePrice } from '@/api/course'
 import { getPublicProfile } from '@/api/user'
-import { getVideos } from '@/api/video'
+import { getVideos, getVideoSign } from '@/api/video'
 import { enroll as enrollApi, getMyEnrollments, getCourseRanking } from '@/api/enrollment'
 import { listSections } from '@/api/section'
 import { useCartStore } from '@/store/cart'
@@ -512,6 +512,7 @@ const previewButtonLabel = computed(() => (
 const showPlayer = ref(false)
 const videoLoading = ref(false)
 const previewVideoUrl = ref('')
+const previewVideoId = ref(null)
 let hlsInstance = null
 const videoRef = ref(null)
 
@@ -524,6 +525,7 @@ const handlePlayPreview = async () => {
     const items = res.data?.items || []
     if (items.length > 0) {
       const v = items[0]
+      previewVideoId.value = v.id
       previewVideoUrl.value = v.hlsUrl || v.url || ''
     }
     if (previewVideoUrl.value) {
@@ -536,18 +538,38 @@ const handlePlayPreview = async () => {
   finally { videoLoading.value = false }
 }
 
-const initInlinePlayer = () => {
+const initInlinePlayer = async () => {
   const video = videoRef.value
   if (!video || !previewVideoUrl.value) return
   if (Hls.isSupported()) {
     if (hlsInstance) hlsInstance.destroy()
-    hlsInstance = new Hls({ xhrSetup: (xhr) => { const t = getToken(); if (t) xhr.setRequestHeader('Authorization', 'Bearer ' + t) } })
-    hlsInstance.loadSource(previewVideoUrl.value)
+    // P1-C 修复(2026-08-03): 流端点强制签名校验（P1I-014），预览播放前获取播放签名，
+    // 以 X-Video-Sign 头（hls.js manifest+分片）与 manifest query（原生 HLS）双通道传递
+    let sign = ''
+    try {
+      if (previewVideoId.value) {
+        const res = await getVideoSign(previewVideoId.value)
+        sign = res?.data || ''
+      }
+    } catch { /* 签名获取失败走播放器错误态 */ }
+    const sep = previewVideoUrl.value.includes('?') ? '&' : '?'
+    const signedUrl = sign ? `${previewVideoUrl.value}${sep}sign=${encodeURIComponent(sign)}` : previewVideoUrl.value
+    hlsInstance = new Hls({
+      xhrSetup: (xhr) => {
+        const t = getToken()
+        if (t) xhr.setRequestHeader('Authorization', 'Bearer ' + t)
+        if (sign) xhr.setRequestHeader('X-Video-Sign', sign)
+      }
+    })
+    hlsInstance.loadSource(signedUrl)
     hlsInstance.attachMedia(video)
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play())
     hlsInstance.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) { stopPreview(); ElMessage.error('视频播放出错') } })
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = previewVideoUrl.value; video.play()
+    const sign = previewVideoId.value ? (await getVideoSign(previewVideoId.value).catch(() => null))?.data : null
+    const sep = previewVideoUrl.value.includes('?') ? '&' : '?'
+    video.src = sign ? `${previewVideoUrl.value}${sep}sign=${encodeURIComponent(sign)}` : previewVideoUrl.value
+    video.play()
   }
 }
 

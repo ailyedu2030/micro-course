@@ -599,6 +599,7 @@ import { useVideoPageActions } from '@/composables/useVideoPageActions'
 import { useVideoPageLifecycle } from '@/composables/useVideoPageLifecycle'
 import { useVideoPageViewState } from '@/composables/useVideoPageViewState'
 import { useVideoPlaybackControls } from '@/composables/useVideoPlaybackControls'
+import { getVideoSign } from '@/api/video'
 import { useVideoProgressFlow } from '@/composables/useVideoProgressFlow'
 import { useVideoRouteContext } from '@/composables/useVideoRouteContext'
 import { useVideoKeyboardShortcuts } from '@/composables/useVideoKeyboardShortcuts'
@@ -607,6 +608,7 @@ import { useVideoSubtitles } from '@/composables/useVideoSubtitles'
 import { useVideoTouchGestures } from '@/composables/useVideoTouchGestures'
 import { useVideoUiState } from '@/composables/useVideoUiState'
 import { useUserStore } from '@/store/user'
+import { getToken } from '@/utils/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -788,6 +790,17 @@ const {
   handlePipEnter,
   handlePipLeave,
   getVideoUrl: () => videoData.value.hlsUrl || videoData.value.url,
+  // P1-C 修复(2026-08-03): hls.js 请求需携带 Authorization（此前缺失 → 流请求 401）
+  getAuthToken: () => getToken(),
+  // P1-C 修复(2026-08-03): 流端点强制签名校验，加载前获取播放签名
+  getPlaybackSign: async () => {
+    try {
+      const res = await getVideoSign(videoId.value)
+      return res?.data || ''
+    } catch {
+      return ''
+    }
+  },
   loadVideo: () => loadVideo(),
   setErrorMessage,
   scheduleRetryInit: () => nextTick()

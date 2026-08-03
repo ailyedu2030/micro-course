@@ -67,7 +67,7 @@ describe('useVideoSourceLifecycle', () => {
       HlsLib: MockHls
     })
 
-    sourceLifecycle.initPlayer()
+    await sourceLifecycle.initPlayer()
 
     expect(instances).toHaveLength(1)
     expect(instances[0].config.xhrSetup).toBeTypeOf('function')
@@ -104,9 +104,62 @@ describe('useVideoSourceLifecycle', () => {
       HlsLib: MockHls
     })
 
-    sourceLifecycle.initPlayer()
+    await sourceLifecycle.initPlayer()
 
     expect(video.src).toBe('https://cdn.example.com/native.m3u8')
+    expect(video.play).toHaveBeenCalledTimes(1)
+  })
+
+  it('附加播放签名：hls.js 以 X-Video-Sign 头 + manifest query 双通道传递', async () => {
+    const { MockHls, instances } = createHlsMock({ supported: true })
+    const video = createVideoElement()
+    const videoRef = ref(video)
+
+    const sourceLifecycle = useVideoSourceLifecycle({
+      videoRef,
+      isPipSupported: ref(false),
+      handlePipEnter: vi.fn(),
+      handlePipLeave: vi.fn(),
+      getVideoUrl: () => 'https://cdn.example.com/video.m3u8',
+      getAuthToken: () => 'token-123',
+      getPlaybackSign: async () => 'sign-jwt-abc',
+      setErrorMessage: vi.fn(),
+      HlsLib: MockHls
+    })
+
+    await sourceLifecycle.initPlayer()
+
+    expect(instances).toHaveLength(1)
+    expect(instances[0].loadSource).toHaveBeenCalledWith(
+      'https://cdn.example.com/video.m3u8?sign=sign-jwt-abc'
+    )
+    const xhr = { setRequestHeader: vi.fn() }
+    instances[0].config.xhrSetup(xhr)
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('Authorization', 'Bearer token-123')
+    expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Video-Sign', 'sign-jwt-abc')
+  })
+
+  it('原生 HLS 降级路径同样附加 sign query', async () => {
+    const { MockHls } = createHlsMock({ supported: false })
+    const video = createVideoElement({
+      canPlayType: vi.fn().mockReturnValue('probably')
+    })
+    const videoRef = ref(video)
+
+    const sourceLifecycle = useVideoSourceLifecycle({
+      videoRef,
+      isPipSupported: ref(false),
+      handlePipEnter: vi.fn(),
+      handlePipLeave: vi.fn(),
+      getVideoUrl: () => 'https://cdn.example.com/native.m3u8',
+      getPlaybackSign: async () => 'sign-jwt-xyz',
+      setErrorMessage: vi.fn(),
+      HlsLib: MockHls
+    })
+
+    await sourceLifecycle.initPlayer()
+
+    expect(video.src).toBe('https://cdn.example.com/native.m3u8?sign=sign-jwt-xyz')
     expect(video.play).toHaveBeenCalledTimes(1)
   })
 
@@ -127,7 +180,7 @@ describe('useVideoSourceLifecycle', () => {
       scheduleRetryInit: () => Promise.resolve()
     })
 
-    sourceLifecycle.initPlayer()
+    await sourceLifecycle.initPlayer()
     sourceLifecycle.hlsFatal.value = true
 
     await sourceLifecycle.retryHls()
