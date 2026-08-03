@@ -180,6 +180,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+### Fixed (QA 全量回归 #175 - 2026-08-03)
+
+> 全量 QA 回归（4 角色 × 136 路由 / 深度交互 / 业务 E2E / axe a11y / 单测）发现并闭环的缺陷批次。
+
+#### QA-1 (P0): 学生端随堂练习题目加载 403，答题不可用
+- **根因**: `ExerciseTake.vue` 逐题调用教师端接口 `GET /api/questions/{id}`（`@PreAuthorize` 仅 TEACHER/ADMIN/ACADEMIC），学生必 403；练习响应已内嵌完整题目（R14），逐题重拉冗余且越权
+- **修复**: 直接使用练习响应内嵌题目数据（questionType/content/options/answer/explanation），移除学生侧 getQuestionById 调用
+- **验证**: 答题页浏览器实测题目渲染、0 JS error、0 4xx
+
+#### QA-2 (P0 回归): NProgress 模板/barSelector 不同步导致路由守卫中断白屏
+- **根因**: `NProgress.configure` 自定义模板改 `role="progressbar"` 未同步 `barSelector`（内部仍查 `[role="bar"]`）→ `NProgress.start()` 抛 TypeError → `router.beforeEach` 中断 → 初始导航失败
+- **修复**: `barSelector: '[role="progressbar"]'` 与模板同步
+
+#### QA-3 (P1-C): 权限矩阵修复
+- ACADEMIC 待审核课程列表 `GET /api/courses/pending-review` 403 → 放行 ACADEMIC（与批量审批/前端菜单一致），同步 `docs/权限矩阵.md` + `permission-matrix-v4.0.yaml`
+- ACADEMIC 系统设置页 CAS 403 + 敏感配置暴露 → 非管理员隐藏 CAS 菜单/保存按钮、只读模式
+- 未选课学生进度只读查询 403 → 返回空列表（NOT_ENROLLED(403) 仅保留给动作类接口）
+
+#### QA-4 (P1-C): i18n 缺失键（按钮显示 raw key）
+- 补齐 `common.search/reset/cancel` + `app.mainContent`（中英文）；新增 `scripts/check-i18n-keys.mjs` 扫描（326 键 0 缺失）
+
+#### QA-5 (a11y): axe serious/critical 全清零
+- 标签/按钮对比度（primary/warning/success/danger/info 按 dark/light/plain 分层）、NProgress 无效 ARIA 角色、无标签表单控件全局注入、h1 层级、滚动区可聚焦、健康卡/统计卡状态色等 20+ 处
+
+#### QA-6: QA 驱动工程化
+- route/deep/a11y/e2e/data-flow 驱动 + i18n 扫描工具，可重复回归
+
+---
+
 ## [1.22.2] - 2026-07-31 (PR #161)
 
 ### Fixed (Phase 6 教师模块收口)
