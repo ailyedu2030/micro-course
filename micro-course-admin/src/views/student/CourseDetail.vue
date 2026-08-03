@@ -769,7 +769,14 @@ const checkProgress = async () => {
 const openReviewDialog = () => {
   if (!isLoggedIn.value) { ElMessage.warning('请先登录'); return goLogin() }
   if (!isEnrolled.value) { ElMessage.warning('请先选修该课程'); return }
-  if (!hasProgress.value) { ElMessage.warning('请完成课程学习后再评价（学习进度 ≥ 80%）'); return }
+  // P3 体验优化 (2026-08-04): 原仅弹 3s toast，用户点击"写评价"看不到后续动作，
+  // 误以为按钮无响应。改为明确提示框说明评价门槛。
+  if (!hasProgress.value) {
+    ElMessageBox.alert('请先完成课程学习（学习进度 ≥ 80%）后再评价，感谢您的理解。', '暂不能评价', {
+      confirmButtonText: '知道了', type: 'warning'
+    })
+    return
+  }
   reviewForm.value = { rating: 5, content: '' }; reviewDialogVisible.value = true
 }
 const reportDialog = reactive({ visible: false, targetType: '', targetId: null, reason: '', submitting: false })

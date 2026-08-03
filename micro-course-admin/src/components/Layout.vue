@@ -353,7 +353,7 @@ const routeNameTitleMap = {
   BannerList: '轮播图管理',
   TeachingClassList: '教学班管理',
   SystemHealth: '系统状态',
-  ReportsManagement: '数据报表',
+  ReportsManagement: '举报处理',
   AcademicDashboard: '教务看板',
   AcademicStats: '学习分析',
   AcademicEnrollments: '选课数据总览',

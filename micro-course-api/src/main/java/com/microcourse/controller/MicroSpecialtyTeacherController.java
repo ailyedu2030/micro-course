@@ -31,8 +31,8 @@ public class MicroSpecialtyTeacherController {
     @GetMapping("/pending-invites")
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<?>> getPendingInvites(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String status) {
         PageResult<?> result = inviteService.getPendingInvites(page, size, status);
         return R.ok(result);
@@ -42,8 +42,8 @@ public class MicroSpecialtyTeacherController {
     @GetMapping("/pending-cross-dept-invites")
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<PageResult<?>> getPendingCrossDeptInvites(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size) {
         PageResult<?> result = inviteService.getPendingCrossDeptInvites(page, size);
         return R.ok(result);
     }

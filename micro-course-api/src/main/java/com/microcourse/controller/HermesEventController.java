@@ -5,13 +5,16 @@ import com.microcourse.event.DomainEventDedup;
 import com.microcourse.event.repository.DomainEventDedupRepository;
 import com.microcourse.event.dto.CourseEventPayload;
 import com.microcourse.service.HermesCourseSyncService;
+import com.microcourse.service.HermesWebhookManagementService;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -44,15 +47,24 @@ public class HermesEventController {
 
     private final DomainEventDedupRepository dedupRepo;
     private final HermesCourseSyncService courseSyncService;
+    private final HermesWebhookManagementService managementService;
 
     public HermesEventController(DomainEventDedupRepository dedupRepo,
-                                  HermesCourseSyncService courseSyncService) {
+                                  HermesCourseSyncService courseSyncService,
+                                  HermesWebhookManagementService managementService) {
         this.dedupRepo = dedupRepo;
         this.courseSyncService = courseSyncService;
+        this.managementService = managementService;
     }
 
     @PostMapping
-    public ResponseEntity<Map<String, Object>> receive(@RequestBody DomainEvent event) {
+    public ResponseEntity<Map<String, Object>> receive(
+            @RequestHeader(value = "X-API-Key", required = false) String apiKey,
+            @Valid @RequestBody DomainEvent event) {
+        // P0 安全修复 (2026-08-04): 本端点 SecurityConfig permitAll + 原实现无任何认证，
+        // 匿名攻击者可伪造 COURSE 事件触发 upsertCourseFromHermes 修改已映射课程内容。
+        // 与 /api/hermes/webhook/courses 对齐：强制 X-API-Key 校验（教师/管理员，sha256 hash 匹配）。
+        managementService.authenticate(apiKey);
         LOG.info("[Hermes-inbound] eventId={}, aggregateType={}, aggregateId={}, eventType={}",
                 event.getEventId(), event.getAggregateType(), event.getAggregateId(), event.getEventType());
 
@@ -70,7 +82,10 @@ public class HermesEventController {
         DomainEventDedup dedupRow = new DomainEventDedup();
         dedupRow.setEventId(event.getEventId());
         dedupRow.setSource("HERMES");
-        dedupRow.setTraceId(event.getTraceId());
+        // P0 修复 (2026-08-04): domain_event_dedup.trace_id NOT NULL，
+        // 调用方未带 traceId 时插入必然 DataIntegrityViolation 409 → 事件处理不可用。
+        dedupRow.setTraceId(event.getTraceId() != null ? event.getTraceId()
+                : java.util.UUID.randomUUID().toString());
         dedupRepo.insertIgnoreDuplicate(dedupRow);
 
         // 3. 按 aggregateType 分流

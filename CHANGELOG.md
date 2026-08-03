@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查二轮 · 安全/复制课程/申报校验/分页加固)
+
+> 2026-08-04 P0~P3 全量修复（第二轮，紧接首轮 11 项修复之后）。
+
+#### P0 修复
+- **Hermes 事件 Webhook 未授权写漏洞**：POST /api/hermes/webhook/events 为 permitAll 且
+  Controller 无任何认证，匿名者可伪造 COURSE 事件触发 upsertCourseFromHermes 修改已映射课程。
+  修复：与 /courses 入口对齐，强制 X-API-Key 校验（教师/管理员，sha256 hash 匹配）。
+- **复制课程必失败**：复制视频时 videos.original_name（NOT NULL）未赋值 → INSERT 约束违反
+  → 整个复制事务 409 回滚，含视频的课程复制 100% 失败。修复：复制时回填 fileName。
+- **复制课程功能残缺**：原实现只复制章节+视频，课时（sections）/练习（含题目关联）全部丢失，
+  新课程无法学习。修复：复制课时 + 练习 + exercise_questions 关联。
+
+#### P1-C 修复
+- 微专业申报"下一步"直接 step++ 绕过表单校验，第一步必填项（申报高校/微专业名称/负责人/
+  电话/申请时间）全空可进入后续步骤。修复：分步校验后再前进 + 明确提示。
+- 章节新增/编辑弹窗 label 仍为"课程名称"（首轮仅修 placeholder/aria-label）。
+- 练习列表章节下拉显示"（未知）"：章节类型已迁移至课时层，sectionType 为 null 仍拼接类型。
+- 复制课程后课时/练习缺失（见 P0 第 3 项）。
+
+#### P2 修复
+- 4 个 Controller（MicroSpecialty/Proposal/Teacher/Section）分页 size 无上限 → @Range(1-200) 加固。
+- 系统健康页磁盘/内存显示"—"：前后端字段契约错位（前端读 mem/memUsage/diskTotal，后端返回
+  memory/systemMemoryDetail）。修复：后端补数值字段 + 前端兼容读取。
+- 通知卡片时间 + 5 处微专业审核列表 slice(0,10) 原始时间渲染 → 统一 $formatDateTime/$formatDate。
+- 管理端 ReportsManagement 页面标题"数据报表"→"举报处理"（与内容一致）。
+
+#### P3 优化
+- 评价门槛（学习进度 ≥ 80%）由 3s toast 改为明确提示框，避免"按钮无响应"误解。
+- Hermes 事件 dedup trace_id 缺失导致 409（NOT NULL）→ UUID 兜底。
+
+#### 验证
+- mvn package 0 ERROR；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 实测：匿名 Webhook 401 拦截；复制课程（含章节/视频/课时/练习/题目关联）成功；
+  分页 size 超限拒绝；系统健康页磁盘/内存正常；申报下一步校验拦截；
+  章节 label/练习下拉/评价门槛提示/通知时间格式化全部生效。
+
 ### Fixed (全页面审查 · P0 上传链路 + 随堂练习闭环 + 日期/UX 修复)
 
 > 2026-08-04 全页面审查-修复-优化（90 页面走查，admin/teacher/academic/student 四角色浏览器验证）。

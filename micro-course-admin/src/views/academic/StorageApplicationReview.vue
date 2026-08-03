@@ -28,7 +28,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="updatedAt" label="提交时间" width="130" align="center" :formatter="$formatDateTime">
-          <template #default="{ row }">{{ row.updatedAt?.slice(0, 10) || '-' }}</template>
+          <template #default="{ row }">{{ $formatDate(row.updatedAt) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="300" align="center" fixed="right">
           <template #default="{ row }">

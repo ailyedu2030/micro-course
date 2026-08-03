@@ -100,7 +100,7 @@
             <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
               {{ getNotifTagLabel(row.type) }}
             </el-tag>
-            <span class="card-time">{{ row.createdAt }}</span>
+            <span class="card-time">{{ $formatDateTime(row.createdAt) }}</span>
           </div>
           <div class="card-title" :class="{ 'title-unread': !row.isRead }">{{ row.title }}</div>
           <div class="card-content">{{ truncate(row.content, 80) }}</div>

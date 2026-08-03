@@ -26,7 +26,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdAt" label="创建时间" width="130" align="center" :formatter="$formatDateTime">
-          <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
+          <template #default="{ row }">{{ $formatDate(row.createdAt) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="380" align="center" fixed="right">
           <template #default="{ row }">

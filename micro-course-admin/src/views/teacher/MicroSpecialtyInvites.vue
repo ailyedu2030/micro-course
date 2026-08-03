@@ -32,7 +32,7 @@
           </div>
           <div class="invite-detail">
             <span>邀请人：{{ inv.inviterName }}</span>
-            <span>邀请时间：{{ inv.createdAt?.slice(0, 10) || '-' }}</span>
+            <span>邀请时间：{{ $formatDate(inv.createdAt) || '-' }}</span>
           </div>
         </div>
         <div class="invite-right">

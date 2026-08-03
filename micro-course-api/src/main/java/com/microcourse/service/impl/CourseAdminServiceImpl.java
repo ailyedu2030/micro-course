@@ -39,6 +39,7 @@ import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.PluginGrantRepository;
+import com.microcourse.service.CourseCopyContentService;
 import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.event.DomainEvent;
 import com.microcourse.event.DomainEventPublisher;
@@ -94,6 +95,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final SlidePageMapper slidePageMapper;
     private final CourseAuditService auditService;
     private final CourseStateMachine courseStateMachine;
+    private final CourseCopyContentService courseCopyContentService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final HermesCourseMappingRepository hermesCourseMappingRepository;
@@ -119,6 +121,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   SlidePageMapper slidePageMapper,
                                   CourseAuditService auditService,
                                   CourseStateMachine courseStateMachine,
+                                  CourseCopyContentService courseCopyContentService,
                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                   DomainEventPublisher domainEventPublisher,
                                   HermesCourseMappingRepository hermesCourseMappingRepository) {
@@ -142,6 +145,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.domainEventPublisher = domainEventPublisher;
         this.hermesCourseMappingRepository = hermesCourseMappingRepository;
         this.courseStateMachine = courseStateMachine;
+        this.courseCopyContentService = courseCopyContentService;
         this.objectMapper = objectMapper;
     }
 
@@ -532,20 +536,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             copyCh.setChapterHours(ch.getChapterHours());
             chapterRepository.insert(copyCh);
 
-            // P1-C-03 修复: 复制章节下的视频（仅元数据，不复制实际视频文件）
-            List<Video> videos = videoRepository.selectList(
-                    new LambdaQueryWrapper<Video>()
-                            .eq(Video::getChapterId, originalChapterId)
-                            .isNull(Video::getDeletedAt));
-            for (Video v : videos) {
-                Video copyV = new Video();
-                copyV.setChapterId(copyCh.getId());
-                copyV.setCourseId(course.getId());
-                copyV.setTitle(v.getTitle());
-                copyV.setSortOrder(v.getSortOrder());
-                copyV.setDuration(v.getDuration());
-                videoRepository.insert(copyV);
-            }
+            // P0/P1-C 修复 (2026-08-04): 章节内容复制（视频/课时/练习/题目关联）
+            // 拆至 CourseCopyContentService —— 原实现视频 original_name 未赋值导致
+            // 复制 409 回滚，且不复制课时/练习，新课程无法学习。
+            courseCopyContentService.copyChapterContent(originalChapterId, copyCh.getId(), course.getId());
         }
 
         LOG.info("课程复制成功, originalId={}, newId={}, operator={}", id, course.getId());

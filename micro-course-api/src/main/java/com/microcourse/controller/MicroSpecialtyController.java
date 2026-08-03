@@ -58,8 +58,8 @@ public class MicroSpecialtyController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<MicroSpecialtyVO>> page(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String featuredStatus,
@@ -112,8 +112,8 @@ public class MicroSpecialtyController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public R<PageResult<MicroSpecialtyEnrollmentVO>> listEnrollments(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String status) {
         PageResult<MicroSpecialtyEnrollmentVO> result = msEnrollmentService.listEnrollments(id, page, size, status);
         return R.ok(result);

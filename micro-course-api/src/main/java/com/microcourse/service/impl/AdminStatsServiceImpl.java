@@ -368,6 +368,10 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             long used = total - free;
             double usedPercent = (used * 100.0) / total;
             health.put("disk", usedPercent > 90 ? "WARN" : "OK");
+            // P2 修复 (2026-08-04): 前端 SystemHealth 依赖 diskTotal/diskFree 计算使用率，
+            // 原实现只返回状态不返回数值 → 页面磁盘使用率永远显示 "—"。
+            health.put("diskTotal", String.valueOf(total));
+            health.put("diskFree", String.valueOf(free));
         } catch (Exception e) {
             log.warn("磁盘检查失败: {}", e.getMessage());
             health.put("disk", "UNKNOWN");
@@ -381,6 +385,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
             long usedMem = totalMem - freeMem;
             double usedPercent = (usedMem * 100.0) / totalMem;
             health.put("memory", usedPercent > 90 ? "WARN" : "OK");
+            health.put("mem", usedPercent > 90 ? "WARN" : "OK");
+            health.put("memTotal", String.valueOf(totalMem));
+            health.put("memFree", String.valueOf(freeMem));
         } catch (Exception e) {
             log.warn("JVM 内存检查失败: {}", e.getMessage());
             health.put("memory", "UNKNOWN");
@@ -413,6 +420,10 @@ public class AdminStatsServiceImpl implements AdminStatsService {
                             usedPhysical / (1024.0 * 1024.0 * 1024.0),
                             totalPhysical / (1024.0 * 1024.0 * 1024.0),
                             usedPercent));
+            health.put("memUsage", String.format("已用 %.1f GB / 总计 %.1f GB (%.0f%%)",
+                    usedPhysical / (1024.0 * 1024.0 * 1024.0),
+                    totalPhysical / (1024.0 * 1024.0 * 1024.0),
+                    usedPercent));
         } catch (Exception e) {
             log.warn("系统物理内存检查失败: {}", e.getMessage());
             health.put("systemMemory", "UNKNOWN");
