@@ -7,8 +7,10 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # 仓库级串行：不同分支（main push + PR）的重负载 CI 不再并行，
+  # 消除 runner 负载波动导致的 e2e 偶发超时（2026-08-03 假失败根因）
+  group: ${{ github.workflow }}-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
   # 注:GitHub branch protection 要求 status check 名称与 job name 精确匹配。

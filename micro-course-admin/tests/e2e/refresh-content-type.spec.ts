@@ -30,13 +30,18 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
   test('登录失败触发 refresh 时, 请求必须包含 Content-Type: application/json', async ({ page }) => {
     // 1. 拦截 /api/auth/refresh 请求, 捕获请求头
     let refreshRequestHeaders: Record<string, string> | null = null;
-    await page.route('**/api/auth/refresh', async (route, request) => {
-      refreshRequestHeaders = request.headers();
-      // 返回 401 (refresh token 无效) - 不真正调用后端
-      await route.fulfill({
-        status: 401,
-        contentType: 'application/json',
-        body: JSON.stringify({ code: 1005, message: 'Token 格式错误' })
+    // 事件驱动：refresh 请求被拦截即 resolve（替代固定 sleep；
+    //     慢 runner 下固定 3s 等待必抖 → 2026-08-03 CI 假失败根因）
+    const refreshSeenPromise = new Promise<Record<string, string> | null>((resolve) => {
+      page.route('**/api/auth/refresh', async (route, request) => {
+        const headers = request.headers();
+        // 返回 401 (refresh token 无效) - 不真正调用后端
+        await route.fulfill({
+          status: 401,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 1005, message: 'Token 格式错误' })
+        });
+        resolve(headers);
       });
     });
 
@@ -73,12 +78,16 @@ test.describe('Bug G 回归测试: /api/auth/refresh Content-Type', () => {
     await page.locator('.login-btn').first().click();
 
     // 5. 等待 localStorage 写入 token (login 成功)
-    await page.waitForFunction(() => localStorage.getItem('micro_course_token') !== null, { timeout: 10000 });
+    // 慢 runner 下 mock 登录可能超过 10s，放宽到 30s（仅在本测试内，不影响其他用例）
+    await page.waitForFunction(() => localStorage.getItem('micro_course_token') !== null, { timeout: 30000 });
 
     // 6. 导航到任意页面, 触发 /api/auth/me → 401 → 自动 refresh
     await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    // 等待 refresh 请求被拦截
-    await page.waitForTimeout(3000);
+    // 6b. 等待 refresh 请求被拦截（最多 30s，正常情况毫秒级返回；超时返回 null 由步骤 7 断言兜底）
+    refreshRequestHeaders = await Promise.race([
+      refreshSeenPromise,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 30000))
+    ]);
 
     // 7. 验证 refresh 请求被触发
     expect(refreshRequestHeaders, '/api/auth/refresh 应该被触发 (token 过期)').not.toBeNull();
