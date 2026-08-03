@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 284 | Vue 视图数: 60 | Controller 数: 75 | API 文件数: 45
+> 实体数: 284 | Vue 视图数: 60 | Controller 数: 76 | API 文件数: 45
 
 ---
 
@@ -948,6 +948,8 @@
 | VideoBookmark | /api/videos/{videoId}/bookmarks | 3 | - |
 
 | VideoStream | /api/video-stream | 1 | - |
+
+| VideoStreamAlias | /api/videos/stream | 1 | - |
 
 | WrongQuestion | /api/wrong-questions | 1 | - |
 
