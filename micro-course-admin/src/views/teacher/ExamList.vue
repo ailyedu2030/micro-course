@@ -169,6 +169,9 @@ const route = useRoute()
 const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
 
 const userStore = useUserStore()
+// P1-C 修复 (2026-08-04): userRole 未定义 → 新增试卷/安排考试/删除按钮全部隐藏，
+// 教师无法创建试卷（核心功能不可用）
+const userRole = computed(() => userStore.role)
 const loading = ref(false)
 const exams = ref([])
 const showCreate = ref(false)
@@ -227,10 +230,9 @@ function typeLabel(t) {
 }
 
 function formatTime(t) {
-  if (!t) return '-'
-  const d = new Date(t)
-  if (isNaN(d.getTime())) return '-'
-  return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  // P3 修复 (2026-08-04): toLocaleString('zh-CN') 输出斜杠格式（2026/08/03 20:43），
+  // 与全站统一格式 YYYY-MM-DD HH:mm 不一致，改用全局 $formatDateTime
+  return $formatDateTime(t) || '-'
 }
 
 function getCourseTitle(courseId) {

@@ -140,6 +140,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useUserStore } from '@/store/user'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Clock, Location, ChatLineSquare } from '@element-plus/icons-vue'
@@ -156,6 +157,9 @@ import { getCourseById } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
+// P1-C 修复 (2026-08-04): userRole 未定义 → 新增/编辑/删除线下场次按钮全部隐藏
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 const chapterId = computed(() => route.params.chapterId)
 const courseId = computed(() => route.params.courseId || null)
 

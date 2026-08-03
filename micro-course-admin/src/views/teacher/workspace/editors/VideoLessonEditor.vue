@@ -16,11 +16,17 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { uploadVideo } from '@/api/video'
 import { UploadFilled } from '@element-plus/icons-vue'
 import request from '@/utils/request'
+import { useUserStore } from '@/store/user'
+
+// P1-C 修复 (2026-08-04): userRole 未定义 → 视频课时上传区 v-if 恒为 false，
+// 教师工作台无法上传视频（核心功能不可用）
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const props = defineProps({ sectionId: { type: [Number, String], required: true }, courseId: { type: [Number, String], required: true } })
 const videoFile = ref('')

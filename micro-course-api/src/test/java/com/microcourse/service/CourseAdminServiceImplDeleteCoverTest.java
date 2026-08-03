@@ -17,6 +17,7 @@ import com.microcourse.repository.PluginGrantRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
+import com.microcourse.service.CourseCopyContentService;
 import com.microcourse.service.impl.CourseAdminServiceImpl;
 import com.microcourse.util.SecurityUtil;
 import com.microcourse.event.DomainEventPublisher;
@@ -87,6 +88,7 @@ class CourseAdminServiceImplDeleteCoverTest {
         slidePageMapper = mock(SlidePageMapper.class);
         CourseAuditService auditService = mock(CourseAuditService.class);
         CourseStateMachine courseStateMachine = mock(CourseStateMachine.class);
+        CourseCopyContentService courseCopyContentService = mock(CourseCopyContentService.class);
         DomainEventPublisher domainEventPublisher = mock(DomainEventPublisher.class);
         hermesCourseMappingRepository = mock(HermesCourseMappingRepository.class);
 
@@ -109,6 +111,7 @@ class CourseAdminServiceImplDeleteCoverTest {
                 slidePageMapper,
                 auditService,
                 courseStateMachine,
+                courseCopyContentService,
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 domainEventPublisher,
                 hermesCourseMappingRepository

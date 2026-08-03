@@ -158,6 +158,8 @@
           <div class="post-meta">
             <span>{{ currentPost.isAnonymous ? '匿名用户' : currentPost.authorName }}</span>
             <span>{{ formatDateTime(currentPost.createdAt) }}</span>
+            <el-tag v-if="currentPost.status === 0" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="currentPost.status === 2" type="info" size="small">已驳回</el-tag>
           </div>
         </div>
         <div class="post-content">{{ currentPost.content }}</div>
@@ -179,7 +181,15 @@
         </div>
 
         <!-- 回复输入框 -->
-        <div class="reply-input-area">
+        <el-alert
+          v-if="currentPost.status === 0 || currentPost.status === 2"
+          :title="currentPost.status === 0 ? '帖子审核通过后开放评论' : '帖子已被驳回，无法评论'"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="reply-pending-hint"
+        />
+        <div v-if="currentPost.status === 1 || currentPost.status == null" class="reply-input-area">
           <el-input
             v-model="replyContent"
             type="textarea"

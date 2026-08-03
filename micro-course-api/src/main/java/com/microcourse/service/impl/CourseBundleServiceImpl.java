@@ -97,9 +97,20 @@ public class CourseBundleServiceImpl implements CourseBundleService {
             return;
         }
         List<Course> courses = courseRepository.selectBatchIds(courseIds);
+        // P1-C 修复 (2026-08-04): 免费课程（price<=0）不应计入"原价之和"——
+        // 原实现把免费课按 0 元累加，导致任何含免费课的付费套件校验必失败（199 > 0）。
+        // 修正：仅付费课程参与原价和；全部免费时套件必须免费。
         BigDecimal totalPrice = courses.stream()
-                .map(c -> c.getPrice() != null ? c.getPrice() : BigDecimal.ZERO)
+                .map(c -> c.getPrice() != null && c.getPrice().compareTo(BigDecimal.ZERO) > 0
+                        ? c.getPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (totalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            if (bundlePrice.compareTo(BigDecimal.ZERO) > 0) {
+                throw new BusinessException(ErrorCode.BUNDLE_PRICE_INVALID,
+                        "套餐内课程均为免费课程，套餐价格应设为 0 元（免费套餐）");
+            }
+            return;
+        }
         if (bundlePrice.compareTo(totalPrice) > 0) {
             throw new BusinessException(ErrorCode.BUNDLE_PRICE_INVALID,
                     "套餐价格 ¥" + bundlePrice + " 不能高于所含课程单课价格之和 ¥" + totalPrice);

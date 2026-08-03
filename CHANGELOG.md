@@ -9,6 +9,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查三轮 · 权限变量/购物车支付/讨论评论/套件/考试)
+
+> 2026-08-04 第三轮功能级实测（前两轮为加载级走查 + 核心链路）。本轮按功能域逐页实测
+> 交互，覆盖管理端剩余、教师工作台/试卷/线下课/课件/微专业管理、学生套件/购物车/支付/
+> 考试/微专业报名/讨论互动。
+
+#### P1-C 修复（功能不可用类）
+- **8 个页面 userRole 未定义** → 权限按钮/区域全部隐藏（功能不可用）：
+  BannerList（轮播图新增/编辑/删除）、TeacherOfflineSessions（线下场次增删改）、
+  PlatformShareConfig（分账比例编辑）、MicroSpecialtyCourseEdit（课程编排删除）、
+  DiscussionDetail（删除帖子/回复）、VideoLessonEditor（视频课时上传区）、
+  ExamList（新增试卷/安排考试/删除）、DiscussionList（删除讨论）。
+  根因：模板引用 userRole 但 script 未定义（漏写 `computed(() => useUserStore().role)`）。
+- **购物车结算链路断裂（P0 级业务缺陷）**：首次加入购物车时 store synced=false，
+  只写 localStorage 不写服务端 → 结算页 loadFromServer() 用空数据覆盖 → "购物车为空"跳回；
+  且服务端购物车仅存 courseId，结算页课程信息/金额空白（合计 ¥0）。
+  修复：addItem 前先同步服务端；loadFromServer 并行拉取课程详情合并。
+- **学生考试中心新考试立即"已过期"**：未安排开考时间时前端回退 createdAt 计算过期。
+  修复：无 startTime 且无限时不算过期，归入"待参加"。
+- **套件上架必失败（免费课场景）**：免费课程按 0 元计入"原价之和"，付费套件含免费课
+  时校验必失败。修复：仅付费课程计入原价和；全免费套件必须定价 0。
+- **学生无法查看自己的待审核帖子**：列表可见但详情被"帖子正在审核中"拦截（前后端不一致）。
+  修复：作者本人可查看自己的 PENDING/REJECTED 帖子，详情弹窗显示状态标签。
+- **讨论评论永不可见**：评论创建即 PENDING(0)，但全项目无评论审核通过端点 → 评论永远
+  待审核、评论区恒空。修复：评论创建即 PUBLISHED(1)（防滥用已有 30s 间隔/每小时 20 条/
+  XSS 净化/管理端删除隐藏三重机制）。
+
+#### P2/P3 优化
+- ExamList 创建时间斜杠格式 → 统一 YYYY-MM-DD HH:mm。
+- 讨论详情待审核/已驳回状态标签 + 回复区禁用提示（审核通过后开放评论）。
+
+#### 验证
+- mvn package 0 ERROR（含测试编译修复）；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 实测闭环：购物车→结算→余额支付（¥50 订单）；套件创建/子课/免费领取；试卷一键组卷；
+  微专业 LEAD 权限拦截/工作台/课程编排/团队；线下场次业务校验；课件上传（渲染中→就绪）；
+  讨论发帖/作者查看待审核帖/审核后评论即时显示/点赞结构。
+
 ### Fixed (全页面审查二轮 · 安全/复制课程/申报校验/分页加固)
 
 > 2026-08-04 P0~P3 全量修复（第二轮，紧接首轮 11 项修复之后）。
