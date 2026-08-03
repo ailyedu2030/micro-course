@@ -7,10 +7,11 @@ on:
     branches: [main]
 
 concurrency:
-  # 仓库级串行：不同分支（main push + PR）的重负载 CI 不再并行，
-  # 消除 runner 负载波动导致的 e2e 偶发超时（2026-08-03 假失败根因）
-  group: ${{ github.workflow }}-${{ github.repository }}
-  cancel-in-progress: false
+  # 按分支分组（标准做法）：同分支并发重跑自动取消；
+  # 不同分支可并行（e2e 假失败已由测试事件驱动化根治，
+  # 仓库级串行会让 PR CI 被 main push 排队阻塞，总等待更长）
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # 注:GitHub branch protection 要求 status check 名称与 job name 精确匹配。
@@ -74,7 +75,9 @@ jobs:
         run: bash .claude/skills/microcourse/scripts/precheck.sh
 
       - name: Backend Test
-        run: mvn -B verify
+        # skip spring-boot repackage: backend 测试 job 不产出/使用 fat jar
+        # (e2e job 独立 mvn package 构建), repackage 纯属白跑耗时
+        run: mvn -B verify -Dspring-boot.repackage.skip=true
         working-directory: ./micro-course-api
         env:
           TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
