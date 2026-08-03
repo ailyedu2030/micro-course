@@ -5,7 +5,17 @@ import { ElMessage } from 'element-plus'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
 
-NProgress.configure({ showSpinner: false })
+// A11Y: NProgress 默认模板含无效 ARIA 角色 role="bar"/"spinner"（axe aria-roles critical）。
+// 改用合法 role="progressbar" + aria-label，并移除未启用的 spinner 节点。
+// ⚠️ barSelector 必须与 template 中的 role 同步：
+//    NProgress.render() 用 Settings.barSelector 查询进度条节点，
+//    若 selector 与模板不一致 → querySelector 返回 null → NProgress.start() 抛 TypeError
+//    → router.beforeEach 守卫中断 → 初始导航失败（全部页面白屏）【2026-08-03 P0 回归根因】
+NProgress.configure({
+  showSpinner: false,
+  barSelector: '[role="progressbar"]',
+  template: '<div class="bar" role="progressbar" aria-label="页面加载进度"><div class="peg"></div></div>'
+})
 
 const routes = [
   { path: '/micro-specialties', name: 'MicroSpecialtySquare', component: () => import('../views/public/MicroSpecialtySquare.vue'), meta: { requiresAuth: false, title: '微专业' } },
@@ -54,7 +64,7 @@ const routes = [
   { path: '/admin/questions', redirect: '/questions' },
   { path: '/admin/bundles', redirect: '/bundles' },
   { path: '/admin/course-categories', redirect: '/course-categories' },
-  { path: '/admin/reports', redirect: '/admin/reports' },  // 已有
+  // /admin/reports 由下方静态路由 r78 接管，避免自循环 redirect 触发栈溢出
   { path: '/admin/courses/:courseId/exercises', redirect: '/courses/:courseId/exercises' },
   { path: '/admin/courses/:courseId/exercises/form', redirect: '/courses/:courseId/exercises/form' },
   { path: '/admin/orders', redirect: '/student/orders' },

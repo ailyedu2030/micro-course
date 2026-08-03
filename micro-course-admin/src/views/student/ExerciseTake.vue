@@ -626,7 +626,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Grid, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
 import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exercise'
-import { getQuestionById } from '@/api/question'
 import { getMyAttemptCount } from '@/api/exercise-record'
 import { useUserStore } from '@/store/user'
 
@@ -829,15 +828,29 @@ async function startExercise(exercise) {
     // A11Y-030: 设置页面标题
     document.title = (data.title || '随堂练习') + ' - 答题'
 
-    // 加载每个题目的完整内容
-    const ids = (data.questions || []).map(q => q.questionId)
-    questionIds.value = ids
-    questions.value = []
-    questionsLoading.value = true
-
-    await Promise.allSettled(
-      ids.map(id => loadQuestion(id))
-    )
+    // 题目内容直接取自练习响应内嵌数据（R14 已内嵌完整题目：questionType/content/options/answer/explanation）。
+    // P0 修复：此前逐题调用 getQuestionById（教师端接口）→ 学生 403「题目加载失败」，随堂练习不可用。
+    const parseOptions = (raw) => {
+      if (Array.isArray(raw)) return raw
+      try {
+        const parsed = JSON.parse(raw || '[]')
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    const embedded = (data.questions || []).map(q => ({
+      id: q.questionId,
+      questionId: q.questionId,
+      score: q.score,
+      questionType: q.questionType,
+      content: q.content,
+      options: parseOptions(q.options),
+      answer: q.answer,
+      explanation: q.explanation
+    }))
+    questionIds.value = embedded.map(q => q.questionId)
+    questions.value = embedded
     questionsLoading.value = false
 
     // 从后端获取真实的答题次数（防止刷新页面绕过限制）
@@ -866,24 +879,6 @@ async function startExercise(exercise) {
     startElapsedTimer()
   } catch {
     ElMessage.error('加载练习详情失败')
-  }
-}
-
-async function loadQuestion(id) {
-  try {
-    const { data } = await getQuestionById(id)
-    // 解析 options JSON
-    if (data.options && typeof data.options === 'string') {
-      try {
-        data.options = JSON.parse(data.options)
-      } catch {
-        data.options = []
-      }
-    }
-    questions.value.push(data)
-  } catch (e) {
-    console.warn('[ExerciseTake] loadQuestion failed id=', id, e)
-    ElMessage.error(`题目加载失败（ID: ${id}）`)
   }
 }
 

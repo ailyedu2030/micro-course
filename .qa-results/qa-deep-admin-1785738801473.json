@@ -1,0 +1,76 @@
+{
+  "phase": "deep",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T06:33:21.473Z",
+  "total": 7,
+  "failed": 0,
+  "results": [
+    {
+      "name": "DA1-院系-新增弹窗-打开-重开",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "open": true
+      }
+    },
+    {
+      "name": "DA2-院系-空表单提交校验",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "errs": [
+          "请输入院系名称",
+          "请输入院系编码"
+        ]
+      }
+    },
+    {
+      "name": "DA3-院系-填写提交成功(落库请求+弹窗自动关闭)",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "name": "QA深度院系_755380",
+        "toast": [
+          "创建成功"
+        ],
+        "postStatus": 200
+      }
+    },
+    {
+      "name": "DA4-用户列表-搜索(查询)-重置",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "searchReq": "/api/users?page=0&size=10&keyword=admin"
+      }
+    },
+    {
+      "name": "DA5-课程审核-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "r1": {
+          "active": true
+        },
+        "r2": {
+          "active": true
+        }
+      }
+    },
+    {
+      "name": "DA6-系统设置-Tab遍历断言",
+      "ok": true,
+      "fails": [],
+      "details": {}
+    },
+    {
+      "name": "DA7-删除确认框-取消",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "box": true
+      }
+    }
+  ]
+}

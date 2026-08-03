@@ -1,0 +1,45 @@
+{
+  "phase": "deep",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T06:19:28.160Z",
+  "total": 7,
+  "failed": 7,
+  "results": [
+    {
+      "name": "DA1-院系-新增弹窗-取消-重开-取消",
+      "ok": false,
+      "error": "Error: 新增弹窗未打开"
+    },
+    {
+      "name": "DA2-院系-空表单提交校验",
+      "ok": false,
+      "error": "Error: 按钮不可见/不存在: 确定"
+    },
+    {
+      "name": "DA3-院系-填写提交成功(落库请求)",
+      "ok": false,
+      "error": "Error: 弹窗输入框不存在: 请输入院系名称"
+    },
+    {
+      "name": "DA4-用户列表-搜索(查询)-重置",
+      "ok": false,
+      "error": "Error: 查询未发起 keyword 请求: []"
+    },
+    {
+      "name": "DA5-课程审核-Tab切换断言",
+      "ok": false,
+      "error": "Error: 已通过 Tab 未激活"
+    },
+    {
+      "name": "DA6-系统设置-Tab遍历断言",
+      "ok": false,
+      "error": "Error: 设置 Tab 未激活: 邮件配置"
+    },
+    {
+      "name": "DA7-删除确认框-取消",
+      "ok": false,
+      "error": "Error: 未出现删除确认框"
+    }
+  ]
+}

@@ -10,6 +10,7 @@
       <span>课程套件</span>
       <span class="sub-hint">多课打包 · 系统学习</span>
     </nav>
+    <h1 class="sr-only">课程套件广场</h1>
 
     <el-result
       v-if="error"
@@ -37,7 +38,7 @@
               </div>
             </div>
             <div class="bundle-info">
-              <h3 class="bundle-title">{{ bundle.title }}</h3>
+              <h2 class="bundle-title">{{ bundle.title }}</h2>
               <p class="bundle-desc" v-if="bundle.description">{{ bundle.description }}</p>
               <p class="bundle-meta">{{ bundle.studentCount || 0 }} 人学习 · {{ bundle.creatorName }}</p>
             </div>

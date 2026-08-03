@@ -99,10 +99,14 @@ vi.mock('hls.js', () => ({
 }))
 
 const pushMock = vi.fn()
-vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: pushMock }),
-  useRoute: () => ({ params: { id: '101' }, query: {} }),
-}))
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal()
+  return {
+    ...actual,
+    useRouter: () => ({ push: pushMock }),
+    useRoute: () => ({ params: { id: '101' }, query: {} }),
+  }
+})
 
 vi.mock('element-plus', async (importOriginal) => {
   const actual = await importOriginal()

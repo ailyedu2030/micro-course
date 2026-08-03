@@ -2,6 +2,7 @@ export default {
   app: {
     title: 'MicroCourse',
     titleFull: 'MicroCourse Platform',
+    mainContent: 'Main content',
     slogan: 'Learn Efficiently · Teach Easily',
     loading: 'Loading...',
     save: 'Save',
@@ -31,6 +32,9 @@ export default {
   common: {
     success: 'Operation successful',
     failed: 'Operation failed',
+    cancel: 'Cancel',
+    search: 'Search',
+    reset: 'Reset',
     networkError: 'Network error, please try again later',
     loading: 'Loading...',
     noData: 'No data available',

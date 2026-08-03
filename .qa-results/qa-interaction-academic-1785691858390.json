@@ -1,0 +1,50 @@
+{
+  "phase": "interaction",
+  "role": "ACADEMIC",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T17:30:58.389Z",
+  "total": 5,
+  "failed": 0,
+  "results": [
+    {
+      "name": "D19-ACADEMIC-courses-edit",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D20-ACADEMIC-ms-proposals",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D21-ACADEMIC-enrollments",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D22-ACADEMIC-stats",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D23-ACADEMIC-class-import",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    }
+  ]
+}

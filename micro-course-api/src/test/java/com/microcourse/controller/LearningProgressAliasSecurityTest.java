@@ -89,10 +89,11 @@ public class LearningProgressAliasSecurityTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("[P1-C] STUDENT 查自己进度 → 可访问（200 或 403-NOT_ENROLLED）")
+    @DisplayName("[P1-C] STUDENT 查自己进度 → 可访问（200；未选课返回空列表而非 403）")
     void studentViewSelf_Accessible() throws Exception {
         // student (userId=7) 查自己 (userId=7)
-        // 本人放行 → getByUserAndCourse → 如无选课则 NOT_ENROLLED → 403
+        // 本人放行 → getByUserAndCourse → 未选课返回空列表（200），不再抛 NOT_ENROLLED(403)
+        // （只读进度查询对未选课学生返回空列表；403 语义保留给视频播放/签到等动作类接口）
         // 重点是：不应该是 401/404/500
         String token = "Bearer " + loginAs("student", "student123");
         int code = mockMvc.perform(get("/api/users/7/learning-progress")

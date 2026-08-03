@@ -878,7 +878,7 @@ onMounted(async () => {
 /* ==========================================================================
    Section
    ========================================================================== */
-.section { margin-top: var(--space-6); }
+.section { margin-top: var(--space-6); max-width: 100%; min-width: 0; overflow-x: hidden; }
 .section-header {
   display: flex; align-items: center; justify-content: space-between;
   margin-bottom: var(--space-3);
@@ -914,7 +914,7 @@ onMounted(async () => {
 /* ==========================================================================
    Course Grid & Card
    ========================================================================== */
-.course-grid { min-height: 400px; }
+.course-grid { min-height: 400px; max-width: 100%; min-width: 0; overflow: hidden; }
 .course-card {
   border-radius: var(--radius-lg); background: var(--el-bg-color-overlay);
   box-shadow: var(--shadow-tinted-sm); margin-bottom: var(--space-4);
@@ -1044,7 +1044,7 @@ onMounted(async () => {
 /* ==========================================================================
    Pagination
    ========================================================================== */
-.pagination-wrap { margin-top: var(--space-5); display: flex; justify-content: center; }
+.pagination-wrap { margin-top: var(--space-5); display: flex; justify-content: center; max-width: 100%; min-width: 0; }
 .course-pagination {
   --el-pagination-bg-color: transparent; padding: var(--space-2) var(--space-4);
   background: var(--el-bg-color-overlay); border-radius: var(--radius-lg); box-shadow: var(--shadow-tinted-sm);

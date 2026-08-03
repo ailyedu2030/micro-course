@@ -1,0 +1,1596 @@
+{
+  "role": "TEACHER",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T21:09:48.250Z",
+  "pages": 20,
+  "pagesWithIssues": 20,
+  "totalIssues": 40,
+  "issues": [
+    {
+      "path": "/teacher/dashboard",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/dashboard",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/courses",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/teacher/courses",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "common.search",
+          "w": 131,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "common.reset",
+          "w": 121,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "导出",
+          "w": 74,
+          "h": 32,
+          "cls": "el-button el-button--warning el-button--default is"
+        },
+        {
+          "tag": "button",
+          "text": "新增课程",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "清除筛选",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/videos",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/videos",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增视频",
+          "w": 102,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/exercises",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/teacher/exercises",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增练习",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/questions",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/teacher/questions",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/students",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/students",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "搜索",
+          "w": 74,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 74,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "清除筛选",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/grades",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/grades",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/teaching-classes",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "scrollable-region-focusable",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Scrollable region must have keyboard access",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/scrollable-region-focusable?application=axeAPI",
+          "targets": [
+            [
+              "main"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/teacher/teaching-classes",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/profile",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/profile",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "保存修改",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "修改密码",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "生成 API Key",
+          "w": 134,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/slides",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/slides",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 36,
+          "h": 39,
+          "cls": "back-btn"
+        },
+        {
+          "tag": "button",
+          "text": "上传课件",
+          "w": 108,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "搜索",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "前往课程列表",
+          "w": 116,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/exams",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/exams",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/offline-list",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/teacher/offline-list",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增场次",
+          "w": 102,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/micro-specialties",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/micro-specialties",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "div",
+          "text": "我负责的",
+          "w": 76,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "我参与的",
+          "w": 96,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "div",
+          "text": "待处理邀请",
+          "w": 90,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "a",
+          "text": "微专业申报",
+          "w": 70,
+          "h": 31,
+          "cls": "el-link el-link--primary is-hover-underline"
+        },
+        {
+          "tag": "button",
+          "text": "立即申报微专业",
+          "w": 130,
+          "h": 32,
+          "cls": "el-button el-button--primary mg-top-12"
+        },
+        {
+          "tag": "button",
+          "text": "提交申报",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/micro-specialties/proposals",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/micro-specialties/proposals",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "返回",
+          "w": 72,
+          "h": 32,
+          "cls": "el-button is-text"
+        },
+        {
+          "tag": "button",
+          "text": "保存",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "提交审核",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        },
+        {
+          "tag": "button",
+          "text": "导出",
+          "w": 79,
+          "h": 32,
+          "cls": "el-button el-tooltip__trigger"
+        },
+        {
+          "tag": "button",
+          "text": "重置全部",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--danger is-plain"
+        },
+        {
+          "tag": "button",
+          "text": "返回",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "保存",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "提交审核",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        },
+        {
+          "tag": "button",
+          "text": "重置全部",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--danger is-plain"
+        },
+        {
+          "tag": "button",
+          "text": "下一步",
+          "w": 74,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/micro-specialties/my-proposals",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/micro-specialties/my-proposals",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "button",
+          "text": "新建申报",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "提交申报",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/teacher/micro-specialties/invites",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/teacher/micro-specialties/invites",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "div",
+          "text": "待处理",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "已归档",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        }
+      ]
+    },
+    {
+      "path": "/courses",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/courses",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/chapters",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/chapters",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增章节",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        }
+      ]
+    },
+    {
+      "path": "/discussions",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/landmark-unique?application=axeAPI",
+          "targets": [
+            [
+              ".header-breadcrumb > .el-breadcrumb[role=\"navigation\"][aria-label=\"面包屑\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/discussions",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "搜索",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        }
+      ]
+    },
+    {
+      "path": "/notifications",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/notifications",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教师1\n教师",
+          "w": 185,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "全部标记已读",
+          "w": 116,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        },
+        {
+          "tag": "button",
+          "text": "全部",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "课程通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "考试通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "讨论通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "系统通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        }
+      ]
+    }
+  ]
+}

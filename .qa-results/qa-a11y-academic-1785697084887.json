@@ -1,0 +1,1925 @@
+{
+  "role": "ACADEMIC",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T18:58:04.887Z",
+  "pages": 13,
+  "pagesWithIssues": 13,
+  "totalIssues": 34,
+  "issues": [
+    {
+      "path": "/academic/dashboard",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb"
+            ]
+          ]
+        },
+        {
+          "id": "button-name",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Buttons must have discernible text",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/button-name?application=axeAPI",
+          "targets": [
+            [
+              ".el-button"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-8698-14"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/dashboard",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle refresh-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 24,
+          "h": 14,
+          "cls": "caret-wrapper"
+        }
+      ]
+    },
+    {
+      "path": "/academic/dashboard",
+      "iconOnlyButtons": [
+        {
+          "html": "<button data-v-6fbe3219=\"\" aria-disabled=\"false\" type=\"button\" class=\"el-button is-circle refresh-btn\"><i class=\"el-icon"
+        }
+      ]
+    },
+    {
+      "path": "/academic/dashboard",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/academic/stats",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".header-left > .el-breadcrumb[role=\"list\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        },
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 3,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-col.el-col-24.el-col-xs-12:nth-child(2) > .stat-card.el-card.is-never-shadow > .el-card__body > .stat-value[data-v-88c6c3d1=\"\"]"
+            ],
+            [
+              ".el-col.el-col-24.el-col-xs-12:nth-child(3) > .stat-card.el-card.is-never-shadow > .el-card__body > .stat-value[data-v-88c6c3d1=\"\"]"
+            ],
+            [
+              ".el-col.el-col-24.el-col-xs-12:nth-child(4) > .stat-card.el-card.is-never-shadow > .el-card__body > .stat-value[data-v-88c6c3d1=\"\"]"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-3368-13"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/stats",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/academic/stats",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/academic/enrollments",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb[role=\"list\"][data-v-38651798=\"\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-4736-28"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/enrollments",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/academic/enrollments",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/review",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/review",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "div",
+          "text": "待审批",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "全部",
+          "w": 48,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/proposals",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/proposals",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "div",
+          "text": "待审批",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "全部",
+          "w": 48,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "button",
+          "text": "查看",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "预览",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "批准",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--success el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "驳回",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--danger el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "查看",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "预览",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "批准",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--success el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "驳回",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--danger el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/featured",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/featured",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "div",
+          "text": "待审批",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "全部",
+          "w": 48,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "button",
+          "text": "查看申报列表",
+          "w": 116,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/gold",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/academic/micro-specialties/gold",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "返回",
+          "w": 54,
+          "h": 24,
+          "cls": "el-page-header__back"
+        },
+        {
+          "tag": "button",
+          "text": "设为金标",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--warning el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/courses/review",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".header-left > .el-breadcrumb[role=\"list\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/courses/review",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "div",
+          "text": "待审核",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "已通过",
+          "w": 82,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "div",
+          "text": "已驳回",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "button",
+          "text": "搜索",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        }
+      ]
+    },
+    {
+      "path": "/enrollments",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb[role=\"list\"][data-v-38651798=\"\"]"
+            ],
+            [
+              ".el-breadcrumb[role=\"list\"][data-v-2618bd5d=\"\"]"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-3376-30"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/enrollments",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "搜索",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "导出",
+          "w": 60,
+          "h": 24,
+          "cls": "el-button el-button--success el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/enrollments",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/reviews",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".header-left > .el-breadcrumb[role=\"list\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/reviews",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".el-breadcrumb[role=\"list\"][data-v-38651798=\"\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-1934-38"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增用户",
+          "w": 102,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "Excel 导入",
+          "w": 112,
+          "h": 32,
+          "cls": "el-button el-button--success"
+        },
+        {
+          "tag": "button",
+          "text": "导出",
+          "w": 74,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "详情",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "iconOnlyButtons": [
+        {
+          "html": "<button data-v-2fd73180=\"\" aria-disabled=\"false\" type=\"button\" class=\"el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "html": "<button data-v-2fd73180=\"\" aria-disabled=\"false\" type=\"button\" class=\"el-button el-button--warning el-button--small is-l"
+        },
+        {
+          "html": "<button data-v-2fd73180=\"\" aria-disabled=\"false\" type=\"button\" class=\"el-button el-button--danger el-button--small is-li"
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/departments",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".header-left > .el-breadcrumb[role=\"list\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-731-20"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/departments",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增院系",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "编辑",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--primary el-button--small is-l"
+        },
+        {
+          "tag": "button",
+          "text": "删除",
+          "w": 30,
+          "h": 18,
+          "cls": "el-button el-button--danger el-button--small is-li"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/departments",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/classes",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "aria-required-children",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Certain ARIA roles must contain particular children",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/aria-required-children?application=axeAPI",
+          "targets": [
+            [
+              ".header-left > .el-breadcrumb[role=\"list\"]"
+            ],
+            [
+              ".page-breadcrumb"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/classes",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "测\n测试教务\n教务处",
+          "w": 192,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        },
+        {
+          "tag": "button",
+          "text": "查询",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "重置",
+          "w": 60,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "button",
+          "text": "新增班级",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    }
+  ]
+}

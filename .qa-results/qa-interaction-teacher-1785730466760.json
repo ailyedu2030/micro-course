@@ -1,0 +1,106 @@
+{
+  "phase": "interaction",
+  "role": "TEACHER",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T04:14:26.760Z",
+  "total": 12,
+  "failed": 0,
+  "results": [
+    {
+      "name": "D13-TEACHER-proposal-step",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D14-TEACHER-ms-manage",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D15-TEACHER-ms-team",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D03-TEACHER-videos",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D04-TEACHER-questions",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D05-TEACHER-exercises",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D06-TEACHER-students",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D08-TEACHER-teaching-classes",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D09-TEACHER-dashboard",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D10-TEACHER-exams",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D11-TEACHER-offline-list",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D12-TEACHER-slides",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    }
+  ]
+}

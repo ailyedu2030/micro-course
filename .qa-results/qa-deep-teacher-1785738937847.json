@@ -1,0 +1,45 @@
+{
+  "phase": "deep",
+  "role": "TEACHER",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T06:35:37.847Z",
+  "total": 4,
+  "failed": 1,
+  "results": [
+    {
+      "name": "TE1-申报向导-5步导航-提交门控校验",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "reachedStep4": true,
+        "submitDisabled": true,
+        "saveVisible": true
+      }
+    },
+    {
+      "name": "TE2-微专业列表-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "tabs": [
+          "我负责的",
+          "我参与的",
+          "待处理邀请"
+        ]
+      }
+    },
+    {
+      "name": "TE3-视频管理-新增弹窗-取消",
+      "ok": false,
+      "error": "Error: 取消未关闭"
+    },
+    {
+      "name": "TE4-学员管理-查询-重置",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "req": "/api/enrollments?page=0&size=10&teacherId=2&className=QA%E7%8F%AD"
+      }
+    }
+  ]
+}

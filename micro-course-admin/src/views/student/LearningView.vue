@@ -7,6 +7,9 @@
 -->
 <template>
   <div class="learning-view" :class="{ 'is-mobile': isMobile }">
+    <!-- A11Y: 页面标题（视觉隐藏），避免子组件标题层级跳级 -->
+    <h1 class="sr-only">学习中心</h1>
+
     <!-- ===================== 1. 顶部导航栏 ===================== -->
     <ResourceToolbar
       :course-title="course.title"
@@ -52,7 +55,7 @@
       </div>
 
       <!-- 左：主内容区（60%） -->
-      <main class="content-main">
+      <div class="content-main" role="region" aria-label="学习内容">
         <!-- 视频播放器 — 仅 VIDEO 章节显示 -->
         <VideoSection
           v-if="currentChapter?.sectionType === 'VIDEO'"
@@ -100,7 +103,7 @@
             />
           </div>
         </div>
-      </main>
+      </div>
 
       <!-- 右：课程大纲（40%） -->
       <ChapterSidebar

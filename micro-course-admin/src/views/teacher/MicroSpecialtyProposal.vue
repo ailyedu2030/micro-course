@@ -1559,6 +1559,9 @@ onBeforeUnmount(() => {
 }
 .ms-steps {
   margin-bottom: 24px;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
 }
 .step-nav {
   display: flex;

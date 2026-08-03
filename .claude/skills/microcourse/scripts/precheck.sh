@@ -571,6 +571,8 @@ check_production_secrets() {
     out=$(bash "$verifier" 2>&1) || true
     local cnt
     cnt=$(echo "$out" | grep -cE "•" || echo "0")
+    cnt=$(echo "$cnt" | tr -dc '0-9' | head -1)
+    [ -z "$cnt" ] && cnt=0
     if [ "$cnt" -gt 0 ]; then
         WARN=$((WARN+1))
         echo "  ⚠ [SECRETS] 发现 $cnt 处占位符 (CHANGE_ME)。CI 部署门禁用: bash $verifier --strict"
@@ -606,7 +608,30 @@ check_references_sync() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# C7 · 路由自循环 redirect 检查 (依据: PR #49-Bug 复盘, 2026-08-02)
+# 现象: { path: '/x', redirect: '/x' } 会触发 vue-router 内部解析时无限递归
+#       → Maximum call stack size exceeded → 整页空白.
+# 拦截所有 path 与 redirect 相同的 redirect 路由.
+# ----------------------------------------------------------------------------
+check_router_self_loop() {
+    local router_file="$ROOT/micro-course-admin/src/router/index.js"
+    if [ ! -f "$router_file" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    local hits
+    hits=$(grep -nE "path:\s*'([^']+)'\s*,\s*redirect:\s*'\1'" "$router_file" 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$hits" -gt 0 ]; then
+        FAILS+=("[C7] 路由自循环 redirect 禁止 (router/index.js 内 $hits 处 path===redirect, 触发 vue-router 栈溢出)")
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 check_references_sync
+check_router_self_loop
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"

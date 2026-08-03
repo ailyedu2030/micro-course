@@ -12,7 +12,7 @@
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
           <div class="left-info">
-            <h3 class="page-title">章节讨论</h3>
+            <h1 class="page-title">章节讨论</h1>
             <div v-if="!chapterId" class="chapter-selector">
               <el-select v-model="selectedCourseId" placeholder="选择课程" clearable size="small" style="width:200px;margin-right:8px" aria-label="选择课程" @change="handleCourseChange">
                 <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
@@ -71,7 +71,7 @@
     <template v-else>
       <!-- 紧凑顶栏 -->
       <div class="h5-toolbar">
-        <h3 class="page-title">章节讨论</h3>
+        <h1 class="page-title">章节讨论</h1>
         <el-button type="primary" size="small" @click="openPostDialog">发布帖子</el-button>
       </div>
 
@@ -154,7 +154,7 @@
 >
       <div v-if="currentPost" class="post-detail">
         <div class="post-header">
-          <h3 class="post-title">{{ currentPost.title }}</h3>
+          <h2 class="post-title">{{ currentPost.title }}</h2>
           <div class="post-meta">
             <span>{{ currentPost.isAnonymous ? '匿名用户' : currentPost.authorName }}</span>
             <span>{{ formatDateTime(currentPost.createdAt) }}</span>

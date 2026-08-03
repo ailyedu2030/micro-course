@@ -85,10 +85,10 @@ public class AdminSettingsController {
     /**
      * 更新 CAS 配置
      * PUT /api/admin/settings/cas
-     * 权限: ADMIN
+     * 权限: ADMIN/ACADEMIC (与前端路由一致)
      */
     @PutMapping("/cas")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<Void> updateCasConfig(@Valid @RequestBody CasSettingsDTO cas) {
         adminSettingService.upsert("cas_enabled", String.valueOf(cas.getEnabled()));
         adminSettingService.upsert("cas_server_url", cas.getServerUrl());
@@ -104,10 +104,10 @@ public class AdminSettingsController {
     /**
      * 获取 CAS 配置
      * GET /api/admin/settings/cas
-     * 权限: ADMIN
+     * 权限: ADMIN/ACADEMIC (与前端 /admin/settings 路由一致)
      */
     @GetMapping("/cas")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<CasSettingsDTO> getCasConfig() {
         CasSettingsDTO dto = new CasSettingsDTO();
         dto.setEnabled(Boolean.parseBoolean(

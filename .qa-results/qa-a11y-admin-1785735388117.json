@@ -1,0 +1,1180 @@
+{
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T05:36:28.118Z",
+  "pages": 18,
+  "pagesWithIssues": 18,
+  "totalIssues": 36,
+  "issues": [
+    {
+      "path": "/admin/dashboard",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/dashboard",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/users",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/logs",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/logs",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/settings",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/settings",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/banners",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/banners",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/teaching-classes",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/teaching-classes",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/system-health",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/system-health",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/admin/reports",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/admin/reports",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/departments",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/departments",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/courses",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/courses",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/users/create",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/users/create",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/chapters",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/chapters",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/videos",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/videos",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/enrollments",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/enrollments",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/favorites",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/favorites",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/questions",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/questions",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/exercises",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/exercises",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    },
+    {
+      "path": "/discussions",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "page-has-heading-one",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Page should contain a level-one heading",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/page-has-heading-one?application=axeAPI",
+          "targets": [
+            [
+              "html"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/discussions",
+      "touchTargets": [
+        {
+          "tag": "button",
+          "text": "打开菜单",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-mobile-btn header-btn-r"
+        },
+        {
+          "tag": "button",
+          "text": "收起侧边栏",
+          "w": 44,
+          "h": 44,
+          "cls": "header-collapse-btn header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "切换深色模式",
+          "w": 40,
+          "h": 40,
+          "cls": "header-icon theme-toggle-btn header-btn-reset el-t"
+        },
+        {
+          "tag": "button",
+          "text": "切换语言",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "button",
+          "text": "通知中心",
+          "w": 38,
+          "h": 38,
+          "cls": "header-icon header-btn-reset"
+        },
+        {
+          "tag": "div",
+          "text": "P\nP0测试管理员\n管理员",
+          "w": 216,
+          "h": 40,
+          "cls": "user-avatar-wrapper el-tooltip__trigger el-tooltip"
+        }
+      ]
+    }
+  ]
+}

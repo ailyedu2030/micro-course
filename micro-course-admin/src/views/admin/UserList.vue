@@ -415,12 +415,17 @@ onMounted(() => {
   background: var(--el-fill-color-blank);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-xs), var(--shadow-sm);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-5);
 }
 

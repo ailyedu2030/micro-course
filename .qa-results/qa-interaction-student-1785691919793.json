@@ -1,0 +1,90 @@
+{
+  "phase": "interaction",
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T17:31:59.792Z",
+  "total": 10,
+  "failed": 0,
+  "results": [
+    {
+      "name": "D16-STUDENT-course-square",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D17-STUDENT-course-detail",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D18-STUDENT-my-courses",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D19-STUDENT-learning",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D20-STUDENT-learning-stats",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D25-STUDENT-notifications",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D26-STUDENT-checkout",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D27-STUDENT-orders",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D28-STUDENT-settings",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D29-STUDENT-profile",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    }
+  ]
+}

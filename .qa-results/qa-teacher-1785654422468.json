@@ -1,0 +1,324 @@
+{
+  "role": "TEACHER",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T07:07:02.468Z",
+  "total": 28,
+  "failed": 15,
+  "results": [
+    {
+      "path": "/teacher/dashboard",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/videos",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/exercises",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/discussions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/favorites",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/questions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/students",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/grades",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/teaching-classes",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/profile",
+      "httpStatus": 0,
+      "api": [],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/slides",
+      "httpStatus": 0,
+      "api": [],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/exams",
+      "httpStatus": 0,
+      "api": [],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/offline-list",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/teacher/micro-specialties",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/teacher/micro-specialties/invites",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/teacher/micro-specialties/proposals",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/teacher/micro-specialties/my-proposals",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/courses",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/courses/create",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/chapters",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/videos",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/questions",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/exercises",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/discussions",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/notifications",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/bundles",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    },
+    {
+      "path": "/profile",
+      "ok": false,
+      "reason": "Error: Task space not found: 9"
+    }
+  ]
+}

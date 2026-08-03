@@ -1,0 +1,64 @@
+{
+  "phase": "deep",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T04:32:10.517Z",
+  "total": 7,
+  "failed": 2,
+  "results": [
+    {
+      "name": "DA1-院系-新增弹窗-取消-重开-取消",
+      "ok": true,
+      "fails": [],
+      "details": {}
+    },
+    {
+      "name": "DA2-院系-空表单提交校验",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "errs": [
+          "请输入院系名称",
+          "请输入院系编码"
+        ]
+      }
+    },
+    {
+      "name": "DA3-院系-填写提交成功(落库请求)",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 6, column 15: ReferenceError: val is not defined\n    at <anonymous>:7:16\n    at <anonymous>:11:5; expression: (() => {\\n    const dlg = [...document.querySelectorAll('.el-dialog')].find(d => getComputedStyle(d).display !== 'none' && d.getBoundingClientRect"
+    },
+    {
+      "name": "DA4-用户列表-搜索(查询)-重置",
+      "ok": false,
+      "error": "Error: 查询未发起 keyword 请求: [{\"m\":\"GET\",\"u\":\"/api/users?page=0&size=10\",\"s\":200}]"
+    },
+    {
+      "name": "DA5-课程审核-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "r1": {
+          "active": true
+        },
+        "r2": {
+          "active": true
+        }
+      }
+    },
+    {
+      "name": "DA6-系统设置-Tab遍历断言",
+      "ok": true,
+      "fails": [],
+      "details": {}
+    },
+    {
+      "name": "DA7-删除确认框-取消",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "box": true
+      }
+    }
+  ]
+}

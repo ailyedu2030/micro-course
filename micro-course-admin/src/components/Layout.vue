@@ -55,10 +55,12 @@
             <el-icon aria-hidden="true"><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
             <span class="sr-only">{{ collapsed ? '展开侧边栏' : '收起侧边栏' }}</span>
           </button>
-          <el-breadcrumb separator="→">
-            <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-            <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
-          </el-breadcrumb>
+          <div class="header-breadcrumb" role="group" aria-label="面包屑">
+            <el-breadcrumb separator="→">
+              <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
+              <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
+            </el-breadcrumb>
+          </div>
         </div>
 
         <!-- 右侧：主题切换 + 通知 + 用户 -->
@@ -118,14 +120,17 @@
       </el-header>
 
       <!-- 主体内容 -->
-      <el-main class="layout-main">
-        <!-- PAGE TITLE: h1 for accessibility (axe page-has-heading-one compliance) -->
-        <h1 v-if="pageTitle" class="sr-only">{{ pageTitle }}</h1>
+      <!-- tabindex=0：滚动主区域可键盘聚焦（axe scrollable-region-focusable），
+           tabindex=-1 不满足该规则 -->
+      <el-main class="layout-main" tabindex="0" :aria-label="$t('app.mainContent')">
         <!-- 侧边栏切换时的淡入遮罩（P2-7: 折叠/展开进度指示） -->
         <transition name="sidebar-shade-fade">
           <div v-show="sidebarTransitioning" class="sidebar-shade-overlay" />
         </transition>
         <router-view v-slot="{ Component, route: routeInfo }">
+          <!-- PAGE TITLE: h1 for accessibility (axe page-has-heading-one compliance)。
+               使用 router-view slot 的 route（与渲染同步），避免 useRoute 实例不一致导致标题缺失 -->
+          <h1 v-if="slotPageTitle(routeInfo)" class="sr-only">{{ slotPageTitle(routeInfo) }}</h1>
           <component :is="Component" :key="routeInfo.path" />
         </router-view>
       </el-main>
@@ -419,6 +424,14 @@ const pageTitle = computed(() => {
   return ''
 })
 
+// 基于 router-view slot route 计算页面标题（slot route 与当前渲染严格一致）
+function slotPageTitle(r) {
+  if (!r) return ''
+  if (r.meta?.title) return r.meta.title
+  if (r.name && routeNameTitleMap[r.name]) return routeNameTitleMap[r.name]
+  return ''
+}
+
 // 切换折叠（P2-7: 添加过渡状态指示）
 const sidebarTransitioning = ref(false)
 function toggleCollapse() {
@@ -672,6 +685,11 @@ onUnmounted(() => {
   color: var(--el-text-color-regular);
   cursor: pointer;
   padding: var(--space-2);
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-sm);
   transition: color var(--duration-base) var(--ease-out),
               background-color var(--duration-base) var(--ease-out);

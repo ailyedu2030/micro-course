@@ -167,11 +167,12 @@ public class CourseController {
     /**
      * GET /api/courses/pending-review
      * 获取待审核课程列表（Phase A-4 P0-5 新增）
-     * 权限：ADMIN（依据 权限矩阵 v2.0 §2.3 READ_PENDING_REVIEW_COURSES = 仅 ADMIN）
+     * 权限：ADMIN / ACADEMIC（与 batch-approve/batch-reject 及前端课程审核页保持一致；
+     *       READ_PENDING_REVIEW_COURSES = ADMIN + ACADEMIC）
      */
     @GetMapping("/pending-review")
     @Operation(summary = "待审核课程列表 (仅 ADMIN/ACADEMIC)")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
     public R<PageResult<CourseVO>> pendingReview(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             @RequestParam(defaultValue = "20") @Range(min = 1, max = 100) int size) {

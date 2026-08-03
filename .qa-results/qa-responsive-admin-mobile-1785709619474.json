@@ -1,0 +1,195 @@
+{
+  "viewport": "mobile",
+  "viewportSize": {
+    "width": 390,
+    "height": 844
+  },
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T22:26:59.475Z",
+  "total": 6,
+  "failed": 1,
+  "results": [
+    {
+      "path": "/admin/dashboard",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/admin/dashboard",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/admin/users",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/admin/users",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": {
+          "y": 855
+        },
+        "overflowCount": 1,
+        "firstOverflows": [
+          {
+            "tag": "div",
+            "cls": "toolbar",
+            "w": 300,
+            "sw": 348
+          }
+        ]
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "overflow elements 1"
+      ],
+      "fails": []
+    },
+    {
+      "path": "/admin/logs",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/admin/logs",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": {
+          "y": 849
+        },
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/courses",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/courses",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/enrollments",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/enrollments",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/departments",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/departments",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    }
+  ]
+}

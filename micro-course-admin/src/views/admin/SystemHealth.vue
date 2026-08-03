@@ -121,8 +121,9 @@ onMounted(fetchHealth)
 .hc-label { font-size: 14px; color: #666; margin-bottom: 4px; }
 .hc-value { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
 .hc-status { font-size: 12px; }
-.hc-status--ok { color: #67c23a; }
-.hc-status--warn { color: #e6a23c; }
-.hc-status--error { color: #f56c6c; }
+/* A11Y: #67c23a 在白底对比度仅 ~2.9:1 → 加深为 #3f7a1f（~5.1:1）；warn/error 同步加深 */
+.hc-status--ok { color: #3f7a1f; }
+.hc-status--warn { color: #8a5a00; }
+.hc-status--error { color: #d03050; }
 .info-card { margin-top: 24px; }
 </style>

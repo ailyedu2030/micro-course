@@ -16,7 +16,7 @@
         <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
       </el-alert>
       <el-table v-loading="loading" :data="items" stripe border>
-        <template #empty><el-empty description="暂无待审核微专业" /></template>
+        <template #empty><el-empty description="暂无待审核微专业" style="max-width: 100%; min-width: 0; --el-empty-padding: 0;" /></template>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
         <el-table-column prop="collegeName" label="学院" width="120" />
         <el-table-column prop="creatorName" label="创建者" width="100" />

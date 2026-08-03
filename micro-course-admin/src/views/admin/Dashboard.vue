@@ -22,6 +22,7 @@
           circle
           :loading="isRefreshing"
           class="refresh-btn"
+          aria-label="刷新数据"
           @click="handleRefresh"
         />
       </div>
@@ -981,6 +982,9 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-primary);
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
+}
+.stat-card .stat-value {
+  color: #1f2937;
 }
 
 .stat-label {
