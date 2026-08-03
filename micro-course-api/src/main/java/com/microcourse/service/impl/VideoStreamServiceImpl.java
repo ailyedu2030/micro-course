@@ -14,7 +14,10 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -64,7 +67,24 @@ public class VideoStreamServiceImpl implements VideoStreamService {
             // 课程所有者（TEACHER）→ 允许访问
         }
         // 所有角色都需要验证视频签名，防止直接访问绕过
-        if (sign == null || !videoSignUtil.verifySign(videoId, sign)) {
+        // 双通道兼容（2026-08-03 P1-C 修复）：
+        //   - query ?sign=：原生 <video src> / 直接 URL 访问
+        //   - X-Video-Sign 请求头：hls.js 等 MSE 播放器加载 m3u8 时，
+        //     相对分片 URL（index0.ts）无法继承 manifest 的 query，
+        //     统一经 xhrSetup 以请求头携带签名（与 query 走同一 verifySign 校验，不降级安全）
+        String resolvedSign = sign;
+        if (resolvedSign == null || resolvedSign.isBlank()) {
+            ServletRequestAttributes attrs =
+                    (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs != null) {
+                HttpServletRequest request = attrs.getRequest();
+                String headerSign = request.getHeader("X-Video-Sign");
+                if (headerSign != null && !headerSign.isBlank()) {
+                    resolvedSign = headerSign;
+                }
+            }
+        }
+        if (resolvedSign == null || !videoSignUtil.verifySign(videoId, resolvedSign)) {
             throw new BusinessException(ErrorCode.VIDEO_SIGN_INVALID, "视频签名无效或已过期");
         }
 

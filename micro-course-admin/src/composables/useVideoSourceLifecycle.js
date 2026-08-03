@@ -10,6 +10,10 @@ export function useVideoSourceLifecycle(options = {}) {
     getVideoUrl = () => '',
     loadVideo = async () => {},
     getAuthToken = () => '',
+    // P1-C 修复(2026-08-03): 流端点强制签名校验，播放器需在加载前获取播放签名。
+    // 签名同时以 X-Video-Sign 请求头（hls.js manifest+分片）与 manifest query（原生 HLS）
+    // 两种通道传递给后端。
+    getPlaybackSign = async () => '',
     setErrorMessage = () => {},
     HlsLib = Hls,
     scheduleRetryInit = () => Promise.resolve()
@@ -36,7 +40,13 @@ export function useVideoSourceLifecycle(options = {}) {
     video.removeEventListener('leavepictureinpicture', handlePipLeave)
   }
 
-  function initPlayer() {
+  function appendSignParam(url, sign) {
+    if (!sign) return url
+    const sep = url.includes('?') ? '&' : '?'
+    return `${url}${sep}sign=${encodeURIComponent(sign)}`
+  }
+
+  async function initPlayer() {
     const video = unref(videoRef)
     const url = getVideoUrl()
 
@@ -49,6 +59,8 @@ export function useVideoSourceLifecycle(options = {}) {
     syncPipListeners(video)
 
     if (isHlsUrl(url)) {
+      const sign = await getPlaybackSign()
+      const signedUrl = appendSignParam(url, sign)
       if (HlsLib.isSupported()) {
         const token = getAuthToken()
         hlsInstance.value = new HlsLib({
@@ -56,9 +68,12 @@ export function useVideoSourceLifecycle(options = {}) {
             if (token) {
               xhr.setRequestHeader('Authorization', 'Bearer ' + token)
             }
+            if (sign) {
+              xhr.setRequestHeader('X-Video-Sign', sign)
+            }
           }
         })
-        hlsInstance.value.loadSource(url)
+        hlsInstance.value.loadSource(signedUrl)
         hlsInstance.value.attachMedia(video)
         hlsInstance.value.on(HlsLib.Events.MANIFEST_PARSED, () => {
           video.play().catch(() => {})
@@ -73,7 +88,7 @@ export function useVideoSourceLifecycle(options = {}) {
       }
 
       if (video.canPlayType('application/vnd.apple.mpegurl')) {
-        video.src = url
+        video.src = signedUrl
         video.play().catch(() => {})
         return true
       }

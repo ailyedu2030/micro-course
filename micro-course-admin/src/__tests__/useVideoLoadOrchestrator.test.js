@@ -54,6 +54,9 @@ describe('useVideoLoadOrchestrator', () => {
       title: '第一课',
       hlsUrl: 'https://cdn.example.com/42.m3u8'
     })
+    // P1-C 回归: initPlayer 前 loading 必须已释放（否则 <video> 未挂载 → 播放器永不初始化）
+    expect(callSequence.indexOf('initPlayer')).toBeGreaterThan(-1)
+    expect(loading.value).toBe(false)
     expect(callSequence).toEqual([
       'nextTick',
       'initPlayer',

@@ -42,6 +42,15 @@ vi.mock('@/store/user', () => ({
   })
 }))
 
+vi.mock('@/api/video', () => ({
+  getVideoById: vi.fn().mockResolvedValue({ data: { id: 300, title: '测试视频', url: 'https://cdn.example.com/v.mp4' } }),
+  getVideoSign: vi.fn().mockResolvedValue({ data: 'test-sign' })
+}))
+
+vi.mock('@/utils/auth', () => ({
+  getToken: vi.fn(() => 'test-token')
+}))
+
 vi.mock('element-plus', async (importOriginal) => {
   const actual = await importOriginal()
   return {

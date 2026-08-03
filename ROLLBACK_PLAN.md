@@ -2,7 +2,7 @@
 
 > 部署失败或重大故障时执行。优先 5 分钟应用层回滚，如数据库结构变更导致问题则执行 30 分钟回滚。
 >
-> **最后更新**: 2026-07-31 (PR #161: e2e 8 个 timeout 真实根因修复 + HTML 课件章节 iframe 预览)
+> **最后更新**: 2026-08-03 (视频播放链路 P1-C 修复 + CI 播放回归 E2E)
 
 ---
 
@@ -10,6 +10,7 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| **HLS 播放签名通道修复** | 2026-08-03 | 前端（VideoPlayer/CourseDetail/useVideoSourceLifecycle/useVideoLoadOrchestrator）+ 后端（VideoStreamService 支持 `X-Video-Sign` 头 / WebMvcConfig 存储目录配置化）修复 3 个仍在线播放缺陷（hls.js 缺签名 403、播放器未初始化、流请求 401）；新增 CI 播放回归 E2E + ffmpeg 安装（**纯应用层，零 DB schema 变更，前端 dist + 后端 jar 回滚 5 分钟即可；CI 环境无 `/data` 时需 `MULTIPART_LOCATION`/`UPLOAD_BASE_DIR`/`VIDEO_STORAGE_BASE_DIR` 指向可写目录**） |
 | **Bug K 增量修复** | 2026-08-02 | 1 个 commit (`762b9a1a` PR #173):<br>• **Bug K.1** nginx source cache 策略 (删除 `expires 1y` + `add_header Cache-Control "no-cache, must-revalidate"`). 修复后 bundle hash 变化立即生效 (之前 1y immutable 缓存导致老 bundle 永远 415)<br>• **Bug K.2** `utils/errorReport.js` 全局 handler 静默 401/403 unhandledrejection/onerror (401 是设计预期, 不需 console 噪音). 5xx/网络错误仍正常 report<br>(**1 nginx + 1 js, 零后端 + 零 DB 变更, 仅前端 dist + image rebuild 回滚 5 分钟即可**) |
 | **Bug J 增量修复** | 2026-08-02 | 1 个 commit (`0fd963ad` PR #171):<br>• **Bug J** 左侧导航文字对比度 (`--sidebar-text: #9ca3af → #e5e7eb` + Layout.vue fallback 一致). 修复后 contrast 从 7.30:1 (WCAG AA) 提升到 16.2:1 (WCAG AAA 完美). 用户视觉判断"清晰可读", L0 UX 宪法'体验至上'原则应用<br>(**纯 CSS, 零后端 + 零 DB 变更, 仅前端 dist 回滚 5 分钟即可**) |
 | **Bug I 增量修复** | 2026-08-02 | 1 个 commit (`99112b6e` PR #168):<br>• **Bug I** 30 处业务 catch 块 `console.error` → `console.debug` (16 业务 Vue 组件). 保留 6 处核心 debug (App/useErrorHandler/logger/main/router). 修复后用户截图生产 console 干净, 业务错误仍通过 ElMessage.toast 给用户提示<br>• `precheck.sh` 加固 8 项 (4 项全新防再发检查: headers: {} 禁止 / axios 直接 import 禁止 / console.warn 检查 / 文档同步检查 / console.error 全局检查)<br>(**纯前端 + 1 个 precheck.sh, 零后端 + 零 DB schema 变更, 仅前端 dist 回滚 5 分钟即可**) |

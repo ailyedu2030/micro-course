@@ -106,3 +106,38 @@
 - 单测：vitest 49 文件 / 205 用例 PASS ×2；LearningProgressAliasSecurityTest 6/6
 - Precheck：PASS
 
+---
+
+## 5. 补充 · #179 合并后发现并修复：HLS 播放签名通道缺失（P1-C，2026-08-03 晚）
+
+> 在将 #179 两大 P0 修复固化为 CI 播放回归 E2E 的过程中，用真实浏览器
+> （ego-browser + Playwright Chromium）复现出 **3 个仍在线缺陷**，全部完成
+> 根因修复 + 单测/集成测试 + E2E 回归闭环。
+
+### 5.1 缺陷清单
+
+| # | 级别 | 症状 | 根因 | 修复 |
+|---|------|------|------|------|
+| 5.1.1 | P1-C | VideoPlayer 页 / 课程详情"播放预览"无法播放转码视频：`<video>` 空 src、readyState=0 | 流端点（P1I-014）强制 `sign` 校验，而前端 hls.js 仅带 Authorization 头、从不附加 `?sign=` → m3u8/ts 403 `12003`（后端日志实锤） | 前端播放前获取签名：hls.js 以 `X-Video-Sign` 请求头 + manifest query 双通道传递；后端 `VideoStreamService` 兼容读取 `X-Video-Sign` 头（与 query 同一 verifySign，不降级安全） |
+| 5.1.2 | P1-C | VideoPlayer 页 UI 正常但播放器永不初始化（video 挂载后无任何流请求） | `useVideoLoadOrchestrator` 在 `loading=true`（骨架屏未卸载、`<video>` 未挂载）时调用 `initPlayer()` → `videoRef` 为空提前 return | 先释放 loading 再 `nextTick` 等待 `<video>` 挂载，然后才 `initPlayer()` |
+| 5.1.3 | P1-C | VideoPlayer 页 hls.js 流请求 401 | `getAuthToken` 未接线（hls.js 的 m3u8/ts 请求无 Authorization 头） | VideoPlayer 补 `getAuthToken: () => getToken()` |
+| 5.1.4 | P2（潜在） | 覆写 `VIDEO_STORAGE_BASE_DIR` 后 mp4 直链 404 | `WebMvcConfig` 静态映射硬编码 `file:./uploads/videos/`，与上传/转码目录 `video.storage-base-dir`（可配）漂移 | 静态映射改用同一 `@Value("${video.storage-base-dir}")` 配置源 |
+
+### 5.2 关键验证证据
+
+- 后端集成测试（新增 2 条）：已选课学生**无签名**访问流 → 403 `12003`；
+  **X-Video-Sign 头**访问 → 通过签名门禁（后续因测试环境无文件 → 404 `9004`，证明签名校验通过）。
+- 前端单测：`useVideoSourceLifecycle` 新增 2 条（hls.js 双通道 header+query、原生 HLS 降级带 query）；
+  `useVideoLoadOrchestrator` 断言 initPlayer 前 loading 已释放。全套 **207/207 PASS**。
+- E2E `video-playback.spec.ts`（本地真实浏览器复现）：建课→封面→章节→课时→
+  **真实 mp4 上传→FFmpeg 转码→hlsUrl 标准路径断言→提交→审批→发布→学生选课→
+  学习视图 mp4 播放推进（currentTime>0）→ VideoPlayer HLS 播放推进（currentTime>0）→
+  无页面异常**，✅ 通过（9.4s）。
+- CI 加固：e2e job 新增 `ffmpeg` 安装步骤；multipart/上传/转码目录环境变量
+  （ubuntu runner 无 `/data`，否则上传 500 / 转码失败）；测试自清理残留课程
+  （规避 MD5 秒传去重命中旧视频）。
+
+### 5.3 人工复核
+
+- 新增 [2026-08-03-manual-review-checklist.md](/Users/jackie/微课平台/docs/qa/2026-08-03-manual-review-checklist.md)，
+  覆盖标准浏览器人工复核项（真实播放推进、弹窗取消/X/ESC、移动端 H5、未选课/过期签名安全回归）。

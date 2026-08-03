@@ -43,6 +43,10 @@ export function useVideoLoadOrchestrator(options = {}) {
 
       videoData.value = res?.data || res || {}
 
+      // P1-C 修复(2026-08-03): 必须先释放 loading 骨架，<video> 才会挂载。
+      // 旧顺序在 loading=true 时调用 initPlayer → videoRef 为空 → 播放器永不初始化
+      // （页面 UI 正常但视频黑屏，VideoPlayer 真实链路复现）。
+      loading.value = false
       await nextTickFn()
       if (getIsUnmounted()) return false
 
