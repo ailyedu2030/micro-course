@@ -176,6 +176,8 @@ public class SecurityConfig {
                         // P0-1: HLS 流式端点 — hls.js 通过 xhrSetup 携带 JWT，需认证
                         // P0-07 修复：路径与 VideoStreamController @RequestMapping("/api/video-stream") 对齐
                         .requestMatchers("GET", "/api/video-stream/**").authenticated()
+                        // P0 修复(2026-08-03): 旧 hlsUrl 路径别名（历史转码入库值），同样需认证
+                        .requestMatchers("GET", "/api/videos/stream/**").authenticated()
                         // P0-TEST-FIX: ServerTime 端点供前端做时钟对齐，无需认证
                         .requestMatchers("GET", "/api/server-time").permitAll()
                         // P0-8 修复 + P0-SEC-001 加固：文件分类授权（白名单顺序须先于通配 authenticated）

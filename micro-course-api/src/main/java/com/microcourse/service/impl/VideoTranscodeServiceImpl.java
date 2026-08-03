@@ -214,7 +214,9 @@ public class VideoTranscodeServiceImpl implements VideoTranscodeService {
                 }
 
                 // 转码成功 — P0-1: hlsUrl 存储为可访问的 API 路径
-                String hlsApiUrl = "/api/videos/stream/" + courseId + "/" + videoId + "/index.m3u8";
+                // P0 修复(2026-08-03): 旧值 /api/videos/stream/... 与处理器
+                // /api/video-stream/... 不匹配导致播放 404；改为标准路径
+                String hlsApiUrl = "/api/video-stream/" + courseId + "/" + videoId + "/index.m3u8";
                 String finalHlsApiUrl = hlsApiUrl;
                 // P1-07: 最终状态变更走独立小事务
                 txTemplate.execute(txStatus -> {
