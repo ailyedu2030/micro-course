@@ -162,6 +162,8 @@ function formatTime(seconds) {
 
 // ==================== 视频切换：重置状态 ====================
 // 等价于原 LearningView.selectLesson 中的视频重置逻辑
+// P0 修复(2026-08-03): watch 需 immediate — 父组件挂载时 currentVideo 已就绪
+// （学习视图自动选中首个课时）则 watch 永不触发 → videoLoading 恒 true → 永久骨架屏
 watch(() => props.currentVideo, () => {
   videoLoading.value = true
   videoError.value = false
@@ -172,7 +174,7 @@ watch(() => props.currentVideo, () => {
   duration.value = 0
   // 播放进度恢复由 onVideoLoaded() 处理
   nextTick(() => { videoLoading.value = false })
-})
+}, { immediate: true })
 
 // ==================== 视频控制 ====================
 function togglePlay() {
