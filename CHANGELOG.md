@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (部署事故修复 · Flyway 迁移漂移 + rollback 迁移自动执行 + FK 孤儿数据)
+
+> **背景**: 2026-08-04 生产部署连续受阻（checksum 漂移 → rollback 迁移被自动执行 →
+> FK 加约束被孤儿数据阻塞），四次失败后最终部署成功。复盘详见
+> `docs/incidents/2026-08-04-flyway-checksum-mismatch-deploy-failure.md`。
+
+#### 根因 1：已应用迁移被修改（checksum 漂移）
+- #161 修改/重编号了已应用到生产的迁移（V128/V168/V172），生产 DB 与 main 永久失配
+- 修复：生产 DB checksum 校准 + 部署门禁补"生产迁移预检"（见 ROLLBACK_PLAN）
+
+#### 根因 2：rollback 迁移被 Flyway 自动执行
+- `V178__rollback_slide_pages_content_type.sql` 是 rollback（撤销）迁移，
+  注释明确"不应在生产 forward 迁移流程中自动执行"，但 Flyway 按版本号自动执行 → DROP 列失败
+- 修复：**`git mv V178 → db/rollback/U178`**（项目 rollback 目录 U 前缀约定），
+  彻底杜绝 Flyway 自动执行 rollback
+
+#### 根因 3：V318 加 FK 被孤儿数据阻塞
+- `operation_logs.user_id` 存在 16 条引用不存在用户的孤儿记录，
+  V318 ADD CONSTRAINT fk_ol_user 校验失败（本地/CI 新库无此数据，门禁测不出）
+- 修复：V318 加 FK 前清理孤儿（`SET user_id=NULL WHERE NOT EXISTS ...`，
+  与 FK ON DELETE SET NULL 语义一致）
+
+#### 验证
+- 本地干净库 227 迁移全绿；生产部署后 Flyway V177.1/V178.1/V316-V325 全部成功
+- API 容器 healthy、5 分钟 0 ERROR；前端新 bundle 上线（index-Cy5FoWZm.js）
+- 孤儿数据清理为 0；生产迁移历史与 main 完全对齐
+
 ### Fixed (CI flaky · Bug G 回归测试时序竞态)
 
 > **背景**: #180 合并到 main 后 main push CI e2e 三次全挂（PR 分支却全绿），
