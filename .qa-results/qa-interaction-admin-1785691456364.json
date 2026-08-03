@@ -1,0 +1,55 @@
+{
+  "phase": "interaction",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T17:24:16.362Z",
+  "total": 9,
+  "failed": 9,
+  "results": [
+    {
+      "name": "D01-ADMIN-courses-filter",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D07-ADMIN-courses-review",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D09-ADMIN-banners",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D10-ADMIN-teaching-classes",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D11-ADMIN-operation-logs",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D12-ADMIN-settings-tabs",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D15-ADMIN-teacher-ratings",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D16-ADMIN-platform-share-config",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    },
+    {
+      "name": "D17-ADMIN-reports",
+      "ok": false,
+      "error": "Error: JavaScript evaluation failed at line 0, column 20: TypeError: Cannot set properties of undefined (setting 'network')\n    at <anonymous>:1:21; expression: window.__qa.network = []; window.__qa.console = []; window.__qa.errors = [];"
+    }
+  ]
+}

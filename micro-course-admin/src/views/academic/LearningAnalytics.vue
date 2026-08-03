@@ -17,10 +17,10 @@
           <div class="stat-value" :style="{ color: stat.color }">{{ stat.value }}</div>
           <div class="stat-label">{{ stat.label }}</div>
           <div class="stat-trend" v-if="stat.trend !== undefined">
-            <el-icon :color="stat.trend >= 0 ? '#67c23a' : '#f56c6c'">
+            <el-icon :color="stat.trend >= 0 ? '#3f7a1f' : '#d03050'">
               <Top v-if="stat.trend >= 0" /><Bottom v-else />
             </el-icon>
-            <span :style="{ color: stat.trend >= 0 ? '#67c23a' : '#f56c6c' }">
+            <span :style="{ color: stat.trend >= 0 ? '#3f7a1f' : '#d03050' }">
               {{ Math.abs(stat.trend) }}%
             </span>
           </div>
@@ -33,7 +33,7 @@
       <template #header>
         <div class="section-header">
           <span>院系学习数据</span>
-          <el-select v-model="sortBy" size="small" style="width:140px" @change="sortDepartments">
+          <el-select v-model="sortBy" size="small" style="width:140px" aria-label="排序方式" @change="sortDepartments">
             <el-option label="按完成率排序" value="completion" />
             <el-option label="按正确率排序" value="accuracy" />
             <el-option label="按选课人次排序" value="enrollments" />
@@ -52,11 +52,11 @@
           <div class="dept-metrics">
             <div class="metric">
               <div class="metric-label">完成率</div>
-              <el-progress :percentage="Math.round(dept.avgCompletionRate || 0)" :stroke-width="6" :color="completionColor(dept.avgCompletionRate)" />
+              <el-progress :percentage="Math.round(dept.avgCompletionRate || 0)" :stroke-width="6" :color="completionColor(dept.avgCompletionRate)" :aria-label="`完成率 ${Math.round(dept.avgCompletionRate || 0)}%`" />
             </div>
             <div class="metric">
               <div class="metric-label">正确率</div>
-              <el-progress :percentage="Math.round(dept.avgAccuracyRate || 0)" :stroke-width="6" :color="accuracyColor(dept.avgAccuracyRate)" />
+              <el-progress :percentage="Math.round(dept.avgAccuracyRate || 0)" :stroke-width="6" :color="accuracyColor(dept.avgAccuracyRate)" :aria-label="`正确率 ${Math.round(dept.avgAccuracyRate || 0)}%`" />
             </div>
           </div>
           <div class="dept-action">
@@ -81,7 +81,7 @@
         </el-table-column>
         <el-table-column label="完成率" width="200">
           <template #default="{ row }">
-            <el-progress :percentage="row.completionRate || 0" :stroke-width="10" :status="row.completionRate < 30 ? 'exception' : 'warning'" />
+            <el-progress :percentage="row.completionRate || 0" :stroke-width="10" :status="row.completionRate < 30 ? 'exception' : 'warning'" :aria-label="`完成率 ${Math.round(row.completionRate || 0)}%`" />
           </template>
         </el-table-column>
         <el-table-column prop="enrollmentCount" label="选课人数" width="100" align="center">
@@ -134,10 +134,11 @@ async function fetchOverview() {
   try {
     const { data } = await getAcademicOverview()
     overviewStats.value = [
-      { label: '总课程数', value: data.totalCourses ?? '—', color: '#409eff' },
-      { label: '选课人次', value: data.totalEnrollments ?? '—', color: '#67c23a' },
-      { label: '平均完成率', value: fmtPct(data.avgCompletionRate), color: '#e6a23c', trend: data.completionTrend },
-      { label: '平均正确率', value: fmtPct(data.avgAccuracyRate), color: '#f56c6c', trend: data.accuracyTrend },
+      // A11Y: 28px 大字对比度 ≥3:1 — 原 #67c23a(2.9)/#e6a23c(2.4) 不达标，加深处理
+      { label: '总课程数', value: data.totalCourses ?? '—', color: '#2568b8' },
+      { label: '选课人次', value: data.totalEnrollments ?? '—', color: '#3f7a1f' },
+      { label: '平均完成率', value: fmtPct(data.avgCompletionRate), color: '#8a5a00', trend: data.completionTrend },
+      { label: '平均正确率', value: fmtPct(data.avgAccuracyRate), color: '#d03050', trend: data.accuracyTrend },
     ]
   } catch { /* ignore */ }
 }

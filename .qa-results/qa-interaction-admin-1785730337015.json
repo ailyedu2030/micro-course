@@ -1,0 +1,82 @@
+{
+  "phase": "interaction",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T04:12:17.014Z",
+  "total": 9,
+  "failed": 0,
+  "results": [
+    {
+      "name": "D01-ADMIN-courses-filter",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D07-ADMIN-courses-review",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D09-ADMIN-banners",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D10-ADMIN-teaching-classes",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D11-ADMIN-operation-logs",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D12-ADMIN-settings-tabs",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D15-ADMIN-teacher-ratings",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D16-ADMIN-platform-share-config",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    },
+    {
+      "name": "D17-ADMIN-reports",
+      "ok": true,
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "fails": []
+    }
+  ]
+}

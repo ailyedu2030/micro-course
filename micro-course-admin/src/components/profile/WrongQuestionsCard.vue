@@ -12,7 +12,7 @@
     </template>
 
     <div class="wrong-toolbar">
-      <el-select v-model="selectedCourseId" placeholder="选择课程筛选" clearable @change="fetchWrongQuestions" :class="{ 'course-select': isMobile }">
+      <el-select v-model="selectedCourseId" placeholder="选择课程筛选" aria-label="选择课程筛选" clearable @change="fetchWrongQuestions" :class="{ 'course-select': isMobile }">
         <el-option
           v-for="course in myCourses"
           :key="course.courseId"

@@ -2,6 +2,7 @@ export default {
   app: {
     title: '微课平台',
     titleFull: '微课管理平台',
+    mainContent: '主要内容',
     slogan: '让学习更高效 · 让教学更轻松',
     loading: '加载中...',
     save: '保存',
@@ -31,6 +32,9 @@ export default {
   common: {
     success: '操作成功',
     failed: '操作失败',
+    cancel: '取消',
+    search: '搜索',
+    reset: '重置',
     networkError: '网络错误，请稍后重试',
     loading: '加载中...',
     noData: '暂无数据',

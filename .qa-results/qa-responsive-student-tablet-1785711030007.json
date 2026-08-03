@@ -1,0 +1,322 @@
+{
+  "viewport": "tablet",
+  "viewportSize": {
+    "width": 1024,
+    "height": 768
+  },
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T22:50:30.007Z",
+  "total": 9,
+  "failed": 3,
+  "results": [
+    {
+      "path": "/student/courses",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/student/courses",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 3306,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 1,
+        "firstOverflows": [
+          {
+            "tag": "div",
+            "cls": "course-grid",
+            "w": 845,
+            "sw": 857
+          }
+        ]
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "overflow elements 1"
+      ],
+      "fails": []
+    },
+    {
+      "path": "/student/my-courses",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/my-courses",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 698,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/student/learning",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/student/courses",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 3306,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 1,
+        "firstOverflows": [
+          {
+            "tag": "div",
+            "cls": "course-grid",
+            "w": 845,
+            "sw": 857
+          }
+        ]
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "overflow elements 1"
+      ],
+      "fails": []
+    },
+    {
+      "path": "/student/profile",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/profile",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 1839,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": {
+          "y": 765
+        },
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/student/notifications",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/notifications",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 698,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/student/checkout",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/student/courses",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 3306,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 1,
+        "firstOverflows": [
+          {
+            "tag": "div",
+            "cls": "course-grid",
+            "w": 845,
+            "sw": 857
+          }
+        ]
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "overflow elements 1"
+      ],
+      "fails": []
+    },
+    {
+      "path": "/student/courses/1",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/courses/1",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 876,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/student/orders",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/orders",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 698,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/student/favorites",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/student/favorites",
+        "viewport": {
+          "w": 1024,
+          "h": 768
+        },
+        "bodyW": 925,
+        "clientW": 925,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 925,
+          "h": 698,
+          "top": 45
+        },
+        "navTab": {
+          "w": 0,
+          "h": 0
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    }
+  ]
+}

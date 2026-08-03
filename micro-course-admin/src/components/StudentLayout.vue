@@ -131,7 +131,8 @@
     </header>
 
     <!-- ====== 主体内容区 ====== -->
-    <main class="layout-main" :class="{ 'has-tabbar': isMobile }" :inert="hamburgerOpen && isTablet || undefined">
+    <main class="layout-main" :class="{ 'has-tabbar': isMobile }" :inert="hamburgerOpen && isTablet || undefined" tabindex="-1" aria-label="主内容区">
+      <h1 v-if="pageTitle" class="sr-only">{{ pageTitle }}</h1>
       <div class="layout-content">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
@@ -467,6 +468,7 @@ onUnmounted(() => notificationStore.stopPolling())
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
+  min-height: 44px;
   border-radius: var(--radius-2xl, 20px);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
@@ -574,7 +576,7 @@ onUnmounted(() => notificationStore.stopPolling())
 .role-badge {
   font-size: var(--text-xs);
   border-color: var(--role-primary-light-5, #c7d2fe);
-  color: var(--role-primary, #6366f1);
+  color: #ffffff;
   background: var(--role-primary-light-9, #eef2ff);
 }
 

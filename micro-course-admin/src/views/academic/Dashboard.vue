@@ -22,6 +22,7 @@
           circle
           :loading="isRefreshing"
           class="refresh-btn"
+          aria-label="刷新数据"
           @click="handleRefresh"
         />
       </div>
@@ -149,6 +150,7 @@
                 size="small"
                 style="width:150px; margin-left:auto"
                 placeholder="选择学期"
+                aria-label="选择学期"
                 clearable
                 @change="handleSemesterChange"
               >
@@ -961,6 +963,9 @@ onBeforeUnmount(() => {
   color: var(--el-text-color-primary);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
+}
+.stat-card .stat-value {
+  color: #1f2937;
 }
 
 .stat-label {

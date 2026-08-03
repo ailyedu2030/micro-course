@@ -24,6 +24,7 @@
         <el-select
           v-model="filterCourseId"
           placeholder="筛选课程"
+          aria-label="按课程筛选"
           clearable
           class="course-filter"
           @change="handleFilterChange"

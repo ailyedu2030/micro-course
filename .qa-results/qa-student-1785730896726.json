@@ -1,0 +1,1209 @@
+{
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T04:21:36.726Z",
+  "total": 20,
+  "failed": 0,
+  "results": [
+    {
+      "path": "/student/courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?recommended=true&size=8",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-bundles?size=6",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-categories?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/departments?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/banners",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=studentCount&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=12",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=createdAt&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/bundles",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/my-courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/training",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/learning",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/learning-stats",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/notifications",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/exams",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/profile",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/report",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/favorites",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/orders",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/checkout",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/reviews",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/settings",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/achievements",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/definitions",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/achievements",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/discussions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/micro-specialties",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/course-distribution",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/learning-behavior",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/users?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/courses?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/daily-activity?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/overview",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/operation-logs?size=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/admin/stats/health",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/micro-specialties",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/profile",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    }
+  ]
+}

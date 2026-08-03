@@ -1,0 +1,915 @@
+{
+  "role": "ACADEMIC",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T06:01:31.456Z",
+  "total": 43,
+  "failed": 1,
+  "results": [
+    {
+      "path": "/admin/dashboard",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/users",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/logs",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/settings",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/banners",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/teaching-classes",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/revenue",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/admin/reports",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "POST",
+          "url": "/api/frontend-errors",
+          "status": 401
+        }
+      ],
+      "err": [
+        {
+          "type": "error",
+          "message": "Uncaught RangeError: Maximum call stack size exceeded"
+        }
+      ],
+      "cerr": [],
+      "cw": [],
+      "ok": false,
+      "fails": [
+        "API 401 POST /api/frontend-errors",
+        "JS error: Uncaught RangeError: Maximum call stack size exceeded"
+      ]
+    },
+    {
+      "path": "/departments",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/majors",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/classes",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/users",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/courses/create",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/courses/review",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/course-categories",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/tags",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/chapters",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/videos",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/enrollments",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/favorites",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/questions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/exercises",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/discussions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/notifications",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/reviews",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/bundles",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/dashboard",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/stats",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/enrollments",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/review",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/proposals",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/featured",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/cross-dept",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/class-import",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/gold",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/storage-review",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/dashboard",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/students",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/grades",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/teacher/offline-list",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/micro-specialties",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/profile",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/registration-status",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    }
+  ]
+}

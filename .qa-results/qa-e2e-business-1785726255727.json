@@ -1,0 +1,259 @@
+{
+  "ts": "2026-08-03T03:04:15.726Z",
+  "total": 26,
+  "failed": 15,
+  "results": [
+    {
+      "name": "B01.1-教师-创建课程-DRAFT",
+      "ok": false,
+      "details": {
+        "code": 9005
+      }
+    },
+    {
+      "name": "B01-异常",
+      "ok": false,
+      "details": {
+        "error": "Error: no course id"
+      }
+    },
+    {
+      "name": "B02.1-教务-创建微专业-DRAFT",
+      "ok": false,
+      "details": {}
+    },
+    {
+      "name": "B02-异常",
+      "ok": false,
+      "details": {
+        "error": "Error: no micro-specialty id"
+      }
+    },
+    {
+      "name": "B03.1-创建-DRAFT",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "learningMode 必须是 online-self-study / offline-blended / hybrid"
+      }
+    },
+    {
+      "name": "B03.2-DRAFT→PUBLISHED-期望6005",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B03.3-DRAFT→PENDING",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B03.4-教师自审-期望9010",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B03.5-PENDING→APPROVED",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B03.6-APPROVED→DRAFT-期望6005",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B03.7-reject-原因<10-期望400",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B04.1-并发选课-1成功-N重复",
+      "ok": false,
+      "details": {
+        "success": 0,
+        "dup": 0,
+        "codes": [
+          9005,
+          9005,
+          9005,
+          9005,
+          9005
+        ]
+      }
+    },
+    {
+      "name": "B04.2-退课后重选-期望成功",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "课程ID不能为空"
+      }
+    },
+    {
+      "name": "B04.3-不存在课程-期望失败",
+      "ok": true,
+      "details": {
+        "status": 404,
+        "code": 6001,
+        "message": "课程不存在"
+      }
+    },
+    {
+      "name": "B05.1-学生-pending-review-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.2-学生-operation-logs-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.3-教师-platform-share-config-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.4-无token-courses-期望401",
+      "ok": true,
+      "details": {
+        "status": 401,
+        "code": 1005,
+        "message": "未登录或登录已过期，请重新登录"
+      }
+    },
+    {
+      "name": "B05.5-伪造token-期望401",
+      "ok": true,
+      "details": {
+        "status": 401,
+        "code": 1004,
+        "message": "token无效或已过期"
+      }
+    },
+    {
+      "name": "B06.1-打卡-期望200或11003",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "id": 7,
+          "userId": 5,
+          "checkinDate": "2026-08-03",
+          "duration": 0,
+          "streakDays": 1,
+          "createdAt": "2026-08-03T11:04:15.638320543"
+        }
+      }
+    },
+    {
+      "name": "B06.2-同日重复打卡-期望11003",
+      "ok": false,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "id": 7,
+          "userId": 5,
+          "checkinDate": "2026-08-03",
+          "duration": 0,
+          "streakDays": 1,
+          "createdAt": "2026-08-03T11:04:15.638321"
+        }
+      }
+    },
+    {
+      "name": "B06.3-连续天数-期望200",
+      "ok": false,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": 1
+      }
+    },
+    {
+      "name": "B06.4-徽章定义",
+      "ok": true,
+      "details": {
+        "count": 6
+      }
+    },
+    {
+      "name": "B06.5-我的徽章",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": []
+      }
+    },
+    {
+      "name": "B06.6-我的证书",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": []
+      }
+    },
+    {
+      "name": "B06.7-服务端时间",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "date": "2026-08-03",
+          "timezone": "Asia/Shanghai",
+          "timestamp": 1785726255724
+        }
+      }
+    }
+  ]
+}

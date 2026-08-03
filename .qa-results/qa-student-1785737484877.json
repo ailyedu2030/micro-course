@@ -1,0 +1,1019 @@
+{
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T06:11:24.876Z",
+  "total": 20,
+  "failed": 0,
+  "results": [
+    {
+      "path": "/student/courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-categories?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/departments?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?recommended=true&size=8",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-bundles?size=6",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=studentCount&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=createdAt&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/banners",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=12",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/bundles",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-bundles?page=0&size=20",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/my-courses",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/learning-progress/progress/completion",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/favorites/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/training",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my?completed=false",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/learning",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/learning-stats",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/certificates/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/learning-progress/study-days",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/learning-progress/total-time",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/check-ins/my?days=30",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/exercise-records/my/accuracy-trend?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/check-ins/streak",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/check-ins/my?days=7",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/check-ins/my?days=1",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/server-time",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=3&sortBy=studentCount&sortOrder=desc",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/notifications",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications?page=0&size=10",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/exams",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/exams/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/profile",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/wrong-questions/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my?userId=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/certificates/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/report",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my?userId=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/check-ins/my?days=7",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/favorites",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/favorites/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/orders",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/orders/my?page=0&size=20",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/checkout",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/cart",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/reviews",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/reviews/my?page=0&size=1000",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/reviews/my?page=1&size=100",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/settings",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notification-preferences/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/achievements",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/achievements",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/definitions",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/discussions",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=999",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/student/micro-specialties",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/departments?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-categories?size=100",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=studentCount&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=5&sortBy=createdAt&sortOrder=desc",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?page=0&size=12",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/courses?recommended=true&size=8",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/banners",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/course-bundles?size=6",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/micro-specialties",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/micro-specialties/square",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    },
+    {
+      "path": "/profile",
+      "httpStatus": 0,
+      "api": [
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enums/export",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/auth/me",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/notifications/unread-count",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/badges/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/enrollments/my?userId=5",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/wrong-questions/my",
+          "status": 200
+        },
+        {
+          "method": "GET",
+          "url": "/api/certificates/my",
+          "status": 200
+        }
+      ],
+      "err": [],
+      "cerr": [],
+      "cw": [],
+      "ok": true,
+      "fails": []
+    }
+  ]
+}

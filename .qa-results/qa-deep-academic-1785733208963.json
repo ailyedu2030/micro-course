@@ -1,0 +1,59 @@
+{
+  "phase": "deep",
+  "role": "ACADEMIC",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T05:00:08.962Z",
+  "total": 4,
+  "failed": 0,
+  "results": [
+    {
+      "name": "AC1-课程审核-三个Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "tabs": [
+          "待审核",
+          "已通过",
+          "已驳回"
+        ],
+        "r1": {
+          "active": true
+        },
+        "r2": {
+          "active": true
+        }
+      }
+    },
+    {
+      "name": "AC2-选课管理-查询-重置",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "req": "/api/enrollments?page=0&size=10"
+      }
+    },
+    {
+      "name": "AC3-微专业申报审批-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "tabs": [
+          "待审批",
+          "全部"
+        ],
+        "r": {
+          "active": true
+        }
+      }
+    },
+    {
+      "name": "AC4-学习分析-图表渲染",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "canvases": 0,
+        "empty": true
+      }
+    }
+  ]
+}

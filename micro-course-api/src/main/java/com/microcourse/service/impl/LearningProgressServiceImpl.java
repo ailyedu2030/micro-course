@@ -73,7 +73,10 @@ public class LearningProgressServiceImpl implements LearningProgressService {
                     .in(Enrollment::getEnrollmentStatus,
                         EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
             if (enrollmentCount == 0) {
-                throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再查看学习进度");
+                // 只读进度查询: 未选课 = 无进度记录, 返回空列表而非 403
+                // （NOT_ENROLLED(403) 仅用于视频播放/签到等动作类权限判定;
+                //   详情页等只读场景对未选课学生触发 403 会造成页面加载网络噪音）
+                return List.of();
             }
         }
 

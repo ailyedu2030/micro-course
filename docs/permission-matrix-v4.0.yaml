@@ -119,7 +119,7 @@ endpoints:
 
   - path: "/api/courses/pending-review"
     method: GET
-    roles: [ADMIN]
+    roles: [ADMIN, ACADEMIC]
     description: "待审核课程列表"
 
   - path: "/api/courses/batch-approve"

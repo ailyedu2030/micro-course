@@ -1829,3 +1829,62 @@ code {
   overflow-y: auto !important;
   flex: 1 1 auto !important;
 }
+
+/* ====== A11Y: el-tag 文字对比度 ≥ 4.5:1（axe color-contrast serious）======
+ * dark 效果：白字深底，默认底色（#409eff/#e6a23c/#67c23a/#f56c6c/#909399）白字对比度不足，
+ *   统一加深底色。
+ * light/plain 效果：浅底深字，默认文字色（type 色）对比度不足，统一加深文字色。
+ * 自定义 color 的标签（内联 var 优先）不受影响。
+ */
+.el-tag--primary.el-tag--dark {
+  --el-tag-bg-color: #2568b8;
+  --el-tag-border-color: #2568b8;
+  --el-tag-text-color: #ffffff;
+}
+.el-tag--warning.el-tag--dark {
+  --el-tag-bg-color: #b57a17;
+  --el-tag-border-color: #b57a17;
+  --el-tag-text-color: #ffffff;
+}
+.el-tag--success.el-tag--dark {
+  --el-tag-bg-color: #4d9c2e;
+  --el-tag-border-color: #4d9c2e;
+  --el-tag-text-color: #ffffff;
+}
+.el-tag--danger.el-tag--dark {
+  --el-tag-bg-color: #d03050;
+  --el-tag-border-color: #d03050;
+  --el-tag-text-color: #ffffff;
+}
+.el-tag--info.el-tag--dark {
+  --el-tag-bg-color: #6b6f76;
+  --el-tag-border-color: #6b6f76;
+  --el-tag-text-color: #ffffff;
+}
+/* light / plain 效果（非 dark）：浅底/透明底 + 深色文字提升对比度。
+   注意：项目对 light-info 有专属深灰底白字设计（对比度通过），此处不覆盖；
+   plain-info（透明底 + 默认灰字 #909399 对比度不足）单独加深文字。 */
+.el-tag--primary:not(.el-tag--dark) { --el-tag-text-color: #1d4ed8; }
+.el-tag--warning:not(.el-tag--dark) { --el-tag-text-color: #8a5a00; }
+.el-tag--success:not(.el-tag--dark) { --el-tag-text-color: #3f7a1f; }
+.el-tag--danger:not(.el-tag--dark) { --el-tag-text-color: #b91c3d; }
+.el-tag--info:not(.el-tag--light):not(.el-tag--dark) { --el-tag-text-color: #4b5563; }
+
+/* A11Y: warning 按钮白字在 #e6a23c 上对比度 ~2.4:1 → 加深为 #8a5a00（12px 白字 ~5.8:1） */
+.el-button--warning {
+  --el-button-bg-color: #8a5a00;
+  --el-button-border-color: #8a5a00;
+  --el-button-hover-bg-color: #7a4f00;
+  --el-button-hover-border-color: #7a4f00;
+  --el-button-active-bg-color: #6b4500;
+  --el-button-active-border-color: #6b4500;
+}
+/* A11Y: primary 按钮白字在 #409eff 上对比度 ~3.3:1 → 加深为 #2568b8（~5.7:1） */
+.el-button--primary {
+  --el-button-bg-color: #2568b8;
+  --el-button-border-color: #2568b8;
+  --el-button-hover-bg-color: #1d5fd0;
+  --el-button-hover-border-color: #1d5fd0;
+  --el-button-active-bg-color: #1d4ed8;
+  --el-button-active-border-color: #1d4ed8;
+}

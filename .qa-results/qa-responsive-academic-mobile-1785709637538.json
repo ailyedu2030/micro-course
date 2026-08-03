@@ -1,0 +1,150 @@
+{
+  "viewport": "mobile",
+  "viewportSize": {
+    "width": 390,
+    "height": 844
+  },
+  "role": "ACADEMIC",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T22:27:17.538Z",
+  "total": 4,
+  "failed": 2,
+  "results": [
+    {
+      "path": "/academic/dashboard",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/academic/dashboard",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/courses/review",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/courses/review",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": {
+          "w": 62,
+          "h": 40
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "navTab h=40"
+      ],
+      "fails": []
+    },
+    {
+      "path": "/enrollments",
+      "ok": true,
+      "layout": {
+        "url": "http://localhost:8088/enrollments",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": null,
+        "bottomCtaVisible": null,
+        "overflowCount": 0,
+        "firstOverflows": []
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [],
+      "fails": []
+    },
+    {
+      "path": "/academic/micro-specialties/review",
+      "ok": false,
+      "layout": {
+        "url": "http://localhost:8088/academic/micro-specialties/review",
+        "viewport": {
+          "w": 390,
+          "h": 844
+        },
+        "bodyW": 390,
+        "clientW": 390,
+        "horizontalOverflow": 0,
+        "main": {
+          "w": 390,
+          "h": 784,
+          "top": 60
+        },
+        "navTab": {
+          "w": 62,
+          "h": 40
+        },
+        "bottomCtaVisible": null,
+        "overflowCount": 2,
+        "firstOverflows": [
+          {
+            "tag": "span",
+            "cls": "el-table__empty-text",
+            "w": 149,
+            "sw": 155
+          },
+          {
+            "tag": "div",
+            "cls": "el-empty",
+            "w": 149,
+            "sw": 155
+          }
+        ]
+      },
+      "api4xx5xx": 0,
+      "jsErr": 0,
+      "cErr": 0,
+      "issues": [
+        "overflow elements 2",
+        "navTab h=40"
+      ],
+      "fails": []
+    }
+  ]
+}

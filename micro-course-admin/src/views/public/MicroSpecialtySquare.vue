@@ -79,7 +79,7 @@
               <span v-if="item.isNew" class="new-badge">NEW</span>
             </div>
             <div class="ms-body">
-              <h4 class="ms-title">{{ item.title }}</h4>
+              <h3 class="ms-title">{{ item.title }}</h3>
               <p class="ms-dept">{{ item.departmentName }}</p>
               <p class="ms-stats">{{ item.totalCredits || 0 }} 学分 · {{ item.courseCount || 0 }} 门课</p>
             </div>
@@ -105,7 +105,7 @@
               <div v-else class="ms-cover-placeholder"><el-icon :size="28"><Notebook /></el-icon></div>
             </div>
             <div class="ms-body">
-              <h4 class="ms-title">{{ item.title }}</h4>
+              <h3 class="ms-title">{{ item.title }}</h3>
               <p class="ms-dept">{{ item.departmentName }}</p>
               <p class="ms-stats">{{ item.totalCredits || 0 }} 学分 · {{ item.courseCount || 0 }} 门课</p>
             </div>

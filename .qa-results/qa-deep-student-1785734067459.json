@@ -1,0 +1,64 @@
+{
+  "phase": "deep",
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T05:14:27.457Z",
+  "total": 7,
+  "failed": 2,
+  "results": [
+    {
+      "name": "ST1-课程广场-搜索-重置",
+      "ok": false,
+      "error": "Error: 按钮不可见/不存在: 搜索"
+    },
+    {
+      "name": "ST1B-课程广场-分类联动(移动端安全)",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "cat": false
+      }
+    },
+    {
+      "name": "ST2-课程详情-报名状态-评价Tab",
+      "ok": false,
+      "error": "Error: 无课程卡片(role=button)"
+    },
+    {
+      "name": "ST3-我的课程-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "tabs": [
+          "进行中",
+          "已完成",
+          "已收藏"
+        ]
+      }
+    },
+    {
+      "name": "ST4-学习统计-打卡按钮存在",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "hasBtn": true
+      }
+    },
+    {
+      "name": "ST5-消息中心-全部已读",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "hasBtn": false
+      }
+    },
+    {
+      "name": "ST6-个人中心-Tab切换断言",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "tabs": []
+      }
+    }
+  ]
+}

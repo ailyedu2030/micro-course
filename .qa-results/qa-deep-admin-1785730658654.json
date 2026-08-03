@@ -1,0 +1,56 @@
+{
+  "phase": "deep",
+  "role": "ADMIN",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-03T04:17:38.653Z",
+  "total": 7,
+  "failed": 3,
+  "results": [
+    {
+      "name": "DA1-院系-新增弹窗-取消-重开-提交",
+      "ok": false,
+      "error": "Error: 取消后弹窗未关闭"
+    },
+    {
+      "name": "DA2-院系-空表单提交校验",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "errs": [
+          "请输入院系名称",
+          "请输入院系编码"
+        ]
+      }
+    },
+    {
+      "name": "DA3-院系-填写提交成功",
+      "ok": false,
+      "error": "Error: 未出现成功提示: []"
+    },
+    {
+      "name": "DA4-用户列表-搜索-重置",
+      "ok": false,
+      "error": "Error: 按钮不存在: 搜索"
+    },
+    {
+      "name": "DA5-课程审核-Tab切换",
+      "ok": true,
+      "fails": [],
+      "details": {}
+    },
+    {
+      "name": "DA6-系统设置-Tab遍历",
+      "ok": true,
+      "fails": [],
+      "details": {}
+    },
+    {
+      "name": "DA7-删除确认弹窗",
+      "ok": true,
+      "fails": [],
+      "details": {
+        "confirmVisible": true
+      }
+    }
+  ]
+}

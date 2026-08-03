@@ -16,6 +16,15 @@
       </div>
     </el-card>
 
+    <el-alert
+      v-if="!isAdmin"
+      type="info"
+      :closable="false"
+      show-icon
+      class="readonly-tip"
+      title="只读模式：教务处可查看系统配置，仅管理员可修改"
+    />
+
     <!-- 主体：左侧菜单 + 右侧表单 -->
     <div class="settings-layout" v-loading="loading" element-loading-text="加载配置中...">
       <!-- 左侧菜单 -->
@@ -37,7 +46,7 @@
             <el-icon><Lock /></el-icon>
             <template #title>安全设置</template>
           </el-menu-item>
-          <el-menu-item index="cas">
+          <el-menu-item v-if="isAdmin" index="cas">
             <el-icon><Key /></el-icon>
             <template #title>CAS 配置</template>
           </el-menu-item>
@@ -55,7 +64,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">系统参数</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('system')" aria-label="保存">
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('system')" aria-label="保存">
 <el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
@@ -103,7 +112,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">邮件配置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('mail')" aria-label="保存">
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('mail')" aria-label="保存">
 <el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
@@ -151,7 +160,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">安全设置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('security')" aria-label="保存">
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('security')" aria-label="保存">
 <el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
@@ -221,7 +230,7 @@
           <template #header>
             <div class="card-header">
               <span class="card-title">CAS 统一身份认证配置</span>
-              <el-button type="primary" size="small" :loading="saving" @click="handleSave('cas')" aria-label="保存修改">
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('cas')" aria-label="保存修改">
 <el-icon><Check /></el-icon>保存修改
               </el-button>
             </div>
@@ -317,14 +326,20 @@
  * 管理员 - 系统设置
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 // 版本号从环境变量动态读取
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0'
 import { ElMessage } from 'element-plus'
+import { useUserStore } from '@/store/user'
 import {
   InfoFilled, Setting, Message, Lock, Check, Key
 } from '@element-plus/icons-vue'
 import { getSettings, updateSettings, getCasConfig, updateCasConfig } from '@/api/admin-settings'
+
+const userStore = useUserStore()
+// CAS 配置含解密后的管理员账号等敏感字段，后端仅 ADMIN 可读；
+// 非管理员只读视图不加载、不展示 CAS 菜单，避免无权限 403 与敏感信息暴露
+const isAdmin = computed(() => userStore.role === 'ADMIN')
 
 // 加载状态
 const loading = ref(false)
@@ -451,22 +466,24 @@ async function fetchSettings() {
       }
       if (item.settingKey in securityForm) securityForm[item.settingKey] = val
     })
-    // CAS 设置从后端 API 加载
-    try {
-      const casRes = await getCasConfig()
-      const casData = casRes.data
-      if (casData) {
-        casForm.enabled = casData.enabled
-        casForm.serverUrl = casData.serverUrl
-        casForm.serviceUrl = casData.serviceUrl
-        casForm.version = casData.version
-        casForm.adminUsername = casData.adminUsername
-        casForm.superAdmins = Array.isArray(casData.superAdmins) ? casData.superAdmins.join(', ') : (casData.superAdmins || '')
-        casForm.validateSsl = casData.validateSsl
+    // CAS 设置从后端 API 加载（仅管理员）
+    if (isAdmin.value) {
+      try {
+        const casRes = await getCasConfig()
+        const casData = casRes.data
+        if (casData) {
+          casForm.enabled = casData.enabled
+          casForm.serverUrl = casData.serverUrl
+          casForm.serviceUrl = casData.serviceUrl
+          casForm.version = casData.version
+          casForm.adminUsername = casData.adminUsername
+          casForm.superAdmins = Array.isArray(casData.superAdmins) ? casData.superAdmins.join(', ') : (casData.superAdmins || '')
+          casForm.validateSsl = casData.validateSsl
+        }
+      } catch {
+        casLoadFailed.value = true
+        ElMessage.warning('CAS 配置加载失败，请稍后重试')
       }
-    } catch {
-      casLoadFailed.value = true
-      ElMessage.warning('CAS 配置加载失败，请稍后重试')
     }
   } catch (e) {
     console.warn('[AdminSettings] fetchSettings failed', e)

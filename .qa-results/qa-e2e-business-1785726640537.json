@@ -1,0 +1,368 @@
+{
+  "ts": "2026-08-03T03:10:40.536Z",
+  "total": 33,
+  "failed": 18,
+  "results": [
+    {
+      "name": "B01.1-教师-创建课程-DRAFT",
+      "ok": true,
+      "details": {
+        "id": 36,
+        "code": 200
+      }
+    },
+    {
+      "name": "B01.2-教师-提交审核-DRAFT→PENDING",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "业务条件未满足: 课程封面未上传; 至少添加一个章节; 至少一个章节下必须有视频/练习/课件"
+      }
+    },
+    {
+      "name": "B01.3-教务-审核通过-PENDING→APPROVED",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6005,
+        "message": "不允许从 DRAFT 转换到 APPROVED"
+      }
+    },
+    {
+      "name": "B01.4-教师-发布-APPROVED→PUBLISHED",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6005,
+        "message": "不允许从 DRAFT 转换到 PUBLISHED"
+      }
+    },
+    {
+      "name": "B01.5-学生-选课",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6007,
+        "message": "课程未发布，无法选课"
+      }
+    },
+    {
+      "name": "B01.6-学生-我的选课-含新课",
+      "ok": false,
+      "details": {}
+    },
+    {
+      "name": "B01.7-学生-重复选课-期望8002",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6007,
+        "message": "课程未发布，无法选课"
+      }
+    },
+    {
+      "name": "B01.8-学生-退课",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "请求参数格式错误"
+      }
+    },
+    {
+      "name": "B01.9-教师-下架-PUBLISHED→CLOSED",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok"
+      }
+    },
+    {
+      "name": "B02.1-教务-创建微专业-DRAFT",
+      "ok": false,
+      "details": {}
+    },
+    {
+      "name": "B02-异常",
+      "ok": false,
+      "details": {
+        "error": "Error: no micro-specialty id"
+      }
+    },
+    {
+      "name": "B03.1-创建-DRAFT",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "id": 37,
+          "title": "E2E状态机_1785726638784",
+          "subtitle": null,
+          "summary": null,
+          "coverUrl": null,
+          "categoryId": 1,
+          "categoryName": "P0测试分类",
+          "teacherId": 2,
+          "teacherName": "测试教师1",
+          "offerDepartmentId": null,
+          "semester": null,
+          "creditHours": null,
+          "courseNature": null,
+          "maxStudents": null,
+          "difficulty": null,
+          "status": 0,
+          "statusText": "草稿",
+          "rejectReason": null,
+          "description": null,
+          "studentCount": 0,
+          "avgRating": 0,
+          "ratingCount": 0,
+          "publishedAt": null,
+          "createdAt": null,
+          "updatedAt": null,
+          "version": null,
+          "isRecommended": null,
+          "tags": null,
+          "chapters": null,
+          "courseType": "VIDEO",
+          "price": 0,
+          "isFree": true,
+          "listPrice": null,
+          "freeAccessScope": null,
+          "freeAccessScopeLabel": null,
+          "discountScope": null,
+          "discountPercent": null,
+          "pricingStatus": null,
+          "videoCopied": null,
+          "hid": null,
+          "totalHours": null,
+          "totalWeeks": null,
+          "teachingPhilosophy": null,
+          "learningMode": "online-self-study",
+          "evaluationScheme": null
+        }
+      }
+    },
+    {
+      "name": "B03.2-DRAFT→PUBLISHED-期望6005",
+      "ok": true,
+      "details": {
+        "status": 400,
+        "code": 6005,
+        "message": "不允许从 DRAFT 转换到 PUBLISHED"
+      }
+    },
+    {
+      "name": "B03.3-DRAFT→PENDING",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "业务条件未满足: 课程封面未上传; 至少添加一个章节; 至少一个章节下必须有视频/练习/课件"
+      }
+    },
+    {
+      "name": "B03.4-教师自审-期望9010",
+      "ok": false,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B03.5-PENDING→APPROVED",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6005,
+        "message": "不允许从 DRAFT 转换到 APPROVED"
+      }
+    },
+    {
+      "name": "B03.6-APPROVED→DRAFT-期望6005",
+      "ok": false,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B03.7-reject-原因<10-期望400",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 9005,
+        "message": "驳回原因至少10个字符，不能超过500字"
+      }
+    },
+    {
+      "name": "B04.1-并发选课-1成功-N重复",
+      "ok": false,
+      "details": {
+        "success": 0,
+        "dup": 0,
+        "codes": [
+          6007,
+          6007,
+          6007,
+          6007,
+          6007
+        ]
+      }
+    },
+    {
+      "name": "B04.2-退课后重选-期望成功",
+      "ok": false,
+      "details": {
+        "status": 400,
+        "code": 6007,
+        "message": "课程未发布，无法选课"
+      }
+    },
+    {
+      "name": "B04.3-不存在课程-期望失败",
+      "ok": true,
+      "details": {
+        "status": 404,
+        "code": 6001,
+        "message": "课程不存在"
+      }
+    },
+    {
+      "name": "B05.1-学生-pending-review-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.2-学生-operation-logs-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.3-教师-platform-share-config-期望403",
+      "ok": true,
+      "details": {
+        "status": 403,
+        "code": 10003,
+        "message": "无权访问"
+      }
+    },
+    {
+      "name": "B05.4-无token-courses-期望401",
+      "ok": true,
+      "details": {
+        "status": 401,
+        "code": 1005,
+        "message": "未登录或登录已过期，请重新登录"
+      }
+    },
+    {
+      "name": "B05.5-伪造token-期望401",
+      "ok": true,
+      "details": {
+        "status": 401,
+        "code": 1004,
+        "message": "token无效或已过期"
+      }
+    },
+    {
+      "name": "B06.1-打卡-期望200或11003",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "id": 7,
+          "userId": 5,
+          "checkinDate": "2026-08-03",
+          "duration": 0,
+          "streakDays": 1,
+          "createdAt": "2026-08-03T11:04:15.638321"
+        }
+      }
+    },
+    {
+      "name": "B06.2-同日重复打卡-期望11003",
+      "ok": false,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "id": 7,
+          "userId": 5,
+          "checkinDate": "2026-08-03",
+          "duration": 0,
+          "streakDays": 1,
+          "createdAt": "2026-08-03T11:04:15.638321"
+        }
+      }
+    },
+    {
+      "name": "B06.3-连续天数-期望200",
+      "ok": false,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": 1
+      }
+    },
+    {
+      "name": "B06.4-徽章定义",
+      "ok": true,
+      "details": {
+        "count": 6
+      }
+    },
+    {
+      "name": "B06.5-我的徽章",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": []
+      }
+    },
+    {
+      "name": "B06.6-我的证书",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": []
+      }
+    },
+    {
+      "name": "B06.7-服务端时间",
+      "ok": true,
+      "details": {
+        "status": 200,
+        "code": 200,
+        "message": "ok",
+        "data": {
+          "date": "2026-08-03",
+          "timezone": "Asia/Shanghai",
+          "timestamp": 1785726640533
+        }
+      }
+    }
+  ]
+}

@@ -162,7 +162,8 @@ fetchBadges()
 }
 .badge-tip {
   font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
+  /* A11Y: placeholder 色(#a8abb2)在白底对比度仅 ~2.3:1 → 用 regular(#606266 ~5.4:1) */
+  color: var(--el-text-color-regular);
   text-align: center;
 }
 

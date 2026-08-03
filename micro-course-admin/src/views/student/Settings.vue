@@ -44,7 +44,7 @@
           <div class="settings-list">
             <div class="settings-item">
               <span class="settings-label">播放倍速</span>
-              <el-select v-model="settings.playbackSpeed" @change="handleSave" class="settings-control">
+              <el-select v-model="settings.playbackSpeed" aria-label="播放倍速" @change="handleSave" class="settings-control">
                 <el-option label="0.75x" value="0.75" />
                 <el-option label="1.0x" value="1" />
                 <el-option label="1.25x" value="1.25" />
@@ -56,6 +56,7 @@
               <span class="settings-label">自动播放下一节</span>
               <el-switch
                 v-model="settings.autoPlayNext"
+                aria-label="自动播放下一节"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -76,6 +77,7 @@
               <span class="settings-label">启用通知</span>
               <el-switch
                 v-model="settings.notificationEnabled"
+                aria-label="启用通知"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -84,6 +86,7 @@
               <span class="settings-label">邮件通知</span>
               <el-switch
                 v-model="settings.emailNotification"
+                aria-label="邮件通知"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -93,6 +96,7 @@
               <span class="settings-label">微信通知</span>
               <el-switch
                 v-model="settings.wechatNotification"
+                aria-label="微信通知"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -102,6 +106,7 @@
               <span class="settings-label">免打扰时段</span>
               <el-switch
                 v-model="settings.quietHoursEnabled"
+                aria-label="免打扰时段"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -144,7 +149,7 @@
           <div class="settings-list">
             <div class="settings-item">
               <span class="settings-label">个人主页可见性</span>
-              <el-select v-model="settings.profileVisibility" @change="handleSave" class="settings-control">
+              <el-select v-model="settings.profileVisibility" aria-label="个人资料可见性" @change="handleSave" class="settings-control">
                 <el-option label="公开" value="public" />
                 <el-option label="好友可见" value="friends" />
                 <el-option label="仅自己可见" value="private" />
@@ -154,6 +159,7 @@
               <span class="settings-label">显示学习进度</span>
               <el-switch
                 v-model="settings.showProgress"
+                aria-label="展示学习进度"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -174,6 +180,7 @@
               <span class="settings-label">减少动画效果</span>
               <el-switch
                 v-model="settings.reducedMotion"
+                aria-label="减少动画效果"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -182,6 +189,7 @@
               <span class="settings-label">高对比度模式</span>
               <el-switch
                 v-model="settings.highContrast"
+                aria-label="高对比度模式"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -231,7 +239,7 @@
           <div class="settings-list-h5">
             <div class="settings-item-h5">
               <span>播放倍速</span>
-              <el-select v-model="settings.playbackSpeed" @change="handleSave" class="control-select-h5">
+              <el-select v-model="settings.playbackSpeed" aria-label="播放倍速" @change="handleSave" class="control-select-h5">
                 <el-option label="0.75x" value="0.75" />
                 <el-option label="1.0x" value="1" />
                 <el-option label="1.25x" value="1.25" />
@@ -241,7 +249,7 @@
             </div>
             <div class="settings-item-h5">
               <span>自动播放下一节</span>
-              <el-switch v-model="settings.autoPlayNext" @change="handleSave" />
+              <el-switch v-model="settings.autoPlayNext" aria-label="自动播放下一节" @change="handleSave" />
             </div>
           </div>
         </div>
@@ -255,21 +263,21 @@
           <div class="settings-list-h5">
             <div class="settings-item-h5">
               <span>启用通知</span>
-              <el-switch v-model="settings.notificationEnabled" @change="handleSave" />
+              <el-switch v-model="settings.notificationEnabled" aria-label="启用通知" @change="handleSave" />
             </div>
             <div class="settings-item-h5">
               <span>邮件通知</span>
-              <el-switch v-model="settings.emailNotification" @change="handleSave" />
+              <el-switch v-model="settings.emailNotification" aria-label="邮件通知" @change="handleSave" />
             </div>
             <!-- P1I-030: 微信通知开关 (H5) -->
             <div class="settings-item-h5">
               <span>微信通知</span>
-              <el-switch v-model="settings.wechatNotification" @change="handleSave" />
+              <el-switch v-model="settings.wechatNotification" aria-label="微信通知" @change="handleSave" />
             </div>
             <!-- P1I-030: 免打扰时段 (H5) -->
             <div class="settings-item-h5">
               <span>免打扰时段</span>
-              <el-switch v-model="settings.quietHoursEnabled" @change="handleSave" />
+              <el-switch v-model="settings.quietHoursEnabled" aria-label="免打扰时段" @change="handleSave" />
             </div>
             <div v-if="settings.quietHoursEnabled" class="settings-item-h5">
               <span>开始</span>
@@ -307,7 +315,7 @@
           <div class="settings-list-h5">
             <div class="settings-item-h5">
               <span>个人主页可见性</span>
-              <el-select v-model="settings.profileVisibility" @change="handleSave" class="control-select-h5">
+              <el-select v-model="settings.profileVisibility" aria-label="个人资料可见性" @change="handleSave" class="control-select-h5">
                 <el-option label="公开" value="public" />
                 <el-option label="好友可见" value="friends" />
                 <el-option label="仅自己可见" value="private" />
@@ -315,7 +323,7 @@
             </div>
             <div class="settings-item-h5">
               <span>显示学习进度</span>
-              <el-switch v-model="settings.showProgress" @change="handleSave" />
+              <el-switch v-model="settings.showProgress" aria-label="展示学习进度" @change="handleSave" />
             </div>
           </div>
         </div>
@@ -329,11 +337,11 @@
           <div class="settings-list-h5">
             <div class="settings-item-h5">
               <span>减少动画效果</span>
-              <el-switch v-model="settings.reducedMotion" @change="handleSave" />
+              <el-switch v-model="settings.reducedMotion" aria-label="减少动画效果" @change="handleSave" />
             </div>
             <div class="settings-item-h5">
               <span>高对比度模式</span>
-              <el-switch v-model="settings.highContrast" @change="handleSave" />
+              <el-switch v-model="settings.highContrast" aria-label="高对比度模式" @change="handleSave" />
             </div>
           </div>
         </div>

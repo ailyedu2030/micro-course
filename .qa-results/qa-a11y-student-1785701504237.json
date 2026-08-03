@@ -1,0 +1,2623 @@
+{
+  "role": "STUDENT",
+  "base": "http://localhost:8088",
+  "ts": "2026-08-02T20:11:44.237Z",
+  "pages": 17,
+  "pagesWithIssues": 17,
+  "totalIssues": 43,
+  "issues": [
+    {
+      "path": "/student/courses",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag--primary > .el-tag__content"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-8032-47"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/courses",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "common.search",
+          "w": 150,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "common.reset",
+          "w": 116,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small rese"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next"
+        },
+        {
+          "tag": "button",
+          "text": "查看全部 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        },
+        {
+          "tag": "button",
+          "text": "查看更多 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        }
+      ]
+    },
+    {
+      "path": "/student/courses",
+      "inputsMissingLabel": [
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-31",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-31",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8032-31",
+          "type": "radio"
+        },
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/student/bundles",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Heading levels should only increase by one",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/heading-order?application=axeAPI",
+          "targets": [
+            [
+              "h3"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/bundles",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        }
+      ]
+    },
+    {
+      "path": "/student/bundles",
+      "headingSkips": [
+        {
+          "from": 1,
+          "to": 3
+        }
+      ]
+    },
+    {
+      "path": "/student/my-courses",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/my-courses",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "div",
+          "text": "进行中",
+          "w": 84,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "已完成",
+          "w": 104,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "div",
+          "text": "已收藏",
+          "w": 84,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        },
+        {
+          "tag": "button",
+          "text": "去课程广场选课",
+          "w": 130,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/student/learning",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag--primary > .el-tag__content"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-345-47"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/learning",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "common.search",
+          "w": 150,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "common.reset",
+          "w": 116,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small rese"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next"
+        },
+        {
+          "tag": "button",
+          "text": "查看全部 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        },
+        {
+          "tag": "button",
+          "text": "查看更多 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        }
+      ]
+    },
+    {
+      "path": "/student/learning",
+      "inputsMissingLabel": [
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-30",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-31",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-31",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-345-31",
+          "type": "radio"
+        },
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/student/learning-stats",
+      "axe": "CDN",
+      "violations": []
+    },
+    {
+      "path": "/student/learning-stats",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "今日打卡",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small chec"
+        },
+        {
+          "tag": "button",
+          "text": "开始学习",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small is-p"
+        },
+        {
+          "tag": "button",
+          "text": "开始学习",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small is-p"
+        },
+        {
+          "tag": "button",
+          "text": "开始学习",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small is-p"
+        }
+      ]
+    },
+    {
+      "path": "/student/notifications",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/notifications",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "全部标记已读",
+          "w": 116,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        },
+        {
+          "tag": "button",
+          "text": "全部",
+          "w": 48,
+          "h": 24,
+          "cls": "el-button el-button--primary el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "课程通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "考试通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "讨论通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        },
+        {
+          "tag": "button",
+          "text": "系统通知",
+          "w": 72,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small"
+        }
+      ]
+    },
+    {
+      "path": "/student/exams",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/exams",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "div",
+          "text": "待参加",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top is-active"
+        },
+        {
+          "tag": "div",
+          "text": "已完成",
+          "w": 62,
+          "h": 40,
+          "cls": "el-tabs__item is-top"
+        }
+      ]
+    },
+    {
+      "path": "/student/profile",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 4,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ],
+            [
+              "div[aria-label=\"初识课程\"] > .badge-tip[data-v-3ba85221=\"\"]"
+            ],
+            [
+              "div[aria-label=\"学满全部\"] > .badge-tip[data-v-3ba85221=\"\"]"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-9022-40"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/profile",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "保存修改",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "修改密码",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        },
+        {
+          "tag": "button",
+          "text": "查看全部",
+          "w": 76,
+          "h": 20,
+          "cls": "el-button el-button--primary is-link"
+        }
+      ]
+    },
+    {
+      "path": "/student/profile",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/student/report",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/report",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        }
+      ]
+    },
+    {
+      "path": "/student/favorites",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/favorites",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        }
+      ]
+    },
+    {
+      "path": "/student/orders",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/orders",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "去课程广场",
+          "w": 102,
+          "h": 32,
+          "cls": "el-button el-button--primary"
+        }
+      ]
+    },
+    {
+      "path": "/student/checkout",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag--primary > .el-tag__content"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 1,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-8689-51"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/checkout",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "router-link-active router-link-exact-active nav-ta"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "common.search",
+          "w": 150,
+          "h": 32,
+          "cls": "el-button"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "common.reset",
+          "w": 116,
+          "h": 24,
+          "cls": "el-button el-button--default el-button--small rese"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "input",
+          "text": "",
+          "w": 13,
+          "h": 13,
+          "cls": "el-radio-button__original-radio"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next"
+        },
+        {
+          "tag": "button",
+          "text": "查看全部 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        },
+        {
+          "tag": "button",
+          "text": "查看更多 →",
+          "w": 104,
+          "h": 32,
+          "cls": "el-button el-button--primary is-text"
+        }
+      ]
+    },
+    {
+      "path": "/student/checkout",
+      "inputsMissingLabel": [
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-34",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-35",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-35",
+          "type": "radio"
+        },
+        {
+          "name": "el-id-8689-35",
+          "type": "radio"
+        },
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/student/reviews",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 2,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-602-23"
+            ],
+            [
+              "#el-id-602-24"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/reviews",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/student/reviews",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        },
+        {
+          "name": "",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "path": "/student/settings",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 1,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ]
+          ]
+        },
+        {
+          "id": "label",
+          "impact": "critical",
+          "nodes": 10,
+          "help": "Form elements must have labels",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/label?application=axeAPI",
+          "targets": [
+            [
+              "#el-id-4212-49"
+            ],
+            [
+              "#el-id-4212-50"
+            ],
+            [
+              "#el-id-4212-51"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/settings",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "保存设置",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary save-button"
+        }
+      ]
+    },
+    {
+      "path": "/student/settings",
+      "inputsMissingLabel": [
+        {
+          "name": "",
+          "type": "text"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "text"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        },
+        {
+          "name": "",
+          "type": "checkbox"
+        }
+      ]
+    },
+    {
+      "path": "/student/achievements",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 13,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ],
+            [
+              ".el-col.el-col-24.el-col-xs-12:nth-child(1) > .badge-card.locked.student-card-item > .el-card__body > .badge-desc[data-v-589cede0=\"\"]"
+            ],
+            [
+              ".el-col.el-col-24.el-col-xs-12:nth-child(1) > .badge-card.locked.student-card-item > .el-card__body > .badge-criteria[data-v-589cede0=\"\"]"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/achievements",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        }
+      ]
+    },
+    {
+      "path": "/student/discussions",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Heading levels should only increase by one",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/heading-order?application=axeAPI",
+          "targets": [
+            [
+              "h3"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/student/discussions",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        },
+        {
+          "tag": "button",
+          "text": "发布帖子",
+          "w": 88,
+          "h": 32,
+          "cls": "el-button el-button--primary is-disabled"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-prev"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "btn-next is-last"
+        }
+      ]
+    },
+    {
+      "path": "/student/discussions",
+      "headingSkips": [
+        {
+          "from": 1,
+          "to": 3
+        }
+      ]
+    },
+    {
+      "path": "/micro-specialties",
+      "axe": "CDN",
+      "violations": [
+        {
+          "id": "color-contrast",
+          "impact": "serious",
+          "nodes": 2,
+          "help": "Elements must meet minimum color contrast ratio thresholds",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/color-contrast?application=axeAPI",
+          "targets": [
+            [
+              ".el-tag__content"
+            ],
+            [
+              ".ms-dept"
+            ]
+          ]
+        },
+        {
+          "id": "heading-order",
+          "impact": "moderate",
+          "nodes": 1,
+          "help": "Heading levels should only increase by one",
+          "helpUrl": "https://dequeuniversity.com/rules/axe/4.10/heading-order?application=axeAPI",
+          "targets": [
+            [
+              "h4"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "path": "/micro-specialties",
+      "touchTargets": [
+        {
+          "tag": "a",
+          "text": "广场",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的课程",
+          "w": 110,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "学习",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "消息",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "我的",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "a",
+          "text": "收藏",
+          "w": 84,
+          "h": 44,
+          "cls": "nav-tab"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "button",
+          "text": "",
+          "w": 32,
+          "h": 32,
+          "cls": "el-button is-circle icon-btn"
+        },
+        {
+          "tag": "div",
+          "text": "测\n学生",
+          "w": 120,
+          "h": 44,
+          "cls": "user-avatar-wrap el-tooltip__trigger el-tooltip__t"
+        }
+      ]
+    },
+    {
+      "path": "/micro-specialties",
+      "headingSkips": [
+        {
+          "from": 2,
+          "to": 4
+        }
+      ]
+    }
+  ]
+}
