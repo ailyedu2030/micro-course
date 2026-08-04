@@ -222,6 +222,17 @@ public interface MicroSpecialtyService {
     MicroSpecialtyTeacherVO inviteTeacher(Long msId, MicroSpecialtyTeacherRequest request);
 
     /**
+     * 指派已入团队教师到课程（课程编排页"指派教师"）。
+     * P1-C 修复：此前复用 inviteTeacher，已接受团队成员必然报"教师已在微专业团队中"，
+     * 指派教师功能 100% 失效。
+     *
+     * @param msId      微专业 ID
+     * @param teacherId 目标教师 ID（须为 ACTIVE 团队成员）
+     * @param courseId  微专业课程 ID
+     */
+    MicroSpecialtyTeacherVO assignTeacherToCourse(Long msId, Long teacherId, Long courseId);
+
+    /**
      * LEAD/ADMIN 移除教师。发通知给被移除教师。
      *
      * @param msId      微专业 ID

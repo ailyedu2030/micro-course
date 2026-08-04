@@ -19,9 +19,13 @@
             <div class="card-header">
               <span>已邀请教师（{{ teachers.length }} 人）</span>
               <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
+              <el-button v-if="expelMode" size="small" type="danger" plain :loading="batchRemoving" :disabled="selectedMembers.length === 0" @click="handleBatchRemoveMembers">
+                批量移除（{{ selectedMembers.length }}）
+              </el-button>
             </div>
           </template>
-          <el-table :data="teachers" stripe border empty-text="暂无教师">
+          <el-table ref="memberTableRef" :data="teachers" stripe border empty-text="暂无教师" @selection-change="handleMemberSelectionChange">
+            <el-table-column v-if="expelMode" type="selection" width="50" />
             <el-table-column prop="teacherName" label="姓名" width="120" />
             <el-table-column label="角色" width="120">
               <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
@@ -141,6 +145,9 @@ const detail = ref(null)
 const teachers = ref([])
 const courseOptions = ref([])
 const expelMode = ref(false)
+const memberTableRef = ref(null)
+const selectedMembers = ref([])
+const batchRemoving = ref(false)
 
 // 搜索候选教师
 const searchKeyword = ref('')
@@ -214,6 +221,32 @@ const handleSelectionChange = (rows) => {
   })
 }
 
+function handleMemberSelectionChange(rows) {
+  selectedMembers.value = rows
+}
+
+async function handleBatchRemoveMembers() {
+  if (selectedMembers.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(`确定批量移除 ${selectedMembers.value.length} 位教师？`, '确认', { type: 'warning' })
+  } catch { return }
+  batchRemoving.value = true
+  const failed = []
+  for (const t of selectedMembers.value) {
+    try {
+      await removeTeacher(msId.value, t.teacherId)
+    } catch {
+      failed.push(t.teacherName)
+    }
+  }
+  batchRemoving.value = false
+  if (failed.length === 0) ElMessage.success('已批量移除')
+  else ElMessage.warning(`${failed.length} 位移除失败: ${failed.join(',')}`)
+  memberTableRef.value?.clearSelection()
+  selectedMembers.value = []
+  fetchData()
+}
+
 const handleBatchInvite = async () => {
   if (selectedCandidates.value.length === 0) return
   inviting.value = true
@@ -248,8 +281,8 @@ const handleBatchInvite = async () => {
 
 const handleRemove = async (row) => {
   try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
-  removingId.value = row.id || row.teacherId
-  try { await removeTeacher(msId.value, row.id || row.teacherId); ElMessage.success('已移除'); fetchData() }
+  removingId.value = row.teacherId
+  try { await removeTeacher(msId.value, row.teacherId); ElMessage.success('已移除'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
   finally { removingId.value = null }
 }
@@ -265,7 +298,7 @@ const handleBatchRemove = async () => {
   try { await ElMessageBox.confirm(`确定批量移除 ${selectedCandidates.value.length} 位教师？`, '确认', { type: 'warning' }) } catch { return }
   const failed = []
   for (const t of selectedCandidates.value) {
-    try { await removeTeacher(msId.value, t.id || t.teacherId) }
+    try { await removeTeacher(msId.value, t.teacherId) }
     catch { failed.push(t.teacherName) }
   }
   if (failed.length === 0) ElMessage.success('已批量移除')

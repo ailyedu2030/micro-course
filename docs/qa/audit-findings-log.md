@@ -75,3 +75,28 @@
 - **根本原因**：按 ID 删除与按课时删除两条路径共用同一服务方法，参数语义错配；前端 `deleteSlideById(row.courseId, row.id)` 传的是课件 ID。
 - **横向扫描**：`DELETE /slides`（按 chapterId/lessonId 删除）语义正确保留；仅 `/{slideId}` 路径受影响。
 - **修复**：新增 `deleteSlideById(courseId, slideId)` 按主键删除（含 slide_pages 级联、文件清理、音频清理），控制器改调新方法。已复测：UI 删除 → "课件已删除" → 列表清空。
+
+## 2026-08-04 · 微专业补测（D13/D14/D15）
+
+### F-2026-08-04-10 · 指派教师复用邀请接口 → 已接受团队成员永远无法指派（P1-C）
+
+- **症状**：课程编排"指派教师"选择已接受团队成员后确认，报"教师已在微专业团队中"。
+- **直接原因**：`handleAssignTeacher` 调用 `inviteTeacher`（POST /teachers），该接口对已存在团队成员抛 `MS_DUPLICATE_TEACHER`。
+- **根本原因**："指派教师到课程"与"邀请新教师"是两个语义不同的操作，前端却复用同一接口；团队记录含 courseId 字段但无更新入口。
+- **横向扫描**：仅课程编排页受影响；团队管理"邀请新教师"路径语义正确。
+- **修复**：新增 `PUT /micro-specialties/{id}/teachers/{teacherId}/course`（assignTeacherToCourse：校验 ACTIVE 成员 + 课程归属 + 同课程仅一名授课教师），前端改用新接口。已复测：指派测试教师2 → "教师已指派" → 行内授课教师更新。
+
+### F-2026-08-04-11 · 课程编排更新复用含 @NotNull courseId 的 DTO → 编辑（含排序）100% 失效（P1-C）
+
+- **症状**：编辑课程（改排序/学分）点保存报"课程ID不能为空"，弹窗不关闭。
+- **直接原因**：`MicroSpecialtyCourseRequest.courseId` 标注 `@NotNull`，更新接口复用该 DTO，而更新路径按 path 的 itemId 操作、请求体不含 courseId → 校验失败。
+- **根本原因**：新增/更新共用 DTO，约束未按接口拆分。
+- **修复**：移除 DTO 层 @NotNull，新增路径在服务层显式校验 courseId。已复测：编辑 sortOrder → "保存成功" → 列表按 sortOrder 重排。
+
+### F-2026-08-04-12 · 团队"批量操作"空壳按钮 + 移除传记录 ID → 移除 100% 失效（P1-C）
+
+- **症状**：批量操作仅切换按钮文案（无选择列/无批量能力）；单条与批量移除均报"资源不存在或已被删除"。
+- **直接原因**：成员表无 `type="selection"` 列，批量模式无实际功能；移除调用传 `row.id`（teaching 记录 id）而接口路径参数为 teacherId（用户 id）。
+- **根本原因**：批量操作功能未开发完整（UI 空壳）；VO 同时含记录 id 与 teacherId，取参错误。
+- **横向扫描**：同源传参缺陷曾发生于教学班"修改状态/移除"（F-2026-08-04-05），本次为同类复发 → 已将该模式纳入问题模式库。
+- **修复**：成员表 expelMode 时显示选择列 + "批量移除(N)"按钮 + `handleBatchRemoveMembers`（按 teacherId 循环移除，含成功/失败反馈）；单条移除统一传 teacherId。已复测：勾选 → 批量移除(1) → 确认 → "已批量移除" → 行消失。

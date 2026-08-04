@@ -85,6 +85,11 @@ export function inviteTeacher(id, data) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/teachers`, data })
 }
 
+// P1-C 修复：指派已入团队教师到课程（独立接口；此前复用 inviteTeacher 必报"已在团队中"）
+export function assignTeacherToCourse(id, teacherId, courseId) {
+  return request({ method: 'PUT', url: `/micro-specialties/${id}/teachers/${teacherId}/course`, params: { courseId } })
+}
+
 export function removeTeacher(id, teacherId) {
   return request({ method: 'DELETE', url: `/micro-specialties/${id}/teachers/${teacherId}` })
 }

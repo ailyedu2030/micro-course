@@ -283,6 +283,16 @@ public class MicroSpecialtyController {
         return R.ok(vo);
     }
 
+    /** 指派已入团队教师到课程（课程编排页"指派教师"）。P1-C 修复：独立接口，不再复用邀请。 */
+    @PutMapping("/{id}/teachers/{teacherId}/course")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<MicroSpecialtyTeacherVO> assignTeacherToCourse(
+            @PathVariable Long id,
+            @PathVariable Long teacherId,
+            @RequestParam Long courseId) {
+        return R.ok(microSpecialtyService.assignTeacherToCourse(id, teacherId, courseId));
+    }
+
     /** 移除教师 */
     @DeleteMapping("/{id}/teachers/{teacherId}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")

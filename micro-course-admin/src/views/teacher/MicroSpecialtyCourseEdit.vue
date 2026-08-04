@@ -138,7 +138,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/user'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, removeCourse, getTeachers, inviteTeacher } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, getCourses, addCourse, updateCourseItem, removeCourse, getTeachers, assignTeacherToCourse } from '@/api/microSpecialty'
 import { getCourses as getAllCourses } from '@/api/course'
 
 const route = useRoute()
@@ -274,11 +274,7 @@ const handleAssignTeacher = async () => {
     if (!valid) { assigning.value = false; return }
   } catch { assigning.value = false; return }
   try {
-    await inviteTeacher(msId.value, {
-      teacherId: assignForm.value.teacherId,
-      role: 'MEMBER',
-      courseId: Number(assignCourse.value.courseId)
-    })
+    await assignTeacherToCourse(msId.value, assignForm.value.teacherId, Number(assignCourse.value.courseId))
     ElMessage.success('教师已指派')
     assignVisible.value = false
     fetchData()
