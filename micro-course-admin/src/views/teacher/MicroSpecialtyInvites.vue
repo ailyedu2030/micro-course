@@ -44,12 +44,13 @@
             <el-button size="small" @click="handleDecline(inv)">拒绝</el-button>
           </div>
           <div v-else class="invite-result" style="display:flex;align-items:center;gap:8px;">
-            <el-tag v-if="inv.status === 'ACTIVE'" type="success" size="small">已接受</el-tag>
-            <el-tag v-else-if="inv.status === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
-            <el-tag v-else-if="inv.status === 'REMOVED'" type="warning" size="small">已移除</el-tag>
-            <el-tag v-else-if="inv.status === 'PENDING_ACADEMIC'" type="warning" size="small">跨学院审批中</el-tag>
+            <!-- P1-C 修复 (2026-08-04): 后端字段为 inviteStatus，原用 inv.status → 状态标签/过滤全部失效 -->
+            <el-tag v-if="inv.inviteStatus === 'ACTIVE'" type="success" size="small">已接受</el-tag>
+            <el-tag v-else-if="inv.inviteStatus === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
+            <el-tag v-else-if="inv.inviteStatus === 'REMOVED'" type="warning" size="small">已移除</el-tag>
+            <el-tag v-else-if="inv.inviteStatus === 'PENDING_ACADEMIC'" type="warning" size="small">跨学院审批中</el-tag>
             <el-tag v-else type="info" size="small">已过期</el-tag>
-            <el-button v-if="inv.status === 'ACTIVE'" size="small" type="danger" plain @click="handleLeave(inv)">退出团队</el-button>
+            <el-button v-if="inv.inviteStatus === 'ACTIVE'" size="small" type="danger" plain @click="handleLeave(inv)">退出团队</el-button>
           </div>
         </div>
       </div>
@@ -146,8 +147,8 @@ const fetchData = async (tab) => {
       const remHours = Math.floor((remMs % 86400000) / 3600000)
       return { ...i, expiring: remMs > 0 && remMs < 3 * 86400000, deadlineText: dl ? (remMs > 0 ? `剩余${remDays} 天 ${remHours} 小时` : '已过期') : '' }
     })
-    if (tab === 'pending') list = list.filter(i => i.status === 'INVITED' || i.status === 'PENDING_ACADEMIC')
-    else list = list.filter(i => i.status !== 'INVITED' && i.status !== 'PENDING_ACADEMIC')
+    if (tab === 'pending') list = list.filter(i => i.inviteStatus === 'INVITED' || i.inviteStatus === 'PENDING_ACADEMIC')
+    else list = list.filter(i => i.inviteStatus !== 'INVITED' && i.inviteStatus !== 'PENDING_ACADEMIC')
     items.value = list
   } catch (e) { ElMessage.error(e?.response?.data?.message || '获取邀请列表失败'); error.value = true }
   finally { loading.value = false }

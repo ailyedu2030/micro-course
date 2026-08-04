@@ -26,7 +26,7 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
     private final StorageApplicationQueryService storageApplicationQueryService;
     private final StorageApplicationPdfGenerator pdfGenerator;
     private final StorageApplicationWordGenerator wordGenerator;
-    private final TransactionTemplate readOnlyTransactionTemplate;
+    private final TransactionTemplate exportTransactionTemplate;
 
     public StorageApplicationExportServiceImpl(
             MicroSpecialtyProposalRepository proposalRepository,
@@ -38,8 +38,11 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
         this.storageApplicationQueryService = storageApplicationQueryService;
         this.pdfGenerator = pdfGenerator;
         this.wordGenerator = wordGenerator;
-        this.readOnlyTransactionTemplate = new TransactionTemplate(transactionManager);
-        this.readOnlyTransactionTemplate.setReadOnly(true);
+        // P1-C 修复 (2026-08-04): 原实现 readOnly=true 事务内执行 SELECT ... FOR UPDATE，
+        // PostgreSQL 拒绝（cannot execute SELECT FOR UPDATE in a read-only transaction）
+        // → Word/PDF 导出 100% 失败（1008）。
+        // 导出快照读取需要 FOR UPDATE 防止导出期间被并发修改，事务必须可写。
+        this.exportTransactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
@@ -59,7 +62,7 @@ public class StorageApplicationExportServiceImpl implements StorageApplicationEx
     private StorageApplicationVO loadExportSnapshot(Long proposalId) {
         // R-007: 保持 getDetail 在事务内（SELECT FOR UPDATE 保护锁 + 只读连接复用）
         // R-007 原计划将 getDetail 移出事务，但测试依赖当前行为，revert 以保证 CI 通过
-        return readOnlyTransactionTemplate.execute(status -> {
+        return exportTransactionTemplate.execute(status -> {
             proposalRepository.selectByIdForUpdate(proposalId);
             StorageApplicationVO data = storageApplicationQueryService.getDetail(proposalId, null);
             if (data == null) {
