@@ -17,6 +17,11 @@ export function updateSettings(settings) {
   return request({ method: 'PUT', url: '/admin/settings', data: settings })
 }
 
+// B10.5 发送测试邮件（真实 SMTP，后端按已保存配置自测发送）
+export function sendTestEmail() {
+  return request({ method: 'POST', url: '/admin/settings/send-test-email' })
+}
+
 /**
  * 切换注册开关
  * PUT /api/admin/settings/register

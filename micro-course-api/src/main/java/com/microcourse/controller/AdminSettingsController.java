@@ -8,11 +8,19 @@ import com.microcourse.dto.ToggleRegisterRequest;
 import com.microcourse.dto.UploadLimitRequest;
 import com.microcourse.service.AdminSettingService;
 import com.microcourse.util.FieldEncryptor;
+import com.microcourse.exception.BusinessException;
+import com.microcourse.exception.ErrorCode;
 import jakarta.validation.Valid;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.mail.internet.MimeMessage;
 import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.stream.Collectors;
 
 /**
  * 系统配置控制器
@@ -53,6 +61,58 @@ public class AdminSettingsController {
     @PreAuthorize("hasRole('ADMIN')")
     public R<Void> updateBatch(@Valid @RequestBody List<SettingUpdateRequest> settings) {
         adminSettingService.updateBatch(settings);
+        return R.ok();
+    }
+
+    /**
+     * B10.5 发送测试邮件（真实 SMTP 发送，替代此前前端模拟占位）。
+     * 使用系统设置中保存的 SMTP 配置向配置邮箱自发送一封测试邮件。
+     */
+    @PostMapping("/send-test-email")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> sendTestEmail() {
+        Map<String, String> cfg = adminSettingService.getAll().stream()
+                .collect(Collectors.toMap(AdminSettingVO::getSettingKey,
+                        v -> v.getSettingValue() == null ? "" : v.getSettingValue(), (a, b) -> b));
+        String host = cfg.getOrDefault("smtpHost", "").trim();
+        String username = cfg.getOrDefault("smtpUsername", "").trim();
+        String password = cfg.getOrDefault("smtpPassword", "");
+        String fromName = cfg.getOrDefault("fromName", "微课平台").trim();
+        if (host.isEmpty() || username.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "请先填写完整的邮件配置");
+        }
+        int port;
+        try {
+            port = Integer.parseInt(cfg.getOrDefault("smtpPort", "587").trim());
+        } catch (NumberFormatException e) {
+            port = 587;
+        }
+        boolean ssl = "true".equalsIgnoreCase(cfg.getOrDefault("useSsl", "false").trim());
+        boolean tls = "true".equalsIgnoreCase(cfg.getOrDefault("useTls", "false").trim());
+
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        sender.setHost(host);
+        sender.setPort(port);
+        sender.setUsername(username);
+        sender.setPassword(password);
+        Properties props = sender.getJavaMailProperties();
+        props.put("mail.transport.protocol", "smtp");
+        props.put("mail.smtp.auth", "true");
+        props.put("mail.smtp.ssl.enable", String.valueOf(ssl));
+        props.put("mail.smtp.starttls.enable", String.valueOf(tls));
+        props.put("mail.smtp.timeout", "8000");
+        props.put("mail.smtp.connectiontimeout", "8000");
+        try {
+            MimeMessage msg = sender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, false, "UTF-8");
+            helper.setFrom(username, fromName);
+            helper.setTo(username);
+            helper.setSubject("微课平台 - SMTP 配置测试邮件");
+            helper.setText("这是一封由微课管理平台发送的测试邮件，用于验证 SMTP 配置是否可用。", false);
+            sender.send(msg);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "邮件发送失败: " + e.getMessage());
+        }
         return R.ok();
     }
 
