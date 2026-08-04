@@ -163,6 +163,7 @@ import { getCourses } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
 import { getExamList, generateExam, deleteExam } from '@/api/exam'
 import { updateExercise } from '@/api/exercise'
+import { formatDateTime } from '@/utils/format'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
@@ -231,8 +232,9 @@ function typeLabel(t) {
 
 function formatTime(t) {
   // P3 修复 (2026-08-04): toLocaleString('zh-CN') 输出斜杠格式（2026/08/03 20:43），
-  // 与全站统一格式 YYYY-MM-DD HH:mm 不一致，改用全局 $formatDateTime
-  return $formatDateTime(t) || '-'
+  // 与全站统一格式 YYYY-MM-DD HH:mm 不一致。注意：script 内不能用模板全局属性
+  // $formatDateTime（ReferenceError），必须 import formatDateTime。
+  return formatDateTime(t) || '-'
 }
 
 function getCourseTitle(courseId) {
