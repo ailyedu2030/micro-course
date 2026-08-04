@@ -193,3 +193,11 @@
   2. `HtmlBlockEditor.load()` 用 `res.data || res`，后端 R 包装 data=null 时回退成整个响应对象（truthy）→ 误走 update 路径（unitId=undefined）；
   3. `createUnitFresh` 未填 `chapter_id`（slide_html_units 非空约束）→ 500；且上传端点硬编码 sectionId=null，课时级 HTML 无法上传。
 - **修复**：工作台 HTML 流程改按 coursewareType 渲染 + 分段面板 null 守卫；load 正确解包 R 包装；后端 createUnit 从 slide 派生 chapter_id；上传端点支持 sectionId；保存后 emit unit-saved 触发父级重载 tree。已复测：课时级 HTML 上传→编辑→"已创建 unit id=2"→分段脚本 5 段渲染。
+
+## 2026-08-05 · 管理端基础功能补测（B2-B9）
+
+### F-2026-08-05-05 · 用户创建表单缺邮箱/手机格式校验（P1-C，规则缺失）
+
+- **症状**：创建用户填非法邮箱（not-an-email）提交无任何提示。
+- **直接原因**：`UserForm.vue` 的 `formRules` 仅含 username/password/confirmPassword/realName/role，email/phone 表单项有 prop 但无规则。
+- **修复**：补齐邮箱正则与手机号（1[3-9] 开头 11 位）格式规则。已复测：提交后提示"请输入正确的邮箱格式/手机号格式"。
