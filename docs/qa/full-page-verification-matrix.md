@@ -618,7 +618,7 @@
 |---|--------|--------------|------|
 | E10.1 | 播放器 UI | 翻页/倍速/全屏/快捷键提示 | ✅ |
 | E10.2 | 图片加载失败重试 | 失败态+重试 | ✅ |
-| E10.3 | 真实渲染 | LibreOffice 渲染后 | ⬜ |
+| E10.3 | 真实渲染 | PPT 上传→渲染失败提示(错误信息+重传按钮路径)；渲染成功依赖容器安装 LibreOffice（环境供给项，已尝试安装但下载超时） | 🟡 |
 
 ### E11 StudentOfflineSession
 | # | 功能点 | 验证动作与证据 | 状态 |
@@ -834,12 +834,12 @@
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|
 | G1.1 | CoursewareWorkbench 四面板 | 工作台加载 | ✅ |
-| G1.2 | AudioManager 音频管理 | 上传/生成 | ⬜ |
-| G1.3 | AudioPanel TTS 面板 | 生成/试听 | ⬜ |
-| G1.4 | InteractiveLessonEditor | 页面编辑保存 | ⬜ |
-| G1.5 | PptFlowEditor/PptPageEditor | 流/页面编辑 | ⬜ |
-| G1.6 | HtmlBlockEditor | HTML 编辑/源码切换 | ⬜ |
-| G1.7 | InteractiveLessonProperties | 文件信息/页数 | ⬜ |
+| G1.2 | AudioManager 音频管理 | 工作台音频面板"生成音频"→后端 /audio/generate 调用链+TTS 降级错误 16006 明确返回；上传控件渲染（Deep 交互依赖 PPT 渲染成功） | 🟡 |
+| G1.3 | AudioPanel TTS 面板 | AI 生成/生成音频按钮存在且可触发后端；MiniMax key 缺失→降级路径验证 | 🟡 |
+| G1.4 | InteractiveLessonEditor | 工作台"第1页"编辑面板（讲述稿 AI 生成/编辑）→ 编辑保存→"讲述稿已保存"回显 | ✅ |
+| G1.5 | PptFlowEditor/PptPageEditor | 四面板挂载于 CoursewareWorkbench；PPT 页编辑依赖 LibreOffice 渲染成功（环境缺失→渲染失败提示+重传路径已验） | 🟡 |
+| G1.6 | HtmlBlockEditor | HTML 课件上传就绪(白名单验证)；html_unit 懒创建链路存在，章节级挂载下编辑器暂不可达（灰度期潜在缺陷已记录） | 🟡 |
+| G1.7 | InteractiveLessonProperties | 文件信息/页数/状态聚合(已上传/已渲染/讲述稿/音频/发布)在工作台展示 | ✅ |
 
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
@@ -852,12 +852,12 @@
 ### G3 storage（申报组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|
-| G3.1 | SignatureBlock 签名/公章 | 上传/预览/移除 | ⬜ |
-| G3.2 | SignatureUploader | 上传校验 | ⬜ |
-| G3.3 | DynamicTableEditor | 动态增删行 | ⬜ |
-| G3.4 | RichTextWithCounter | 字数统计/超限 | ⬜ |
+| G3.1 | SignatureBlock 签名/公章 | 模块4三组意见块渲染；切换图片签名不再冻结（死循环修复）；日期选择正常（D16.8 全流程） | ✅ |
+| G3.2 | SignatureUploader | 图片签名切换→上传控件(仅 jpg/png,2MB 内校验)→本地预览+后端 upload-image 200 返回 URL；上传通道 props 契约修复 | ✅ |
+| G3.3 | DynamicTableEditor | 申报模块4佐证材料内渲染（随模块导航验证）；行增删 Deep 交互未单独演练 | 🟡 |
+| G3.4 | RichTextWithCounter | 申报模块3教学团队简介富文本渲染（随模块导航验证）；字数上限交互未单独演练 | 🟡 |
 | G3.5 | DatePickerYM | 年月日选择 | ✅（草稿保存用） |
-| G3.6 | CourseChapterEditor | 课程表增删行/学分合计 | ⬜ |
+| G3.6 | CourseChapterEditor | 申报模块2课程设置章节表渲染（随模块导航验证）；增删行/学分合计未单独演练 | 🟡 |
 
 ### G4 common/users/profile 组件
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
@@ -897,7 +897,7 @@
 | H15 | 通知生成/轮询 | 通知/已读/跳转；轮询 | 🟡 |
 | H16 | 视频转码 | 视频 8/9 status=READY，此前会话真实播放/进度上报闭环（ffmpeg 已装） | ✅ |
 | H17 | TTS/音频生成 | 生成音频→后端 /audio/generate 调用链+Qwen3 不可用→降级 mmx→MiniMax key 未配置→16006 明确错误（接口与降级路径已验证，环境缺 key） | ✅ |
-| H18 | 课件渲染 | LibreOffice 渲染 | ⬜ |
+| H18 | 课件渲染 | 渲染管线调用链验证（上传→异步渲染→失败错误信息清晰+重传）；LibreOffice 缺失为部署环境依赖，非代码缺陷 | 🟡 |
 | H19 | 线下签到 | 学生窗口内签到(签到成功/✅已签到)+窗口外拒绝；教师手动签到/状态修改(已签到→迟到→已签到)/统计 1已签到（与 D8/D9/E11 同链路） | ✅ |
 | H20 | 候补队列（waitlist） | 容量1满员→支付选课入 WAITLIST→在位学员退课→自动晋升 APPROVED 且 student_count 正确（此前一次失败为测试数据幻影计数，产品链路正常） | ✅ |
 | H21 | 班级导入批量 | 导入/重复跳过 | ✅ |
