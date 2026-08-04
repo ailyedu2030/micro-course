@@ -212,6 +212,12 @@ public interface MicroSpecialtyService {
     List<MicroSpecialtyTeacherVO> listTeachers(Long msId);
 
     /**
+     * 教师端团队管理专用列表：返回全部状态（ACTIVE/INVITED/PENDING_ACADEMIC/DECLINED/REMOVED），
+     * 供负责人重邀/管理。P1-C 修复：公开端点仅返回 ACTIVE（隐私），导致前端"重邀"按钮永不可达。
+     */
+    List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId);
+
+    /**
      * LEAD 发送教师邀请。自动判断跨学院：同学院直接 ACTIVE，
      * 跨学院 → PENDING_ACADEMIC（需教务处审批）。
      *

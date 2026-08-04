@@ -131,7 +131,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { getMicroSpecialtyDetail, getTeachers, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, getTeachersForManage, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
 import { getUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 
@@ -171,7 +171,7 @@ const fetchData = async () => {
   error.value = false; loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value); detail.value = d
-    const { data: t } = await getTeachers(msId.value)
+    const { data: t } = await getTeachersForManage(msId.value)
     const items = t.items || t || []
     const now = Date.now()
     teachers.value = items.map(i => {
@@ -289,7 +289,16 @@ const handleRemove = async (row) => {
 
 const handleReinvite = async (row) => {
   try { await ElMessageBox.confirm(`确定重新邀请「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
-  try { await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
+  // P1-C 修复：重邀请求体必须带 teacherId/role/courseId（此前空 body → "教师ID不能为空"）
+  try {
+    await reinviteTeacher(row.id || row.inviteId, {
+      teacherId: row.teacherId,
+      role: row.role || 'MEMBER',
+      courseId: row.courseId || null
+    })
+    ElMessage.success('已重新邀请')
+    fetchData()
+  }
   catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
 }
 

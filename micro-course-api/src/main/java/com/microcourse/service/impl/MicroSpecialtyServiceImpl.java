@@ -142,6 +142,11 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     }
 
     @Override
+    public List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId) {
+        return queryService.listTeachersForManage(msId);
+    }
+
+    @Override
     public boolean isLeadOf(Long msId, Long userId) {
         return queryService.isLeadOf(msId, userId);
     }

@@ -274,6 +274,13 @@ public class MicroSpecialtyController {
         return R.ok(teachers);
     }
 
+    /** 教师端团队管理列表（负责人专用，含全部状态供重邀/管理）。P1-C 修复。 */
+    @GetMapping("/{id}/teachers/manage")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<MicroSpecialtyTeacherVO>> listTeachersForManage(@PathVariable Long id) {
+        return R.ok(microSpecialtyService.listTeachersForManage(id));
+    }
+
     /** 发送邀请 */
     @PostMapping("/{id}/teachers")
     @PreAuthorize("hasRole('TEACHER')")

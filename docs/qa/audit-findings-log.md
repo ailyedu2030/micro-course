@@ -209,3 +209,14 @@
 - **症状**：管理端打开待审核讨论帖，详情页无"通过/驳回"按钮、无状态标签，只能删除，审核流程不可用。
 - **直接原因**：`getById` 使用的 `convertToVO(post, userMap)` 与列表 `convertToVO(post)` 均未设置 `status` 字段（仅管理端列表转换 `convertToVOForAdmin` 有 int→string 映射）→ 前端 `postData.status` 为 undefined。
 - **修复**：抽取 `applyPostStatus` 统一注入两个 convertToVO。已复测：详情返回 status=PENDING → 通过确认→"审核通过"→已发布+按钮消失。
+
+## 2026-08-05 · 微专业团队补测（D15）
+
+### F-2026-08-05-07 · 重邀功能不可达 + 参数错位（P1-C，两处叠加）
+
+- **症状**：团队页无"重邀"按钮；即使后端直调也报"教师ID不能为空"。
+- **直接原因**：
+  1. 团队列表走公开端点 `listTeachers`（仅返回 ACTIVE，隐私设计）→ DECLINED/REMOVED 成员不显示 → 前端 `v-if="DECLINED||REMOVED"` 的重邀按钮永不可达；
+  2. 前端 `handleReinvite` 发空 body，DTO 校验"教师ID不能为空"；
+  3. 后端控制器把 `request.getTeacherId()` 传给了服务第 4 参 courseId（参数错位，重邀会把课程指派写成教师 ID）。
+- **修复**：新增教师端 `GET /teachers/manage`（含全部状态）；前端发送 teacherId/role/courseId；DTO 补 courseId 字段、控制器映射修正、服务缺省复用原记录课程。已复测：重邀确认→"已重新邀请"→DECLINED→INVITED（已复原）。

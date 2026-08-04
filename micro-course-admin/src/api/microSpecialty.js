@@ -81,6 +81,11 @@ export function getTeachers(id) {
   return request({ method: 'GET', url: `/micro-specialties/${id}/teachers` })
 }
 
+// P1-C 修复：团队管理页专用列表（含 DECLINED/REMOVED 供重邀，公开端点仅 ACTIVE）
+export function getTeachersForManage(id) {
+  return request({ method: 'GET', url: `/micro-specialties/${id}/teachers/manage` })
+}
+
 export function inviteTeacher(id, data) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/teachers`, data })
 }

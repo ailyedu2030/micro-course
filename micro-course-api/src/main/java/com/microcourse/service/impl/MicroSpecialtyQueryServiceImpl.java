@@ -475,6 +475,14 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
         return teachers.stream().map(this::toTeacherVO).collect(Collectors.toList());
     }
+
+    @Override
+    public List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId) {
+        LambdaQueryWrapper<MicroSpecialtyTeacher> w = new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                .orderByAsc(MicroSpecialtyTeacher::getCreatedAt);
+        return msTeacherRepository.selectList(w).stream().map(this::toTeacherVO).collect(Collectors.toList());
+    }
     // ====== 角色鉴权 ======
     @Override
     public boolean isLeadOf(Long msId, Long userId) {
