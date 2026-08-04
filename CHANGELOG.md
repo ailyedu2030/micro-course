@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查五轮 · 申报草稿 P1-C / 学习笔记补全 P1-C / 时间格式 P3)
+
+> 2026-08-04 第五轮：补齐课程分类/标签/章节/视频/日志/系统设置/评级/营收、
+> 教师端申报/邀请/存储预览/成绩/教学班/线下、学生端收藏/学习 tab/笔记等页面交互。
+
+#### P1-C 修复
+- **微专业申报保存草稿必失败**：草稿阶段签名项 URL 为空字符串 ""，
+  后端 `"".startsWith("/uploads/storage/")` 为 false → "签名图片URL无效"。
+  修复：签名/签章 URL 校验对空值（null/空串/空白）放行，仅非空且非白名单前缀拦截。
+- **学习视图"笔记"按钮无功能（功能缺失）**：course_notes 表/实体/仓库早已存在但无接口、
+  前端按钮点击无任何效果。补全：后端 CourseNoteController（列表/创建 upsert/删除）+ 前端
+  note.js API + NotesPanel 笔记 tab（列表/编辑保存/删除）。
+  唯一约束 idx_cn_unique(每用户每章节一条) → 保存为 upsert 语义。
+
+#### P3 修复
+- 5 处表格列 template 覆盖 :formatter（MyProposals/TeacherTeachingClasses/StudentList/
+  TeacherSlideOverview/EnrollmentOverview），时间格式不统一 → 移除覆盖，统一全局格式化。
+
+#### 功能实测（本轮新增覆盖，全部通过）
+- 课程分类/标签新增、章节独立管理页、视频管理上传（入库/状态机/转码失败重试入口）
+- 操作日志详情、系统设置保存、教师评级确认弹窗、营收看板（¥50/分成/排行）
+- 微专业申报草稿保存/我的申报/邀请列表/存储申请预览（Word/PDF）
+- 成绩明细（平均分/及格率/分布）、教师教学班、线下场次列表
+- 学生收藏（学习视图）/取消、学习视图课程/公告/讨论/考试 tab 切换
+- 学习笔记（列表/保存/覆盖更新/删除）
+
+#### 验证
+- mvn package 0 ERROR；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 回归：申报草稿保存成功；笔记同章节重复保存更新同一条（upsert）。
+
 ### Fixed (全页面审查四轮 · 改密码锁号 P0 / 练习视频门槛 P1-C + 20 项功能实测)
 
 > 2026-08-04 第四轮：补齐注册/密码/导入导出/批量审核/课时/题库/考试安排/通知跳转/

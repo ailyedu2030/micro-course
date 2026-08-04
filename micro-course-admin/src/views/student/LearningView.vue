@@ -18,7 +18,7 @@
       :is-favorited="isFavorited"
       @back="goBack"
       @toggle-favorite="toggleFavorite"
-      @show-notes="activeTab = 'course'"
+      @show-notes="activeTab = 'note'"
     />
 
     <!-- ===================== 1.5 课程状态提示 ===================== -->
@@ -92,6 +92,7 @@
           <NotesPanel
             :active-tab="activeTab"
             :current-chapter="currentChapter"
+            :course-id="courseId"
             @change-tab="activeTab = $event"
           />
 

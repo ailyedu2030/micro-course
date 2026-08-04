@@ -369,10 +369,15 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             List<ProposalSignature> entities = new ArrayList<>();
             for (ProposalSignatureItem item : request.getSignatures()) {
                 // S-009: 防止 mass assignment 攻击 — 图片 URL 必须来自合法上传路径
-                if (item.getSignatureImageUrl() != null && !item.getSignatureImageUrl().startsWith("/uploads/storage/")) {
+                // P1-C 修复 (2026-08-04): 草稿阶段签名项 URL 为空字符串 ""，
+                // 原校验 `"".startsWith(...)` 为 false → 保存草稿必失败。
+                // 空值（null/空串/空白）放行，仅非空且非白名单前缀才拦截。
+                if (item.getSignatureImageUrl() != null && !item.getSignatureImageUrl().isBlank()
+                        && !item.getSignatureImageUrl().startsWith("/uploads/storage/")) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "签名图片URL无效");
                 }
-                if (item.getSealImageUrl() != null && !item.getSealImageUrl().startsWith("/uploads/storage/")) {
+                if (item.getSealImageUrl() != null && !item.getSealImageUrl().isBlank()
+                        && !item.getSealImageUrl().startsWith("/uploads/storage/")) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "签章图片URL无效");
                 }
                 ProposalSignature entity = new ProposalSignature();
@@ -407,10 +412,12 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
             for (ProposalSharedUnitItem item : request.getSharedUnits()) {
                 // S-009: 防止 mass assignment 攻击 — 共享单位签名/签章 URL 必须来自合法上传路径
                 if (item.getSignature() != null && item.getSignature().getImageUrl() != null
+                        && !item.getSignature().getImageUrl().isBlank()
                         && !item.getSignature().getImageUrl().startsWith("/uploads/storage/")) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签名图片URL无效");
                 }
                 if (item.getSeal() != null && item.getSeal().getImageUrl() != null
+                        && !item.getSeal().getImageUrl().isBlank()
                         && !item.getSeal().getImageUrl().startsWith("/uploads/storage/")) {
                     throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签章图片URL无效");
                 }
@@ -440,6 +447,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                     sig.setSignatureType(item.getSignature().getType());
                     sig.setSignatureText(item.getSignature().getText());
                     if (item.getSignature().getImageUrl() != null
+                            && !item.getSignature().getImageUrl().isBlank()
                             && !item.getSignature().getImageUrl().startsWith("/uploads/storage/")) {
                         throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签名图片URL无效");
                     }
@@ -447,6 +455,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                 }
                 if (item.getSeal() != null) {
                     if (item.getSeal().getImageUrl() != null
+                            && !item.getSeal().getImageUrl().isBlank()
                             && !item.getSeal().getImageUrl().startsWith("/uploads/storage/")) {
                         throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "共享单位签章图片URL无效");
                     }

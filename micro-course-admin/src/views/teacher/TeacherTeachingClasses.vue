@@ -126,11 +126,7 @@
                           </el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column prop="enrolledAt" label="加入时间" width="160" :formatter="$formatDateTime">
-                        <template #default="{ row }">
-                          <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
-                        </template>
-                      </el-table-column>
+                      <el-table-column prop="enrolledAt" label="加入时间" width="160" :formatter="$formatDateTime" />
                       <el-table-column label="操作" width="140" fixed="right">
                         <template #default="{ row }">
                           <el-button type="primary" link size="small" @click="handleChangeStatus(cls, row)">

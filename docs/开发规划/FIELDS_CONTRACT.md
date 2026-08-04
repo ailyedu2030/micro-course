@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 284 | Vue 视图数: 60 | Controller 数: 76 | API 文件数: 45
+> 实体数: 284 | Vue 视图数: 60 | Controller 数: 77 | API 文件数: 46
 
 ---
 
@@ -836,6 +836,8 @@
 | CourseExercise | /api/courses/{courseId}/exercises | 9 | - |
 
 | CourseFavorite | /api | 7 | - |
+
+| CourseNote | /api/course-notes | 3 | - |
 
 | CourseOfflineSession | /api/courses/{courseId}/offline-sessions | 6 | - |
 
