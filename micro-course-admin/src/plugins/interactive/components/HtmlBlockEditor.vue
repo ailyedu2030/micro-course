@@ -79,6 +79,7 @@ const props = defineProps({
   courseId: { type: Number, required: true },
   sectionId: { type: Number, required: true }
 })
+const emit = defineEmits(['unit-saved'])
 
 const unit = ref(null)
 const htmlContent = ref('')
@@ -108,7 +109,12 @@ const quillOptions = {
 
 async function load() {
   const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
-  unit.value = res.data || res
+  // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
+  // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
+  // （PUT /html/units/undefined → 500），导致单元永远无法创建。
+  const payload = res?.data
+  const unitData = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
+  unit.value = unitData || null
   if (unit.value) {
     htmlContent.value = unit.value.htmlSanitized || unit.value.htmlContent || ''
     htmlDirty.value = false
@@ -133,11 +139,13 @@ async function handleSave() {
         fileSizeBytes: new Blob([htmlContent.value]).size
       }
       const res = await createHtmlUnit(props.courseId, props.sectionId, dto)
-      ElMessage.success(`已创建 unit id=${res.data || res}`)
+      ElMessage.success(`已创建 unit id=${res?.data?.data ?? res?.data ?? res}`)
     }
     ElMessage.success('已保存')
     htmlDirty.value = false
     await load()
+    // 通知工作台刷新 tree（单元创建/更新后分段脚本面板才能正确渲染）
+    emit('unit-saved')
   } catch (e) {
     ElMessage.error('保存失败: ' + (e.message || '未知错误'))
   } finally {

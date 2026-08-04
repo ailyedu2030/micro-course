@@ -838,7 +838,7 @@
 | G1.3 | AudioPanel TTS 面板 | AI 生成/生成音频按钮存在且可触发后端；MiniMax key 缺失→降级路径验证 | 🟡 |
 | G1.4 | InteractiveLessonEditor | 工作台"第1页"编辑面板（讲述稿 AI 生成/编辑）→ 编辑保存→"讲述稿已保存"回显 | ✅ |
 | G1.5 | PptFlowEditor/PptPageEditor | PPT 真实渲染后页图片可用；v1 页编辑器讲述稿编辑/生成音频链路已验证；v2 四面板跳转逻辑依赖 slide_ppt_pages 表（当前渲染写入 slide_pages，独立表未填充→面板暂不可达，已记录） | 🟡 |
-| G1.6 | HtmlBlockEditor | HTML 课件上传就绪(白名单验证)；html_unit 懒创建链路存在，章节级挂载下编辑器暂不可达（灰度期潜在缺陷已记录） | 🟡 |
+| G1.6 | HtmlBlockEditor | 课时级 HTML 上传→工作台 HTML 流程挂载→编辑保存→"已创建 unit id=2"→单元落库(chapter/section/slide 关联)→分段脚本 5 段编辑器渲染（修复前：tree 条件不可达+load 误判 R 包装走 update/undefined+chapter_id 非空 500） | ✅ |
 | G1.7 | InteractiveLessonProperties | 文件信息/页数/状态聚合(已上传/已渲染/讲述稿/音频/发布)在工作台展示 | ✅ |
 
 ### G2 learning-view（学习视图组件）

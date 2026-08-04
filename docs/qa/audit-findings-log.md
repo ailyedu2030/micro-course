@@ -184,3 +184,12 @@
 
 - **症状**：PPT 上传后"课件渲染失败"。
 - **修复**：容器安装 libreoffice-impress 26.2.4 + fonts-noto-cjk（aliyun 镜像加速）。已复测：渲染 pages=1、status=2、学生端真实播放。**部署要求：容器镜像必须包含 LibreOffice + 中文字体，否则 PPT 课件渲染失败。**
+
+### F-2026-08-05-04 · HTML 课件单元懒创建死链（P1-C，三处叠加）
+
+- **症状**：HTML 课件上传后工作台 HTML 流程不可达；即使进入，保存报 500（`PUT /html/units/undefined`），单元永远无法创建。
+- **直接原因（三处叠加）**：
+  1. `CoursewareWorkbench` HTML 流程条件 `tree?.type === 'HTML'`，而 tree 依赖 htmlUnit → 首次上传无 unit 时编辑器不可达；
+  2. `HtmlBlockEditor.load()` 用 `res.data || res`，后端 R 包装 data=null 时回退成整个响应对象（truthy）→ 误走 update 路径（unitId=undefined）；
+  3. `createUnitFresh` 未填 `chapter_id`（slide_html_units 非空约束）→ 500；且上传端点硬编码 sectionId=null，课时级 HTML 无法上传。
+- **修复**：工作台 HTML 流程改按 coursewareType 渲染 + 分段面板 null 守卫；load 正确解包 R 包装；后端 createUnit 从 slide 派生 chapter_id；上传端点支持 sectionId；保存后 emit unit-saved 触发父级重载 tree。已复测：课时级 HTML 上传→编辑→"已创建 unit id=2"→分段脚本 5 段渲染。
