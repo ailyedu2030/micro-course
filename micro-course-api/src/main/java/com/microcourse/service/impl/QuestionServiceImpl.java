@@ -641,10 +641,11 @@ public class QuestionServiceImpl implements QuestionService {
 
         ExcelWriter writer = ExcelUtil.getWriter(true);
         try {
-            writer.addHeaderAlias("id", "题目ID");
-            writer.addHeaderAlias("courseId", "课程ID");
-            writer.addHeaderAlias("courseTitle", "课程名称");
-            writer.addHeaderAlias("teacherName", "出题教师");
+            // P1-C 修复 (2026-08-04): 导出列序与批量导入解析列序不一致——
+            // 导入按固定 index 读取：0=类型,1=内容,2=选项,3=答案,4=部分分,5=解析,6=难度；
+            // 导出原顺序 [ID,课程ID,课程名称,出题教师,类型,...] 导致导出的文件无法再导入
+            // （"难度值不是有效数字"/字段错位）。修正：前 7 列严格对齐导入模板，
+            // ID/课程等附加列放后面（导入时忽略）。
             writer.addHeaderAlias("questionType", "题目类型");
             writer.addHeaderAlias("content", "题目内容");
             writer.addHeaderAlias("options", "选项");
@@ -653,6 +654,10 @@ public class QuestionServiceImpl implements QuestionService {
             writer.addHeaderAlias("explanation", "解析");
             writer.addHeaderAlias("difficulty", "难度");
             writer.addHeaderAlias("status", "状态");
+            writer.addHeaderAlias("id", "题目ID");
+            writer.addHeaderAlias("courseId", "课程ID");
+            writer.addHeaderAlias("courseTitle", "课程名称");
+            writer.addHeaderAlias("teacherName", "出题教师");
             writer.addHeaderAlias("createdAt", "创建时间");
 
             List<Map<String, Object>> rows = new ArrayList<>();
