@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查六轮 · 评价提交 P0 + 真实流程补测)
+
+> 2026-08-04 第六轮：补齐此前未真实交互的流程（评价提交/审核驳回/置顶精华/编辑删除/
+> 退款/申报审批/用户增删改等），发现并修复评价提交 500。
+
+#### P0 修复
+- **课程评价提交必现 500（服务器错误）**：learning_progress 同 (user,course) 存在多条记录时
+  （数据异常/并发/迁移残留），CourseReviewServiceImpl 进度查询 selectOne 抛
+  TooManyResultsException → 评价提交失败。修复：进度查询 orderBy updatedAt DESC + LIMIT 1
+  取最近一条；横向核对 LearningProgressServiceImpl 已有同类保护，无其他遗漏。
+
+#### 功能实测（本轮新增覆盖，全部通过）
+- 评价提交全链路（造进度≥80% → 写评价 → 提交 → 入库待审 → 管理端通过）
+- 课程驳回（驳回原因入库 REJECTED）、讨论管理（审核通过/置顶/取消置顶/精华）
+- 用户编辑保存/删除（软删除状态机）、练习编辑保存、题目编辑/删除
+- 订单退款（确认 → REFUNDED + 选课 CANCELLED 权限收回）
+- 微专业申报提交（完整校验拦截不完整草稿 → 补全 → PENDING_REVIEW → 教务批准 APPROVED）
+- 操作日志详情、系统设置保存、视频上传（转码失败有重试入口）
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿；ESLint 0 error。
+- 回归：评价提交成功并入库；审批/驳回/退款/增删改状态机正确流转。
+
 ### Fixed (全页面审查五轮 · 申报草稿 P1-C / 学习笔记补全 P1-C / 时间格式 P3)
 
 > 2026-08-04 第五轮：补齐课程分类/标签/章节/视频/日志/系统设置/评级/营收、

@@ -97,7 +97,12 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
                 LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
                 progressWrapper.eq(LearningProgress::getUserId, userId)
-                        .eq(LearningProgress::getCourseId, courseId);
+                        .eq(LearningProgress::getCourseId, courseId)
+                        .orderByDesc(LearningProgress::getUpdatedAt)
+                        .last("LIMIT 1");
+                // P0 修复 (2026-08-04): learning_progress 无 (user,course) 唯一约束，
+                // 数据异常/并发可能产生多条 → selectOne 抛 TooManyResultsException 500，
+                // 评价提交必现"服务器错误"。改为取最近一条，并在下方横向修复同类查询。
                 LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
                 boolean progressOk = false;
                 if (progress != null) {
