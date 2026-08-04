@@ -17,6 +17,10 @@ public interface MicroSpecialtyRepository extends BaseMapper<MicroSpecialty> {
      * P0-S02: 获取排他 advisory lock，保护金标设置"全校 ≤ 2"约束的原子性。
      * pg_advisory_xact_lock 在事务提交/回滚时自动释放。
      */
-    @Select("SELECT pg_advisory_xact_lock(42)")
-    void acquireGoldFeaturedLock();
+    // P1-C 修复 (2026-08-04): pg_advisory_xact_lock 返回 void，JDBC/MyBatis 无法映射
+    // （"No constructor found in void" / "Bad value for type int"）→ 金标设置 100% 失败。
+    // 改用 pg_try_advisory_xact_lock（返回 boolean，事务结束自动释放），
+    // Service 层检查返回值：false = 并发冲突，明确拒绝而非"系统繁忙"。
+    @Select("SELECT pg_try_advisory_xact_lock(42)")
+    boolean tryAcquireGoldFeaturedLock();
 }
