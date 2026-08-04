@@ -17,6 +17,9 @@ export function useVideoLoadOrchestrator(options = {}) {
     loadLocalPosition = () => {},
     loadNotesFromStorage = () => {},
     showObjectivesOverlay = () => {},
+    // P1-C 修复 (2026-08-04): VideoPlayer 传入 startVideoProgressHeartbeat 但本函数
+    // 从未解构/调用 → 心跳从未启动 → 视频播放进度不上报（学习进度/断点续播失效）。
+    startVideoProgressHeartbeat = () => {},
     isComponentUnmounted = false,
     onLoadError
   } = options
@@ -51,6 +54,8 @@ export function useVideoLoadOrchestrator(options = {}) {
       if (getIsUnmounted()) return false
 
       initPlayer()
+      // 播放器初始化完成后启动进度心跳（每 10s 上报 + 页面隐藏时冲刷）
+      startVideoProgressHeartbeat()
       await Promise.all([loadChapters(), loadProgress(), loadDiscussions()])
       if (getIsUnmounted()) return false
 
