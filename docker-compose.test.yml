@@ -6,10 +6,12 @@ services:
   postgres-test:
     image: postgres:17-alpine
     container_name: microcourse-pg-test
+    command: ["postgres", "-c", "timezone=Asia/Shanghai"]
     environment:
       POSTGRES_DB: micro_course_test
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
+      TZ: Asia/Shanghai
     ports:
       - "5433:5432"
     healthcheck:

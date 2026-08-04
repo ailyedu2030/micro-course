@@ -18,10 +18,13 @@ services:
       - "pg_stat_statements.track=top"
       - "-c"
       - "pg_stat_statements.save=on"
+      - "-c"
+      - "timezone=Asia/Shanghai"
     environment:
       POSTGRES_DB: micro_course
       POSTGRES_USER: ${DB_USERNAME}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Shanghai
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
@@ -73,6 +76,7 @@ services:
           memory: 1G
           cpus: '1.0'
     environment:
+      TZ: Asia/Shanghai
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/micro_course
       DB_USERNAME: ${DB_USERNAME}

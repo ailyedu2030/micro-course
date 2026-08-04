@@ -54,3 +54,14 @@
 - **根本原因**：教师端功能缺少教师可用的学生搜索接口，复用了管理端接口。
 - **横向扫描**：仅教学班添加学生弹窗使用该接口（教师端）；其他教师页面使用各自专用接口。
 - **修复**：新增 `GET /api/users/students/search`（TEACHER/ADMIN/ACADEMIC，仅返回 id/realName/studentNo/avatar/status 最小字段），前端切到 `searchStudents`。已复测：教师搜索 teststudentx 命中并成功添加。
+
+## 2026-08-04 · 线下课签到补测（D8/D9/E11）
+
+### F-2026-08-04-08 · 服务端时区 UTC 导致签到窗口/日期错位 8 小时（P1-C）
+
+- **症状**：本地 17:18（北京时间）学生端点击签到提示"不在签到时间窗口内"；服务端创建 09:10 场次反而可签到。
+- **直接原因**：API 容器与 DB 时区均为 UTC；`OfflineSessionServiceImpl.checkin` 用 `LocalDate.now()/LocalTime.now()`（JVM 默认时区 = UTC）与用户录入的北京时间场次比较，窗口整体偏移 8 小时。
+- **根本原因**：`spring.jackson.time-zone: Asia/Shanghai` 只作用于 Jackson 序列化，不改变 JVM 默认时区；容器无 `TZ` 环境变量。所有依赖 `LocalDate.now()/LocalTime.now()` 的业务（线下签到日期/窗口、考试/练习时间窗、周报边界等）均受影响；服务端生成的 created_at/签到时间按 UTC 落库并在 UI 显示（本地 17:10 的操作显示为 09:10）。
+- **横向扫描**：`LocalDate.now()`/`LocalTime.now()` 无参调用分布在签到、考试、练习、报告、徽章等模块；DB 层 `now()` 默认值同样按 UTC。修复点：应用启动 static 块强制 `TimeZone.setDefault(Asia/Shanghai)`（覆盖容器内外全部启动方式）、compose 补 `TZ: Asia/Shanghai`、postgres 补 `timezone=Asia/Shanghai`、staging DB `ALTER DATABASE ... SET timezone`。
+- **防止再发**：业务时区统一约定 Asia/Shanghai 并写入启动代码；新增任何"当前时间"判断必须使用同一时区来源；部署脚本（local-dev-deploy.sh）需在容器环境加 TZ（当前由应用 static 块兜底）。
+- **验证**：重启后北京窗场次（17:15 开始）签到 200 成功、UTC 探针场次（09:10 开始）被拒；学生 UI 点击签到 → "签到成功" → ✅ 已签到。

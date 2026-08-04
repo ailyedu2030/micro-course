@@ -1,6 +1,7 @@
 package com.microcourse;
 
 import jakarta.annotation.PostConstruct;
+import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +31,14 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class MicroCourseApplication {
 
     private static final Logger log = LoggerFactory.getLogger(MicroCourseApplication.class);
+
+    // P1-C 修复：业务时区统一为 Asia/Shanghai。
+    // 容器默认 UTC 导致 LocalDate.now()/LocalTime.now() 与用户录入时间错位 8 小时：
+    // 线下课签到窗口、考试/练习日期判断等全部失效。static 块在 Spring 启动前执行，
+    // 保证 JVM 内所有 java.time 无参 now() 使用北京时间。
+    static {
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Shanghai"));
+    }
 
     @Value("${video.sign.secret:}")
     private String videoSignSecret;
