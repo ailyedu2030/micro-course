@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.StudentSearchVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.TeacherStatusRequest;
@@ -119,6 +120,32 @@ public class UserServiceImpl implements UserService {
             }
         }
         return queryService.pageUsers(query);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentSearchVO> searchStudents(String keyword, int size) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getRole, "STUDENT")
+                .eq(User::getStatus, 1)
+                .select(User::getId, User::getRealName, User::getUsername, User::getStudentNo, User::getAvatar, User::getStatus)
+                .last("LIMIT " + Math.min(Math.max(size, 1), 100));
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(User::getRealName, kw)
+                    .or().like(User::getStudentNo, kw)
+                    .or().like(User::getUsername, kw));
+        }
+        return userRepository.selectList(wrapper).stream().map(u -> {
+            StudentSearchVO vo = new StudentSearchVO();
+            vo.setId(u.getId());
+            vo.setRealName(u.getRealName());
+            vo.setUsername(u.getUsername());
+            vo.setStudentNo(u.getStudentNo());
+            vo.setAvatar(u.getAvatar());
+            vo.setStatus(u.getStatus());
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     @Override

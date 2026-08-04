@@ -5,6 +5,11 @@ export function getTeachingClasses(params) {
   return request({ method: 'GET', url: '/teaching-classes', params })
 }
 
+// P1-C 修复：教师端添加教学班学生的搜索接口（管理端 /users 对教师 403）
+export function searchStudents(params) {
+  return request({ method: 'GET', url: '/users/students/search', params })
+}
+
 // 详情
 export function getTeachingClassById(id) {
   return request({ method: 'GET', url: `/teaching-classes/${id}` })
