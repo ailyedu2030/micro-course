@@ -159,7 +159,7 @@
                 @click="handleGrade(row)"
                aria-label="编辑"
 >
-<el-icon><Edit /></el-icon>{{ row.score != null ? '查看' : '批改' }}
+<el-icon><Edit /></el-icon>{{ row.score != null && !row.needsManualGrading ? '查看' : '批改' }}
               </el-button>
             </template>
           </el-table-column>
@@ -203,6 +203,24 @@
         <el-form-item label="课程">
           <el-input :model-value="currentStudent?.courseName || ''" disabled />
         </el-form-item>
+        <!-- P1-C 修复 (2026-08-04): 主观题逐题批改区 -->
+        <template v-if="gradeForm.pendingQuestions && gradeForm.pendingQuestions.length">
+          <el-divider content-position="left">主观题批改（{{ gradeForm.pendingQuestions.length }} 题待批）</el-divider>
+          <div v-for="(q, qi) in gradeForm.pendingQuestions" :key="qi" class="manual-grade-item">
+            <div class="mg-question">
+              <span class="mg-label">第 {{ qi + 1 }} 题</span>
+              <div class="mg-answer">学生答案：{{ q.studentAnswer || '（未作答）' }}</div>
+              <div class="mg-answer">满分：{{ q.maxScore }}</div>
+            </div>
+            <el-form-item label="得分" :prop="`pendingQuestions.${qi}.score`">
+              <el-input-number v-model="q.score" :min="0" :max="Number(q.maxScore) || 100" :step="0.5" controls-position="right" class="score-input" />
+            </el-form-item>
+            <el-form-item label="评语">
+              <el-input v-model="q.comment" type="textarea" :rows="2" placeholder="该题评语（选填）" maxlength="200" />
+            </el-form-item>
+          </div>
+        </template>
+        <template v-else>
         <el-form-item label="分数" prop="score" required>
           <el-input-number
             v-model="gradeForm.score"
@@ -225,11 +243,15 @@
             show-word-limit
           />
         </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="gradeVisible = false">关闭</el-button>
-        <el-button v-if="!isReadOnlyGradeView" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
+        <el-button v-if="!isReadOnlyGradeView && !(gradeForm.pendingQuestions && gradeForm.pendingQuestions.length)" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
           提交成绩
+        </el-button>
+        <el-button v-if="gradeForm.pendingQuestions && gradeForm.pendingQuestions.length" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmManualGrade">
+          提交批改
         </el-button>
       </template>
     </el-dialog>
@@ -250,7 +272,7 @@ import { GridComponent, TooltipComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { getCourses } from '@/api/course'
 import { getDepartments } from '@/api/department'
-import { getGrades, submitGrade } from '@/api/grade'
+import { getGrades, submitGrade, manualGrade } from '@/api/grade'
 import { useUserStore } from '@/store/user'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
@@ -298,7 +320,8 @@ const savingGrade = ref(false)
 const gradeFormRef = ref(null)
 const gradeForm = reactive({
   score: null,
-  comment: ''
+  comment: '',
+  pendingQuestions: []
 })
 
 const gradeRules = {
@@ -409,7 +432,11 @@ function normalizeGradeItems(items) {
     score: item.score != null ? Math.round(item.score * 10) / 10 : null,
     comment: item.comment || '',
     gradedAt: item.gradedAt || item.updatedAt || null,
-    enrollmentId: item.enrollmentId
+    enrollmentId: item.enrollmentId,
+    // P1-C 修复 (2026-08-04): 保留待批改标记与题目，供批改入口/逐题批改使用
+    recordId: item.recordId,
+    needsManualGrading: item.needsManualGrading,
+    pendingQuestions: item.pendingQuestions || []
   }))
 }
 
@@ -569,6 +596,13 @@ function handleGrade(row) {
   currentStudent.value = row
   gradeForm.score = row.score ?? null
   gradeForm.comment = row.comment || ''
+  gradeForm.pendingQuestions = (row.pendingQuestions || []).map((q) => ({
+    questionId: q.questionId,
+    studentAnswer: q.studentAnswer,
+    maxScore: q.maxScore,
+    score: null,
+    comment: ''
+  }))
   gradeVisible.value = true
 }
 
@@ -606,6 +640,37 @@ async function confirmGrade() {
     fetchData()
   } catch {
     ElMessage.error('提交失败，请稍后重试')
+  } finally {
+    savingGrade.value = false
+  }
+}
+
+// P1-C 修复 (2026-08-04): 主观题逐题人工批改（调后端 manual-grade）
+async function confirmManualGrade() {
+  if (savingGrade.value) return
+  const questions = gradeForm.pendingQuestions || []
+  if (!questions.length || !currentStudent.value?.recordId) {
+    ElMessage.warning('无待批改题目或记录缺失')
+    return
+  }
+  if (questions.some((q) => q.score == null)) {
+    ElMessage.warning('请为每道主观题填写得分')
+    return
+  }
+  savingGrade.value = true
+  try {
+    for (const q of questions) {
+      await manualGrade(currentStudent.value.recordId, {
+        questionId: q.questionId,
+        score: q.score,
+        comment: q.comment || ''
+      })
+    }
+    ElMessage.success('批改完成')
+    gradeVisible.value = false
+    fetchData()
+  } catch {
+    ElMessage.error('批改失败，请稍后重试')
   } finally {
     savingGrade.value = false
   }

@@ -444,6 +444,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         GradingResult result = new GradingResult();
         result.questionId = question.getId();
         result.questionType = question.getQuestionType();
+        result.answer = userAnswer;
 
         if (userAnswer == null) {
             result.score = 0;
@@ -731,6 +732,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private static class GradingResult {
         Long questionId;
         String questionType;
+        String answer;
         Integer score;
         Boolean isCorrect;
         boolean needsManualGrading = false;
