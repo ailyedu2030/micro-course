@@ -58,6 +58,8 @@ export default {
     password: '密码',
     rememberMe: '记住我',
     forgotPassword: '忘记密码',
+    forgotTipTitle: '如何找回密码？',
+    forgotTipBody: '为保证账号安全，请联系管理员为您重置密码。管理员可在「用户管理 → 重置密码」中完成操作，重置后请使用新密码登录。',
     invalidCredentials: '用户名或密码错误',
     noAccount: '还没有账号？',
     registerNow: '立即注册',

@@ -3,6 +3,7 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.ResetPasswordRequest;
 import com.microcourse.dto.StudentSearchVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
@@ -297,6 +298,22 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.updateById(user);
         return convertToVO(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(Long id, ResetPasswordRequest request) {
+        if (!PASSWORD_PATTERN.matcher(request.getNewPassword()).matches()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+        }
+        User user = userRepository.selectById(id);
+        if (user == null || user.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.updateById(user);
+        log.info("管理员重置用户密码: userId={}, operator={}", id, SecurityUtil.getCurrentUserId());
     }
 
     @Override

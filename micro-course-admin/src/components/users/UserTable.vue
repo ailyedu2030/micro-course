@@ -139,6 +139,7 @@
             <slot name="actions" :row="row">
               <el-button type="primary" link size="small" @click="$emit('view-detail', row)">详情</el-button>
               <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+              <el-button type="info" link size="small" @click="$emit('reset-password', row)">重置密码</el-button>
               <el-button type="danger" link size="small" @click="$emit('delete', row)">删除</el-button>
             </slot>
           </template>

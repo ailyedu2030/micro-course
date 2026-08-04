@@ -6,6 +6,9 @@ export function getPublicProfile(id) { return request({ method: 'GET', url: `/us
 export function createUser(data) { return request({ method: 'POST', url: '/users', data }) }
 export function updateUser(id, data) { return request({ method: 'PUT', url: `/users/${id}`, data }) }
 export function updateUserStatus(id, data) { return request({ method: 'PUT', url: `/users/${id}/status`, data }) }
+
+// A1.7 忘记密码兜底链路：管理员重置用户密码
+export function resetUserPassword(id, data) { return request({ method: 'PUT', url: `/users/${id}/password`, data }) }
 export function updateTeacherStatus(id, data) { return request({ method: 'PUT', url: `/users/${id}/teacher-status`, data }) }
 
 /**

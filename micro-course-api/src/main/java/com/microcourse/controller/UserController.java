@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.ResetPasswordRequest;
 import com.microcourse.dto.StudentSearchVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
@@ -127,9 +128,18 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     @AuditedLog("更新用户信息")
     public R<UserVO> update(@PathVariable Long id,
-                             @Valid @RequestBody UserUpdateRequest request) {
+                            @Valid @RequestBody UserUpdateRequest request) {
         UserVO vo = userService.updateUser(id, request);
         return R.ok(vo);
+    }
+
+    /** A1.7 忘记密码兜底链路：管理员重置用户密码 */
+    @PutMapping("/{id}/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> resetPassword(@PathVariable Long id,
+                                 @Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(id, request);
+        return R.ok();
     }
 
     /**

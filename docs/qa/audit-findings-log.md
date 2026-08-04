@@ -117,3 +117,13 @@
 - **直接原因**：父组件传 `:signature-uploader`/`:seal-uploader`，但 `storage/SignatureBlock.vue` 只声明 `uploadHandler` prop 且两个 SignatureUploader 均绑定 `uploadHandler`（undefined）→ 上传通道为空 → CommonSignatureUploader 走"未配置上传通道"分支。
 - **根本原因**：父子 props 契约名不一致（signature-uploader vs uploadHandler），且未按 签名/公章 分别接线。
 - **修复**：SignatureBlock 新增 `signatureUploader`/`sealUploader` props 并分别绑定；后端 `POST /storage-applications/{id}/upload-image` 已 curl 验证 200 返回 URL。已复测：切换图片签名不再冻结、上传控件正常渲染。
+
+## 2026-08-04 · 登录/账号补测（A1）
+
+### F-2026-08-04-15 · 忘记密码链路完全缺失 → 用户无法找回密码（P1-C，功能未开发）
+
+- **症状**：登录页无"忘记密码"入口；全项目（前端/后端）无任何密码重置实现（仅 i18n 残留翻译键）。
+- **直接原因**：未开发找回/重置密码功能。
+- **根本原因**：产品规划缺失 + 后端无邮件基建（无 JavaMailSender/spring.mail），自助邮件重置不可行。
+- **横向扫描**：管理员用户管理页亦无重置密码入口（用户被锁只能靠 DBA/直改 DB）。
+- **修复**：按校园平台标准实现管理员"重置密码"兜底链路——后端 `PUT /api/users/{id}/password`（ADMIN，密码强度校验同注册）；前端 UserTable 增加"重置密码"行操作 + 弹窗（新密码/确认一致性校验）；登录页增加"忘记密码"链接 + 引导弹窗（联系管理员）。已复测：管理员重置后新密码登录 200、旧密码 1001；UI 弹窗提交"密码重置成功"。

@@ -58,6 +58,8 @@ export default {
     password: 'Password',
     rememberMe: 'Remember me',
     forgotPassword: 'Forgot password',
+    forgotTipTitle: 'How to reset your password?',
+    forgotTipBody: 'For account security, please contact the administrator to reset your password. Administrators can reset it in "User Management → Reset Password".',
     invalidCredentials: 'Invalid username or password',
     noAccount: 'No account yet?',
     registerNow: 'Register now',

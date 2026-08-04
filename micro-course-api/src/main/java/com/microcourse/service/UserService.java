@@ -9,6 +9,7 @@ import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
 import com.microcourse.dto.UserUpdateRequest;
 import com.microcourse.dto.UserVO;
+import com.microcourse.dto.ResetPasswordRequest;
 import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,6 +28,11 @@ public interface UserService {
     UserVO createUser(UserCreateRequest request);
 
     UserVO updateUser(Long id, UserUpdateRequest request);
+
+    /**
+     * 管理员重置用户密码（A1.7 忘记密码兜底链路）。
+     */
+    void resetPassword(Long id, ResetPasswordRequest request);
 
     void updateStatus(Long id, UserStatusRequest request);
 
