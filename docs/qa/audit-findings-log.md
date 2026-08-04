@@ -65,3 +65,13 @@
 - **横向扫描**：`LocalDate.now()`/`LocalTime.now()` 无参调用分布在签到、考试、练习、报告、徽章等模块；DB 层 `now()` 默认值同样按 UTC。修复点：应用启动 static 块强制 `TimeZone.setDefault(Asia/Shanghai)`（覆盖容器内外全部启动方式）、compose 补 `TZ: Asia/Shanghai`、postgres 补 `timezone=Asia/Shanghai`、staging DB `ALTER DATABASE ... SET timezone`。
 - **防止再发**：业务时区统一约定 Asia/Shanghai 并写入启动代码；新增任何"当前时间"判断必须使用同一时区来源；部署脚本（local-dev-deploy.sh）需在容器环境加 TZ（当前由应用 static 块兜底）。
 - **验证**：重启后北京窗场次（17:15 开始）签到 200 成功、UTC 探针场次（09:10 开始）被拒；学生 UI 点击签到 → "签到成功" → ✅ 已签到。
+
+## 2026-08-04 · 互动课件补测（D10/D11）
+
+### F-2026-08-04-09 · 课件删除接口把 slideId 当 sectionId 查询 → 删除 100% 失效（P1-C）
+
+- **症状**：课件列表点击"删除"→ 确认后报"未找到该课时的课件"，行不消失。
+- **直接原因**：`DELETE /api/courses/{courseId}/slides/{slideId}` 控制器调用 `slideService.deleteSlide(courseId, slideId)`，该方法按 `section_id = ?` 查询课件（把 slideId 当 sectionId），永远查不到 → `SLIDE_NOT_FOUND`。
+- **根本原因**：按 ID 删除与按课时删除两条路径共用同一服务方法，参数语义错配；前端 `deleteSlideById(row.courseId, row.id)` 传的是课件 ID。
+- **横向扫描**：`DELETE /slides`（按 chapterId/lessonId 删除）语义正确保留；仅 `/{slideId}` 路径受影响。
+- **修复**：新增 `deleteSlideById(courseId, slideId)` 按主键删除（含 slide_pages 级联、文件清理、音频清理），控制器改调新方法。已复测：UI 删除 → "课件已删除" → 列表清空。

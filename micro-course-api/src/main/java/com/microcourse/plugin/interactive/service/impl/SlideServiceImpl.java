@@ -816,6 +816,22 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void deleteSlideById(Long courseId, Long slideId) {
+        verifyOwner(courseId);
+        CourseSlide slide = courseSlideMapper.selectById(slideId);
+        if (slide == null || !slide.getCourseId().equals(courseId)) {
+            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "课件不存在或已被删除");
+        }
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, slideId));
+        courseSlideMapper.deleteById(slideId);
+        registerSlideCleanup(courseId, slideId);
+        if (slide.getSectionId() != null) {
+            cleanupAudioFiles(courseId, slide.getSectionId());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deletePage(Long courseId, Integer pageNumber, Long sectionId) {
         verifyOwner(courseId);
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()

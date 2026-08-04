@@ -32,6 +32,13 @@ public interface SlideService {
 
     void deleteSlide(Long courseId, Long sectionId);
 
+    /**
+     * 按课件 ID 删除（DELETE /courses/{courseId}/slides/{slideId}）。
+     * P1-C 修复：此前复用按 sectionId 删除的方法，把 slideId 当 sectionId 查询
+     * 永远查不到 → 课件删除功能 100% 失效。
+     */
+    void deleteSlideById(Long courseId, Long slideId);
+
     void deletePage(Long courseId, Integer pageNumber, Long sectionId);
 
     SlidePageVO updatePage(Long courseId, Integer pageNumber, java.util.Map<String, Object> body);

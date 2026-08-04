@@ -147,7 +147,7 @@ public class SlideController {
     public R<Void> deleteSlideById(@PathVariable Long courseId,
                                     @PathVariable Long slideId) {
         verifyAccess(courseId);
-        slideService.deleteSlide(courseId, slideId);
+        slideService.deleteSlideById(courseId, slideId);
         return R.ok();
     }
 
