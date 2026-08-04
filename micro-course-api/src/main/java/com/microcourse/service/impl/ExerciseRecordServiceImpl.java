@@ -136,8 +136,11 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             }
         }
 
-        // 4. 视频进度阈值检查 — 开始答题前检查视频观看进度
-        if (exercise.getCourseId() != null) {
+        // 4. 视频进度阈值检查 — 仅考试（is_exam=true）要求先观看视频
+        // P1-C 修复 (2026-08-04): 原逻辑对普通随堂练习也强制"先看视频"，
+        // 学生选课后想先做练习巩固知识被拦截，且无真实视频可看时练习永久不可用。
+        // 随堂练习是学习工具应可直接作答；考试保持前置门槛（防作弊）。
+        if (Boolean.TRUE.equals(exercise.getIsExam()) && exercise.getCourseId() != null) {
             long totalVideosInCourse = videoRepository.selectCount(
                 new LambdaQueryWrapper<Video>()
                     .eq(Video::getCourseId, exercise.getCourseId()));

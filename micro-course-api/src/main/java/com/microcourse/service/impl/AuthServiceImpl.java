@@ -205,6 +205,17 @@ public class AuthServiceImpl implements AuthService {
                 queryService.clearLoginFailureQuietly("ip:" + clientIp);
             }
 
+            // P0 修复 (2026-08-04): 修改密码会写入 mc:jwt:user-blacklist:{userId}
+            // （TTL 7 天）。原实现登录成功后不清除该标记 → 用户改密码后即使重新登录
+            // （新密码已验证），所有新 token 仍被 JwtAuthenticationFilter 拦截，
+            // 提示"账号已被禁用"，账号实际被锁死 7 天无法使用。
+            // 修复：登录成功（密码/状态校验通过）即清除用户级黑名单，重新放行。
+            try {
+                redisUtil.delete("mc:jwt:user-blacklist:" + user.getId());
+            } catch (Exception e) {
+                log.warn("[Auth] 清除用户级 token 黑名单失败 userId={}", user.getId(), e);
+            }
+
             // Step 6: 递增 token 代数(旧 refreshToken 失效) + 生成 JWT
             long newTokenGen = redisUtil.incrementTokenGeneration(user.getId());
             if (newTokenGen == 0) newTokenGen = 1; // 兜底:确保从 1 开始
