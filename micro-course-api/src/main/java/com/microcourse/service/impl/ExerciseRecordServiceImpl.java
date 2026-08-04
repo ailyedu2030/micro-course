@@ -440,6 +440,35 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         };
     }
 
+    /**
+     * 多选题答案解析：兼容前端提交的 JSON 数组（["2","4"]）与纯逗号分隔（"2,4"）两种格式。
+     * P1-C 修复：此前 JSON 数组经 split(",") 后元素带引号，导致多选题答案永远不匹配被判错。
+     */
+    private Set<String> parseMultipleAnswerSet(String raw) {
+        Set<String> set = new java.util.HashSet<>();
+        if (raw == null || raw.isBlank()) return set;
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper =
+                        new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.List<String> list = mapper.readValue(trimmed,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
+                for (String v : list) {
+                    if (v != null && !v.isBlank()) set.add(v.trim().toUpperCase());
+                }
+                return set;
+            } catch (Exception ignored) {
+                // JSON 解析失败则回退到逗号分隔
+            }
+        }
+        for (String v : trimmed.split(",")) {
+            String s = v.trim();
+            if (!s.isEmpty()) set.add(s.toUpperCase());
+        }
+        return set;
+    }
+
     private GradingResult gradeQuestion(Question question, String userAnswer, Integer fullScore) {
         GradingResult result = new GradingResult();
         result.questionId = question.getId();
@@ -474,8 +503,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 {
                     Set<String> corrects = new java.util.HashSet<>(java.util.Arrays.asList(
                         correctAnswer != null ? correctAnswer.toUpperCase().split(",") : new String[0]));
-                    Set<String> userAnsSet = new java.util.HashSet<>(java.util.Arrays.asList(
-                        userAnswer != null ? userAnswer.toUpperCase().split(",") : new String[0]));
+                    Set<String> userAnsSet = parseMultipleAnswerSet(userAnswer);
                     if (corrects.equals(userAnsSet)) {
                         result.isCorrect = true;
                         result.score = fullScore;

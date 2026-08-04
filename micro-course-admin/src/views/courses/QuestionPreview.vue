@@ -10,6 +10,8 @@
         <el-tag v-else-if="question.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
         <el-tag v-else-if="question.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
         <el-tag v-else-if="question.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
+        <el-tag v-else-if="question.questionType === 'FILL'" type="success" size="small">填空题</el-tag>
+        <el-tag v-else-if="question.questionType === 'ESSAY'" type="danger" size="small">论述题</el-tag>
         <span class="score-tag">分值：{{ question.score ?? '-' }}</span>
       </div>
 
@@ -22,7 +24,8 @@
             :value="idx"
             class="option-item"
 >
-            {{ opt.label }}
+            <span class="option-label">{{ opt.label }}.</span>
+            <span v-if="opt.text" class="option-text">{{ opt.text }}</span>
           </el-radio>
         </el-radio-group>
       </div>
@@ -36,7 +39,8 @@
             :value="idx"
             class="option-item"
 >
-            {{ opt.label }}
+            <span class="option-label">{{ opt.label }}.</span>
+            <span v-if="opt.text" class="option-text">{{ opt.text }}</span>
           </el-checkbox>
         </el-checkbox-group>
       </div>
@@ -57,7 +61,29 @@
           :rows="3"
           placeholder="输入答案"
           class="fill-input"
-/>
+        />
+      </div>
+
+      <!-- 填空题 -->
+      <div v-else-if="question.questionType === 'FILL'" class="options-area">
+        <el-input
+          v-model="dummyFill"
+          type="textarea"
+          :rows="2"
+          placeholder="输入答案"
+          class="fill-input"
+        />
+      </div>
+
+      <!-- 论述题 -->
+      <div v-else-if="question.questionType === 'ESSAY'" class="options-area">
+        <el-input
+          v-model="dummyFill"
+          type="textarea"
+          :rows="4"
+          placeholder="输入解答"
+          class="fill-input"
+        />
       </div>
 
       <div class="correct-answer">
@@ -118,8 +144,14 @@ const displayAnswer = computed(() => {
     return ans === 'true' || ans === true ? '正确' : '错误'
   }
   if (props.question.questionType === 'MULTIPLE' && parsedOptions.value.length > 0) {
-    const labels = parsedOptions.value.map(o => o.label)
-    return ans.split(',').map(a => labels.findIndex(l => l === a.trim()) + 1).filter(i => i > 0).map(i => String.fromCharCode(64 + i)).join(',')
+    return ans.split(',').map(a => {
+      const v = a.trim()
+      const opt = parsedOptions.value.find(o => String(o.value) === v)
+      if (opt) return `${opt.label}. ${opt.text || opt.label}`
+      const idx = parsedOptions.value.findIndex(o => o.label === v)
+      if (idx >= 0) return String.fromCharCode(65 + idx)
+      return v
+    }).join('、')
   }
   return ans
 })

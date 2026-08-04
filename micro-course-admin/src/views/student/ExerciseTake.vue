@@ -186,7 +186,7 @@
                   </el-checkbox-group>
                 </template>
 
-                <template v-else-if="currentQuestion.questionType === 'FILL'">
+                <template v-else-if="currentQuestion.questionType === 'FILL' || currentQuestion.questionType === 'SHORT_ANSWER'">
                   <el-input
                     v-model="answers[currentQuestion.id]"
                     type="textarea"
@@ -422,7 +422,7 @@
                 </el-checkbox-group>
               </template>
 
-              <template v-else-if="currentQuestion.questionType === 'FILL'">
+              <template v-else-if="currentQuestion.questionType === 'FILL' || currentQuestion.questionType === 'SHORT_ANSWER'">
                 <el-input
                   v-model="answers[currentQuestion.id]"
                   type="textarea"
@@ -885,16 +885,28 @@ async function startExercise(exercise) {
         return { value: String(opt), label: letter, text: String(opt) }
       })
     }
-    const embedded = (data.questions || []).map(q => ({
-      id: q.questionId,
-      questionId: q.questionId,
-      score: q.score,
-      questionType: normalizeType(q.questionType),
-      content: q.content,
-      options: normalizeOptions(q.options),
-      answer: q.answer,
-      explanation: q.explanation
-    }))
+    // P1-C 修复：判断题 options 缺失（旧数据/导入空选项）时兜底注入"正确/错误"，
+    // 否则选项区循环渲染为空、学生无法作答
+    const embedded = (data.questions || []).map(q => {
+      const questionType = normalizeType(q.questionType)
+      let options = normalizeOptions(q.options)
+      if ((questionType === 'JUDGE' || questionType === 'TRUE_FALSE') && options.length === 0) {
+        options = [
+          { value: 'true', label: 'A', text: '正确' },
+          { value: 'false', label: 'B', text: '错误' }
+        ]
+      }
+      return {
+        id: q.questionId,
+        questionId: q.questionId,
+        score: q.score,
+        questionType,
+        content: q.content,
+        options,
+        answer: q.answer,
+        explanation: q.explanation
+      }
+    })
     questionIds.value = embedded.map(q => q.questionId)
     questions.value = embedded
     questionsLoading.value = false
@@ -1181,7 +1193,9 @@ function parseMultipleAnswer(answer) {
   try {
     return JSON.parse(answer)
   } catch {
-    return []
+    // P1-C 修复：兼容纯逗号分隔格式（"2,4"），此前仅支持 JSON 数组导致
+    // 编辑端创建的多选题（answer=选项值 join(',')）永远判定错误
+    return String(answer).split(',').map(v => v.trim()).filter(Boolean)
   }
 }
 

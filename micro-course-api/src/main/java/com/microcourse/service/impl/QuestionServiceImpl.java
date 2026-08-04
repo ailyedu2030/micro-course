@@ -50,6 +50,12 @@ public class QuestionServiceImpl implements QuestionService {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionServiceImpl.class);
 
+    /** 判断题默认选项：前端答题页按 options 循环渲染，创建/导入缺失时学生无法作答（P1-C） */
+    private static final String JUDGE_OPTIONS_DEFAULT =
+            "[{\"value\":\"true\",\"label\":\"A\",\"text\":\"正确\"},{\"value\":\"false\",\"label\":\"B\",\"text\":\"错误\"}]";
+    private static final java.util.Set<String> JUDGE_TYPES =
+            java.util.Set.of("JUDGE", "TRUE_FALSE");
+
     private final QuestionRepository questionRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
@@ -71,6 +77,14 @@ public class QuestionServiceImpl implements QuestionService {
         this.questionChapterRepository = questionChapterRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.self = self;
+    }
+
+    /** 判断题选项归一化：JUDGE/TRUE_FALSE 且 options 为空时补默认"正确/错误"选项 */
+    private static String normalizeJudgeOptions(String questionType, String options) {
+        if (JUDGE_TYPES.contains(questionType) && (options == null || options.trim().isEmpty())) {
+            return JUDGE_OPTIONS_DEFAULT;
+        }
+        return options;
     }
 
     @Override
@@ -95,7 +109,8 @@ public class QuestionServiceImpl implements QuestionService {
         question.setTeacherId(request.getTeacherId());
         question.setQuestionType(request.getQuestionType());
         question.setContent(XssSanitizer.sanitize(request.getContent()));
-        question.setOptions(request.getOptions() != null ? XssSanitizer.sanitize(request.getOptions()) : null);
+        question.setOptions(normalizeJudgeOptions(request.getQuestionType(),
+                request.getOptions() != null ? XssSanitizer.sanitize(request.getOptions()) : null));
         question.setAnswer(XssSanitizer.sanitize(request.getAnswer()));
         question.setPartialScore(request.getPartialScore());
         question.setExplanation(request.getExplanation() != null ? XssSanitizer.sanitize(request.getExplanation()) : null);
@@ -147,6 +162,11 @@ public class QuestionServiceImpl implements QuestionService {
         }
         if (request.getOptions() != null) {
             question.setOptions(XssSanitizer.sanitize(request.getOptions()));
+        }
+        // P1-C 修复：判断题 options 缺失（旧数据/导入/前端表单）时补默认"正确/错误"，保证学生可作答
+        if (JUDGE_TYPES.contains(question.getQuestionType())
+                && (question.getOptions() == null || question.getOptions().trim().isEmpty())) {
+            question.setOptions(JUDGE_OPTIONS_DEFAULT);
         }
         if (request.getAnswer() != null) {
             question.setAnswer(XssSanitizer.sanitize(request.getAnswer()));
@@ -412,7 +432,8 @@ public class QuestionServiceImpl implements QuestionService {
                 question.setTeacherId(teacherId);
                 question.setQuestionType(normalizedType);
                 question.setContent(XssSanitizer.sanitize(content.trim()));
-                question.setOptions(options != null ? XssSanitizer.sanitize(options.trim()) : null);
+                question.setOptions(normalizeJudgeOptions(normalizedType,
+                        options != null ? XssSanitizer.sanitize(options.trim()) : null));
                 question.setAnswer(XssSanitizer.sanitize(answer.trim()));
                 question.setPartialScore(partialScore);
                 question.setExplanation(explanation != null ? XssSanitizer.sanitize(explanation.trim()) : null);

@@ -574,6 +574,10 @@ const handleEdit = (row) => {
     }
   } else {
     optionList.value = []
+    // P1-C 修复：判断题旧数据 options 缺失时补默认"正确/错误"，保证编辑回显与再次提交完整
+    if (formData.questionType === 'JUDGE' || formData.questionType === 'TRUE_FALSE') {
+      formData.options = '[{"value":"true","label":"A","text":"正确"},{"value":"false","label":"B","text":"错误"}]'
+    }
   }
   dialogVisible.value = true
 }
@@ -624,6 +628,10 @@ const handleSubmit = async () => {
         formData.options = typeof optionList.value === 'string' ? optionList.value : JSON.stringify(optionList.value)
         const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
         formData.answer = correctOptions.join(',')
+      }
+      if (formData.questionType === 'JUDGE' || formData.questionType === 'TRUE_FALSE') {
+        // P1-C 修复：判断题必须带默认选项，否则答题页无选项可渲染、学生无法作答
+        formData.options = '[{"value":"true","label":"A","text":"正确"},{"value":"false","label":"B","text":"错误"}]'
       }
       const payload = {
         ...formData,
