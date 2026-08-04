@@ -145,7 +145,10 @@ public class CertificateServiceImpl implements CertificateService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    // P1-C 修复：REQUIRES_NEW 独立事务 —— 完成课程时若证书条件不满足，
+    // issueCertificate 抛异常虽被外层 catch（fail-open），但共享事务已标记 rollback-only，
+    // 导致整个"完成课程"操作 500（学员无法完成课程、徽章也不颁发）。
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public com.microcourse.dto.CertificateVO issueCertificate(Long userId, Long courseId) {
         LambdaQueryWrapper<Certificate> existingWrapper = new LambdaQueryWrapper<>();
         existingWrapper.eq(Certificate::getUserId, userId)
@@ -236,8 +239,16 @@ public class CertificateServiceImpl implements CertificateService {
                         .eq(LearningProgress::getCourseId, courseId));
 
         // 按 chapterId 分组
-        java.util.Map<Long, List<LearningProgress>> byChapter = progressList.stream()
-                .collect(java.util.stream.Collectors.groupingBy(LearningProgress::getChapterId));
+        // P1-C 修复：learning_progress 存在 chapter_id 为 NULL 的行（章节级聚合记录），
+        // groupingBy 无论哪个重载都会对 key 执行 requireNonNull → 证书校验 NPE → 自动颁发必失败。
+        // 章节级聚合行不参与"按章节"校验，先过滤再分组。
+        java.util.Map<Long, List<LearningProgress>> byChapter = new java.util.HashMap<>();
+        for (LearningProgress lp : progressList) {
+            if (lp.getChapterId() == null) {
+                continue;
+            }
+            byChapter.computeIfAbsent(lp.getChapterId(), k -> new java.util.ArrayList<>()).add(lp);
+        }
 
         for (CourseChapter chapter : chapters) {
             List<LearningProgress> chapterProgress = byChapter.get(chapter.getId());

@@ -150,3 +150,15 @@
 - **症状**：营收看板统计卡与教师排行均为静态展示，无法查看订单明细。
 - **直接原因**：看板无任何点击交互；系统无管理端订单列表页（/admin/orders 重定向到学生订单）。
 - **修复**：新增 `GET /api/orders/admin/list`（ADMIN，可按 teacherId 过滤，含下单用户名）；看板"付费订单"卡与教师排行行可点击 → 订单明细弹窗（订单号/学员/课程/金额/状态/支付方式/下单时间）。已复测：两个入口均弹出明细。
+
+## 2026-08-04 · 完成课程链路补测（E20/H12）
+
+### F-2026-08-04-19 · 完成课程 500：证书失败污染外层事务 + 证书校验 NPE（P1-C）
+
+- **症状**：教师标记选课 completed=true → 接口 500"服务器内部错误"，课程无法完成、徽章不颁发。
+- **直接原因（两个叠加）**：
+  1. `issueCertificate` 在完成事务内直接调用，证书条件不满足抛异常虽被 catch，但共享事务已标记 rollback-only → 外层提交抛 UnexpectedRollback → 500；
+  2. 改为 REQUIRES_NEW 后，内层事务读不到外层未提交的 completed=true → 证书仍不颁发；
+  3. `validateCourseCompletion` 用 `groupingBy(chapterId)`，而 learning_progress 存在 chapter_id=NULL 的章节级聚合行，groupingBy 对 null key 执行 requireNonNull → NPE → 证书自动颁发必失败（fail-open 吞掉）。
+- **根本原因**：事务边界与业务补偿设计不当（fail-open 依赖共享事务）；数据模型允许 NULL chapter_id 但校验未兼容。
+- **修复**：证书颁发改为事务提交后（afterCommit）执行（可见 completed=true 且不污染外层事务）；徽章颁发改 REQUIRES_NEW；分组前过滤 NULL chapterId 行。已复测：完成课程 200 → 证书 MC-5-1-4339477E 落库 + FIRST_COURSE/ALL_COURSES 徽章颁发 + 成就墙 2/6 点亮，错误日志清零。
