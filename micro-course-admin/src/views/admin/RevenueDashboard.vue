@@ -35,7 +35,7 @@
         </div>
       </el-col>
       <el-col :xs="12" :md="6">
-        <div class="stat-card">
+        <div class="stat-card clickable" @click="openOrderDetail(null)">
           <span class="stat-label">付费订单</span>
           <span class="stat-value">{{ data.totalOrders ?? 0 }}</span>
           <span class="stat-unit">单 / {{ data.paidStudentCount ?? 0 }} 学员</span>
@@ -68,7 +68,7 @@
         <el-card class="section-card" shadow="never" v-loading="loading">
           <template #header><span>教师收入排行 (Top 10)</span></template>
           <div v-if="data.topTeachers && data.topTeachers.length > 0" class="teacher-rank">
-            <div v-for="(t, i) in data.topTeachers" :key="t.teacherId" class="rank-row">
+            <div v-for="(t, i) in data.topTeachers" :key="t.teacherId" class="rank-row clickable" @click="openOrderDetail(t.teacherId)">
               <span class="rank-num">{{ i + 1 }}</span>
               <span class="rank-name">{{ t.teacherName || '未知' }}</span>
               <span class="rank-revenue">¥{{ fmt(t.revenue) }}</span>
@@ -79,6 +79,27 @@
         </el-card>
       </el-col>
     </el-row>
+
+    <!-- B14.4 订单明细下钻 -->
+    <el-dialog v-model="orderDialogVisible" :title="orderDialogTitle" width="760px">
+      <el-table :data="orderList" v-loading="orderLoading" border size="small" max-height="420">
+        <el-table-column prop="orderNo" label="订单号" width="190" show-overflow-tooltip />
+        <el-table-column prop="userName" label="学员" width="120" />
+        <el-table-column prop="courseTitle" label="课程" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="amount" label="金额" width="90" align="right">
+          <template #default="{ row }">¥{{ fmt(row.amount) }}</template>
+        </el-table-column>
+        <el-table-column prop="statusText" label="状态" width="90" align="center" />
+        <el-table-column prop="paymentMethod" label="支付方式" width="90" align="center" />
+        <el-table-column prop="createdAt" label="下单时间" width="160">
+          <template #default="{ row }">{{ (row.createdAt || '').replace('T', ' ').slice(0, 16) }}</template>
+        </el-table-column>
+      </el-table>
+      <el-empty v-if="!orderLoading && orderList.length === 0" description="暂无订单明细" />
+      <template #footer>
+        <el-button @click="orderDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -87,6 +108,27 @@ import { ref, onMounted } from 'vue'
 import { TrendCharts } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getRevenueStats } from '@/api/admin-stats'
+import { getAdminOrderList } from '@/api/order'
+
+const orderDialogVisible = ref(false)
+const orderDialogTitle = ref('订单明细')
+const orderList = ref([])
+const orderLoading = ref(false)
+
+async function openOrderDetail(teacherId) {
+  orderDialogVisible.value = true
+  orderDialogTitle.value = teacherId ? '教师订单明细（下钻）' : '订单明细'
+  orderLoading.value = true
+  try {
+    const { data } = await getAdminOrderList(teacherId)
+    orderList.value = Array.isArray(data) ? data : (data?.items || [])
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '获取订单明细失败')
+    orderList.value = []
+  } finally {
+    orderLoading.value = false
+  }
+}
 
 const loading = ref(false)
 const data = ref({})
@@ -170,4 +212,6 @@ onMounted(fetchData)
 .rank-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rank-revenue { min-width: 80px; text-align: right; font-weight: var(--weight-medium); font-variant-numeric: tabular-nums; }
 .rank-orders { min-width: 40px; text-align: right; color: var(--el-text-color-secondary); }
+.clickable { cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.clickable:hover { transform: translateY(-1px); }
 </style>

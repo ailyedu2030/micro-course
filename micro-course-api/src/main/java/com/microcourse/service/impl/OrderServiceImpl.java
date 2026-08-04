@@ -52,6 +52,11 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    public java.util.List<OrderVO> adminListOrders(Long teacherId) {
+        return orderQueryService.adminListOrders(teacherId);
+    }
+
+    @Override
     public OrderVO pay(Long orderId, String paymentMethod) {
         return orderPaymentService.pay(orderId, paymentMethod);
     }

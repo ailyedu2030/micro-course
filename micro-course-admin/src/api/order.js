@@ -12,6 +12,11 @@ export function getMyOrders(params) {
   return request({ method: 'GET', url: '/orders/my', params })
 }
 
+// B14.4 管理端订单明细（营收看板下钻）
+export function getAdminOrderList(teacherId) {
+  return request({ method: 'GET', url: '/orders/admin/list', params: teacherId ? { teacherId } : {} })
+}
+
 export function payOrder(id, paymentMethod) {
   return request({ method: 'POST', url: `/orders/${id}/pay`, data: { paymentMethod } })
 }

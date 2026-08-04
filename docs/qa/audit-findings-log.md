@@ -134,3 +134,19 @@
 - **直接原因**：后端无测试端点、无邮件依赖；前端 `handleTestMail` 为纯模拟 setTimeout 提示。
 - **根本原因**：邮件功能（SMTP 配置）只有 UI 没有实现，配置后无法验证。
 - **修复**：pom 增加 `spring-boot-starter-mail`；新增 `POST /api/admin/settings/send-test-email`（读取已存 SMTP 配置，JavaMailSender 自测发送到配置邮箱，返回真实成功/失败）；前端改为调用真实端点。已复测：空配置提示校验；保存配置后返回真实连接错误（UnknownHostException: smtp.example.com），证明 SMTP 链路实现。
+
+## 2026-08-04 · 管理端补测（B13/B14/B20）
+
+### F-2026-08-04-17 · 教师评级重算 500：MyBatis 无法实例化结果接口（P1-C）
+
+- **症状**：教师评分管理"全部重新评级"返回 500"服务器内部错误"，列表一直为空。
+- **直接原因**：`TeacherRatingRepository.TeacherRatingStatRow` 声明为 interface，MyBatis 结果映射需要可实例化的 POJO → `NoSuchMethodException: TeacherRatingStatRow.<init>()`。
+- **根本原因**：统计行映射用接口声明，MyBatis 反射无法创建实例。
+- **横向扫描**：`selectTeacherStats`/`selectTeacherStat` 两个查询均受影响（单教师重算同样 500）。
+- **修复**：改为静态类（无参构造 + getter/setter）。已复测：recalculate-all → 200，3 位教师评级生成（SILVER 49.3 / BRONZE）；手动调级 GOLD→SILVER 闭环。
+
+### F-2026-08-04-18 · 营收看板无明细下钻入口（P1-C，功能未开发）
+
+- **症状**：营收看板统计卡与教师排行均为静态展示，无法查看订单明细。
+- **直接原因**：看板无任何点击交互；系统无管理端订单列表页（/admin/orders 重定向到学生订单）。
+- **修复**：新增 `GET /api/orders/admin/list`（ADMIN，可按 teacherId 过滤，含下单用户名）；看板"付费订单"卡与教师排行行可点击 → 订单明细弹窗（订单号/学员/课程/金额/状态/支付方式/下单时间）。已复测：两个入口均弹出明细。
