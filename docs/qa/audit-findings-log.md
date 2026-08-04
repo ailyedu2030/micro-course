@@ -201,3 +201,11 @@
 - **症状**：创建用户填非法邮箱（not-an-email）提交无任何提示。
 - **直接原因**：`UserForm.vue` 的 `formRules` 仅含 username/password/confirmPassword/realName/role，email/phone 表单项有 prop 但无规则。
 - **修复**：补齐邮箱正则与手机号（1[3-9] 开头 11 位）格式规则。已复测：提交后提示"请输入正确的邮箱格式/手机号格式"。
+
+## 2026-08-05 · 课程管理批次补测（C1-C10）
+
+### F-2026-08-05-06 · 讨论详情 VO 缺 status → 通过/驳回按钮永不显示（P1-C）
+
+- **症状**：管理端打开待审核讨论帖，详情页无"通过/驳回"按钮、无状态标签，只能删除，审核流程不可用。
+- **直接原因**：`getById` 使用的 `convertToVO(post, userMap)` 与列表 `convertToVO(post)` 均未设置 `status` 字段（仅管理端列表转换 `convertToVOForAdmin` 有 int→string 映射）→ 前端 `postData.status` 为 undefined。
+- **修复**：抽取 `applyPostStatus` 统一注入两个 convertToVO。已复测：详情返回 status=PENDING → 通过确认→"审核通过"→已发布+按钮消失。
