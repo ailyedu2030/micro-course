@@ -20,7 +20,7 @@ public interface SlideService {
     SlideVO getByCourseId(Long courseId);
     List<SlideVO> listByCourseId(Long courseId);
 
-    List<SlidePageVO> getPages(Long courseId, Long sectionId);
+    List<SlidePageVO> getPages(Long courseId, Long sectionId, Long chapterId);
 
     List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId);
 

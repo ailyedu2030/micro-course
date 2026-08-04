@@ -137,7 +137,7 @@ class HermesWebhookCoursewareServiceTest {
         page1.setPageNumber(1);
         SlidePageVO page2 = new SlidePageVO();
         page2.setPageNumber(2);
-        when(slideService.getPages(5L, null)).thenReturn(List.of(page1, page2));
+        when(slideService.getPages(5L, null, null)).thenReturn(List.of(page1, page2));
 
         Map<String, Object> result = service.batchPushScripts(5L, null, 9L, "abcdefgh");
 

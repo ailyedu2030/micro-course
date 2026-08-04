@@ -39,8 +39,14 @@ const normalizedColumns = computed(() => {
   })
 })
 
+// P1-C 修复：与 SignatureBlock 同型的双向深 watch 回声死循环。
+// 此前 props 回写 + localData deep watch emit 重建数组 → 父级换新引用 → 无限循环，
+// 点击"+ 新增行"即主线程冻结。回写改为内容级（JSON）去重。
 watch(() => props.modelValue, (v) => {
-  localData.value = JSON.parse(JSON.stringify(v || []))
+  const incoming = JSON.parse(JSON.stringify(v || []))
+  if (JSON.stringify(incoming) !== JSON.stringify(localData.value)) {
+    localData.value = incoming
+  }
 }, { deep: true })
 
 watch(localData, (value) => {

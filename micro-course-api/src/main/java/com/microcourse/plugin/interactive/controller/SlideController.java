@@ -155,11 +155,12 @@ public class SlideController {
     @PreAuthorize("isAuthenticated()")
     public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
                                         @RequestParam(required = false) Long lessonId,
-                                        @RequestParam(required = false) Long chapterId,
-                                        @RequestParam(required = false) Long sectionId) {
+        @RequestParam(required = false) Long chapterId,
+        @RequestParam(required = false) Long sectionId) {
         verifyAccess(courseId);
-        Long effectiveId = sectionId != null ? sectionId : (lessonId != null ? lessonId : chapterId);
-        return R.ok(slideService.getPages(courseId, effectiveId));
+        // P1-C 修复：章节级课件按 chapter_id 查询（页记录 section_id=NULL），
+        // 此前把 chapterId 折叠成 sectionId 查询恒为空。
+        return R.ok(slideService.getPages(courseId, sectionId, chapterId != null ? chapterId : lessonId));
     }
 
     @GetMapping("/sections/{sectionId}/segment-audios")

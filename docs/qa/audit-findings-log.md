@@ -162,3 +162,25 @@
   3. `validateCourseCompletion` 用 `groupingBy(chapterId)`，而 learning_progress 存在 chapter_id=NULL 的章节级聚合行，groupingBy 对 null key 执行 requireNonNull → NPE → 证书自动颁发必失败（fail-open 吞掉）。
 - **根本原因**：事务边界与业务补偿设计不当（fail-open 依赖共享事务）；数据模型允许 NULL chapter_id 但校验未兼容。
 - **修复**：证书颁发改为事务提交后（afterCommit）执行（可见 completed=true 且不污染外层事务）；徽章颁发改 REQUIRES_NEW；分组前过滤 NULL chapterId 行。已复测：完成课程 200 → 证书 MC-5-1-4339477E 落库 + FIRST_COURSE/ALL_COURSES 徽章颁发 + 成就墙 2/6 点亮，错误日志清零。
+
+## 2026-08-05 · PPT 真实渲染与申报组件补测（E10.3/H18/G1.5/G3.x）
+
+### F-2026-08-05-01 · 章节级课件页列表接口 NULL section 查询恒空 → 播放器图片加载失败（P1-C）
+
+- **症状**：PPT 渲染成功（status=2、slide_pages 有页）后，`GET /slides/pages?chapterId=1` 返回空 → 学生播放器显示"1/0 图片加载失败"。
+- **直接原因**：控制器把 chapterId 折叠成 `effectiveId` 传入 `getPages(courseId, sectionId)`，服务按 `section_id = ?` 过滤；章节级课件页记录 `section_id IS NULL`，`section_id = 1` 永假。
+- **根本原因**：chapterId/sectionId 语义混淆；页查询未按 chapter_id 维度。
+- **横向扫描**：单页/图片接口按 courseId+pageNumber 查询（正常）；Hermes 课件接口调用点同步修正。
+- **修复**：`getPages` 增加 chapterId 参数：sectionId→eq；否则 chapterId→eq chapter_id；否则 isNull(section_id)。控制器不再折叠参数。已复测：页列表返回页1+图片 URL；学生播放器 1/1 显示渲染页。
+
+### F-2026-08-05-02 · DynamicTableEditor 双向深 watch 回声死循环（P1-C，与 SignatureBlock 同型）
+
+- **症状**：申报模块 3 点击"+ 新增行"→ 页面主线程冻结（连 1+1 求值都超时）。
+- **直接原因**：storage/DynamicTableEditor 同时 `watch(props.modelValue, deep)` 回写 localData 与 `watch(localData, deep)` emit `JSON.parse(JSON.stringify(...))` 新数组 → 父级换新引用 → 无限回声。
+- **根本原因**：双向 v-model + 双向 deep watch + emit 重建引用（横向扫描发现与 SignatureBlock 完全同型，均入模式库）。
+- **修复**：props 回写做 JSON 内容级去重。已复测：新增行正常、max-rows=5 生效、页面不冻结。
+
+### F-2026-08-05-03 · 环境供给：容器缺 LibreOffice/中文字体导致 PPT 渲染失败（环境项，已解决）
+
+- **症状**：PPT 上传后"课件渲染失败"。
+- **修复**：容器安装 libreoffice-impress 26.2.4 + fonts-noto-cjk（aliyun 镜像加速）。已复测：渲染 pages=1、status=2、学生端真实播放。**部署要求：容器镜像必须包含 LibreOffice + 中文字体，否则 PPT 课件渲染失败。**
