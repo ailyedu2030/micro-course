@@ -100,3 +100,20 @@
 - **根本原因**：批量操作功能未开发完整（UI 空壳）；VO 同时含记录 id 与 teacherId，取参错误。
 - **横向扫描**：同源传参缺陷曾发生于教学班"修改状态/移除"（F-2026-08-04-05），本次为同类复发 → 已将该模式纳入问题模式库。
 - **修复**：成员表 expelMode 时显示选择列 + "批量移除(N)"按钮 + `handleBatchRemoveMembers`（按 teacherId 循环移除，含成功/失败反馈）；单条移除统一传 teacherId。已复测：勾选 → 批量移除(1) → 确认 → "已批量移除" → 行消失。
+
+## 2026-08-04 · 微专业申报补测（D16/G4）
+
+### F-2026-08-04-13 · SignatureBlock 双向深 watch 回声死循环 → 页面主线程冻结（P1-C）
+
+- **症状**：申报表模块 4 切换"图片签名"后页面完全卡死（连 `1+1` 求值都超时），两个标签页均冻结。
+- **直接原因**：`storage/SignatureBlock.vue` 同时存在 `watch(() => props.modelValue, deep)`（父→子回写）与 `watch(localData, deep)`（子→父 emit），且 emit 时重建对象 `{...localData.value}`；父级 v-model 收到新对象引用后触发 props watch 再次赋回 → 无限回声循环，主线程死锁。
+- **根本原因**：双向 v-model + 双向 deep watch + 对象重建，无内容级去重。
+- **横向扫描**：common/SignatureBlock 无 watch（安全）；任何使用 storage/SignatureBlock 的交互（切模式/输入意见/选日期）都会触发该循环。
+- **修复**：props 回写增加 JSON 内容级比较，内容未变不回写，打断回声链。已复测：切图片签名、选日期后页面均响应正常。
+
+### F-2026-08-04-14 · 申报表签名/公章上传通道未接通 → 仅本地预览、永不落库（P1-C）
+
+- **症状**：选择图片后只显示 blob 本地预览，无上传请求、无成功/失败提示。
+- **直接原因**：父组件传 `:signature-uploader`/`:seal-uploader`，但 `storage/SignatureBlock.vue` 只声明 `uploadHandler` prop 且两个 SignatureUploader 均绑定 `uploadHandler`（undefined）→ 上传通道为空 → CommonSignatureUploader 走"未配置上传通道"分支。
+- **根本原因**：父子 props 契约名不一致（signature-uploader vs uploadHandler），且未按 签名/公章 分别接线。
+- **修复**：SignatureBlock 新增 `signatureUploader`/`sealUploader` props 并分别绑定；后端 `POST /storage-applications/{id}/upload-image` 已 curl 验证 200 返回 URL。已复测：切换图片签名不再冻结、上传控件正常渲染。

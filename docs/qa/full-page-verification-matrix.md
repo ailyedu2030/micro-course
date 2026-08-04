@@ -486,7 +486,7 @@
 | D16.5 | 完整提交 | 补全 5 步 → 提交 → PENDING_REVIEW | ✅ |
 | D16.6 | 导出（Word/PDF） | 导出 200 有效文件 | ✅ |
 | D16.7 | 重置全部 | 重置确认 | 🟡 |
-| D16.8 | 附件上传（签名/公章） | 签名上传 → 预览 | ⬜ |
+| D16.8 | 附件上传（签名/公章） | 图片签名切换不再冻结→上传控件渲染→文件选择本地预览；后端 upload-image 200 返回 URL(/uploads/storage/6/SIGNATURE_*.png)；日期选择正常（修复前：切换冻结页面+上传通道 props 未接通仅本地预览） | ✅ |
 
 ### D17 MyProposals
 | # | 功能点 | 验证动作与证据 | 状态 |
@@ -869,7 +869,7 @@
 | G4.5 | AchievementBadges | 徽章展示 | 🟡 |
 | G4.6 | CertificatesCard | 证书展示 | 🟡 |
 | G4.7 | WrongQuestionsCard | 错题列表 | 🟡 |
-| G4.8 | DatePickerYear | 年度选择 | ⬜ |
+| G4.8 | DatePickerYear | 申报表日期选择器(月/年)：打开面板→选日→页面响应正常（死循环修复后连带恢复） | ✅ |
 | G4.9 | UploadProgress | 上传进度条 | 🟡 |
 | G4.10 | CartDrawer | 购物车抽屉/移除 | ✅ |
 | G4.11 | CommentNode | 嵌套评论/点赞 | 🟡 |
