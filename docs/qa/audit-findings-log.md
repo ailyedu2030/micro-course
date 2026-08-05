@@ -363,3 +363,20 @@
 
 - **症状**：教师试卷列表仅"删除"，无法编辑试卷（后端 PUT /exercises/{id} 早已存在，表单支持 exerciseId 回显）。
 - **修复**：补"编辑"按钮 → /courses/{courseId}/exercises/form?exerciseId=。已复测：点击编辑→表单回显→改标题→保存→PUT 落库。
+
+## 2026-08-05 · 全量自动化回归（后端 1125 单测 / 前端 207 单测）
+
+### F-2026-08-05-31 · 导出快照事务测试陈旧断言（P2，测试未随 P1-C 修复同步）
+
+- **症状**：`StorageApplicationExportServiceImplTest` 断言"快照查询必须使用只读事务"失败。
+- **根因**：2026-08-04 P1-C 修复将导出快照事务从 readOnly=true 改为可写（SELECT FOR UPDATE
+  在 PostgreSQL 只读事务中必失败，导出曾 100% 500），测试未同步更新，断言旧缺陷行为。
+- **修复**：断言改为 `assertFalse(isReadOnly)`（事务必须可写），并注明原因。已复测 2 用例通过。
+
+### F-2026-08-05-32 · 教学班学生状态测试用旧值 APPROVED（P2，测试未随 V316 同步）
+
+- **症状**：`TeachingClassServicePermissionTest.approvedStatusShouldBeAccepted` 失败：
+  "学生状态值无效，应为 ENROLLED/DROPPED/COMPLETED"。
+- **根因**：V316 将 DB 约束/服务白名单从 APPROVED 改为 ENROLLED/DROPPED/COMPLETED
+  （P1-C 修复），测试仍断言旧状态 APPROVED 合法。
+- **修复**：测试改断言 ENROLLED（enrolledStatusShouldBeAccepted）。已复测 23 用例全通过。

@@ -36,3 +36,9 @@ config.global.plugins = config.global.plugins || []
 if (!config.global.plugins.includes(i18n)) {
   config.global.plugins.push(i18n)
 }
+
+// 模板全局格式化函数（main.js 中 app.config.globalProperties 安装，测试环境需等价 stub，
+// 否则 Profile 等页面 mount 测试抛 "$formatDateTime is not a function"）
+config.global.mocks = config.global.mocks || {}
+config.global.mocks.$formatDateTime = (value) => (value ? String(value) : '-')
+config.global.mocks.$formatDate = (value) => (value ? String(value) : '-')
