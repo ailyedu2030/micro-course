@@ -43,9 +43,9 @@
       <div v-if="activeTab === 'discussion'" class="tab-panel" key="discussion">
         <div class="empty-state-card">
           <el-icon size="48" color="#CBD5E1"><ChatDotRound /></el-icon>
-          <p class="empty-title">暂无讨论</p>
-          <p class="empty-desc">点击开始与同学和老师讨论</p>
-          <el-button type="primary" plain size="small" @click="$emit('change-tab', 'course')">返回课程</el-button>
+          <p class="empty-title">参与课程讨论</p>
+          <p class="empty-desc">发帖提问、交流心得，与同学和老师互动</p>
+          <el-button type="primary" plain size="small" @click="goDiscussion">进入讨论区</el-button>
         </div>
       </div>
     </transition>
@@ -89,6 +89,7 @@ import { Document, Bell, ChatDotRound } from '@element-plus/icons-vue'
 import { ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCourseNotes, createCourseNote, deleteCourseNote } from '@/api/note'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   activeTab: { type: String, default: 'course' },
@@ -101,6 +102,16 @@ defineEmits(['change-tab'])
 const notes = ref([])
 const noteContent = ref('')
 const saving = ref(false)
+const router = useRouter()
+
+// 讨论区为独立页面：携带当前章节上下文跳转，避免学习视图内出现功能空壳
+function goDiscussion() {
+  const chapterId = props.currentChapter?.id
+  router.push({
+    path: '/student/discussions',
+    query: chapterId ? { chapterId } : { courseId: props.courseId }
+  })
+}
 
 async function loadNotes() {
   if (!props.courseId) return

@@ -344,8 +344,8 @@
               <div v-if="reviews.length > 0" class="review-list">
                 <div v-for="r in reviews" :key="r.id" class="review-item">
                   <div class="review-top">
-                    <el-avatar :size="36" :src="r.userAvatar" :alt="(r.userRealName || '用户') + '头像'">{{ (r.userRealName || '匿').charAt(0) }}</el-avatar>
-                    <span class="review-user">{{ r.userRealName || '匿名用户' }}</span>
+                    <el-avatar :size="36" :src="r.userAvatar || ''" :alt="(r.realName || '用户') + '头像'">{{ (r.realName || '匿').charAt(0) }}</el-avatar>
+                    <span class="review-user">{{ r.realName || '匿名用户' }}</span>
                     <el-rate v-model="r.rating" disabled size="small" />
                   </div>
                   <p class="review-content">{{ r.content }}</p>

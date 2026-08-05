@@ -61,7 +61,7 @@ public class MyReviewController {
      * DELETE /api/reviews/{id}
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC')")
+    @PreAuthorize("hasAnyRole('ADMIN','ACADEMIC','STUDENT')")
     public R<Void> deleteReview(@PathVariable Long id) {
         courseReviewService.deleteReview(id);
         return R.ok();

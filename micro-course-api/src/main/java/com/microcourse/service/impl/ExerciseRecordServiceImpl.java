@@ -701,6 +701,25 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, Object> getAttemptSummary(Long userId, Long exerciseId) {
+        LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseRecord::getUserId, userId)
+               .eq(ExerciseRecord::getExerciseId, exerciseId);
+        List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
+        boolean passed = records.stream().anyMatch(r -> Boolean.TRUE.equals(r.getPassed()));
+        ExerciseRecord latest = records.stream()
+                .max(java.util.Comparator.comparing(ExerciseRecord::getSubmittedAt,
+                        java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
+                .orElse(null);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("attemptCount", records.size());
+        result.put("passed", passed);
+        result.put("score", latest != null ? latest.getScore() : null);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ExerciseRecordVO> getResult(Long exerciseId, Long currentUserId) {
         // STUDENT（非 ADMIN）：仅返回本人答题记录
         if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {

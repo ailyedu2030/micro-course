@@ -230,3 +230,74 @@
   1. `retryTranscode` 把 FAILED(3) 直接置为 TRANSCODING(1)，但转码任务 CAS 要求 UPLOADING(0)→TRANSCODING(1) → 重试任务被"已被其他转码任务接管"跳过，永远卡死；
   2. API 容器重建后丢失 ffmpeg（此前手工安装未固化到镜像）→ 新上传转码必失败。
 - **修复**：retryTranscode 改为置 UPLOADING(0)；容器补装 ffmpeg 8.0.1（aliyun 镜像）。已复测：重试 → status=2 + HLS 生成；学生播放器 video 元素 readyState=4 加载成功。**部署要求：镜像必须包含 ffmpeg（含 HLS 转码）**。
+
+### F-2026-08-05-09 · 课程评价姓名恒显"匿名用户"（P1-C，字段错配）
+
+- **症状**：非匿名评价在课程详情"课程评价"tab 中作者显示"匿名用户"。
+- **直接原因**：前端 `CourseDetail.vue` 读 `r.userRealName`/`r.userAvatar`，后端 `CourseReviewVO` 契约字段是 `realName`/`username`（无 avatar）→ 回退"匿名用户"。
+- **修复**：改用 `r.realName`（后端对匿名评价置空，自动回退匿名）。已复测：评价列表显示"测试学生1"。
+
+### F-2026-08-05-10 · 我的课程进度显示 0.33…% + 练习"false/0"（P1-C，双端）
+
+- **症状**：MyCourses 卡片进度显示 `0.3333333333333333%`，练习统计渲染 `false/0 已完成`。
+- **直接原因**：① completion 接口 `progress` 为 0-1 比例，前端直接当百分比显示；② `pdata.completedExercises ?? pdata.completed ?? 0` 把 Boolean `completed=false` 透传成 "false"；③ 后端 `batchGetByUserAndCourses` 未聚合练习统计（仅单课程接口聚合）。
+- **修复**：前端比例×100（上限100）、移除 Boolean 回退；后端 batch 按课程聚合 completedExercises/totalExercises/completedVideos。已复测：33%、练习 0/2、视频 1/1；两接口口径一致=3。
+
+### F-2026-08-05-11 · 取消收藏后重新收藏必现 409（P1-C，软删行唯一约束）
+
+- **症状**：收藏→取消→再收藏返回 409"数据冲突"，用户无法重新收藏。
+- **直接原因**：`uk_cf_user_course` 唯一约束包含软删行；`favorite()` 的 selectCount 被逻辑删除过滤=0 → insert 命中唯一键。
+- **修复**：新增 `restoreByUserAndCourse`（UPDATE deleted_at=NULL），先恢复再 insert。已复测：三态流转 200，`alreadyFavorited=false`。
+
+### F-2026-08-05-12 · 训练中心"进入章节练习"实际跳课程详情（P1-C，事件冒泡）
+
+- **症状**：点章节练习按钮 URL 变成 /student/courses/1 而非 /student/chapters/1/exercises。
+- **直接原因**：`.chapter-item` 的 `@click="goExercise"` 未 `.stop`，冒泡到 el-card `@click="goCourse"` 后者覆盖路由。
+- **修复**：`@click.stop` / `@keydown.enter.stop`。已复测：跳转 /student/chapters/1/exercises（4 练习）。
+
+### F-2026-08-05-13 · 考试通过后"已完成"tab 永不显示（P1-C，接口缺字段）
+
+- **症状**：考试提交 100 分通过后，考试中心"已完成"tab 仍"暂无已完成的考试"。
+- **直接原因**：`GET /exercise-records/my/{id}/attempt-count` 只返回 attemptCount，前端判 `passed`/`isPassed` 均为 undefined → 永不通过。
+- **修复**：新增 `getAttemptSummary` 返回 {attemptCount, passed(任一次通过), score(最近)}。已复测：已完成 tab 显示"期中考试试卷A 已完成"。
+
+### F-2026-08-05-14 · 学习视图"讨论"tab 空壳占位（P1-C，功能残缺）
+
+- **症状**：学习视图点"讨论"只显示"暂无讨论/返回课程"，无发帖/浏览能力，与独立讨论页功能断层。
+- **直接原因**：LearningView 的讨论 tab 渲染 NotesPanel 占位，未接入真实 DiscussionView。
+- **修复**：占位改为"参与课程讨论/进入讨论区"按钮，携带当前章节跳 /student/discussions?chapterId=。已复测：跳转讨论页并列出帖子。
+
+### F-2026-08-05-15 · 错题本入口跳个人中心不定位（P1-C，交互缺陷）
+
+- **症状**：学习中心点"错题本"跳到 /student/profile 顶部，用户看不到错题集。
+- **直接原因**：快捷入口 path 写死 /student/profile，且无滚动定位。
+- **修复**：path=/student/profile?section=wrong-book，Profile 挂载后 scrollIntoView（多次重试适配异步卡片）。已复测：进入后错题集在视口内并渲染真实错题。
+
+### F-2026-08-05-16 · 通知分类筛选恒空 + 类型标签全显"系统通知"（P1-C，双端契约错配）
+
+- **症状**：通知页"课程/考试/讨论通知"筛选永远空态；所有行类型标签都是"系统通知"。
+- **直接原因**：前端 tab 传短分类（ENROLLMENT 等），后端 `eq(type)` 精确匹配全量码（ENROLLMENT_SUCCESS…）→ 0 行；`getNotifTagLabel` 只映射 5 个精确类型 → 全量码回退"系统通知"。
+- **修复**：后端 TYPE_CATEGORY 分类→码集合（in 查询）；前端按前缀归类标签。已复测：课程通知4条、讨论通知3条、标签正确。
+
+### F-2026-08-05-17 · 我的评价课程筛选下拉恒空（P1-C，分页基不一致）
+
+- **症状**：MyReviews"筛选课程"下拉无任何选项。
+- **直接原因**：`fetchCourseOptions` 传 page=1，后端 0 基分页（page+1=2）→ items 空；主列表传 page=0 正常。
+- **修复**：统一 page=0。已复测：下拉显示课程，筛选生效。
+
+### F-2026-08-05-18 · 学生删除自己的评价 403（P1-C，权限缺失）
+
+- **症状**：MyReviews 点"删除"→ 403。
+- **直接原因**：`DELETE /api/reviews/{id}` 仅 ADMIN/ACADEMIC，无学生删除路径。
+- **修复**：放开 STUDENT + 服务层归属校验（学生仅可删本人评价）。已复测：删除成功（软删）。
+
+### F-2026-08-05-19 · 免费课程下单必现"非法支付来源"9005（P1-C，顺序颠倒）
+
+- **症状**：免费/定价未审批课程下单（课程 4）返回 9005。
+- **直接原因**：createOrder 免费分支先 autoEnroll（sourceChannel=PAYMENT 要求已存在 PENDING/PAID 订单）再插入免费 PAID 订单 → 校验必失败。
+- **修复**：先落免费 PAID 订单再选课。已复测：下单 200（PAID，amount 0）+ 自动选课成功。
+
+### F-2026-08-05-20 · 我的订单页无状态筛选（P2，功能未开发完整）
+
+- **症状**：订单页只有列表+分页，无法按状态筛选（后端已支持 status/courseId）。
+- **修复**：补全"全部/待支付/已支付/已取消/已退款"下拉筛选并接入 API。已复测：待支付→空态、已支付→1 单。

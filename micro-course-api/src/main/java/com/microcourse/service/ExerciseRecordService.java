@@ -45,6 +45,15 @@ public interface ExerciseRecordService {
     int getAttemptCount(Long userId, Long exerciseId);
 
     /**
+     * 获取用户在某练习的作答汇总（次数/是否通过/最近得分），
+     * 供考试中心"已完成"状态判定使用
+     * @param userId     用户ID
+     * @param exerciseId 练习ID
+     * @return {attemptCount, passed, score}
+     */
+    Map<String, Object> getAttemptSummary(Long userId, Long exerciseId);
+
+    /**
      * 获取练习结果（角色感知：STUDENT 仅返回本人记录，TEACHER/ADMIN 返回全部记录）
      * @param exerciseId 练习ID
      * @param currentUserId 当前用户ID

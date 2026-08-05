@@ -55,6 +55,15 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
             return result;
         }
 
+        // P1-C: 取消收藏后重新收藏——uk_cf_user_course 唯一约束含软删行，
+        // 直接 insert 会命中唯一键冲突 409，必须先恢复软删行
+        int restored = favoriteRepository.restoreByUserAndCourse(userId, courseId);
+        if (restored > 0) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("alreadyFavorited", false);
+            return result;
+        }
+
         CourseFavorite favorite = new CourseFavorite();
         favorite.setUserId(userId);
         favorite.setCourseId(courseId);

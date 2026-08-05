@@ -11,6 +11,24 @@
     </nav>
 
     <el-card shadow="never">
+      <!-- 订单状态筛选（后端 getMyOrders 支持 status） -->
+      <div v-if="orders.length > 0" class="order-filter-bar">
+        <el-select
+          v-model="statusFilter"
+          placeholder="全部状态"
+          clearable
+          class="order-status-filter"
+          aria-label="按订单状态筛选"
+          @change="handleStatusFilterChange"
+        >
+          <el-option label="全部" value="" />
+          <el-option label="待支付" value="PENDING" />
+          <el-option label="已支付" value="PAID" />
+          <el-option label="已取消" value="CANCELLED" />
+          <el-option label="已退款" value="REFUNDED" />
+        </el-select>
+      </div>
+
       <!-- 空状态 -->
       <el-empty
         v-if="!loading && orders.length === 0"
@@ -121,6 +139,7 @@ const orders = ref([])
 const page = ref(1)
 const size = ref(20)
 const total = ref(0)
+const statusFilter = ref('')
 
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
@@ -128,16 +147,21 @@ bindToQuery(page, size, null, [])
 
 // Round 11-3: 统一异步加载 + 统一错误处理
 const { handleError, handleSuccess } = useErrorHandler()
-const { loading, execute } = useAsyncData((p) => getMyOrders({ page: p - 1, size: size.value }))
+const { loading, execute } = useAsyncData((p, status) => getMyOrders({ page: p - 1, size: size.value, status }))
 
 const fetchOrders = async () => {
   try {
-    const { data } = await execute(page.value)
+    const { data } = await execute(page.value, statusFilter.value)
     orders.value = data.items || []
     total.value = data.totalElements || 0
   } catch (e) {
     handleError(e, '加载订单失败')
   }
+}
+
+const handleStatusFilterChange = () => {
+  page.value = 1
+  fetchOrders()
 }
 
 const handlePay = async (row) => {
@@ -200,6 +224,8 @@ fetchOrders()
 .my-orders { padding: var(--space-6); min-height: 100dvh; max-width: 1200px; margin: 0 auto; background: var(--el-bg-color-page); }
 .page-breadcrumb { margin-bottom: var(--space-4); font-size: var(--text-md); font-weight: var(--weight-semibold); color: var(--el-text-color-primary); }
 .pagination-wrap { display: flex; justify-content: flex-end; margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--el-border-color-lighter); }
+.order-filter-bar { display: flex; justify-content: flex-end; margin-bottom: var(--space-4); }
+.order-status-filter { width: 160px; }
 .price-paid { color: var(--el-color-danger); font-weight: var(--weight-semibold); }
 .price-free { color: var(--el-color-success); }
 </style>

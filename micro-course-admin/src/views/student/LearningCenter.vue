@@ -578,7 +578,8 @@ const quickEntries = [
   { label: t('learning.myCourses'), icon: Reading, path: '/student/my-courses', color: '#10b981' },
   { label: t('learning.examCenter'), icon: Document, path: '/student/exams', color: '#f59e0b' },
   { label: t('learning.learningReport'), icon: DataLine, path: '/student/report', color: '#ef4444' },
-  { label: t('learning.wrongBook'), icon: Close, path: '/student/profile', color: '#8b5cf6' }
+  // 错题集卡片位于个人中心页内，带 section 参数跳转后自动滚动定位
+  { label: t('learning.wrongBook'), icon: Close, path: '/student/profile?section=wrong-book', color: '#8b5cf6' }
 ]
 
 function navigateTo(path) {

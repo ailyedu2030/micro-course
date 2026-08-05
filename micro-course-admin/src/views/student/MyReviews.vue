@@ -240,7 +240,7 @@ const formatTime = (timeStr) => {
 
 const fetchCourseOptions = async () => {
   try {
-    const { data } = await getMyReviews({ page: 1, size: 100 })
+    const { data } = await getMyReviews({ page: 0, size: 100 })
     const items = data?.items || data || []
     // Extract unique courses
     const courseMap = new Map()

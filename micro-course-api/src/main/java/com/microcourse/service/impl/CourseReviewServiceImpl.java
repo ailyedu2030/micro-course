@@ -20,6 +20,7 @@ import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.enums.CourseReviewStatus;
+import com.microcourse.util.SecurityUtil;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
 import com.microcourse.service.NotificationService;
@@ -274,6 +275,13 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         CourseReview review = courseReviewRepository.selectById(id);
         if (review == null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
+        }
+        // 学生仅可删除自己的评价；ADMIN/ACADEMIC 可删除任意评价
+        if (SecurityUtil.hasRole("STUDENT")) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            if (review.getUserId() == null || !review.getUserId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
         }
         Long courseId = review.getCourseId();
         courseReviewRepository.deleteById(id);

@@ -116,11 +116,10 @@
               若 detectedSegments=10,显示 10 段.
             -->
               <div
-                v-if="tree?.htmlUnit"
-                v-for="(seg, idx) in Array.from(
+                v-for="(seg, idx) in tree?.htmlUnit ? Array.from(
                   { length: Math.max((tree.htmlUnit.detectedSegments || 0), 5) },
                   (_, i) => ({ idx: i + 1 })
-                )"
+                ) : []"
                 :key="idx"
                 class="cw-segment-block"
               >

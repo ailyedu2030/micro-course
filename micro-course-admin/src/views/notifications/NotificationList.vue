@@ -205,7 +205,14 @@ function getNotifTagType(type) {
 }
 
 function getNotifTagLabel(type) {
-  return notifTagMap[type]?.label() ?? t('notification.system')
+  if (notifTagMap[type]) return notifTagMap[type].label()
+  if (!type) return t('notification.system')
+  // 后端持久化全量类型码（如 ENROLLMENT_SUCCESS），按前缀归类展示
+  if (type.startsWith('ENROLLMENT') || type.startsWith('MS_ENROLLMENT')) return t('notification.enrollment')
+  if (type.startsWith('EXERCISE') || type.startsWith('GRADE') || type.startsWith('EXAM')
+    || type === 'MS_CERTIFICATE_ISSUED' || type === 'MS_COMPLETED') return t('notification.grade')
+  if (type.startsWith('DISCUSSION')) return t('notification.discussion')
+  return t('notification.system')
 }
 
 // 未读行高亮

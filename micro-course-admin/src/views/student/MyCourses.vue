@@ -684,11 +684,14 @@ const fetchEnrollments = async () => {
         for (const pdata of progressList) {
           if (pdata?.courseId) {
             newProgressMap[pdata.courseId] = {
-              completedExercises: pdata.completedExercises ?? pdata.completed ?? 0,
-              totalExercises: pdata.totalExercises ?? pdata.total ?? 0,
+              completedExercises: pdata.completedExercises != null ? pdata.completedExercises : 0,
+              totalExercises: pdata.totalExercises != null ? pdata.totalExercises : 0,
               completedVideos: pdata.completedVideos ?? 0,
               totalVideos: pdata.totalVideos ?? 0,
-              progress: completionMap[pdata.courseId]?.progress ?? inProgress.find(e => e.courseId === pdata.courseId)?.progress ?? 0
+              // completion 接口返回 0-1 比例，统一换算为 0-100 百分比
+              progress: completionMap[pdata.courseId]?.progress != null
+                ? Math.min(100, Math.round(completionMap[pdata.courseId].progress * 100))
+                : (inProgress.find(e => e.courseId === pdata.courseId)?.progress ?? 0)
             }
           }
         }
@@ -755,7 +758,9 @@ const fetchEnrollments = async () => {
     extraFavorites.value = newExtraFavorites
     enrollments.value = list.map(e => {
       const cp = completionMap[e.courseId]
-      const updatedProgress = cp?.progress ?? e.progress ?? 0
+      const updatedProgress = cp?.progress != null
+        ? Math.min(100, Math.round(cp.progress * 100))
+        : (e.progress ?? 0)
       return { ...e, progress: updatedProgress, favorited: favoriteSet.has(String(e.courseId)) }
     })
     totalElements.value = enrollments.value.length
@@ -792,7 +797,9 @@ async function loadVideoProgress() {
       const totalChapters = chapters.length || 0
       const progressEntry = courseProgressMap.value[courseId]
       let completedVideos = 0
-      const progressPercent = completionMap?.[courseId]?.progress ?? inProgress[idx].progress ?? 0
+      const progressPercent = completionMap?.[courseId]?.progress != null
+        ? completionMap[courseId].progress * 100
+        : (inProgress[idx].progress ?? 0)
       if (progressEntry && totalChapters > 0) {
         completedVideos = progressEntry.completedVideos
           ?? Math.min(Math.round(totalChapters * progressPercent / 100), totalChapters)

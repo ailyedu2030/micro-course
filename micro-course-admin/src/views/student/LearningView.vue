@@ -469,11 +469,14 @@ async function loadProgress() {
       })
     }
 
+    // 练习统计：单课程进度接口已按课时级聚合 completedExercises/totalExercises，
+    // 任一进度记录都携带课程级汇总值，取首条即可（无记录时回退 0）
+    const progressAgg = progressRawList.value[0] || {}
     statsData.value = {
       videoCompleted: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.filter(l => l.status === 'COMPLETED').length || 0), 0),
       videoTotal: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0),
-      exerciseCompleted: 0,
-      exerciseTotal: 0,
+      exerciseCompleted: progressAgg.completedExercises ?? 0,
+      exerciseTotal: progressAgg.totalExercises ?? 0,
       totalTime: formatTotalTime(timeRes.data),
       streakDays: (studyDaysRes.data?.totalDays) || 0
     }
