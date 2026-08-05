@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查八轮 · F 系列教务/审批 5 项 P1-C + 1 项 P2 修复，F 系列全绿)
+
+> 2026-08-05 第八轮：完成教务看板图表、学习分析、选课筛选、微专业/申报/置顶/
+> 跨学院/班级导入/金标/存储审批等全部审批流验证，修复 5 项 P1-C + 1 项 P2。
+
+#### P1-C 修复
+- 跨学院审批驳回必 409（V153 旧 CHECK 约束缺 REJECTED 且未被 V173 替换 → V326 显式 DROP 旧约束）
+- 班级导入 pending_courses jsonb 类型错误（JacksonTypeHandler 对 String 字段失效 → JsonbStringTypeHandler）
+- 班级导入共享事务 rollback-only（内层选课异常污染外层 → REQUIRES_NEW 包装）
+- 班级导入去重漏 PENDING 致 uk_mse_active 冲突（口径改为 notIn 终态）
+- 申报审批页无批量审批 UI（补全选择列 + 批量批准/驳回 + 结果反馈）
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿。
+- F 系列矩阵 38→22 🟡，F 系列全部功能点转 ✅（439→455 ✅）。
+
 ### Fixed (全页面审查七轮 · E 系列学生端 13 项 P1-C 修复 + 全量 E 系列验证通过)
 
 > 2026-08-05 第七轮：完成学生端 E 系列剩余功能点验证（难度/类型/排序筛选、

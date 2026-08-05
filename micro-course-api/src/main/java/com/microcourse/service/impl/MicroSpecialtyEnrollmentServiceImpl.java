@@ -262,7 +262,8 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                     enrollReq.setCourseId(mc.getCourseId());
                     enrollReq.setUserId(en.getUserId());
                     enrollReq.setSourceChannel("MICRO_SPECIALTY_AUTO");
-                    enrollmentService.enroll(enrollReq);
+                    // REQUIRES_NEW：选课失败回滚内层事务，不污染申报共享事务
+                    enrollmentService.enrollInNewTransaction(enrollReq);
                 }
                 // else: 已有选课但未通过 → 保留现有选课，不重复 enroll
 
@@ -426,7 +427,9 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         }
         long currentCount = enrollmentRepository.selectCount(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                 .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
-                .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+                // 名额占用口径与 uk_mse_active 一致（排除终态）
+                .notIn(MicroSpecialtyEnrollment::getStatus,
+                        "REJECTED", "DROPPED", "FAILED"));
         Integer remainingSlots = null;
         if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0) {
             remainingSlots = (int) (ms.getMaxStudents() - currentCount);
@@ -440,7 +443,10 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         List<MicroSpecialtyEnrollment> existingList = enrollmentRepository.selectList(
                 new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
                         .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
-                        .in(MicroSpecialtyEnrollment::getStatus, "APPROVED", "IN_PROGRESS"));
+                        // 与 uk_mse_active 部分唯一索引语义一致：排除终态后均视为已占名额，
+                        // 否则 PENDING 等状态学生导入时 insert 命中唯一约束必失败
+                        .notIn(MicroSpecialtyEnrollment::getStatus,
+                                "REJECTED", "DROPPED", "FAILED"));
         Set<Long> existingUserIds = existingList.stream()
                 .map(MicroSpecialtyEnrollment::getUserId).collect(Collectors.toSet());
         long newStudentCount = students.stream().filter(student -> !existingUserIds.contains(student.getId())).count();
@@ -484,7 +490,8 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                     req.setUserId(student.getId());
                     req.setCourseId(courseId);
                     req.setSourceChannel("MICRO_SPECIALTY");
-                    enrollmentService.enroll(req);
+                    // REQUIRES_NEW：选课失败回滚内层事务，不污染班级导入共享事务
+                    enrollmentService.enrollInNewTransaction(req);
                 } catch (BusinessException e) {
                     Course course = courseRepository.selectById(courseId);
                     String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);

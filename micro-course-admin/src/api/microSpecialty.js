@@ -157,6 +157,14 @@ export function rejectProposal(id, data) {
   return request({ method: 'POST', url: `/micro-specialty-proposals/${id}/reject`, data })
 }
 
+export function batchApproveProposals(ids, idVersionMap) {
+  return request({ method: 'POST', url: '/micro-specialty-proposals/batch-approve', data: { ids, idVersionMap } })
+}
+
+export function batchRejectProposals(ids, reason) {
+  return request({ method: 'POST', url: '/micro-specialty-proposals/batch-reject', data: { ids, reason } })
+}
+
 export function withdrawProposal(id) {
   return request({ method: 'POST', url: `/micro-specialty-proposals/${id}/withdraw` })
 }

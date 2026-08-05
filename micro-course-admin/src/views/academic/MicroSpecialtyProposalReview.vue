@@ -15,12 +15,23 @@
       <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
         <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
       </el-alert>
-      <el-table v-loading="loading" :data="items" stripe border>
+      <!-- P2-11: 批量审批操作栏（仅待审批状态可选） -->
+      <div v-if="activeTab === 'PENDING'" class="batch-bar">
+        <el-button size="small" type="success" :disabled="!selectedIds.length" :loading="batchActing" @click="handleBatchApprove">
+          批量批准（{{ selectedIds.length }}）
+        </el-button>
+        <el-button size="small" type="danger" :disabled="!selectedIds.length" :loading="batchActing" @click="handleBatchReject">
+          批量驳回（{{ selectedIds.length }}）
+        </el-button>
+        <span v-if="selectedIds.length" class="batch-hint">已选 {{ selectedIds.length }} 条待审批申报</span>
+      </div>
+      <el-table v-loading="loading" :data="items" stripe border @selection-change="handleSelectionChange">
         <template #empty>
           <el-empty description="暂无待审批申报">
             <el-button type="primary" @click="$router.push('/academic/micro-specialties/proposals?tab=ALL')">查看全部申报</el-button>
           </el-empty>
         </template>
+        <el-table-column type="selection" width="50" :selectable="row => row.status === 'PENDING_REVIEW'" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
         <el-table-column prop="collegeName" label="学院" width="120" />
         <el-table-column prop="applicantName" label="申请人" width="100" />
@@ -92,7 +103,7 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getAllProposals, approveProposal, rejectProposal } from '@/api/microSpecialty'
+import { getAllProposals, approveProposal, rejectProposal, batchApproveProposals, batchRejectProposals } from '@/api/microSpecialty'
 import { useUserStore } from '@/store/user'
 import { sanitizeHtml } from '@/utils/xss'
 
@@ -114,6 +125,59 @@ const rejectTarget = ref(null)
 const error = ref(false)
 const detailVisible = ref(false)
 const detailRow = ref(null)
+const selectedIds = ref([])
+const batchActing = ref(false)
+
+const handleSelectionChange = (rows) => {
+  selectedIds.value = rows.map(r => r.id)
+}
+
+const handleBatchApprove = async () => {
+  if (!selectedIds.value.length) return
+  try {
+    await ElMessageBox.confirm(`确定批量批准选中的 ${selectedIds.value.length} 条申报？`, '批量批准', {
+      confirmButtonText: '批量批准',
+      cancelButtonText: '取消',
+      type: 'info'
+    })
+  } catch { return }
+  batchActing.value = true
+  try {
+    const { data } = await batchApproveProposals(selectedIds.value)
+    ElMessage.success(`批量批准完成：成功 ${data.successCount}，失败 ${data.failCount}`)
+    selectedIds.value = []
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '批量批准失败')
+  } finally {
+    batchActing.value = false
+  }
+}
+
+const handleBatchReject = async () => {
+  if (!selectedIds.value.length) return
+  let reason
+  try {
+    const res = await ElMessageBox.prompt('请输入统一的驳回原因（至少 10 字）', '批量驳回', {
+      confirmButtonText: '批量驳回',
+      cancelButtonText: '取消',
+      inputType: 'textarea',
+      inputValidator: v => (v && v.trim().length >= 10) ? true : '驳回原因至少 10 个字符'
+    })
+    reason = res.value.trim()
+  } catch { return }
+  batchActing.value = true
+  try {
+    const { data } = await batchRejectProposals(selectedIds.value, reason)
+    ElMessage.success(`批量驳回完成：成功 ${data.successCount}，失败 ${data.failCount}`)
+    selectedIds.value = []
+    fetchData()
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '批量驳回失败')
+  } finally {
+    batchActing.value = false
+  }
+}
 
 const showDetail = (row) => { detailRow.value = row; detailVisible.value = true }
 
@@ -177,6 +241,8 @@ onMounted(fetchData)
 
 <style scoped>
 .ms-proposal-review { padding: var(--space-4); max-width: 1200px; margin: 0 auto; }
+.batch-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.batch-hint { font-size: 12px; color: var(--el-text-color-secondary); }
 .mg-bottom-16 { margin-bottom: var(--space-4); }
 .mg-bottom-12 { margin-bottom: var(--space-3); }
 .mg-top-12 { margin-top: var(--space-3); }

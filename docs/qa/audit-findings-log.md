@@ -301,3 +301,34 @@
 
 - **症状**：订单页只有列表+分页，无法按状态筛选（后端已支持 status/courseId）。
 - **修复**：补全"全部/待支付/已支付/已取消/已退款"下拉筛选并接入 API。已复测：待支付→空态、已支付→1 单。
+
+## 2026-08-05 · 教务/微专业审批批次补测（F 系列）
+
+### F-2026-08-05-21 · 申报审批页无批量审批 UI（P2，功能未开发完整）
+
+- **症状**：申报审批页仅逐条批准/驳回，无批量操作；后端 batch-approve/batch-reject 接口早已存在但无前端入口。
+- **修复**：补全选择列（仅待审批可选）+ 批量批准/批量驳回按钮 + 统一驳回原因 prompt + 结果反馈（成功X失败Y）。已复测：勾选 2 条批量驳回→成功2失败0，DB 2 条 REJECTED + 统一原因。
+
+### F-2026-08-05-22 · 跨学院审批驳回必现 409（P1-C，双 CHECK 约束叠加）
+
+- **症状**：F7 跨学院审核点"驳回"→ 409 数据冲突，状态不变。
+- **直接原因**：V153 创建 `chk_mst_invite_status`（不含 REJECTED）；V173 意图修复却新增第二个约束 `chk_ms_teacher_invite_status`（含 REJECTED）而非替换旧约束 → 双约束叠加，旧约束永远拦截 REJECTED。
+- **修复**：V326 迁移 `DROP CONSTRAINT chk_mst_invite_status`（保留含 REJECTED 的新约束）。已复测：驳回 200 → invite_status=REJECTED。
+
+### F-2026-08-05-23 · 班级导入 pending_courses jsonb 写入类型错误（P1-C）
+
+- **症状**：班级导入失败，失败原因 `column "pending_courses" is of type jsonb but expression is of type character varying`。
+- **直接原因**：实体 `MicroSpecialtyEnrollment.pendingCourses`（String）用 `JacksonTypeHandler`，对 String 字段写入按 varchar 绑定 → jsonb 列拒绝。
+- **修复**：新增 `JsonbStringTypeHandler`（写入以 Types.OTHER 绑定，读取返回字符串）并替换实体注解。已复测：pending_courses JSON 正确落库。
+
+### F-2026-08-05-24 · 班级导入共享事务 rollback-only（P1-C，fail-open 失效模式复发）
+
+- **症状**：修复 jsonb 后导入仍失败，错误 `Transaction rolled back because it has been marked as rollback-only`。
+- **直接原因**：classImport 在共享事务内调用 `enrollmentService.enroll()`（REQUIRED），内层抛 BusinessException（如付费课程未购买）被 catch 吞掉，但内层 @Transactional(rollbackFor=Exception) 已把共享事务标记 rollback-only → 外层提交抛 UnexpectedRollbackException。
+- **修复**：`EnrollmentService` 新增 `enrollInNewTransaction`（REQUIRES_NEW 包装），classImport 与申报自动选课两处调用点改用之。已复测：导入成功 1 人 + pending_courses 记录。
+
+### F-2026-08-05-25 · 班级导入去重漏 PENDING 致唯一约束冲突（P1-C）
+
+- **症状**：导入含已有 PENDING 修读记录的学生时，insert 命中 `uk_mse_active` 唯一约束 → 该班级全部失败。
+- **直接原因**：去重查询仅排除 APPROVED/IN_PROGRESS；`uk_mse_active` 是部分唯一索引（排除 REJECTED/DROPPED/FAILED 之外均唯一），PENDING 也在索引内。
+- **修复**：去重与名额占用口径改为 notIn(REJECTED, DROPPED, FAILED)，与索引语义一致。已复测：PENDING 学生跳过、其余导入成功。
