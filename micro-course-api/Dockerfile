@@ -9,7 +9,11 @@ RUN --mount=type=cache,target=/root/.m2 \
     mvn package -DskipTests -B
 
 FROM --platform=linux/amd64 eclipse-temurin:17-jre-alpine
-RUN apk add --no-cache ffmpeg tini wqy-zenhei fontconfig
+# 渲染依赖：PPT 课件渲染走 Apache POI（JVM AWT），仅需中文字体（font-noto-cjk 与 wqy-zenhei）。
+# LibreOffice 非代码依赖（生产实证：无 LibreOffice 环境下 111 个课件渲染成功 status=2），不安装以免镜像膨胀。
+# aliyun 镜像加速：审计项 F-2026-08-05-03 验证 dl-cdn 官方源拉取大包不稳定，aliyun 一次成功。
+RUN sed -i 's#dl-cdn.alpinelinux.org#mirrors.aliyun.com#g' /etc/apk/repositories \
+    && apk add --no-cache ffmpeg tini wqy-zenhei fontconfig font-noto-cjk
 RUN addgroup -S microcourse && adduser -S microcourse -G microcourse
 WORKDIR /app
 COPY --from=build /app/target/micro-course-api-1.0.0.jar app.jar
