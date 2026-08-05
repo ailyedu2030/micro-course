@@ -1,8 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import './styles/design-tokens.css'
 /* 注：common-table.css 已合并到 design-tokens.css，不再独立引入 */
 import './styles/mobile-fixes.css'
@@ -77,7 +75,6 @@ for (const [key, component] of Object.entries(icons)) {
 const pinia = createPinia()
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus, { locale: zhCn })
 app.use(i18n)
 
 const pluginStore = usePluginStore()

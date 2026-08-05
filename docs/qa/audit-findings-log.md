@@ -434,3 +434,10 @@
 - **直接原因**：vite manualChunks 规则 `id.includes('video.js')` 子串误命中 `src/api/video.js` 等模块 id，将视频库/相关源码强行并入独立 vendor 块并被入口静态引用 → 全站（含登录页）首屏下载。
 - **修复**：规则收紧为 `id.includes('node_modules/hls.js')`，视频库回到懒加载图。匿名登录页 JS 从 6 块降至 5 块（视频块 161KB gzip 不再下载）；视频播放复测 readyState=4 无报错；单测 207/207、bundle 门禁、precheck 8/8 全绿。
 - **遗留优化点**：vendor-el 943KB（main.js `app.use(ElementPlus)` 全量注册，与 vite 注释"按需引入"不符）——移除需全量回归验证，列为 P2 后续项。
+
+### F-2026-08-05-42 · Element Plus 按需化尝试与结论（P2 性能调查，收尾）
+
+- **尝试**：移除 main.js `app.use(ElementPlus)` 全量注册 + locale 改 el-config-provider；并试过 alias 桶→按需包装。
+- **结果**：vendor-el 稳定在 ~943KB。根因：项目实际使用 67/124 个 el-* 组件（含日期/时间选择器等重型组件），EP 组件内部依赖图稠密（date-picker 内含 calendar 等），按需后并集接近全量体积；alias 方案零收益且破坏 unplugin resolver 生成的导入（SlideUploadZone 测试挂）→ 已回退 alias。
+- **保留**：main.js 移除冗余全量注册（与 vite 注释"按需引入"意图一致）+ locale 经 el-config-provider（App 根包裹）——单元测试 207/207、6 页冒烟 0 警告。
+- **结论**：vendor-el 为该项目 EP 使用密度的实际下限，不做 114 文件深导入重构（风险收益比不划算）。

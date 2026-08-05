@@ -5,33 +5,36 @@
   Author: jackie
 -->
 <template>
-  <div id="app" :class="appClass">
-    <!-- D2: 全局上传进度浮窗 -->
-    <UploadProgress />
-    <div v-if="hasError" class="app-error-boundary">
-      <div class="error-card">
-        <el-icon :size="48" color="var(--el-color-danger)"><WarningFilled /></el-icon>
-        <h2>页面出了点问题</h2>
-        <p>请尝试刷新页面或返回首页</p>
-        <div class="error-actions">
-          <el-button type="primary" @click="recover">刷新页面</el-button>
-          <el-button @click="goHome">返回首页</el-button>
+  <el-config-provider :locale="zhCn">
+    <div id="app" :class="appClass">
+      <!-- D2: 全局上传进度浮窗 -->
+      <UploadProgress />
+      <div v-if="hasError" class="app-error-boundary">
+        <div class="error-card">
+          <el-icon :size="48" color="var(--el-color-danger)"><WarningFilled /></el-icon>
+          <h2>页面出了点问题</h2>
+          <p>请尝试刷新页面或返回首页</p>
+          <div class="error-actions">
+            <el-button type="primary" @click="recover">刷新页面</el-button>
+            <el-button @click="goHome">返回首页</el-button>
+          </div>
         </div>
       </div>
+      <template v-else>
+        <router-view v-if="isLoginPage || isVideoPage" v-slot="{ Component }">
+          <transition name="page-fade" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
+        <StudentLayout v-else-if="isStudent" />
+        <Layout v-else />
+      </template>
     </div>
-    <template v-else>
-      <router-view v-if="isLoginPage || isVideoPage" v-slot="{ Component }">
-        <transition name="page-fade" mode="out-in">
-          <component :is="Component" />
-        </transition>
-      </router-view>
-      <StudentLayout v-else-if="isStudent" />
-      <Layout v-else />
-    </template>
-  </div>
+  </el-config-provider>
 </template>
 
 <script setup>
+import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import { ref, computed, onErrorCaptured, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
