@@ -23,6 +23,23 @@
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |
 | **R11 audit+monitor** | 2026-07-30 | 12 轮全栈多专家审查+修复：auth fail-closed、文件越权、API Key 明文清空、OrderService 811→78 拆分、22 个 Controller size=10000→200 收敛、QuestionController size=100000→200 修 DoS、UserRetentionCleanupJob 加 orders 级联、ProfileController 拆分 alias 路由、Profile.vue i18n 化、vue-i18n vitest setup 全局 install 修 6 个月 pre-existing 15 个测试失败、verify-secrets.sh / check-references-sync.py / generate-missing-tables.py / add-viewonly-tables.py 部署工具、contract-audit 0/0 完全清零、JaCoCo 真实 45.29% 覆盖率、admin nginx SPA fallback 修复、alertmanager CHANGE_ME 命名优化。**V324 迁移清空 api_key 明文列（DB 必跑），V325 清理 V135 冗余唯一索引（DB 必跑）**（**部分回滚必须包含迁移**）|
 
+## 当前生产状态（2026-08-05 PR #184 部署后）
+
+> 本段由部署执行时更新，回滚时优先使用以下备份资产。
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 旧后端 jar（部署前版本） | `/tmp/app.jar.backup.20260805_2028` | md5 `684ef41f…`，8/4 构建，Flyway V325 |
+| 旧后端 jar（宿主 bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260805_2029` | 与上同内容 |
+| 新后端 jar（当前运行） | `/opt/micro-course/micro-course-api-1.0.0.jar` | md5 `9055b31e…`，V326 已应用 |
+| 旧前端 dist（部署前版本） | `/opt/micro-course/backups/admin.dist.backup.20260805_2026/html.bak-newest` | bundle `index-Cy5FoWZm.js`，500 文件 |
+| 新前端 dist（当前运行） | 容器 `/usr/share/nginx/html` | bundle `index-CCE-iapk.js` |
+
+回滚后端：`cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260805_2029 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1`（bind-mount 需原位覆盖，禁止 docker cp 直替）。
+回滚前端：`docker cp` 旧 dist 目录原子替换 + `nginx -s reload`（见 `scripts/deploy-frontend.sh` 同款 11 步流程）。
+⚠️ 若回滚到 V325 及以前：V326 删除的约束需手动恢复
+`ALTER TABLE micro_specialty_teachers ADD CONSTRAINT chk_mst_invite_status CHECK (invite_status IN ('INVITED','ACTIVE','PENDING_ACADEMIC','DECLINED','REMOVED'));`
+
 ## 5 分钟回滚（应用层）
 
 当应用启动失败、接口大量报 500、或健康检查持续不通过时，执行应用层回滚。

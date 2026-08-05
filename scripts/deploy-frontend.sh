@@ -21,6 +21,7 @@ set -e
 
 TARBALL="${1:-/tmp/admin-pr161.tar.gz}"
 SERVER="ubuntu@100.74.122.13"
+SERVER_IP="100.74.122.13"
 ADMIN_CONTAINER="micro-course-micro-course-admin-1"
 BAK_DIR="/opt/micro-course/backups"
 BAK_NAME="admin.dist.backup.$(date +%Y%m%d_%H%M%S)"
