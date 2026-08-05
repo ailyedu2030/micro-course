@@ -185,6 +185,8 @@
 - **症状**：PPT 上传后"课件渲染失败"。
 - **修复**：容器安装 libreoffice-impress 26.2.4 + fonts-noto-cjk（aliyun 镜像加速）。已复测：渲染 pages=1、status=2、学生端真实播放。**部署要求：容器镜像必须包含 LibreOffice + 中文字体，否则 PPT 课件渲染失败。**
 
+> **2026-08-05 部署复核修正**：当前渲染链路为 Apache POI（`SlideRenderService`，JVM AWT 直接出图），代码中零 `soffice/libreoffice` 调用（全仓 grep 无命中，`ProcessBuilder` 仅用于 ffmpeg）。生产实证：无 LibreOffice 的生产镜像下 `course_slides` 111 条 status=2（渲染成功）。原"LibreOffice 必需"为环境误诊（真实缺口是中文字体）。**修正后的部署要求：容器镜像必须包含中文字体（`font-noto-cjk` + `wqy-zenhei`），LibreOffice 不安装。** 已在 `micro-course-api/Dockerfile` 固化。
+
 ### F-2026-08-05-04 · HTML 课件单元懒创建死链（P1-C，三处叠加）
 
 - **症状**：HTML 课件上传后工作台 HTML 流程不可达；即使进入，保存报 500（`PUT /html/units/undefined`），单元永远无法创建。

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (部署镜像固化：PPT 渲染中文字体 + 可靠镜像源)
+
+> 2026-08-05 PR #184 部署后收尾：生产只读审计确认 ffmpeg/uploads 卷已具备，
+> 缺口为中文字体（PPT 渲染依赖）；LibreOffice 经代码与生产实证为非必需，不安装。
+
+- `micro-course-api/Dockerfile` 固化 `font-noto-cjk`（与既有 `wqy-zenhei` 双保险），PPT 渲染（Apache POI/AWT）中文不再缺字
+- apk 源切换 aliyun 镜像（审计项 F-2026-08-05-03 验证官方 CDN 拉取大包不稳定，aliyun 一次成功）
+- 复核结论：渲染链路为 Apache POI（全仓零 `soffice/libreoffice` 调用，`ProcessBuilder` 仅 ffmpeg），
+  生产 111 个 `course_slides` status=2 在无 LibreOffice 环境下渲染成功 → 修正审计日志与 ROLLBACK_PLAN 中"LibreOffice 必需"的过时结论
+
 ### Fixed (全量自动化回归：后端 1127 单测 + 前端 207 单测 + e2e 37/37 + 16/16 门禁全绿)
 
 > 2026-08-05 回归收尾：补齐上一轮未跑的全量自动化门禁，
