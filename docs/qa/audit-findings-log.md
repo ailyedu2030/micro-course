@@ -427,3 +427,10 @@
 - **背景**：e2e a11y 仅覆盖学生/教师端；管理/教务端此前为一次性手工 axe 扫描。
 - **修复**：新增 e2e/admin-audit.spec.js（管理端 7 页 + 教务端 5 页，账号默认对齐门禁种子 admin/admin123、academic1/password123）。staging 12/12 通过；全量套件将扩至 49 项。
 - **附注**：staging 上用 gate 专用账号（student/student123 等）登录会触发登录锁定（5 次失败锁），验证了锁定机制生效；锁已清除。门禁专用账号不应在 staging 使用。
+
+### F-2026-08-05-41 · 登录首屏误载 523KB 视频库（P2，性能优化）
+
+- **症状**：Lighthouse 登录页性能 63（LCP ~6s）；index.html 首屏预加载 vendor-video-player(692KB)。
+- **直接原因**：vite manualChunks 规则 `id.includes('video.js')` 子串误命中 `src/api/video.js` 等模块 id，将视频库/相关源码强行并入独立 vendor 块并被入口静态引用 → 全站（含登录页）首屏下载。
+- **修复**：规则收紧为 `id.includes('node_modules/hls.js')`，视频库回到懒加载图。匿名登录页 JS 从 6 块降至 5 块（视频块 161KB gzip 不再下载）；视频播放复测 readyState=4 无报错；单测 207/207、bundle 门禁、precheck 8/8 全绿。
+- **遗留优化点**：vendor-el 943KB（main.js `app.use(ElementPlus)` 全量注册，与 vite 注释"按需引入"不符）——移除需全量回归验证，列为 P2 后续项。

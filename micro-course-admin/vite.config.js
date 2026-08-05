@@ -78,8 +78,10 @@ export default defineConfig({
           if (id.includes('node_modules/@vueuse')) return 'vendor-vueuse'
           if (id.includes('node_modules/axios')) return 'vendor-axios'
           if (id.includes('node_modules/vue-router') || id.includes('node_modules/pinia') || id.includes('node_modules/vue')) return 'vendor-vue-core'
-          // 视频播放器 lazy-load: 仅观看视频时加载
-          if (id.includes('VideoPlayer.vue') || id.includes('video.js') || id.includes('hls.js')) return 'vendor-video-player'
+          // 视频播放器 lazy-load: 仅观看视频时加载。
+          // 注意：不要用 'video.js' 子串匹配（会误命中 src/api/video.js 等模块 id），
+          // 仅将 hls.js 库独立成块；hls 仅被懒加载视图引用时自然落入懒块。
+          if (id.includes('node_modules/hls.js')) return 'vendor-video-player'
         },
       }
     },
