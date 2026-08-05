@@ -220,3 +220,13 @@
   2. 前端 `handleReinvite` 发空 body，DTO 校验"教师ID不能为空"；
   3. 后端控制器把 `request.getTeacherId()` 传给了服务第 4 参 courseId（参数错位，重邀会把课程指派写成教师 ID）。
 - **修复**：新增教师端 `GET /teachers/manage`（含全部状态）；前端发送 teacherId/role/courseId；DTO 补 courseId 字段、控制器映射修正、服务缺省复用原记录课程。已复测：重邀确认→"已重新邀请"→DECLINED→INVITED（已复原）。
+
+## 2026-08-05 · 学生端批次补测（E 系列）
+
+### F-2026-08-05-08 · 视频重试转码状态机错位 → 永远卡"转码中"（P1-C）
+
+- **症状**：转码失败后点"重试"，视频停在"转码中"不再变化；新上传视频也因容器缺 ffmpeg 全部失败。
+- **直接原因（两处叠加）**：
+  1. `retryTranscode` 把 FAILED(3) 直接置为 TRANSCODING(1)，但转码任务 CAS 要求 UPLOADING(0)→TRANSCODING(1) → 重试任务被"已被其他转码任务接管"跳过，永远卡死；
+  2. API 容器重建后丢失 ffmpeg（此前手工安装未固化到镜像）→ 新上传转码必失败。
+- **修复**：retryTranscode 改为置 UPLOADING(0)；容器补装 ffmpeg 8.0.1（aliyun 镜像）。已复测：重试 → status=2 + HLS 生成；学生播放器 video 元素 readyState=4 加载成功。**部署要求：镜像必须包含 ffmpeg（含 HLS 转码）**。
