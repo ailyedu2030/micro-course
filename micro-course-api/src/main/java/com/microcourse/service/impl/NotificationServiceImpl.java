@@ -222,7 +222,7 @@ public class NotificationServiceImpl implements NotificationService {
             java.util.Map.of(
                     "ENROLLMENT", java.util.List.of(
                             "ENROLLMENT_SUCCESS", "ENROLLMENT_WAITLIST", "ENROLLMENT_DROPPED",
-                            "ENROLLMENT_AUTO_ENROLL", "MS_ENROLLMENT_APPROVED",
+                            "MS_ENROLLMENT_AUTO_ENROLL", "MS_ENROLLMENT_APPROVED",
                             "MS_ENROLLMENT_REJECTED", "MS_ENROLLMENT_PENDING", "MS_ENROLLMENT_DROPPED",
                             "MS_ENROLLMENT_REAPPLIED", "MS_ENROLLMENT_FAILED"),
                     "GRADE", java.util.List.of(
