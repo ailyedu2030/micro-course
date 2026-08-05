@@ -380,3 +380,27 @@
 - **根因**：V316 将 DB 约束/服务白名单从 APPROVED 改为 ENROLLED/DROPPED/COMPLETED
   （P1-C 修复），测试仍断言旧状态 APPROVED 合法。
 - **修复**：测试改断言 ENROLLED（enrolledStatusShouldBeAccepted）。已复测 23 用例全通过。
+
+## 2026-08-05 · 全量自动化回归修复（e2e/a11y/单测门禁全绿）
+
+### F-2026-08-05-33 · 管理员创建课程必 409（P1-C，teacher_id NOT NULL）
+
+- **症状**：ADMIN 调 POST /api/courses 创建课程 → 409 数据冲突。
+- **直接原因**：create() 仅对 TEACHER 填充 teacherId；ADMIN 未指定时 teacher_id 为 null → NOT NULL 冲突。
+- **修复**：管理员/教务创建必须显式指定授课教师，否则返回明确业务错误。已复测：admin+teacherId 创建 200。
+
+### F-2026-08-05-34 · 锁定徽章整卡透明度致文本对比度不足（P1-C，a11y serious）
+
+- **症状**：student 账号（无徽章）在个人中心/成就墙，axe 报 badge-tip/badge-desc color-contrast 2.99~3.76:1。
+- **直接原因**：AchievementBadges/AchievementWall 的锁定徽章卡 `opacity:0.7/0.8`，axe 按透明度混合后有效对比度骤降（真实缺陷，非误报）。
+- **修复**：移除透明度，锁定态改用浅灰底+虚线边框区分；同时 badge-desc/criteria 从 secondary/placeholder 提升至 regular、学生主色 #6366f1→#5b60ea（白字4.88:1）、互动课徽章 #67c23a→#2e7d32（5.13:1）、通知未读标题改用 primary-dark。已复测：profile/settings/achievements/my-courses/courses/learning/notifications 全部 0 critical/serious。
+
+### F-2026-08-05-35 · XSS e2e 用 page.request 不带 token 必 401（P2，测试缺陷）
+
+- **直接原因**：应用是 localStorage Bearer 鉴权，page.request 不携带 → 上传 401。
+- **修复**：登录后从 localStorage 取 token 注入 Authorization 头；同时课程夹具归属 p0_teacher + SLIDES_HTML_WHITELIST 含 6。已复测 A1/A2 200。
+
+### F-2026-08-05-36 · e2e 依赖数据/浏览器环境（P2，门禁基础设施）
+
+- **根因**：隔离库无课程/课件数据（XSS B/C、phase11 需 course 1/133 + slide + 选课）；chromium 未安装；teacher-audit.spec.js 两处 describe 被注释致整文件语法错误；C2 单测 10 payload 超 30s 预算。
+- **修复**：新增 scripts/seed-e2e-fixtures.sh（课程1 VIDEO 归 p0_teacher + 课程133 INTERACTIVE 强制 id=133 + 章节/HTML 课件/选课）；门禁接入种子、白名单 env、chromium 自安装（npmmirror 回退）、--timeout=240000；修复 e2e 语法。已复测：chromium-desktop 37/37 通过（4.0m）。

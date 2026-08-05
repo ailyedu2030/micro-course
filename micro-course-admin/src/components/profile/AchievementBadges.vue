@@ -140,7 +140,11 @@ fetchBadges()
 }
 .badge-item.badge-locked {
   background: var(--el-fill-color-light);
-  opacity: 0.7;
+  /* A11Y(2026-08-05): 锁定态此前用整卡 opacity:0.7，
+     axe 按透明度混合后"未解锁"文本有效对比度降至 2.99:1(serious)。
+     移除透明度，改为浅灰底 + 虚线边框区分锁定，文本保持满不透明度达标。 */
+  border: 1px dashed var(--el-border-color);
+  opacity: 1;
 }
 
 .badge-icon {

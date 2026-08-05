@@ -39,7 +39,10 @@
 
 /* 学生 = 现代学习感 (#6366f1 学习靛蓝 → 稍降饱和度更耐看) */
 .role-student {
-  --role-primary: #6366f1;
+  /* A11Y(2026-08-05): #6366f1 + 白字对比度 4.46:1 略低于 WCAG AA(4.5:1)，
+     axe 在 /student/settings 保存按钮等处以 serious 阻断。
+     加深为 #5b60ea（白字 4.88:1），保持靛蓝气质。 */
+  --role-primary: #5b60ea;
   --role-primary-dark: #4f46e5;
   --role-primary-darkest: #312e81;
   --role-primary-darker: #3730a3;

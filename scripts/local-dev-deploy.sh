@@ -202,6 +202,7 @@ docker run -d --name "$API_CONTAINER" \
   -e VIDEO_SIGN_SECRET="$VIDEO_SIGN_SECRET" \
   -e DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY" \
   -e CORS_ALLOWED_ORIGINS="$CORS_ALLOWED_ORIGINS" \
+  -e SLIDES_HTML_WHITELIST="6,101,205" \
   -e PROD_ALLOW_MOCK_PAYMENT="$PROD_ALLOW_MOCK_PAYMENT" \
   -v "$ROOT/micro-course-api/target/micro-course-api-1.0.0.jar:/app/app.jar:ro" \
   --platform linux/amd64 \
@@ -396,13 +397,24 @@ fi
 section "7. Playwright UI 测试"
 
 if [ "${PLAYWRIGHT_TEST:-0}" = "1" ]; then
+  echo "  注入课程夹具 (XSS/phase11 依赖)..."
+  if bash scripts/seed-e2e-fixtures.sh "http://localhost:${API_PORT}" "$DB_CONTAINER" "$DB_USER" "$DB_NAME" >/tmp/e2e-fixtures.log 2>&1; then
+    ok "课程夹具已注入"
+  else
+    fail "课程夹具注入失败"
+    cat /tmp/e2e-fixtures.log | tail -10
+  fi
   echo "  PLAYWRIGHT_TEST=1, 运行 Playwright..."
   # 依赖解析修复：@playwright/test 安装在 micro-course-admin，且 e2e 用例在其 e2e/ 目录；
   # 根目录 playwright.config.local.ts 为遗留文件，全局 CLI 无法解析依赖
+  # 首次运行自动安装 chromium（默认 CDN 慢，回退 npmmirror 镜像）
+  (cd micro-course-admin && (npx playwright install chromium >/dev/null 2>&1 || \
+    PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright npx playwright install chromium >/dev/null 2>&1) || true)
   (cd micro-course-admin && \
    BASE_URL="http://localhost:${ADMIN_PORT}" npx playwright test \
     --config=playwright.config.local.ts \
-    --project=chromium-desktop 2>&1 | tail -20) || \
+    --project=chromium-desktop \
+    --timeout=240000 2>&1 | tail -20) || \
     fail "Playwright UI 测试失败"
 else
   ok "跳过 Playwright UI 测试 (设置 PLAYWRIGHT_TEST=1 启用)"

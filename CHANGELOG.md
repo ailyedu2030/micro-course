@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全量自动化回归：后端 1127 单测 + 前端 207 单测 + e2e 37/37 + 16/16 门禁全绿)
+
+> 2026-08-05 回归收尾：补齐上一轮未跑的全量自动化门禁，
+> 修复 2 项 P1-C（管理员建课 409、锁定徽章 a11y 对比度）+ 3 项 P2（测试基建）。
+
+#### P1-C 修复
+- 管理员创建课程必 409（teacher_id NOT NULL，未显式指定授课教师时明确报错）
+- 锁定徽章整卡 opacity 致文本有效对比度 2.2~3.8:1（移除透明度+虚线边框区分；
+  同步加深学生主色 #6366f1→#5b60ea、互动课徽章 #67c23a→#2e7d32、通知未读标题 primary-dark）
+
+#### P2 修复（测试基建）
+- XSS e2e 认证（localStorage token 注入 Authorization）
+- e2e 夹具种子 scripts/seed-e2e-fixtures.sh（course 1/133+课件+选课）接入门禁
+- e2e 语法错误（describe 被注释）、chromium 自安装、C2 超时、门禁 --timeout
+
+#### 验证
+- 后端全量单测（干净容器环境）通过（含修复 2 处陈旧断言 + 视频测试文件隔离）
+- 前端单测 207/207；e2e chromium-desktop 37/37；precheck 8/8；ESLint 0
+
 ### Fixed (全页面审查九轮 · G/D7.5/H 系列全绿：组件 5 项 P1-C + 2 项 P2，矩阵 474 项全 ✅)
 
 > 2026-08-05 第九轮：完成核心组件（课件四面板/音频/学习视图/profile 组件）与系统级

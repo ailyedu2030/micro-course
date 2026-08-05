@@ -229,6 +229,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             request.setTeacherId(SecurityUtil.getCurrentUserId());
+        } else if (request.getTeacherId() == null) {
+            // P1-C(2026-08-05): 管理员/教务无教师身份，teacher_id NOT NULL
+            // 若未显式指定授课教师，此前 insert 直接 409 数据冲突
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "管理员/教务创建课程必须指定授课教师");
         }
 
         Course course = new Course();

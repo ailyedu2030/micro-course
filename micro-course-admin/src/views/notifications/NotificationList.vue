@@ -514,7 +514,9 @@ onMounted(() => {
 
 .title-unread {
   font-weight: var(--weight-semibold);
-  color: var(--role-primary);
+  /* A11Y(2026-08-05): primary(#5b60ea) 在 light-9(#eef2ff) 底上仅 4.36:1；
+     改用 primary-dark(#4f46e5) → 5.62:1 达标 */
+  color: var(--role-primary-dark);
 }
 
 /* 未读圆点 */
