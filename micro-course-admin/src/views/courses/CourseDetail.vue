@@ -202,8 +202,24 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
               <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
             </el-select>
           </el-form-item>
-          <el-form-item :label="$t('course.teacher')">
-            <el-input :model-value="teacherName" disabled :aria-label="$t('course.teacher')" />
+          <el-form-item :label="$t('course.teacher')" :prop="isCreateMode && isAdminOrAcademic ? 'teacherId' : undefined">
+            <!-- 管理员/教务创建课程必须指定授课教师（P1-C：此前后端 teacher_id NOT NULL 409） -->
+            <el-select
+              v-if="isCreateMode && isAdminOrAcademic"
+              v-model="formData.teacherId"
+              :placeholder="$t('course.selectTeacher')"
+              class="full-width"
+              filterable
+              :aria-label="$t('course.teacher')"
+            >
+              <el-option
+                v-for="t in teacherOptions"
+                :key="t.id"
+                :label="t.realName || t.username"
+                :value="t.id"
+              />
+            </el-select>
+            <el-input v-else :model-value="teacherName" disabled :aria-label="$t('course.teacher')" />
           </el-form-item>
           <el-row :gutter="20">
             <el-col :span="8">
@@ -349,6 +365,7 @@ import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes
 import { getCourseById, createCourse, updateCourse, updateCourseStatus, approveCourse, rejectCourse, submitCourseForReview, updateCourseCover, publishCourse, unpublishCourse, copyCourse } from '@/api/course'
 import { getChapters, createChapter, updateChapter, deleteChapter, sortChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
+import { getUsers } from '@/api/user'
 import { View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
@@ -382,6 +399,8 @@ const isOwner = computed(() => {
 // 否则 isEditMode=false + loading 永不复位, 页面永久卡在「加载课程信息...」
 const isCreateMode = computed(() => route.name === 'CourseCreate')
 const isEditMode = computed(() => route.path.includes('/edit') || isCreateMode.value)
+const isAdminOrAcademic = computed(() => ['ADMIN', 'ACADEMIC'].includes(userStore.role))
+const teacherOptions = ref([])
 
 const loading = ref(true)
 const submitLoading = ref(false)
@@ -427,7 +446,8 @@ const formData = reactive({
 })
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }]
+  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
+  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
 }
 const teacherName = computed(() => courseData.value.teacherName || '')
 
@@ -463,6 +483,14 @@ let sortableInstance = null
 const fetchCategories = async () => {
   try { const { data } = await getCategories({ size: 1000 }); categories.value = data.items || [] }
   catch { categories.value = [] }
+}
+
+// 管理员/教务创建课程需选择授课教师（P1-C：后端 teacher_id NOT NULL）
+const fetchTeachers = async () => {
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 500 })
+    teacherOptions.value = data?.items || data || []
+  } catch { teacherOptions.value = [] }
 }
 
 const fetchCourse = async () => {
@@ -784,6 +812,7 @@ onMounted(() => {
     return
   }
   fetchCategories()
+  if (isCreateMode.value && isAdminOrAcademic.value) fetchTeachers()
   fetchCourse().then(() => { 
     if (!isEditMode.value) fetchChapters()
     if (isEditMode.value) fixQuillAria()

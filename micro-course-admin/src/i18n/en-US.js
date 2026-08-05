@@ -83,6 +83,7 @@ export default {
     courseDescription: 'Description',
     coursePrice: 'Price',
     teacher: 'Teacher',
+    selectTeacher: 'Please select the teacher',
     student: 'Student',
     duration: 'Duration',
     difficulty: 'Difficulty',

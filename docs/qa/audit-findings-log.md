@@ -404,3 +404,9 @@
 
 - **根因**：隔离库无课程/课件数据（XSS B/C、phase11 需 course 1/133 + slide + 选课）；chromium 未安装；teacher-audit.spec.js 两处 describe 被注释致整文件语法错误；C2 单测 10 payload 超 30s 预算。
 - **修复**：新增 scripts/seed-e2e-fixtures.sh（课程1 VIDEO 归 p0_teacher + 课程133 INTERACTIVE 强制 id=133 + 章节/HTML 课件/选课）；门禁接入种子、白名单 env、chromium 自安装（npmmirror 回退）、--timeout=240000；修复 e2e 语法。已复测：chromium-desktop 37/37 通过（4.0m）。
+
+### F-2026-08-05-37 · 管理端建课表单缺授课教师选择器（P1-C，前端功能缺口）
+
+- **症状**：ADMIN 在 /courses/create 建课：后端修复前 409，修复后提示"必须指定授课教师"，但表单根本没有教师字段 → 管理员 UI 建课不可用。
+- **直接原因**：CourseDetail.vue 建课表单仅显示禁用教师名输入框，teacherId 只在请求体里透传，管理员无渠道填写。
+- **修复**：创建模式 + ADMIN/教务角色显示教师下拉（getUsers role=TEACHER 加载，过滤可搜索），teacherId 必填校验；后端已有明确错误兜底。已复测：选测试教师1 → POST teacherId=3 → 200 → 跳 /courses/7（测试课程已清理）。

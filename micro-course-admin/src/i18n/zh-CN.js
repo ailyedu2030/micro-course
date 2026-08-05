@@ -83,6 +83,7 @@ export default {
     courseDescription: '课程简介',
     coursePrice: '课程价格',
     teacher: '教师',
+    selectTeacher: '请选择授课教师',
     student: '学生',
     duration: '时长',
     difficulty: '难度',
