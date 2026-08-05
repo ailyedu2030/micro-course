@@ -63,7 +63,7 @@
             {{ row.replyCount ?? 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="发布时间" width="170" />
+        <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.statusStr === 'PENDING'" type="warning" size="small">待审核</el-tag>
@@ -107,7 +107,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
@@ -118,6 +118,9 @@ import { getCourses } from '@/api/course'
 
 const router = useRouter()
 const userStore = useUserStore()
+// P1-C 修复 (2026-08-04): userRole 未定义 → 管理员/教务删除讨论按钮隐藏，
+// 违规讨论无法清理
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const error = ref(false)

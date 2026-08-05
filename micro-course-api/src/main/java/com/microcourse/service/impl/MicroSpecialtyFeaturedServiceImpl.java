@@ -223,8 +223,12 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
         // BUG-005 fix: 捕获 advisory lock 执行中的非 BusinessException (如 MyBatisSystemException),
         // 返回友好错误而非 500 服务器内部错误
         try {
-            msRepository.acquireGoldFeaturedLock();
+            boolean locked = msRepository.tryAcquireGoldFeaturedLock();
+            if (!locked) {
+                throw new BusinessException(ErrorCode.MS_GOLD_LIMIT, "金标设置并发冲突，请稍后重试");
+            }
         } catch (Exception e) {
+            if (e instanceof BusinessException) throw (BusinessException) e;
             log.error("获取金标排他锁失败 msId={}", msId, e);
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "系统繁忙，请稍后重试");
         }

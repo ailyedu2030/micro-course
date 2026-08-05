@@ -334,7 +334,7 @@ import { useUserStore } from '@/store/user'
 import {
   InfoFilled, Setting, Message, Lock, Check, Key
 } from '@element-plus/icons-vue'
-import { getSettings, updateSettings, getCasConfig, updateCasConfig } from '@/api/admin-settings'
+import { getSettings, updateSettings, getCasConfig, updateCasConfig, sendTestEmail } from '@/api/admin-settings'
 
 const userStore = useUserStore()
 // CAS 配置含解密后的管理员账号等敏感字段，后端仅 ADMIN 可读；
@@ -594,18 +594,13 @@ async function handleTestMail() {
     ElMessage.warning('请先填写完整的邮件配置')
     return
   }
-  // ⚠️ P1C-055: 当前为模拟测试，后端暂无实际测试端点，请手动验证
-  ElMessage.warning({
-    message: '当前为模拟测试，请手动发送邮件验证配置是否可用',
-    duration: 5000
-  })
-  setTimeout(() => {
-    ElMessage({
-      type: 'warning',
-      message: '模拟测试结束（后端暂未实现实际测试端点，配置保存后请手动验证）',
-      duration: 6000
-    })
-  }, 1000)
+  // B10.5 修复：真实 SMTP 发送（后端按已保存配置自测）
+  try {
+    await sendTestEmail()
+    ElMessage.success('测试邮件发送成功，请查收')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '邮件发送失败')
+  }
 }
 
 onMounted(() => {

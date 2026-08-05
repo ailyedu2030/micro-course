@@ -170,6 +170,10 @@ public class StorageApplicationController {
         try {
             bytes = exportService.exportWord(id);
         } catch (RuntimeException e) {
+            // P1-C 修复 (2026-08-04): 原 catch 吞掉原始异常导致导出失败无法排查，
+            // 补 ERROR 日志记录根因（含 stack_trace）
+            org.slf4j.LoggerFactory.getLogger(StorageApplicationController.class)
+                    .error("[ExportWord] 生成失败 proposalId={}", id, e);
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "Word 文档生成失败，请稍后重试");
         }
         String filename = "【" + schoolName + "】微专业申报表_"

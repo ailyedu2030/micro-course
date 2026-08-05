@@ -251,14 +251,18 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         if (post == null || post.getDeletedAt() != null) {
             throw new BusinessException(ErrorCode.DISCUSSION_POST_NOT_FOUND);
         }
-        // 管理员/教师/教务可查看待审核帖子，学生不可
+        // 管理员/教师/教务可查看待审核帖子；作者本人亦可查看自己的帖子（含待审核/驳回），
+        // 否则学生发帖后列表可见但详情打不开（前后端不一致），无法确认发帖是否成功。
         boolean isManager = SecurityUtil.isAdmin() || SecurityUtil.hasRole("TEACHER") || SecurityUtil.hasRole("ACADEMIC");
+        Long viewerId = SecurityUtil.getCurrentUserId();
+        boolean isOwner = viewerId != null && post.getUserId() != null
+                && viewerId.equals(post.getUserId());
         if (post.getStatus() != null) {
-            if (post.getStatus() == 0 && !isManager) {
+            if (post.getStatus() == 0 && !isManager && !isOwner) {
                 // P1-C: 用专门的"帖子审核中"错误码, 而非通用 BAD_REQUEST_PARAM
                 throw new BusinessException(ErrorCode.DISCUSSION_POST_PENDING_REVIEW);
             }
-            if (post.getStatus() == 2 && !isManager) {
+            if (post.getStatus() == 2 && !isManager && !isOwner) {
                 // P1-C: 用专门的"帖子已驳回"错误码
                 throw new BusinessException(ErrorCode.DISCUSSION_POST_REJECTED);
             }
@@ -629,6 +633,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         vo.setCommentCount(post.getCommentCount());
         vo.setLikeCount(post.getLikeCount());
         vo.setCreatedAt(post.getCreatedAt());
+        applyPostStatus(vo, post);
 
         // 联查 authorName
         if (post.getUserId() != null) {
@@ -661,6 +666,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         vo.setCommentCount(post.getCommentCount());
         vo.setLikeCount(post.getLikeCount());
         vo.setCreatedAt(post.getCreatedAt());
+        applyPostStatus(vo, post);
 
         // 联查 authorName（使用预加载的 Map）
         if (post.getUserId() != null) {
@@ -677,6 +683,23 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         }
 
         return vo;
+    }
+
+    /**
+     * P1-C 修复：详情页/列表页 VO 此前未设置 status，
+     * 前端 postData.status 为 undefined → 通过/驳回按钮与状态标签永不显示，
+     * 帖子审核流程无法从详情页操作。统一提取状态映射。
+     */
+    private void applyPostStatus(DiscussionPostVO vo, DiscussionPost post) {
+        int statusCode = post.getStatus() != null ? post.getStatus() : 0;
+        String statusStr = switch (statusCode) {
+            case 0 -> "PENDING";
+            case 1 -> "PUBLISHED";
+            case 2 -> "REJECTED";
+            case 3 -> "DELETED";
+            default -> "UNKNOWN";
+        };
+        vo.setStatus(statusStr);
     }
 
     /**

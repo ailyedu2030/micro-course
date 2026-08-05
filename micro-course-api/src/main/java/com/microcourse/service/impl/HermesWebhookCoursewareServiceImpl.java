@@ -71,7 +71,7 @@ public class HermesWebhookCoursewareServiceImpl implements HermesWebhookCoursewa
     @Override
     public List<SlidePageVO> listSlidePages(Long courseId, Long lessonId) {
         requireSectionInCourse(courseId, lessonId);
-        return slideService.getPages(courseId, lessonId);
+        return slideService.getPages(courseId, lessonId, null);
     }
 
     @Override
@@ -146,7 +146,7 @@ public class HermesWebhookCoursewareServiceImpl implements HermesWebhookCoursewa
         }
 
         String fullScript = XssSanitizer.sanitizePlainText(scriptContent);
-        List<SlidePageVO> pages = slideService.getPages(courseId, sectionId);
+        List<SlidePageVO> pages = slideService.getPages(courseId, sectionId, null);
         if (pages == null || pages.isEmpty()) {
             if (sectionId != null) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "该课时无课件页面");

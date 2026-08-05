@@ -1,12 +1,9 @@
 package com.microcourse.dto.microSpecialty;
 
-import jakarta.validation.constraints.NotNull;
-
 import java.math.BigDecimal;
 
 public class MicroSpecialtyCourseRequest {
 
-    @NotNull(message = "课程ID不能为空")
     private Long courseId;
 
     private Integer sortOrder;

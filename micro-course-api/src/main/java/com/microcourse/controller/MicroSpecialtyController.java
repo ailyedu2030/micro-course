@@ -58,8 +58,8 @@ public class MicroSpecialtyController {
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<MicroSpecialtyVO>> page(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String featuredStatus,
@@ -112,8 +112,8 @@ public class MicroSpecialtyController {
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
     public R<PageResult<MicroSpecialtyEnrollmentVO>> listEnrollments(
             @PathVariable Long id,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String status) {
         PageResult<MicroSpecialtyEnrollmentVO> result = msEnrollmentService.listEnrollments(id, page, size, status);
         return R.ok(result);
@@ -274,6 +274,13 @@ public class MicroSpecialtyController {
         return R.ok(teachers);
     }
 
+    /** 教师端团队管理列表（负责人专用，含全部状态供重邀/管理）。P1-C 修复。 */
+    @GetMapping("/{id}/teachers/manage")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<MicroSpecialtyTeacherVO>> listTeachersForManage(@PathVariable Long id) {
+        return R.ok(microSpecialtyService.listTeachersForManage(id));
+    }
+
     /** 发送邀请 */
     @PostMapping("/{id}/teachers")
     @PreAuthorize("hasRole('TEACHER')")
@@ -281,6 +288,16 @@ public class MicroSpecialtyController {
                                                      @Valid @RequestBody MicroSpecialtyTeacherRequest request) {
         MicroSpecialtyTeacherVO vo = microSpecialtyService.inviteTeacher(id, request);
         return R.ok(vo);
+    }
+
+    /** 指派已入团队教师到课程（课程编排页"指派教师"）。P1-C 修复：独立接口，不再复用邀请。 */
+    @PutMapping("/{id}/teachers/{teacherId}/course")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<MicroSpecialtyTeacherVO> assignTeacherToCourse(
+            @PathVariable Long id,
+            @PathVariable Long teacherId,
+            @RequestParam Long courseId) {
+        return R.ok(microSpecialtyService.assignTeacherToCourse(id, teacherId, courseId));
     }
 
     /** 移除教师 */

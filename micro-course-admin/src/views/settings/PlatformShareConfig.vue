@@ -110,12 +110,16 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Coin } from '@element-plus/icons-vue'
 import { getPlatformShareConfigList, upsertPlatformShareConfig } from '@/api/platform-share-config'
+import { useUserStore } from '@/store/user'
 
 const loading = ref(false)
+// P1-C 修复 (2026-08-04): userRole 未定义 → 分账比例编辑按钮隐藏，配置不可修改
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 const saving = ref(false)
 const configList = ref([])
 const dialogVisible = ref(false)

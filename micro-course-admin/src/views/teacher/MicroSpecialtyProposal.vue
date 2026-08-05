@@ -477,7 +477,7 @@
   <!-- 分步导航按钮 -->
   <div v-if="!loadError" class="step-nav">
     <el-button v-if="step > 0" @click="step--">上一步</el-button>
-    <el-button v-if="step < 4" type="primary" @click="step++">下一步</el-button>
+    <el-button v-if="step < 4" type="primary" @click="handleNextStep">下一步</el-button>
     <template v-if="step === 4">
       <el-button :loading="saving" @click="handleSave">保存</el-button>
       <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
@@ -520,6 +520,24 @@ const pendingSave = ref(false)  // RT-3: 标记正在执行的自动保存（防
 const autoSaveAbortController = ref(null)  // C-007: AbortController 用于取消 in-flight autoSave
 const formRef1 = ref(null)
 const formRef2 = ref(null)
+
+// P1-C 修复 (2026-08-04): "下一步"原直接 step++ 绕过表单校验，
+// 第一步必填项（申报高校/微专业名称/负责人/电话/申请时间）全空也能进入后续步骤，
+// 用户填完 5 步才发现第一步为空 → 流程校验失效。
+const handleNextStep = async () => {
+  try {
+    if (step.value === 0 && formRef1.value) {
+      await formRef1.value.validate()
+    }
+    if (step.value === 1 && formRef2.value) {
+      await formRef2.value.validate()
+    }
+    step.value++
+  } catch {
+    // 校验失败，停留在当前步骤并展示错误提示
+    ElMessage.warning('请先完善当前步骤的必填信息')
+  }
+}
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
 const initialLoadComplete = ref(false)
 const autoSaveEnabled = ref(false)

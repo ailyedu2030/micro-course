@@ -127,6 +127,15 @@ async function login(page, username, password) {
 }
 
 /**
+ * 应用采用 localStorage Bearer token 鉴权（非 cookie），
+ * page.request 不会自动携带，需显式注入 Authorization 头
+ */
+async function authHeaders(page) {
+  const token = await page.evaluate(() => localStorage.getItem('micro_course_token'));
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
  * 获取 XSS 内容中可检测的危险标识
  */
 function getStrictIndicator(html) {
@@ -154,11 +163,13 @@ test.describe('Part A - API 层 XSS sanitize 验证', () => {
 
   test('[A1] 上传含 <script> 的 HTML 文件不抛异常（课件模式允许 script, 由 iframe sandbox 兜底）', async ({ page }) => {
     const apiContext = page.request;
+    const headers = await authHeaders(page);
     const xssHtml = '<!DOCTYPE html><html><body><script>alert(1)</script><p>课件内容</p></body></html>';
 
     // 使用 fetch 上传 XSS HTML —— 课件模式 (sanitizeForCourseware) 保留 script 标签
     const response = await apiContext.fetch(`${BASE_URL}/api/courses/${COURSE_ID}/slides/upload`, {
       method: 'POST',
+      headers,
       multipart: {
         file: {
           name: 'xss-script-test.html',
@@ -174,11 +185,13 @@ test.describe('Part A - API 层 XSS sanitize 验证', () => {
 
   test('[A2] 直接调用后端 API 时危险 HTML 被消毒处理', async ({ page }) => {
     const apiContext = page.request;
+    const headers = await authHeaders(page);
 
     // 逐一验证每个 payload 通过 upload API 时都被 sanitize
     for (const payload of XSS_PAYLOADS) {
       const response = await apiContext.fetch(`${BASE_URL}/api/courses/${COURSE_ID}/slides/upload`, {
         method: 'POST',
+        headers,
         multipart: {
           file: {
             name: `xss-payload-${payload.id}.html`,
@@ -328,7 +341,8 @@ test.describe('Part C - 综合安全回归校验', () => {
     expect(sandbox).not.toContain('allow-same-origin');
   });
 
-  test('[C2] 所有 10 个 XSS payload 均无法在外层触发 alert', async ({ page }) => {
+  // 10 个 payload 串行注入各需页面加载，默认 30s 预算不足，单独放宽
+  test('[C2] 所有 10 个 XSS payload 均无法在外层触发 alert', { timeout: 180000 }, async ({ page }) => {
     // 批量验证：10 个 payload 依次注入 route interception
     // 每次都不应触发 dialog
     for (const payload of XSS_PAYLOADS) {

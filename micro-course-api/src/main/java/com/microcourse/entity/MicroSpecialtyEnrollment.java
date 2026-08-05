@@ -28,7 +28,7 @@ public class MicroSpecialtyEnrollment {
     private String finalGrade;
     private Long certificateId;
     /** G2: 班级导入时，前置课未通过/容量满/时间冲突/已存在等不能 enroll 的课程。结构 [{courseId, courseName, reason}]，JSON 字符串 */
-    @TableField(value = "pending_courses", typeHandler = com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler.class)
+    @TableField(value = "pending_courses", typeHandler = com.microcourse.util.JsonbStringTypeHandler.class)
     private String pendingCourses;  // JSON 字符串
     private LocalDateTime appliedAt;
     private LocalDateTime approvedAt;

@@ -64,7 +64,7 @@ import { Loading, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
-  scriptId: { type: Number, required: true },
+  scriptId: { type: Number, default: null },
   tokenLoader: { type: Function, required: true },
   audioUrlFactory: { type: Function, required: true },
   audioStatus: { type: Function, default: (a) => a.status }
@@ -78,7 +78,8 @@ const audioEl = ref(null)
 async function load() {
   loading.value = true
   try {
-    audios.value = await props.tokenLoader(props.scriptId)
+    // 无脚本时静默置空，避免以 null 请求后端（此前必现 500）
+    audios.value = props.scriptId ? await props.tokenLoader(props.scriptId) : []
   } finally {
     loading.value = false
   }

@@ -31,8 +31,8 @@ public class MicroSpecialtyTeacherController {
     @GetMapping("/pending-invites")
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<?>> getPendingInvites(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String status) {
         PageResult<?> result = inviteService.getPendingInvites(page, size, status);
         return R.ok(result);
@@ -42,8 +42,8 @@ public class MicroSpecialtyTeacherController {
     @GetMapping("/pending-cross-dept-invites")
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<PageResult<?>> getPendingCrossDeptInvites(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size) {
         PageResult<?> result = inviteService.getPendingCrossDeptInvites(page, size);
         return R.ok(result);
     }
@@ -96,7 +96,9 @@ public class MicroSpecialtyTeacherController {
     @PreAuthorize("hasRole('TEACHER')")
     public R<Void> reinviteTeacher(@PathVariable Long inviteId,
                                      @Valid @RequestBody InviteTeacherRequest request) {
-        inviteService.reinviteTeacher(inviteId, request.getRole(), request.getMessage(), request.getTeacherId());
+        // P1-C 修复：此前把 teacherId 传给了 courseId 参数（参数错位），
+        // 重邀会把课程指派写成教师 ID；且无 courseId 入参无法保留原课程。
+        inviteService.reinviteTeacher(inviteId, request.getRole(), request.getMessage(), request.getCourseId());
         return R.ok();
     }
 }

@@ -35,9 +35,9 @@
             <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="提交时间" width="130" align="center">
-          <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-        </el-table-column>
+        <!-- P3 修复 (2026-08-04): template 内 formatTime（斜杠格式）覆盖了 formatter，
+             第三轮 formatter 修复实际未生效；统一走全局 $formatDateTime -->
+        <el-table-column prop="createdAt" label="提交时间" width="150" align="center" :formatter="$formatDateTime" />
         <el-table-column label="操作" width="360" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'DRAFT'">

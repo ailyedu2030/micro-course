@@ -70,7 +70,7 @@
             {{ truncate(row.content, 50) }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" :label="$t('notification.time')" width="170" />
+        <el-table-column prop="createdAt" :label="$t('notification.time')" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="isRead" :label="$t('notification.status')" width="100" align="center">
           <template #default="{ row }">
             <el-badge v-if="!row.isRead" is-dot class="unread-dot">
@@ -100,7 +100,7 @@
             <el-tag :type="getNotifTagType(row.type)" size="small" effect="light">
               {{ getNotifTagLabel(row.type) }}
             </el-tag>
-            <span class="card-time">{{ row.createdAt }}</span>
+            <span class="card-time">{{ $formatDateTime(row.createdAt) }}</span>
           </div>
           <div class="card-title" :class="{ 'title-unread': !row.isRead }">{{ row.title }}</div>
           <div class="card-content">{{ truncate(row.content, 80) }}</div>
@@ -205,7 +205,14 @@ function getNotifTagType(type) {
 }
 
 function getNotifTagLabel(type) {
-  return notifTagMap[type]?.label() ?? t('notification.system')
+  if (notifTagMap[type]) return notifTagMap[type].label()
+  if (!type) return t('notification.system')
+  // 后端持久化全量类型码（如 ENROLLMENT_SUCCESS），按前缀归类展示
+  if (type.startsWith('ENROLLMENT') || type.startsWith('MS_ENROLLMENT')) return t('notification.enrollment')
+  if (type.startsWith('EXERCISE') || type.startsWith('GRADE') || type.startsWith('EXAM')
+    || type === 'MS_CERTIFICATE_ISSUED' || type === 'MS_COMPLETED') return t('notification.grade')
+  if (type.startsWith('DISCUSSION')) return t('notification.discussion')
+  return t('notification.system')
 }
 
 // 未读行高亮
@@ -507,7 +514,9 @@ onMounted(() => {
 
 .title-unread {
   font-weight: var(--weight-semibold);
-  color: var(--role-primary);
+  /* A11Y(2026-08-05): primary(#5b60ea) 在 light-9(#eef2ff) 底上仅 4.36:1；
+     改用 primary-dark(#4f46e5) → 5.62:1 达标 */
+  color: var(--role-primary-dark);
 }
 
 /* 未读圆点 */

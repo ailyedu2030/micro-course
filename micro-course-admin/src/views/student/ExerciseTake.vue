@@ -186,7 +186,7 @@
                   </el-checkbox-group>
                 </template>
 
-                <template v-else-if="currentQuestion.questionType === 'FILL'">
+                <template v-else-if="currentQuestion.questionType === 'FILL' || currentQuestion.questionType === 'SHORT_ANSWER'">
                   <el-input
                     v-model="answers[currentQuestion.id]"
                     type="textarea"
@@ -422,7 +422,7 @@
                 </el-checkbox-group>
               </template>
 
-              <template v-else-if="currentQuestion.questionType === 'FILL'">
+              <template v-else-if="currentQuestion.questionType === 'FILL' || currentQuestion.questionType === 'SHORT_ANSWER'">
                 <el-input
                   v-model="answers[currentQuestion.id]"
                   type="textarea"
@@ -746,8 +746,18 @@ function closeAnswerSheet() {
 const resultVisible = ref(false)
 const submitResult = ref({})
 const resultPassed = computed(() => submitResult.value.passed)
+// 2026-08-04 修复：后端 ExerciseRecordVO.answers 为 JSON 字符串而非数组，
+// 原 (answers || []).filter 直接抛 "filter is not a function" → 答题结果弹窗崩溃。
+const resultAnswers = computed(() => {
+  const raw = submitResult.value.answers
+  if (Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    try { return JSON.parse(raw) || [] } catch { return [] }
+  }
+  return []
+})
 const correctCount = computed(() =>
-  (submitResult.value.answers || []).filter(a => a.isCorrect).length
+  resultAnswers.value.filter(a => a.isCorrect).length
 )
 
 // ===== 生命周期 =====
@@ -830,25 +840,73 @@ async function startExercise(exercise) {
 
     // 题目内容直接取自练习响应内嵌数据（R14 已内嵌完整题目：questionType/content/options/answer/explanation）。
     // P0 修复：此前逐题调用 getQuestionById（教师端接口）→ 学生 403「题目加载失败」，随堂练习不可用。
-    const parseOptions = (raw) => {
-      if (Array.isArray(raw)) return raw
-      try {
-        const parsed = JSON.parse(raw || '[]')
-        return Array.isArray(parsed) ? parsed : []
-      } catch {
-        return []
+    // 2026-08-04 修复：后端兼容遗留类型别名（SINGLE_CHOICE/MULTIPLE_CHOICE/TRUE_FALSE/
+    // FILL_BLANK/COMPREHENSIVE），未归一化时选项区按 'SINGLE' 等标准类型匹配 → 选项空白。
+    const normalizeType = (raw) => {
+      const map = {
+        SINGLE_CHOICE: 'SINGLE',
+        MULTIPLE_CHOICE: 'MULTIPLE',
+        TRUE_FALSE: 'JUDGE',
+        FILL_BLANK: 'FILL',
+        SHORT_ANSWER: 'SHORT_ANSWER',
+        COMPREHENSIVE: 'ESSAY'
       }
+      return map[raw] || raw
     }
-    const embedded = (data.questions || []).map(q => ({
-      id: q.questionId,
-      questionId: q.questionId,
-      score: q.score,
-      questionType: q.questionType,
-      content: q.content,
-      options: parseOptions(q.options),
-      answer: q.answer,
-      explanation: q.explanation
-    }))
+    // 选项归一化 → 统一 { value, label, text } 结构（答题端模板依赖这三个字段）
+    // 兼容三种数据格式：
+    //   1. 字符串数组 ["0","1"]（历史/导入数据）
+    //   2. 编辑端对象 [{ label: '2', correct: true }]（QuestionList.vue 提交格式，
+    //      label 即选项内容，answer 存正确 label）
+    //   3. 完整对象 [{ value, label, text }]
+    const normalizeOptions = (raw) => {
+      let arr = raw
+      if (typeof raw === 'string') {
+        try { arr = JSON.parse(raw) } catch { return [] }
+      }
+      if (!Array.isArray(arr)) return []
+      return arr.map((opt, i) => {
+        const letter = String.fromCharCode(65 + i)
+        if (typeof opt === 'string') {
+          return { value: opt, label: letter, text: opt }
+        }
+        if (opt && typeof opt === 'object') {
+          if (opt.value !== undefined || opt.text !== undefined) {
+            return {
+              value: String(opt.value),
+              label: opt.label !== undefined ? String(opt.label) : letter,
+              text: opt.text !== undefined ? String(opt.text) : ''
+            }
+          }
+          // QuestionList 编辑端格式：{ label: 选项内容, correct: boolean }
+          const content = opt.label !== undefined ? String(opt.label) : ''
+          return { value: content, label: letter, text: content }
+        }
+        return { value: String(opt), label: letter, text: String(opt) }
+      })
+    }
+    // P1-C 修复：判断题 options 缺失（旧数据/导入空选项）时兜底注入"正确/错误"，
+    // 否则选项区循环渲染为空、学生无法作答
+    const embedded = (data.questions || []).map(q => {
+      const questionType = normalizeType(q.questionType)
+      let options = normalizeOptions(q.options)
+      if ((questionType === 'JUDGE' || questionType === 'TRUE_FALSE') && options.length === 0) {
+        options = [
+          { value: 'true', label: 'A', text: '正确' },
+          { value: 'false', label: 'B', text: '错误' }
+        ]
+      }
+      return {
+        id: q.questionId,
+        questionId: q.questionId,
+        score: q.score,
+        questionType,
+        content: q.content,
+        options,
+        answer: q.answer,
+        explanation: q.explanation
+      }
+    })
     questionIds.value = embedded.map(q => q.questionId)
     questions.value = embedded
     questionsLoading.value = false
@@ -1135,7 +1193,9 @@ function parseMultipleAnswer(answer) {
   try {
     return JSON.parse(answer)
   } catch {
-    return []
+    // P1-C 修复：兼容纯逗号分隔格式（"2,4"），此前仅支持 JSON 数组导致
+    // 编辑端创建的多选题（answer=选项值 join(',')）永远判定错误
+    return String(answer).split(',').map(v => v.trim()).filter(Boolean)
   }
 }
 

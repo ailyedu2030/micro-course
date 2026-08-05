@@ -5,6 +5,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.ResetPasswordRequest;
+import com.microcourse.dto.StudentSearchVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.UserStatusRequest;
@@ -22,6 +24,7 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.Arrays;
+import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -69,6 +72,19 @@ public class UserController {
     }
 
     /**
+     * 学生搜索（教师端"教学班添加学生"弹窗）。
+     * P1-C 修复：此前教师调用管理端 GET /api/users 被 403 拦截，添加学生搜索必失败。
+     * 仅返回最小字段（id/realName/studentNo/avatar/status），不暴露敏感信息。
+     */
+    @GetMapping("/students/search")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
+    public R<List<StudentSearchVO>> searchStudents(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 100, message = "size 不能超过 100") int size) {
+        return R.ok(userService.searchStudents(keyword, size));
+    }
+
+    /**
      * GET /api/users/{id}
      * 权限矩阵 v4.1: TEACHER 仅可访问自己的 + 自己的学生 (数据范围), 否则 403
      * P1 修复: @PreAuthorize 放宽让 TEACHER 也能到达 Service 层，
@@ -112,9 +128,18 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or #id == authentication.principal")
     @AuditedLog("更新用户信息")
     public R<UserVO> update(@PathVariable Long id,
-                             @Valid @RequestBody UserUpdateRequest request) {
+                            @Valid @RequestBody UserUpdateRequest request) {
         UserVO vo = userService.updateUser(id, request);
         return R.ok(vo);
+    }
+
+    /** A1.7 忘记密码兜底链路：管理员重置用户密码 */
+    @PutMapping("/{id}/password")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<Void> resetPassword(@PathVariable Long id,
+                                 @Valid @RequestBody ResetPasswordRequest request) {
+        userService.resetPassword(id, request);
+        return R.ok();
     }
 
     /**

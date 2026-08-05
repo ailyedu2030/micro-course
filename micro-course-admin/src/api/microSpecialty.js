@@ -81,8 +81,18 @@ export function getTeachers(id) {
   return request({ method: 'GET', url: `/micro-specialties/${id}/teachers` })
 }
 
+// P1-C 修复：团队管理页专用列表（含 DECLINED/REMOVED 供重邀，公开端点仅 ACTIVE）
+export function getTeachersForManage(id) {
+  return request({ method: 'GET', url: `/micro-specialties/${id}/teachers/manage` })
+}
+
 export function inviteTeacher(id, data) {
   return request({ method: 'POST', url: `/micro-specialties/${id}/teachers`, data })
+}
+
+// P1-C 修复：指派已入团队教师到课程（独立接口；此前复用 inviteTeacher 必报"已在团队中"）
+export function assignTeacherToCourse(id, teacherId, courseId) {
+  return request({ method: 'PUT', url: `/micro-specialties/${id}/teachers/${teacherId}/course`, params: { courseId } })
 }
 
 export function removeTeacher(id, teacherId) {
@@ -145,6 +155,14 @@ export function approveProposal(id) {
 
 export function rejectProposal(id, data) {
   return request({ method: 'POST', url: `/micro-specialty-proposals/${id}/reject`, data })
+}
+
+export function batchApproveProposals(ids, idVersionMap) {
+  return request({ method: 'POST', url: '/micro-specialty-proposals/batch-approve', data: { ids, idVersionMap } })
+}
+
+export function batchRejectProposals(ids, reason) {
+  return request({ method: 'POST', url: '/micro-specialty-proposals/batch-reject', data: { ids, reason } })
 }
 
 export function withdrawProposal(id) {

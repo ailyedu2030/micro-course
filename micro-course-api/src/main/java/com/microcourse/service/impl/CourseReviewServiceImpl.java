@@ -20,6 +20,7 @@ import com.microcourse.repository.CourseReviewRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.enums.CourseReviewStatus;
+import com.microcourse.util.SecurityUtil;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.service.CourseReviewService;
 import com.microcourse.service.NotificationService;
@@ -97,7 +98,12 @@ public class CourseReviewServiceImpl implements CourseReviewService {
             if (!Boolean.TRUE.equals(enrollment.getCompleted())) {
                 LambdaQueryWrapper<LearningProgress> progressWrapper = new LambdaQueryWrapper<>();
                 progressWrapper.eq(LearningProgress::getUserId, userId)
-                        .eq(LearningProgress::getCourseId, courseId);
+                        .eq(LearningProgress::getCourseId, courseId)
+                        .orderByDesc(LearningProgress::getUpdatedAt)
+                        .last("LIMIT 1");
+                // P0 修复 (2026-08-04): learning_progress 无 (user,course) 唯一约束，
+                // 数据异常/并发可能产生多条 → selectOne 抛 TooManyResultsException 500，
+                // 评价提交必现"服务器错误"。改为取最近一条，并在下方横向修复同类查询。
                 LearningProgress progress = learningProgressRepository.selectOne(progressWrapper);
                 boolean progressOk = false;
                 if (progress != null) {
@@ -269,6 +275,13 @@ public class CourseReviewServiceImpl implements CourseReviewService {
         CourseReview review = courseReviewRepository.selectById(id);
         if (review == null) {
             throw new BusinessException(ErrorCode.COURSE_REVIEW_NOT_FOUND);
+        }
+        // 学生仅可删除自己的评价；ADMIN/ACADEMIC 可删除任意评价
+        if (SecurityUtil.hasRole("STUDENT")) {
+            Long currentUserId = SecurityUtil.getCurrentUserId();
+            if (review.getUserId() == null || !review.getUserId().equals(currentUserId)) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
         }
         Long courseId = review.getCourseId();
         courseReviewRepository.deleteById(id);

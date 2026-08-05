@@ -122,16 +122,26 @@ public class LearningProgressServiceImpl implements LearningProgressService {
         java.util.List<LearningProgress> list = learningProgressRepository.selectList(wrapper);
         java.util.List<LearningProgressVO> vos = convertToVOList(list);
 
-        // 按 courseId 聚合已完成视频数
+        // 按 courseId 聚合课时级练习/视频统计（与 getByUserAndCourse 语义一致）
         java.util.Map<Long, Integer> completedVideosByCourse = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> completedExercisesByCourse = new java.util.HashMap<>();
+        java.util.Map<Long, Integer> totalExercisesByCourse = new java.util.HashMap<>();
         for (LearningProgress p : list) {
             if (p.getCourseId() != null && p.getSectionId() != null && Boolean.TRUE.equals(p.getCompleted())) {
                 completedVideosByCourse.merge(p.getCourseId(), 1, Integer::sum);
+            }
+            if (p.getCourseId() != null && p.getSectionId() != null) {
+                totalExercisesByCourse.merge(p.getCourseId(), 1, Integer::sum);
+                if (Boolean.TRUE.equals(p.getExerciseCompleted())) {
+                    completedExercisesByCourse.merge(p.getCourseId(), 1, Integer::sum);
+                }
             }
         }
         for (LearningProgressVO vo : vos) {
             if (vo.getCourseId() != null) {
                 vo.setCompletedVideos(completedVideosByCourse.getOrDefault(vo.getCourseId(), 0));
+                vo.setCompletedExercises(completedExercisesByCourse.getOrDefault(vo.getCourseId(), 0));
+                vo.setTotalExercises(totalExercisesByCourse.getOrDefault(vo.getCourseId(), 0));
             }
         }
 

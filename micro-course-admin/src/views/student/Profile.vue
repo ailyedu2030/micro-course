@@ -118,7 +118,7 @@
               </div>
               <div class="info-item">
                 <span class="info-label">{{ $t('user.registerTime') }}</span>
-                <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+                <span class="info-value">{{ $formatDateTime(userStore.userInfo?.createdAt) || '-' }}</span>
               </div>
             </div>
           </el-card>
@@ -130,7 +130,9 @@
         <AchievementBadges :is-mobile="false" />
 
         <!-- 错题集 -->
-        <WrongQuestionsCard :is-mobile="false" />
+        <div id="wrong-book-section" class="wrong-book-section">
+          <WrongQuestionsCard :is-mobile="false" />
+        </div>
 
         <!-- 我的证书 -->
         <CertificatesCard :is-mobile="false" />
@@ -182,7 +184,7 @@
           </div>
           <div class="info-item">
             <span class="info-label">{{ $t('user.registerTime') }}</span>
-            <span class="info-value">{{ userStore.userInfo?.createdAt }}</span>
+            <span class="info-value">{{ $formatDateTime(userStore.userInfo?.createdAt) || '-' }}</span>
           </div>
         </div>
       </el-card>
@@ -195,7 +197,9 @@
         <AchievementBadges :is-mobile="true" />
 
         <!-- 错题集 -->
-        <WrongQuestionsCard :is-mobile="true" />
+        <div id="wrong-book-section" class="wrong-book-section">
+          <WrongQuestionsCard :is-mobile="true" />
+        </div>
 
         <!-- 我的证书 -->
         <CertificatesCard :is-mobile="true" />
@@ -221,8 +225,10 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { uploadAvatar } from '../../api/auth'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 
 const { t } = useI18n()
+const route = useRoute()
 
 // R2: 异步组件加载失败的 fallback 组件
 const AsyncErrorStub = {
@@ -395,6 +401,17 @@ onMounted(async () => {
     })
   })
   // 成就/错题/证书数据由各自子组件自行加载
+
+  // 错题本入口跳转定位：/student/profile?section=wrong-book → 滚动到错题集
+  if (route.query.section === 'wrong-book') {
+    const scrollToWrongBook = () => {
+      const el = document.getElementById('wrong-book-section')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+    // 异步卡片加载会改变布局，多次重试直至定位稳定
+    nextTick(scrollToWrongBook)
+    ;[300, 800, 1500].forEach((ms) => setTimeout(scrollToWrongBook, ms))
+  }
 })
 
 onBeforeUnmount(() => {

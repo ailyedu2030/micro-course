@@ -54,7 +54,7 @@
         <el-table-column prop="majorName" label="所属专业" min-width="150" />
         <el-table-column prop="grade" label="年级" width="100" />
         <el-table-column prop="sortOrder" label="排序" width="100" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" />
+        <el-table-column prop="createdAt" label="创建时间" width="180" :formatter="$formatDateTime" />
         <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
             <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>

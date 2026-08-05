@@ -75,6 +75,7 @@
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
+              aria-label="轮播图启用状态"
               active-text="启用"
               inactive-text="禁用"
               @change="handleToggleStatus(row)"
@@ -170,7 +171,7 @@
           <span class="form-tip-inline">数值越小越靠前</span>
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.enabled" />
+          <el-switch v-model="form.enabled" aria-label="启用" />
           <span class="form-hint">{{ form.enabled ? '启用' : '禁用' }}</span>
         </el-form-item>
       </el-form>
@@ -189,9 +190,10 @@
  * 管理员 - 轮播图管理
  * Vue 3.4 Composition API + script setup
  */
-import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { useUserStore } from '@/store/user'
 import {
   getBanners,
   createBanner,
@@ -202,6 +204,10 @@ import {
 
 // 加载状态
 const loading = ref(false)
+// P1-C 修复 (2026-08-04): userRole 未定义导致新增/编辑/删除按钮全部隐藏，
+// 管理员无法管理轮播图（功能不可用）
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 const error = ref(false)
 const saving = ref(false)
 

@@ -515,10 +515,19 @@ public class SlideServiceImpl implements SlideService {
     }
 
     @Override
-    public List<SlidePageVO> getPages(Long courseId, Long sectionId) {
+    public List<SlidePageVO> getPages(Long courseId, Long sectionId, Long chapterId) {
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
         qw.eq(SlidePage::getCourseId, courseId);
-        if (sectionId != null) { qw.eq(SlidePage::getSectionId, sectionId); }
+        // P1-C 修复：章节级课件页存于 chapter_id、section_id 为 NULL。
+        // 此前控制器把 chapterId 折叠成 sectionId 查询（section_id = chapterId 永假），
+        // 渲染成功的页在列表接口中永远查不到 → 学生播放器"图片加载失败"、教师页列表为空。
+        if (sectionId != null) {
+            qw.eq(SlidePage::getSectionId, sectionId);
+        } else if (chapterId != null) {
+            qw.eq(SlidePage::getChapterId, chapterId);
+        } else {
+            qw.isNull(SlidePage::getSectionId);
+        }
         qw.orderByAsc(SlidePage::getSlideId).orderByAsc(SlidePage::getPageNumber);
         List<SlidePage> dbPages = slidePageMapper.selectList(qw);
         List<SlidePageVO> vos = dbPages.stream().map(this::toPageVO).collect(Collectors.toList());
@@ -549,7 +558,7 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public List<SegmentAudioVO> getSegmentAudios(Long courseId, Long sectionId) {
-        List<SlidePageVO> pages = getPages(courseId, sectionId);
+        List<SlidePageVO> pages = getPages(courseId, sectionId, null);
         List<SegmentAudioVO> result = new java.util.ArrayList<>();
         for (SlidePageVO p : pages) {
             if (p.getSegmentAudios() != null) {
@@ -812,6 +821,22 @@ public class SlideServiceImpl implements SlideService {
             registerSlideCleanup(courseId, s.getId());
         }
         cleanupAudioFiles(courseId, lessonId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteSlideById(Long courseId, Long slideId) {
+        verifyOwner(courseId);
+        CourseSlide slide = courseSlideMapper.selectById(slideId);
+        if (slide == null || !slide.getCourseId().equals(courseId)) {
+            throw new BusinessException(ErrorCode.SLIDE_NOT_FOUND, "课件不存在或已被删除");
+        }
+        slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, slideId));
+        courseSlideMapper.deleteById(slideId);
+        registerSlideCleanup(courseId, slideId);
+        if (slide.getSectionId() != null) {
+            cleanupAudioFiles(courseId, slide.getSectionId());
+        }
     }
 
     @Override

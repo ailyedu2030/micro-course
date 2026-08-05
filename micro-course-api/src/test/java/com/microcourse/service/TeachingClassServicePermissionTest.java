@@ -337,16 +337,16 @@ class TeachingClassServicePermissionTest {
         }
 
         @Test
-        @DisplayName("APPROVED 合法")
-        void approvedStatusShouldBeAccepted() {
+        @DisplayName("ENROLLED 合法")
+        void enrolledStatusShouldBeAccepted() {
             try (MockedStatic<SecurityUtil> su = mockStatic(SecurityUtil.class)) {
                 su.when(SecurityUtil::getCurrentUserId).thenReturn(ADMIN_USER);
                 su.when(SecurityUtil::isAdmin).thenReturn(true);
 
-                teachingClassService.updateStudentStatus(CLASS_ID, 999L, "APPROVED");
+                teachingClassService.updateStudentStatus(CLASS_ID, 999L, "ENROLLED");
                 ArgumentCaptor<TeachingClassStudent> captor = ArgumentCaptor.forClass(TeachingClassStudent.class);
                 verify(teachingClassStudentRepository).updateById(captor.capture());
-                assertEquals("APPROVED", captor.getValue().getStatus());
+                assertEquals("ENROLLED", captor.getValue().getStatus());
             }
         }
 

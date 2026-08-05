@@ -39,6 +39,7 @@ import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.UserRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.PluginGrantRepository;
+import com.microcourse.service.CourseCopyContentService;
 import com.microcourse.dto.BatchOperationResult;
 import com.microcourse.event.DomainEvent;
 import com.microcourse.event.DomainEventPublisher;
@@ -65,6 +66,7 @@ import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -93,6 +95,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final SlidePageMapper slidePageMapper;
     private final CourseAuditService auditService;
     private final CourseStateMachine courseStateMachine;
+    private final CourseCopyContentService courseCopyContentService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final HermesCourseMappingRepository hermesCourseMappingRepository;
@@ -118,6 +121,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   SlidePageMapper slidePageMapper,
                                   CourseAuditService auditService,
                                   CourseStateMachine courseStateMachine,
+                                  CourseCopyContentService courseCopyContentService,
                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                   DomainEventPublisher domainEventPublisher,
                                   HermesCourseMappingRepository hermesCourseMappingRepository) {
@@ -141,6 +145,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.domainEventPublisher = domainEventPublisher;
         this.hermesCourseMappingRepository = hermesCourseMappingRepository;
         this.courseStateMachine = courseStateMachine;
+        this.courseCopyContentService = courseCopyContentService;
         this.objectMapper = objectMapper;
     }
 
@@ -224,6 +229,11 @@ public class CourseAdminServiceImpl implements CourseAdminService {
 
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             request.setTeacherId(SecurityUtil.getCurrentUserId());
+        } else if (request.getTeacherId() == null) {
+            // P1-C(2026-08-05): 管理员/教务无教师身份，teacher_id NOT NULL
+            // 若未显式指定授课教师，此前 insert 直接 409 数据冲突
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "管理员/教务创建课程必须指定授课教师");
         }
 
         Course course = new Course();
@@ -531,20 +541,10 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             copyCh.setChapterHours(ch.getChapterHours());
             chapterRepository.insert(copyCh);
 
-            // P1-C-03 修复: 复制章节下的视频（仅元数据，不复制实际视频文件）
-            List<Video> videos = videoRepository.selectList(
-                    new LambdaQueryWrapper<Video>()
-                            .eq(Video::getChapterId, originalChapterId)
-                            .isNull(Video::getDeletedAt));
-            for (Video v : videos) {
-                Video copyV = new Video();
-                copyV.setChapterId(copyCh.getId());
-                copyV.setCourseId(course.getId());
-                copyV.setTitle(v.getTitle());
-                copyV.setSortOrder(v.getSortOrder());
-                copyV.setDuration(v.getDuration());
-                videoRepository.insert(copyV);
-            }
+            // P0/P1-C 修复 (2026-08-04): 章节内容复制（视频/课时/练习/题目关联）
+            // 拆至 CourseCopyContentService —— 原实现视频 original_name 未赋值导致
+            // 复制 409 回滚，且不复制课时/练习，新课程无法学习。
+            courseCopyContentService.copyChapterContent(originalChapterId, copyCh.getId(), course.getId());
         }
 
         LOG.info("课程复制成功, originalId={}, newId={}, operator={}", id, course.getId());
@@ -573,9 +573,16 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         String filename = UUID.randomUUID().toString() + ext;
         String coversDir = uploadBaseDir + "/covers";
         try {
-            Files.createDirectories(Paths.get(coversDir));
-            Path dest = Paths.get(coversDir, filename);
-            file.transferTo(dest.toFile());
+            // P0 修复 (2026-08-04): file.transferTo() 对相对路径会按 multipart.location
+            // 拼接（例: /data/uploads/tmp/uploads/covers/...），导致父目录不存在而
+            // FileNotFoundException，封面上传 100% 失败 → 课程无法提交审核。
+            // 统一改为：目标路径绝对化 + Files.copy 直接复制输入流（与 VideoServiceImpl
+            // v1.7.0 / AudioUploadServiceImpl 的既有修复模式保持一致）。
+            Path dest = Paths.get(coversDir, filename).toAbsolutePath().normalize();
+            Files.createDirectories(dest.getParent());
+            try (java.io.InputStream in = file.getInputStream()) {
+                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+            }
             course.setCoverUrl("covers/" + filename);
             courseRepository.updateById(course);
         } catch (IOException e) {

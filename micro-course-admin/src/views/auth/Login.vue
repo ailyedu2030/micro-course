@@ -74,7 +74,26 @@
           <span>{{ $t('auth.noAccount') }}</span>
           <el-button type="primary" link @click="showRegisterDialog = true">{{ $t('auth.registerNow') }}</el-button>
         </div>
+        <div class="forgot-password-link">
+          <el-button type="info" link size="small" @click="showForgotDialog = true">{{ $t('auth.forgotPassword') }}</el-button>
+        </div>
       </el-card>
+
+      <!-- 忘记密码引导弹窗（A1.7：平台无邮件基建，引导联系管理员，管理员可在用户管理-重置密码） -->
+      <el-dialog
+        v-model="showForgotDialog"
+        :title="$t('auth.forgotPassword')"
+        width="420px"
+        center
+      >
+        <el-alert type="info" :closable="false" show-icon>
+          <template #title>{{ $t('auth.forgotTipTitle') }}</template>
+          {{ $t('auth.forgotTipBody') }}
+        </el-alert>
+        <template #footer>
+          <el-button type="primary" @click="showForgotDialog = false">{{ $t('app.confirm') }}</el-button>
+        </template>
+      </el-dialog>
 
       <!-- 注册弹窗 -->
       <el-dialog
@@ -155,6 +174,7 @@ const isMobile = ref(false)
 
 // 注册相关状态
 const showRegisterDialog = ref(false)
+const showForgotDialog = ref(false)
 const registerFormRef = ref(null)
 const registerLoading = ref(false)
 const registerForm = reactive({ username: '', password: '', confirmPassword: '' })

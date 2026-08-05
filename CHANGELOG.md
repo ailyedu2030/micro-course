@@ -9,6 +9,282 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全量自动化回归：后端 1127 单测 + 前端 207 单测 + e2e 37/37 + 16/16 门禁全绿)
+
+> 2026-08-05 回归收尾：补齐上一轮未跑的全量自动化门禁，
+> 修复 2 项 P1-C（管理员建课 409、锁定徽章 a11y 对比度）+ 3 项 P2（测试基建）。
+
+#### P1-C 修复
+- 管理员创建课程必 409（teacher_id NOT NULL，未显式指定授课教师时明确报错）
+- 锁定徽章整卡 opacity 致文本有效对比度 2.2~3.8:1（移除透明度+虚线边框区分；
+  同步加深学生主色 #6366f1→#5b60ea、互动课徽章 #67c23a→#2e7d32、通知未读标题 primary-dark）
+
+#### P2 修复（测试基建）
+- XSS e2e 认证（localStorage token 注入 Authorization）
+- e2e 夹具种子 scripts/seed-e2e-fixtures.sh（course 1/133+课件+选课）接入门禁
+- e2e 语法错误（describe 被注释）、chromium 自安装、C2 超时、门禁 --timeout
+
+#### 验证
+- 后端全量单测（干净容器环境）通过（含修复 2 处陈旧断言 + 视频测试文件隔离）
+- 前端单测 207/207；e2e chromium-desktop 37/37；precheck 8/8；ESLint 0
+
+### Fixed (全页面审查九轮 · G/D7.5/H 系列全绿：组件 5 项 P1-C + 2 项 P2，矩阵 474 项全 ✅)
+
+> 2026-08-05 第九轮：完成核心组件（课件四面板/音频/学习视图/profile 组件）与系统级
+> （CAS/上传校验/用户状态机/申报状态机/评级重算/通知轮询）全部验证。
+
+#### P1-C 修复
+- PPT 四面板管线缺 slide_ppt_pages 数据（渲染同步双写，重渲染先清旧行）
+- AudioManager 缺 onMounted 导入致工作台整页崩溃
+- 无脚本时音频面板以 null 调接口致 500（三层：v-if 守卫 + prop 可空 + 后端容错）
+- PPT 讲述稿 created_by NOT NULL 500（后端回退当前用户）+ 双实体 generation_params jsonb 类型错误
+
+#### P2 修复
+- 试卷列表无编辑入口（补"编辑"按钮跳练习表单，PUT 落库验证）
+
+#### 验证
+- precheck 全绿；mvn package 0 ERROR；ESLint 0 error。
+- 矩阵 455→474 ✅（G/D7.5/H 全部转 ✅），全矩阵功能点全绿。
+
+### Fixed (全页面审查八轮 · F 系列教务/审批 5 项 P1-C + 1 项 P2 修复，F 系列全绿)
+
+> 2026-08-05 第八轮：完成教务看板图表、学习分析、选课筛选、微专业/申报/置顶/
+> 跨学院/班级导入/金标/存储审批等全部审批流验证，修复 5 项 P1-C + 1 项 P2。
+
+#### P1-C 修复
+- 跨学院审批驳回必 409（V153 旧 CHECK 约束缺 REJECTED 且未被 V173 替换 → V326 显式 DROP 旧约束）
+- 班级导入 pending_courses jsonb 类型错误（JacksonTypeHandler 对 String 字段失效 → JsonbStringTypeHandler）
+- 班级导入共享事务 rollback-only（内层选课异常污染外层 → REQUIRES_NEW 包装）
+- 班级导入去重漏 PENDING 致 uk_mse_active 冲突（口径改为 notIn 终态）
+- 申报审批页无批量审批 UI（补全选择列 + 批量批准/驳回 + 结果反馈）
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿。
+- F 系列矩阵 38→22 🟡，F 系列全部功能点转 ✅（439→455 ✅）。
+
+### Fixed (全页面审查七轮 · E 系列学生端 13 项 P1-C 修复 + 全量 E 系列验证通过)
+
+> 2026-08-05 第七轮：完成学生端 E 系列剩余功能点验证（难度/类型/排序筛选、
+> 评价列表/已收藏/已完结/章节侧栏/学习统计/错题本/徽章/训练入口/考试完成/倍速/
+> 重做限制/删帖/通知/评价管理/订单/微专业进度/套件学习），修复 13 项 P1-C + 1 项 P2。
+
+#### P1-C 修复
+- 课程评价姓名恒显"匿名用户"（前端 userRealName vs 契约 realName 错配）
+- 我的课程进度 0.33…% + 练习"false/0"（0-1 比例当百分比 + batch 接口未聚合练习统计）
+- 取消收藏后重新收藏 409（唯一约束含软删行，需恢复原行）
+- 训练中心"进入章节练习"跳课程详情（内层点击事件冒泡）
+- 考试通过后"已完成"tab 恒空（attempt-count 接口缺 passed 字段）
+- 学习视图"讨论"tab 空壳占位 → 增加"进入讨论区"入口
+- 错题本入口跳个人中心不定位 → section 参数 + 滚动定位
+- 通知分类筛选恒空 + 类型标签全显"系统通知"（短分类 vs 全量码契约错配）
+- 我的评价课程筛选下拉恒空（分页 0 基/1 基不一致）
+- 学生删除自己的评价 403（权限放开 + 服务层归属校验）
+- 免费课程下单必现 9005"非法支付来源"（先选课后建单顺序颠倒）
+
+#### P2 修复
+- 我的订单页无状态筛选（补全全部/待支付/已支付/已取消/已退款筛选）
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿；ESLint 0 error（含修复 CoursewareWorkbench v-if/v-for）。
+- E 系列矩阵 415→439 ✅，学生端全部功能点转 ✅。
+
+### Fixed (全页面审查六轮 · 评价提交 P0 + 真实流程补测)
+
+> 2026-08-04 第六轮：补齐此前未真实交互的流程（评价提交/审核驳回/置顶精华/编辑删除/
+> 退款/申报审批/用户增删改等），发现并修复评价提交 500。
+
+#### P0 修复
+- **课程评价提交必现 500（服务器错误）**：learning_progress 同 (user,course) 存在多条记录时
+  （数据异常/并发/迁移残留），CourseReviewServiceImpl 进度查询 selectOne 抛
+  TooManyResultsException → 评价提交失败。修复：进度查询 orderBy updatedAt DESC + LIMIT 1
+  取最近一条；横向核对 LearningProgressServiceImpl 已有同类保护，无其他遗漏。
+
+#### 功能实测（本轮新增覆盖，全部通过）
+- 评价提交全链路（造进度≥80% → 写评价 → 提交 → 入库待审 → 管理端通过）
+- 课程驳回（驳回原因入库 REJECTED）、讨论管理（审核通过/置顶/取消置顶/精华）
+- 用户编辑保存/删除（软删除状态机）、练习编辑保存、题目编辑/删除
+- 订单退款（确认 → REFUNDED + 选课 CANCELLED 权限收回）
+- 微专业申报提交（完整校验拦截不完整草稿 → 补全 → PENDING_REVIEW → 教务批准 APPROVED）
+- 操作日志详情、系统设置保存、视频上传（转码失败有重试入口）
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿；ESLint 0 error。
+- 回归：评价提交成功并入库；审批/驳回/退款/增删改状态机正确流转。
+
+### Fixed (全页面审查五轮 · 申报草稿 P1-C / 学习笔记补全 P1-C / 时间格式 P3)
+
+> 2026-08-04 第五轮：补齐课程分类/标签/章节/视频/日志/系统设置/评级/营收、
+> 教师端申报/邀请/存储预览/成绩/教学班/线下、学生端收藏/学习 tab/笔记等页面交互。
+
+#### P1-C 修复
+- **微专业申报保存草稿必失败**：草稿阶段签名项 URL 为空字符串 ""，
+  后端 `"".startsWith("/uploads/storage/")` 为 false → "签名图片URL无效"。
+  修复：签名/签章 URL 校验对空值（null/空串/空白）放行，仅非空且非白名单前缀拦截。
+- **学习视图"笔记"按钮无功能（功能缺失）**：course_notes 表/实体/仓库早已存在但无接口、
+  前端按钮点击无任何效果。补全：后端 CourseNoteController（列表/创建 upsert/删除）+ 前端
+  note.js API + NotesPanel 笔记 tab（列表/编辑保存/删除）。
+  唯一约束 idx_cn_unique(每用户每章节一条) → 保存为 upsert 语义。
+
+#### P3 修复
+- 5 处表格列 template 覆盖 :formatter（MyProposals/TeacherTeachingClasses/StudentList/
+  TeacherSlideOverview/EnrollmentOverview），时间格式不统一 → 移除覆盖，统一全局格式化。
+
+#### 功能实测（本轮新增覆盖，全部通过）
+- 课程分类/标签新增、章节独立管理页、视频管理上传（入库/状态机/转码失败重试入口）
+- 操作日志详情、系统设置保存、教师评级确认弹窗、营收看板（¥50/分成/排行）
+- 微专业申报草稿保存/我的申报/邀请列表/存储申请预览（Word/PDF）
+- 成绩明细（平均分/及格率/分布）、教师教学班、线下场次列表
+- 学生收藏（学习视图）/取消、学习视图课程/公告/讨论/考试 tab 切换
+- 学习笔记（列表/保存/覆盖更新/删除）
+
+#### 验证
+- mvn package 0 ERROR；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 回归：申报草稿保存成功；笔记同章节重复保存更新同一条（upsert）。
+
+### Fixed (全页面审查四轮 · 改密码锁号 P0 / 练习视频门槛 P1-C + 20 项功能实测)
+
+> 2026-08-04 第四轮：补齐注册/密码/导入导出/批量审核/课时/题库/考试安排/通知跳转/
+> 设置/主题/404/公开广场/API Key/搜索筛选/教学班/错题本等此前未交互验证的功能。
+
+#### P0 修复
+- **修改密码后账号被锁死 7 天**：修改密码会写入用户级 token 黑名单
+  （mc:jwt:user-blacklist，TTL 7 天），但登录成功后不清除 → 用户即使重新登录
+  （新密码已验证）所有 token 仍被 JwtAuthenticationFilter 拦截（"账号已被禁用"），
+  账号实际不可用 7 天。修复：登录成功（密码/状态校验通过）即清除用户级黑名单。
+
+#### P1-C 修复
+- **普通随堂练习强制"先看视频"**：视频前置校验对所有练习生效，学生选课后无法先做
+  练习巩固（且无视频可看时练习永久不可用）。修复：门槛仅对考试（is_exam=true）生效，
+  随堂练习可直接作答。
+
+#### 功能实测（本轮新增覆盖，全部通过）
+- 注册流程（表单校验/注册成功/自动登录跳转广场）
+- 修改密码（校验/成功/强制重新登录，含 P0 修复验证）
+- 用户 Excel 导入实际上传（成功导入 2 条、可登录）、课程导出（xlsx）
+- 课程批量审核（勾选 2 行批量通过）
+- 课时管理（章节展开/新增课时）、问题创建完整提交（选项/正确答案勾选/入库）
+- 考试安排（确认安排）、学生考试中心（待参加显示/进入答题/考试前置校验）
+- 通知行点击跳转（选课通知→课程详情）、学生设置保存
+- 管理端深色模式/中英文语言切换、404 未知路径 toast+跳首页
+- 公开微专业广场未登录访问、受保护页未登录守卫
+- 教师 API Key 生成（一次性明文+复制）、课程广场搜索/分类筛选
+- 教学班创建（排课时间段必填校验）、普通练习免视频门槛+错题入库
+
+#### 验证
+- mvn package 0 ERROR；precheck 全绿；ESLint 0 error。
+- 回归：改密码后重新登录可用；练习无需看视频可答；错题正确入库。
+
+### Fixed (全页面审查三轮 · 权限变量/购物车支付/讨论评论/套件/考试)
+
+> 2026-08-04 第三轮功能级实测（前两轮为加载级走查 + 核心链路）。本轮按功能域逐页实测
+> 交互，覆盖管理端剩余、教师工作台/试卷/线下课/课件/微专业管理、学生套件/购物车/支付/
+> 考试/微专业报名/讨论互动。
+
+#### P1-C 修复（功能不可用类）
+- **8 个页面 userRole 未定义** → 权限按钮/区域全部隐藏（功能不可用）：
+  BannerList（轮播图新增/编辑/删除）、TeacherOfflineSessions（线下场次增删改）、
+  PlatformShareConfig（分账比例编辑）、MicroSpecialtyCourseEdit（课程编排删除）、
+  DiscussionDetail（删除帖子/回复）、VideoLessonEditor（视频课时上传区）、
+  ExamList（新增试卷/安排考试/删除）、DiscussionList（删除讨论）。
+  根因：模板引用 userRole 但 script 未定义（漏写 `computed(() => useUserStore().role)`）。
+- **购物车结算链路断裂（P0 级业务缺陷）**：首次加入购物车时 store synced=false，
+  只写 localStorage 不写服务端 → 结算页 loadFromServer() 用空数据覆盖 → "购物车为空"跳回；
+  且服务端购物车仅存 courseId，结算页课程信息/金额空白（合计 ¥0）。
+  修复：addItem 前先同步服务端；loadFromServer 并行拉取课程详情合并。
+- **学生考试中心新考试立即"已过期"**：未安排开考时间时前端回退 createdAt 计算过期。
+  修复：无 startTime 且无限时不算过期，归入"待参加"。
+- **套件上架必失败（免费课场景）**：免费课程按 0 元计入"原价之和"，付费套件含免费课
+  时校验必失败。修复：仅付费课程计入原价和；全免费套件必须定价 0。
+- **学生无法查看自己的待审核帖子**：列表可见但详情被"帖子正在审核中"拦截（前后端不一致）。
+  修复：作者本人可查看自己的 PENDING/REJECTED 帖子，详情弹窗显示状态标签。
+- **讨论评论永不可见**：评论创建即 PENDING(0)，但全项目无评论审核通过端点 → 评论永远
+  待审核、评论区恒空。修复：评论创建即 PUBLISHED(1)（防滥用已有 30s 间隔/每小时 20 条/
+  XSS 净化/管理端删除隐藏三重机制）。
+
+#### P2/P3 优化
+- ExamList 创建时间斜杠格式 → 统一 YYYY-MM-DD HH:mm。
+- 讨论详情待审核/已驳回状态标签 + 回复区禁用提示（审核通过后开放评论）。
+
+#### 验证
+- mvn package 0 ERROR（含测试编译修复）；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 实测闭环：购物车→结算→余额支付（¥50 订单）；套件创建/子课/免费领取；试卷一键组卷；
+  微专业 LEAD 权限拦截/工作台/课程编排/团队；线下场次业务校验；课件上传（渲染中→就绪）；
+  讨论发帖/作者查看待审核帖/审核后评论即时显示/点赞结构。
+
+### Fixed (全页面审查二轮 · 安全/复制课程/申报校验/分页加固)
+
+> 2026-08-04 P0~P3 全量修复（第二轮，紧接首轮 11 项修复之后）。
+
+#### P0 修复
+- **Hermes 事件 Webhook 未授权写漏洞**：POST /api/hermes/webhook/events 为 permitAll 且
+  Controller 无任何认证，匿名者可伪造 COURSE 事件触发 upsertCourseFromHermes 修改已映射课程。
+  修复：与 /courses 入口对齐，强制 X-API-Key 校验（教师/管理员，sha256 hash 匹配）。
+- **复制课程必失败**：复制视频时 videos.original_name（NOT NULL）未赋值 → INSERT 约束违反
+  → 整个复制事务 409 回滚，含视频的课程复制 100% 失败。修复：复制时回填 fileName。
+- **复制课程功能残缺**：原实现只复制章节+视频，课时（sections）/练习（含题目关联）全部丢失，
+  新课程无法学习。修复：复制课时 + 练习 + exercise_questions 关联。
+
+#### P1-C 修复
+- 微专业申报"下一步"直接 step++ 绕过表单校验，第一步必填项（申报高校/微专业名称/负责人/
+  电话/申请时间）全空可进入后续步骤。修复：分步校验后再前进 + 明确提示。
+- 章节新增/编辑弹窗 label 仍为"课程名称"（首轮仅修 placeholder/aria-label）。
+- 练习列表章节下拉显示"（未知）"：章节类型已迁移至课时层，sectionType 为 null 仍拼接类型。
+- 复制课程后课时/练习缺失（见 P0 第 3 项）。
+
+#### P2 修复
+- 4 个 Controller（MicroSpecialty/Proposal/Teacher/Section）分页 size 无上限 → @Range(1-200) 加固。
+- 系统健康页磁盘/内存显示"—"：前后端字段契约错位（前端读 mem/memUsage/diskTotal，后端返回
+  memory/systemMemoryDetail）。修复：后端补数值字段 + 前端兼容读取。
+- 通知卡片时间 + 5 处微专业审核列表 slice(0,10) 原始时间渲染 → 统一 $formatDateTime/$formatDate。
+- 管理端 ReportsManagement 页面标题"数据报表"→"举报处理"（与内容一致）。
+
+#### P3 优化
+- 评价门槛（学习进度 ≥ 80%）由 3s toast 改为明确提示框，避免"按钮无响应"误解。
+- Hermes 事件 dedup trace_id 缺失导致 409（NOT NULL）→ UUID 兜底。
+
+#### 验证
+- mvn package 0 ERROR；npm run build 成功；precheck 全绿；ESLint 0 error。
+- 实测：匿名 Webhook 401 拦截；复制课程（含章节/视频/课时/练习/题目关联）成功；
+  分页 size 超限拒绝；系统健康页磁盘/内存正常；申报下一步校验拦截；
+  章节 label/练习下拉/评价门槛提示/通知时间格式化全部生效。
+
+### Fixed (全页面审查 · P0 上传链路 + 随堂练习闭环 + 日期/UX 修复)
+
+> 2026-08-04 全页面审查-修复-优化（90 页面走查，admin/teacher/academic/student 四角色浏览器验证）。
+
+#### P0 修复
+- **课程/视频/申报图片上传 500**：`file.transferTo()` 相对路径被 multipart.location 前缀拼接
+  （`/data/uploads/tmp/uploads/covers/...`）→ 父目录不存在 → 封面/视频封面/申报图片上传必现
+  500；课程无法提交审核（审核前置校验要求封面）。修复：目标路径绝对化 +
+  `Files.copy` 直接复制输入流（CourseAdminServiceImpl / VideoServiceImpl /
+  StorageApplicationImageStorageServiceImpl），与既有 AudioUploadServiceImpl 修复模式对齐。
+- **随堂练习选项不可答**：答题页只匹配 `SINGLE/MULTIPLE/JUDGE/FILL/ESSAY`，且期望
+  `{value,label,text}` 结构；教师端创建的题目（`{label,correct}`）与字符串选项数组均无法渲染 →
+  选项空白、无 value 可选。修复：ExerciseTake 选项归一化（兼容 3 种格式）。
+- **答题提交后结果弹窗崩溃**：后端 `ExerciseRecordVO.answers` 为 JSON 字符串，
+  前端 `(answers || []).filter` 抛 "filter is not a function"。修复：computed 解析 JSON。
+- **小分值练习永远无法及格**：`passed = totalScore >= passScore` 按绝对分值比较，
+  与数据字典"pass_score 及格分（百分制）"契约冲突（2 题共 20 分永远 < 60 及格线）。
+  修复：按得分率比较 `totalScore/totalPossible*100 >= passScore`。
+
+#### P1-C 修复
+- 免费课程（price=0）定价状态 DRAFT 时误显示"¥0 / 定价待审批"（互相矛盾）。
+  修复：免费课程不参与定价审批门禁（CoursePricingServiceImpl 免费优先判定）。
+- 登录 IP 熔断（20 次/15 分钟）误报"用户名或密码错误"，用户被锁却不自知。
+  修复：明确提示"登录尝试过于频繁，请 15 分钟后再试"。
+- 约 25 处表格/详情直接渲染原始 ISO 时间戳（`2026-08-03T19:33:19.70208`）。
+  修复：全局 `$formatDateTime` / `$formatDate`（兼容 Element Plus formatter 签名），
+  统一格式化用户/部门/专业/班级/通知/选课/讨论/订单/微专业审核等列表。
+- 学生端"学习"导航 tab 点击后落到课程广场（无 courseId 兜底跳转）。
+  修复：menuTab 移至 /student/learning-stats（学习中心），/student/learning 保留为隐藏路由。
+- 章节新增弹窗输入框 placeholder/aria-label 误用"课程名称"（应为"章节名称"）。
+- i18n "學生預覽"繁体字 → "学生预览"。
+
+#### 验证
+- 后端 `mvn package` 0 ERROR；前端 `npm run build` 成功；precheck 全绿。
+- 浏览器全流程验证：封面上传→保存→提交审核→教务批准→学生选课→课程广场/详情/学习页→
+  练习答题（两种选项格式）→自动批改 20/20 通过→解析视图；讨论发帖；通知全部已读；资料保存。
+
 ### Fixed (部署事故修复 · Flyway 迁移漂移 + rollback 迁移自动执行 + FK 孤儿数据)
 
 > **背景**: 2026-08-04 生产部署连续受阻（checksum 漂移 → rollback 迁移被自动执行 →

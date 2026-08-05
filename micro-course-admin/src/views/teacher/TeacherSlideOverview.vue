@@ -75,9 +75,7 @@
             <span v-else class="muted">未生成</span>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="最后更新" width="170">
-          <template #default="{ row }">{{ formatTime(row.updatedAt) }}</template>
-        </el-table-column>
+        <el-table-column prop="updatedAt" label="最后更新" width="170" :formatter="$formatDateTime" />
         <el-table-column label="文件名" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <template v-if="renaming === row.id">

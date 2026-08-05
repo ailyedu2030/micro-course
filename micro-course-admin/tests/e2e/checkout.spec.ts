@@ -66,6 +66,42 @@ const MOCK_CART_ITEMS = [
   },
 ];
 
+// 购物车富化（P1-C 2026-08-04）：结算页按 courseId 拉取课程详情合并标题/价格/封面，
+// 因此 E2E 必须同时 mock /api/courses/{id}，否则标题列空白、合计 ¥0。
+const MOCK_COURSES = {
+  999001: {
+    id: 999001,
+    title: 'E2E 测试课程 - 数据结构与算法',
+    coverUrl: '',
+    price: 29.99,
+    isFree: false,
+    teacherName: 'p0_teacher',
+  },
+  999002: {
+    id: 999002,
+    title: 'E2E 测试课程 - 操作系统原理',
+    coverUrl: '',
+    price: 39.99,
+    isFree: false,
+    teacherName: 'p0_teacher',
+  },
+};
+
+// 购物车富化依赖课程详情接口，注册 999001/999002 的 GET mock
+async function mockCourseDetails(page: Page) {
+  for (const [id, data] of Object.entries(MOCK_COURSES)) {
+    await page.route(`**/api/courses/${id}`, async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ code: 200, data, message: 'success' }),
+        });
+      } else { await route.continue(); }
+    });
+  }
+}
+
 // ──────────────────────────────────────────────
 // Test Suite: 支付流程
 // ──────────────────────────────────────────────
@@ -144,6 +180,9 @@ test.describe('支付流程 E2E', () => {
         await route.continue();
       }
     });
+
+    // 拦截课程详情（购物车富化依赖）
+    await mockCourseDetails(page);
 
     // 拦截支付回调 → 成功
     await page.route('**/api/orders/*/pay', async (route) => {
@@ -230,6 +269,9 @@ test.describe('支付流程 E2E', () => {
         });
       }
     });
+
+    // 拦截课程详情（购物车富化依赖）
+    await mockCourseDetails(page);
 
     // 拦截批量下单 → 返回 PENDING（未支付）
     await page.route('**/api/orders/batch', async (route) => {

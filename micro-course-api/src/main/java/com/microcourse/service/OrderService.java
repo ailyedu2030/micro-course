@@ -19,6 +19,9 @@ public interface OrderService {
      */
     PageResult<OrderVO> getMyOrders(Long userId, int page, int size, Long courseId, String status);
 
+    /** B14.4 管理端订单明细（营收看板下钻） */
+    java.util.List<OrderVO> adminListOrders(Long teacherId);
+
     OrderVO pay(Long orderId, String paymentMethod);
 
     OrderVO cancelOrder(Long orderId);

@@ -159,7 +159,11 @@ public class AuthServiceImpl implements AuthService {
             if (clientIp != null) {
                 int ipFailureCount = queryService.getLoginFailureCount("ip:" + clientIp);
                 if (ipFailureCount >= 20) {
-                    throw new BusinessException(ErrorCode.INVALID_CREDENTIALS);
+                    // P1-C 修复 (2026-08-04): 原提示"用户名或密码错误"误导用户——
+                    // 用户被 IP 熔断却以为密码错误，反复尝试无法登录。
+                    // 改为明确提示封禁状态与时长（与账号级 LOGIN_LOCKED 语义一致）。
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                            "登录尝试过于频繁，该网络地址已被临时限制，请 15 分钟后再试");
                 }
             }
 
@@ -199,6 +203,17 @@ public class AuthServiceImpl implements AuthService {
             queryService.clearLoginFailureQuietly(request.getUsername());
             if (clientIp != null) {
                 queryService.clearLoginFailureQuietly("ip:" + clientIp);
+            }
+
+            // P0 修复 (2026-08-04): 修改密码会写入 mc:jwt:user-blacklist:{userId}
+            // （TTL 7 天）。原实现登录成功后不清除该标记 → 用户改密码后即使重新登录
+            // （新密码已验证），所有新 token 仍被 JwtAuthenticationFilter 拦截，
+            // 提示"账号已被禁用"，账号实际被锁死 7 天无法使用。
+            // 修复：登录成功（密码/状态校验通过）即清除用户级黑名单，重新放行。
+            try {
+                redisUtil.delete("mc:jwt:user-blacklist:" + user.getId());
+            } catch (Exception e) {
+                log.warn("[Auth] 清除用户级 token 黑名单失败 userId={}", user.getId(), e);
             }
 
             // Step 6: 递增 token 代数(旧 refreshToken 失效) + 生成 JWT

@@ -11,6 +11,10 @@ import org.springframework.test.context.jdbc.Sql;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Comparator;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -44,6 +48,12 @@ class VideoAccessControlTest extends BaseIntegrationTest {
         // P1-1 修复：强制清空 student(id=7) 的所有选课记录，
         // 避免前序测试（如 EnrollmentDataIsolationTest）创建遗留污染导致用例相互干扰
         try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7"); } catch (Exception ignored) {}
+        // 全量套件中其他视频类测试可能在 /data/videos/{courseId}/{videoId} 落盘，
+        // 与自动递增 id 碰撞会让文件存在性检查误判 → 本类断言前先清空磁盘残留
+        for (Long v : createdVideoIds) {
+            deleteVideoFiles(1, v);
+            deleteVideoFiles(2, v);
+        }
     }
 
     @AfterEach
@@ -52,8 +62,25 @@ class VideoAccessControlTest extends BaseIntegrationTest {
         try { jdbc.update("DELETE FROM enrollments WHERE user_id = 7"); } catch (Exception ignored) {}
         for (Long v : createdVideoIds) {
             try { jdbc.update("DELETE FROM videos WHERE id = ?", v); } catch (Exception ignored) {}
+            deleteVideoFiles(1, v);
+            deleteVideoFiles(2, v);
         }
         createdVideoIds.clear();
+    }
+
+    /** 删除 HLS 流文件存在性检查路径（默认 video.storage-base-dir=/data/videos） */
+    private void deleteVideoFiles(long courseId, long videoId) {
+        try {
+            Path dir = Paths.get(System.getProperty("video.storage-base-dir", "/data/videos"),
+                    String.valueOf(courseId), String.valueOf(videoId));
+            if (Files.exists(dir)) {
+                try (java.util.stream.Stream<Path> walk = Files.walk(dir)) {
+                    walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+                    });
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     /** 插入一条可播放视频（status=2 COMPLETED，带 m3u8）。 */
@@ -63,6 +90,9 @@ class VideoAccessControlTest extends BaseIntegrationTest {
                         "VALUES (?, ?, ?, 2, '/api/videos/stream/test/index.m3u8', 100, 0, 0, now(), now(), '') RETURNING id",
                 Long.class, courseId, chapterId, "r8-vid-" + System.nanoTime());
         createdVideoIds.add(id);
+        // 全量套件其他视频测试可能在该路径落盘（自动递增 id 碰撞），
+        // 断言"无真实 HLS 文件 → 404"前必须清空该视频目录
+        deleteVideoFiles(courseId, id);
         return id;
     }
 

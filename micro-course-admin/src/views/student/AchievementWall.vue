@@ -256,7 +256,9 @@ async function fetchData() {
 .badge-card.locked {
   background: var(--el-fill-color-lighter, #f5f7fa);
   border: 1px dashed var(--el-border-color-lighter, #ebeef5);
-  opacity: 0.8;
+  /* A11Y(2026-08-05): 整卡 opacity:0.8 使锁定徽章描述文本有效对比度降至 3.76:1(serious)。
+     移除透明度，虚线边框+浅灰底已足够区分锁定态，文本保持满不透明度达标。 */
+  opacity: 1;
 }
 
 .badge-card:hover {
@@ -284,14 +286,18 @@ async function fetchData() {
 
 .badge-desc {
   font-size: var(--text-sm);
-  color: var(--el-text-color-secondary);
+  /* A11Y(2026-08-05): secondary(#909399)在白底约2.9:1, axe serious；
+     提升为 regular(#606266 ≈5.2:1) 达标 */
+  color: var(--el-text-color-regular);
   text-align: center;
   line-height: 1.4;
 }
 
 .badge-criteria {
   font-size: var(--text-xs);
-  color: var(--el-text-color-placeholder);
+  /* A11Y(2026-08-05): placeholder(#a8abb2)约2.3:1, axe serious；
+     提升为 regular(#606266 ≈5.2:1) 达标 */
+  color: var(--el-text-color-regular);
   text-align: center;
 }
 

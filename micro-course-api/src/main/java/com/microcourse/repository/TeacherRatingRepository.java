@@ -60,14 +60,29 @@ public interface TeacherRatingRepository extends BaseMapper<TeacherRating> {
     TeacherRatingStatRow selectTeacherStat(@Param("teacherId") Long teacherId);
 
     /**
-     * 统计行映射接口
+     * 统计行映射。
+     * P1-C 修复：此前声明为 interface，MyBatis 无法实例化（NoSuchMethodException <init>），
+     * 导致 selectTeacherStats/selectTeacherStat 必失败 → 评级重算 500。
      */
-    interface TeacherRatingStatRow {
-        Long getTeacherId();
-        int getCourseCount();
-        int getStudentCount();
-        double getCompletionRate();
-        double getAvgRating();
+    class TeacherRatingStatRow {
+        private Long teacherId;
+        private int courseCount;
+        private int studentCount;
+        private double completionRate;
+        private double avgRating;
+
+        public TeacherRatingStatRow() {}
+
+        public Long getTeacherId() { return teacherId; }
+        public void setTeacherId(Long teacherId) { this.teacherId = teacherId; }
+        public int getCourseCount() { return courseCount; }
+        public void setCourseCount(int courseCount) { this.courseCount = courseCount; }
+        public int getStudentCount() { return studentCount; }
+        public void setStudentCount(int studentCount) { this.studentCount = studentCount; }
+        public double getCompletionRate() { return completionRate; }
+        public void setCompletionRate(double completionRate) { this.completionRate = completionRate; }
+        public double getAvgRating() { return avgRating; }
+        public void setAvgRating(double avgRating) { this.avgRating = avgRating; }
     }
 
     /**

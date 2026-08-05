@@ -136,8 +136,11 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
             }
         }
 
-        // 4. 视频进度阈值检查 — 开始答题前检查视频观看进度
-        if (exercise.getCourseId() != null) {
+        // 4. 视频进度阈值检查 — 仅考试（is_exam=true）要求先观看视频
+        // P1-C 修复 (2026-08-04): 原逻辑对普通随堂练习也强制"先看视频"，
+        // 学生选课后想先做练习巩固知识被拦截，且无真实视频可看时练习永久不可用。
+        // 随堂练习是学习工具应可直接作答；考试保持前置门槛（防作弊）。
+        if (Boolean.TRUE.equals(exercise.getIsExam()) && exercise.getCourseId() != null) {
             long totalVideosInCourse = videoRepository.selectCount(
                 new LambdaQueryWrapper<Video>()
                     .eq(Video::getCourseId, exercise.getCourseId()));
@@ -212,7 +215,15 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         }
 
         // 5. 计算总分，判断是否通过
-        boolean passed = totalScore >= exercise.getPassScore();
+        // 2026-08-04 修复：pass_score 数据字典定义为「及格分（百分制）」，
+        // 原实现按绝对分值比较（totalScore >= passScore），小分值练习（如 2 题共 20 分）
+        // 永远无法达到 60 及格线 → 学生永远「未通过」。
+        // 改为得分率比较：totalScore / totalPossible * 100 >= passScore。
+        int totalPossible = exerciseQuestions.stream()
+                .mapToInt(eq -> eq.getScore() == null ? 0 : eq.getScore())
+                .sum();
+        boolean passed = totalPossible > 0
+                && (totalScore * 100.0 / totalPossible) >= exercise.getPassScore();
 
         // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
         boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);
@@ -429,10 +440,40 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         };
     }
 
+    /**
+     * 多选题答案解析：兼容前端提交的 JSON 数组（["2","4"]）与纯逗号分隔（"2,4"）两种格式。
+     * P1-C 修复：此前 JSON 数组经 split(",") 后元素带引号，导致多选题答案永远不匹配被判错。
+     */
+    private Set<String> parseMultipleAnswerSet(String raw) {
+        Set<String> set = new java.util.HashSet<>();
+        if (raw == null || raw.isBlank()) return set;
+        String trimmed = raw.trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                com.fasterxml.jackson.databind.ObjectMapper mapper =
+                        new com.fasterxml.jackson.databind.ObjectMapper();
+                java.util.List<String> list = mapper.readValue(trimmed,
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.List<String>>() {});
+                for (String v : list) {
+                    if (v != null && !v.isBlank()) set.add(v.trim().toUpperCase());
+                }
+                return set;
+            } catch (Exception ignored) {
+                // JSON 解析失败则回退到逗号分隔
+            }
+        }
+        for (String v : trimmed.split(",")) {
+            String s = v.trim();
+            if (!s.isEmpty()) set.add(s.toUpperCase());
+        }
+        return set;
+    }
+
     private GradingResult gradeQuestion(Question question, String userAnswer, Integer fullScore) {
         GradingResult result = new GradingResult();
         result.questionId = question.getId();
         result.questionType = question.getQuestionType();
+        result.answer = userAnswer;
 
         if (userAnswer == null) {
             result.score = 0;
@@ -462,8 +503,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                 {
                     Set<String> corrects = new java.util.HashSet<>(java.util.Arrays.asList(
                         correctAnswer != null ? correctAnswer.toUpperCase().split(",") : new String[0]));
-                    Set<String> userAnsSet = new java.util.HashSet<>(java.util.Arrays.asList(
-                        userAnswer != null ? userAnswer.toUpperCase().split(",") : new String[0]));
+                    Set<String> userAnsSet = parseMultipleAnswerSet(userAnswer);
                     if (corrects.equals(userAnsSet)) {
                         result.isCorrect = true;
                         result.score = fullScore;
@@ -661,6 +701,25 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<String, Object> getAttemptSummary(Long userId, Long exerciseId) {
+        LambdaQueryWrapper<ExerciseRecord> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ExerciseRecord::getUserId, userId)
+               .eq(ExerciseRecord::getExerciseId, exerciseId);
+        List<ExerciseRecord> records = exerciseRecordRepository.selectList(wrapper);
+        boolean passed = records.stream().anyMatch(r -> Boolean.TRUE.equals(r.getPassed()));
+        ExerciseRecord latest = records.stream()
+                .max(java.util.Comparator.comparing(ExerciseRecord::getSubmittedAt,
+                        java.util.Comparator.nullsFirst(java.util.Comparator.naturalOrder())))
+                .orElse(null);
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("attemptCount", records.size());
+        result.put("passed", passed);
+        result.put("score", latest != null ? latest.getScore() : null);
+        return result;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ExerciseRecordVO> getResult(Long exerciseId, Long currentUserId) {
         // STUDENT（非 ADMIN）：仅返回本人答题记录
         if (SecurityUtil.hasRole("STUDENT") && !SecurityUtil.isAdmin()) {
@@ -720,6 +779,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     private static class GradingResult {
         Long questionId;
         String questionType;
+        String answer;
         Integer score;
         Boolean isCorrect;
         boolean needsManualGrading = false;

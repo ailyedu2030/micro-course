@@ -72,14 +72,18 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDiscussionById, approveDiscussion, rejectDiscussion, deleteDiscussion, getComments, deleteComment } from '@/api/discussion'
 import { formatDateTime } from '@/utils/format'
+import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const route = useRoute()
+// P1-C 修复 (2026-08-04): userRole 未定义 → 管理员/教务删除帖子、回复按钮隐藏，违规内容无法清理
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const loading = ref(false)
 const postData = ref({})

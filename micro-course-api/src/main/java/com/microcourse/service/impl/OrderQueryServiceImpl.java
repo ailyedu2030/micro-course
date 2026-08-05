@@ -14,6 +14,7 @@ import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseBundleRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.OrderRepository;
+import com.microcourse.repository.UserRepository;
 import com.microcourse.service.OrderQueryService;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -38,13 +39,16 @@ public class OrderQueryServiceImpl implements OrderQueryService {
     private final OrderRepository orderRepository;
     private final CourseRepository courseRepository;
     private final CourseBundleRepository bundleRepository;
+    private final UserRepository userRepository;
 
     public OrderQueryServiceImpl(OrderRepository orderRepository,
                                  CourseRepository courseRepository,
-                                 CourseBundleRepository bundleRepository) {
+                                 CourseBundleRepository bundleRepository,
+                                 UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.courseRepository = courseRepository;
         this.bundleRepository = bundleRepository;
+        this.userRepository = userRepository;
     }
 
     @Override
@@ -93,6 +97,41 @@ public class OrderQueryServiceImpl implements OrderQueryService {
         result.setTotalElements(ipage.getTotal());
         result.setTotalPages(ipage.getPages());
         return result;
+    }
+
+    @Override
+    public List<OrderVO> adminListOrders(Long teacherId) {
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<>();
+        if (teacherId != null) {
+            List<Long> courseIds = courseRepository.selectList(
+                    new LambdaQueryWrapper<Course>()
+                            .eq(Course::getTeacherId, teacherId)
+                            .isNull(Course::getDeletedAt)
+                            .select(Course::getId))
+                    .stream().map(Course::getId).collect(Collectors.toList());
+            wrapper.in(!courseIds.isEmpty(), Order::getCourseId, courseIds);
+        }
+        wrapper.orderByDesc(Order::getCreatedAt);
+        List<Order> orders = orderRepository.selectList(wrapper);
+        if (orders.isEmpty()) return new ArrayList<>();
+
+        Set<Long> courseIds = orders.stream().map(Order::getCourseId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> courseTitleMap = new HashMap<>();
+        if (!courseIds.isEmpty()) {
+            courseRepository.selectBatchIds(courseIds).forEach(c -> courseTitleMap.put(c.getId(), c.getTitle()));
+        }
+        // B14.4: 批量加载下单用户名
+        Set<Long> userIds = orders.stream().map(Order::getUserId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<Long, String> userNameMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds)
+                    .forEach(u -> userNameMap.put(u.getId(), u.getRealName() != null ? u.getRealName() : u.getUsername()));
+        }
+        return orders.stream().map(o -> {
+            OrderVO vo = toVO(o, courseTitleMap, Collections.emptyMap());
+            vo.setUserName(userNameMap.get(o.getUserId()));
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     @Override

@@ -53,8 +53,28 @@
       @retry="fetchData"
       @view-detail="handleViewDetail"
       @edit="handleEdit"
+      @reset-password="handleResetPassword"
       @delete="handleSoftDelete"
     />
+
+    <!-- 重置密码弹窗（A1.7 忘记密码兜底链路） -->
+    <el-dialog v-model="resetVisible" title="重置密码" width="420px" destroy-on-close>
+      <el-form ref="resetFormRef" :model="resetForm" :rules="resetRules" label-width="90px">
+        <el-form-item label="用户">
+          <el-input :model-value="resetTarget ? (resetTarget.realName || resetTarget.username) : ''" disabled />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input v-model="resetForm.newPassword" type="password" show-password placeholder="至少 8 位且包含字母和数字" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="resetForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetVisible = false">取消</el-button>
+        <el-button type="primary" :loading="resetting" @click="confirmResetPassword">确定</el-button>
+      </template>
+    </el-dialog>
 
     <!-- Excel 导入弹窗 -->
     <el-dialog
@@ -160,7 +180,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
-import { getUsers, batchImportUsers, updateUserStatus } from '@/api/user'
+import { getUsers, batchImportUsers, updateUserStatus, resetUserPassword } from '@/api/user'
 import * as XLSX from 'xlsx'
 import UserSearchBar from '@/components/users/UserSearchBar.vue'
 import UserTable from '@/components/users/UserTable.vue'
@@ -198,6 +218,50 @@ const importResult = ref({
 
 // 详情弹窗
 const detailVisible = ref(false)
+const resetVisible = ref(false)
+const resetTarget = ref(null)
+const resetForm = reactive({ newPassword: '', confirmPassword: '' })
+const resetFormRef = ref(null)
+const resetting = ref(false)
+const resetRules = {
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { pattern: /^(?=.*[A-Za-z])(?=.*\d).{8,}$/, message: '密码需至少 8 位且包含字母和数字', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    {
+      validator: (rule, value, cb) => (value === resetForm.newPassword ? cb() : cb(new Error('两次输入的密码不一致'))),
+      trigger: 'blur'
+    }
+  ]
+}
+
+function handleResetPassword(row) {
+  resetTarget.value = row
+  resetForm.newPassword = ''
+  resetForm.confirmPassword = ''
+  resetVisible.value = true
+}
+
+async function confirmResetPassword() {
+  if (!resetFormRef.value || !resetTarget.value) return
+  try {
+    await resetFormRef.value.validate()
+  } catch {
+    return
+  }
+  resetting.value = true
+  try {
+    await resetUserPassword(resetTarget.value.id, { newPassword: resetForm.newPassword })
+    ElMessage.success('密码重置成功，请通知用户使用新密码登录')
+    resetVisible.value = false
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '重置失败')
+  } finally {
+    resetting.value = false
+  }
+}
 const currentUser = ref(null)
 
 const router = useRouter()
@@ -341,7 +405,7 @@ function handleExport() {
     专业: item.majorName || '',
     班级: item.className || '',
     状态: getStatusLabel(item.status),
-    注册时间: item.createdAt || '-'
+    注册时间: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
   }))
   const ws = XLSX.utils.json_to_sheet(exportData)
   const wb = XLSX.utils.book_new()

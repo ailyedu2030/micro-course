@@ -61,7 +61,8 @@ public class SlideController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<SlideUploadResponse> upload(@PathVariable Long courseId,
                                            @RequestParam("file") MultipartFile file,
-                                           @RequestParam(required = false) Long chapterId) {
+                                           @RequestParam(required = false) Long chapterId,
+                                           @RequestParam(required = false) Long sectionId) {
         try {
             verifyAccess(courseId);
             if (file == null || file.isEmpty()) {
@@ -90,12 +91,12 @@ public class SlideController {
                     throw new BusinessException(ErrorCode.NO_PERMISSION,
                             "HTML 课件上传功能灰度中，仅白名单教师可使用");
                 }
-                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId, null);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(courseId, file, chapterId, sectionId);
                 return R.ok(resp);
             }
             // PPTX 文件魔数校验（ZIP PK 0x03 0x04）
             validateSlideFileMagic(file);
-            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, null);
+            SlideUploadResponse resp = slideService.upload(courseId, filename, file.getBytes(), chapterId, sectionId);
             return R.ok(resp);
         } catch (IOException e) {
             log.error("[SlideUpload] 文件读取IO异常 courseId={}", courseId, e);
@@ -147,7 +148,7 @@ public class SlideController {
     public R<Void> deleteSlideById(@PathVariable Long courseId,
                                     @PathVariable Long slideId) {
         verifyAccess(courseId);
-        slideService.deleteSlide(courseId, slideId);
+        slideService.deleteSlideById(courseId, slideId);
         return R.ok();
     }
 
@@ -155,11 +156,12 @@ public class SlideController {
     @PreAuthorize("isAuthenticated()")
     public R<List<SlidePageVO>> getPages(@PathVariable Long courseId,
                                         @RequestParam(required = false) Long lessonId,
-                                        @RequestParam(required = false) Long chapterId,
-                                        @RequestParam(required = false) Long sectionId) {
+        @RequestParam(required = false) Long chapterId,
+        @RequestParam(required = false) Long sectionId) {
         verifyAccess(courseId);
-        Long effectiveId = sectionId != null ? sectionId : (lessonId != null ? lessonId : chapterId);
-        return R.ok(slideService.getPages(courseId, effectiveId));
+        // P1-C 修复：章节级课件按 chapter_id 查询（页记录 section_id=NULL），
+        // 此前把 chapterId 折叠成 sectionId 查询恒为空。
+        return R.ok(slideService.getPages(courseId, sectionId, chapterId != null ? chapterId : lessonId));
     }
 
     @GetMapping("/sections/{sectionId}/segment-audios")

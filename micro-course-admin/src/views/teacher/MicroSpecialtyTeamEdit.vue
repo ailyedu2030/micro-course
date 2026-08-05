@@ -19,9 +19,13 @@
             <div class="card-header">
               <span>已邀请教师（{{ teachers.length }} 人）</span>
               <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
+              <el-button v-if="expelMode" size="small" type="danger" plain :loading="batchRemoving" :disabled="selectedMembers.length === 0" @click="handleBatchRemoveMembers">
+                批量移除（{{ selectedMembers.length }}）
+              </el-button>
             </div>
           </template>
-          <el-table :data="teachers" stripe border empty-text="暂无教师">
+          <el-table ref="memberTableRef" :data="teachers" stripe border empty-text="暂无教师" @selection-change="handleMemberSelectionChange">
+            <el-table-column v-if="expelMode" type="selection" width="50" />
             <el-table-column prop="teacherName" label="姓名" width="120" />
             <el-table-column label="角色" width="120">
               <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
@@ -127,7 +131,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { getMicroSpecialtyDetail, getTeachers, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
+import { getMicroSpecialtyDetail, getTeachersForManage, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
 import { getUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 
@@ -141,6 +145,9 @@ const detail = ref(null)
 const teachers = ref([])
 const courseOptions = ref([])
 const expelMode = ref(false)
+const memberTableRef = ref(null)
+const selectedMembers = ref([])
+const batchRemoving = ref(false)
 
 // 搜索候选教师
 const searchKeyword = ref('')
@@ -164,7 +171,7 @@ const fetchData = async () => {
   error.value = false; loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value); detail.value = d
-    const { data: t } = await getTeachers(msId.value)
+    const { data: t } = await getTeachersForManage(msId.value)
     const items = t.items || t || []
     const now = Date.now()
     teachers.value = items.map(i => {
@@ -214,6 +221,32 @@ const handleSelectionChange = (rows) => {
   })
 }
 
+function handleMemberSelectionChange(rows) {
+  selectedMembers.value = rows
+}
+
+async function handleBatchRemoveMembers() {
+  if (selectedMembers.value.length === 0) return
+  try {
+    await ElMessageBox.confirm(`确定批量移除 ${selectedMembers.value.length} 位教师？`, '确认', { type: 'warning' })
+  } catch { return }
+  batchRemoving.value = true
+  const failed = []
+  for (const t of selectedMembers.value) {
+    try {
+      await removeTeacher(msId.value, t.teacherId)
+    } catch {
+      failed.push(t.teacherName)
+    }
+  }
+  batchRemoving.value = false
+  if (failed.length === 0) ElMessage.success('已批量移除')
+  else ElMessage.warning(`${failed.length} 位移除失败: ${failed.join(',')}`)
+  memberTableRef.value?.clearSelection()
+  selectedMembers.value = []
+  fetchData()
+}
+
 const handleBatchInvite = async () => {
   if (selectedCandidates.value.length === 0) return
   inviting.value = true
@@ -248,15 +281,24 @@ const handleBatchInvite = async () => {
 
 const handleRemove = async (row) => {
   try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
-  removingId.value = row.id || row.teacherId
-  try { await removeTeacher(msId.value, row.id || row.teacherId); ElMessage.success('已移除'); fetchData() }
+  removingId.value = row.teacherId
+  try { await removeTeacher(msId.value, row.teacherId); ElMessage.success('已移除'); fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
   finally { removingId.value = null }
 }
 
 const handleReinvite = async (row) => {
   try { await ElMessageBox.confirm(`确定重新邀请「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
-  try { await reinviteTeacher(row.id || row.inviteId, {}); ElMessage.success('已重新邀请'); fetchData() }
+  // P1-C 修复：重邀请求体必须带 teacherId/role/courseId（此前空 body → "教师ID不能为空"）
+  try {
+    await reinviteTeacher(row.id || row.inviteId, {
+      teacherId: row.teacherId,
+      role: row.role || 'MEMBER',
+      courseId: row.courseId || null
+    })
+    ElMessage.success('已重新邀请')
+    fetchData()
+  }
   catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
 }
 
@@ -265,7 +307,7 @@ const handleBatchRemove = async () => {
   try { await ElMessageBox.confirm(`确定批量移除 ${selectedCandidates.value.length} 位教师？`, '确认', { type: 'warning' }) } catch { return }
   const failed = []
   for (const t of selectedCandidates.value) {
-    try { await removeTeacher(msId.value, t.id || t.teacherId) }
+    try { await removeTeacher(msId.value, t.teacherId) }
     catch { failed.push(t.teacherName) }
   }
   if (failed.length === 0) ElMessage.success('已批量移除')

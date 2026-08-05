@@ -70,7 +70,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="enrolledAt" label="报名时间" width="170" />
+        <el-table-column prop="enrolledAt" label="报名时间" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="enrollmentStatus" label="状态" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.enrollmentStatus === 'ENROLLED'" type="primary" size="small">学习中</el-tag>

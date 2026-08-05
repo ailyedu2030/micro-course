@@ -145,11 +145,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="enrolledAt" label="选课时间" width="170">
-          <template #default="{ row }">
-            <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
-          </template>
-        </el-table-column>
+        <el-table-column prop="enrolledAt" label="选课时间" width="170" :formatter="$formatDateTime" />
         <el-table-column prop="lastWatchAt" label="最近活跃" width="170">
           <template #default="{ row }">
             <span :class="isRecent(row.lastWatchAt) ? 'text-primary-color' : 'text-secondary'">

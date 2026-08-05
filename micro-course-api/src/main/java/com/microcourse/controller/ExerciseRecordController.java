@@ -78,8 +78,7 @@ public class ExerciseRecordController {
             @PathVariable Long exerciseId,
             Authentication authentication) {
         Long userId = extractUserId(authentication);
-        int count = exerciseRecordService.getAttemptCount(userId, exerciseId);
-        return R.ok(Map.of("attemptCount", count));
+        return R.ok(exerciseRecordService.getAttemptSummary(userId, exerciseId));
     }
 
     private Long extractUserId(Authentication authentication) {

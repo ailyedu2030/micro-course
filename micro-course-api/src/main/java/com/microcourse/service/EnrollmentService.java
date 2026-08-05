@@ -17,6 +17,14 @@ public interface EnrollmentService {
 
     EnrollmentVO enroll(EnrollmentCreateRequest request);
 
+    /**
+     * 在独立事务中执行选课（REQUIRES_NEW）。
+     * 供微专业申报/班级导入在共享事务内调用：内部选课失败抛出的异常会回滚
+     * 内层事务，但不会把外层事务标记 rollback-only（避免 catch 吞异常后外层
+     * 提交抛 UnexpectedRollbackException）。
+     */
+    void enrollInNewTransaction(EnrollmentCreateRequest request);
+
     List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed);
 
     PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query);

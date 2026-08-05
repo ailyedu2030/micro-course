@@ -1,8 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
-import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
-import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
 import './styles/design-tokens.css'
 /* 注：common-table.css 已合并到 design-tokens.css，不再独立引入 */
 import './styles/mobile-fixes.css'
@@ -12,6 +10,7 @@ import { usePluginStore } from './store/plugins'
 import { syncEnumsFromBackend } from './utils/enums'
 import i18n from './i18n'
 import { initErrorReporting, reportError } from './utils/errorReport'
+import { formatDateTime, formatDate } from './utils/format'
 
 // P-001: 只注册实际使用的 Element Plus 图标（约 74 个，按扫描统计）
 // 不再用 import * as ElementPlusIconsVue 全量注册（减少 bundle 体积）
@@ -30,6 +29,22 @@ import {
 } from '@element-plus/icons-vue'
 
 const app = createApp(App)
+
+// 全局日期格式化（模板内可直接用 :formatter="$formatDateTime" / "$formatDate"，
+// 或直接调用 $formatDateTime(value)）
+// 统一解决表格 prop 列直接渲染原始 ISO 时间戳（2026-08-03T19:33:19.70208）的体验问题。
+// Element Plus formatter 签名: (row, column, cellValue, index) —— 单元格值在第 3 参；
+// 直接调用时第 1 参即时间值。此处做签名感知适配，两种用法均正确。
+function elCellDateTime(row, column, cellValue) {
+  const value = cellValue !== undefined && cellValue !== null ? cellValue : row
+  return formatDateTime(value)
+}
+function elCellDate(row, column, cellValue) {
+  const value = cellValue !== undefined && cellValue !== null ? cellValue : row
+  return formatDate(value)
+}
+app.config.globalProperties.$formatDateTime = elCellDateTime
+app.config.globalProperties.$formatDate = elCellDate
 
 app.config.errorHandler = (err, instance, info) => {
   console.error('[Global Error]', info, err)
@@ -60,7 +75,6 @@ for (const [key, component] of Object.entries(icons)) {
 const pinia = createPinia()
 app.use(pinia)
 app.use(router)
-app.use(ElementPlus, { locale: zhCn })
 app.use(i18n)
 
 const pluginStore = usePluginStore()

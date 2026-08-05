@@ -299,7 +299,10 @@ const fetchExams = async () => {
       examId: exam.id,
       examTitle: exam.title,
       courseTitle: exam.courseTitle || '未知课程',
-      examTime: exam.startTime || exam.createdAt || null,
+      // P1-C 修复 (2026-08-04): 未安排考试时间的试卷 startTime 为 null，
+      // 原逻辑回退 createdAt（创建时刻）→ 新试卷立即被判定"已过期"，
+      // 学生考试中心永远看不到新考试。未安排时间的考试应归入"待参加"（时间显示"未定"）。
+      examTime: exam.startTime || null,
       duration: exam.timeLimit || null
     }))
 
@@ -315,8 +318,11 @@ const fetchExams = async () => {
       const attempted = attemptData && attemptData.attemptCount > 0
       const passed = attemptData && (attemptData.passed || attemptData.isPassed === true)
       const now = new Date()
-      const examEnd = exam.examTime ? new Date(new Date(exam.examTime).getTime() + (exam.timeLimit || 0) * 60000) : null
-      const expired = examEnd && examEnd < now
+      // 仅当有明确开考时间且限时>0 时才计算过期；否则视为"待参加"
+      const examEnd = exam.examTime && exam.timeLimit > 0
+        ? new Date(new Date(exam.examTime).getTime() + exam.timeLimit * 60000)
+        : null
+      const expired = examEnd !== null && examEnd < now
       return { ...exam, _attempted: attempted, _passed: passed, _expired: expired }
     })
   } catch {

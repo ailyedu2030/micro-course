@@ -220,6 +220,20 @@ public class CoursePricingServiceImpl implements CoursePricingService {
         vo.setDiscountScope(course.getDiscountScope());
         vo.setDiscountPercent(course.getDiscountPercent());
 
+        /* ---- 2026-08-04 修复：免费课程优先判定 ---- */
+        /* 【症状】免费课程（price=0）在 DRAFT 定价状态下显示"¥0 / 定价待审批"，
+         *        学生看到互相矛盾的定价信息（免费却待审批） */
+        /* 【根因】C-6 修复将"定价未审批 → 全价+待审批标注"放在免费判定之前，
+         *        免费课程（无需定价审批）也被 DRAFT 门禁拦截 */
+        /* 【修复】免费课程（isFree=true 或 listPrice=0）不参与定价审批，
+         *        直接判定为免费；付费课程才受 APPROVED 门禁约束 */
+        if (Boolean.TRUE.equals(course.getIsFree()) || (listPrice.compareTo(BigDecimal.ZERO) == 0)) {
+            vo.setFinalPrice(BigDecimal.ZERO);
+            vo.setFree(true);
+            vo.setFeeNote("免费课程");
+            return vo;
+        }
+
         /* ---- 【C-6(跨域)修复】DRAFT/PENDING 定价未审批即可生效 ---- */
         /* 【根因】getMyPricing() 只检查了 REJECTED 状态返回全价，DRAFT/PENDING
          *        的定价未审批即被学生看到并购买（免费/折扣直接应用）
@@ -229,13 +243,6 @@ public class CoursePricingServiceImpl implements CoursePricingService {
             vo.setFinalPrice(listPrice);
             vo.setFree(false);
             vo.setFeeNote("定价待审批");
-            return vo;
-        }
-
-        if (Boolean.TRUE.equals(course.getIsFree()) || (listPrice.compareTo(BigDecimal.ZERO) == 0)) {
-            vo.setFinalPrice(BigDecimal.ZERO);
-            vo.setFree(true);
-            vo.setFeeNote("免费课程");
             return vo;
         }
 

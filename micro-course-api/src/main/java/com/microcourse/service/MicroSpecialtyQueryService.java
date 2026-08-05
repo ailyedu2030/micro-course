@@ -54,6 +54,9 @@ public interface MicroSpecialtyQueryService {
      */
     List<MicroSpecialtyTeacherVO> listTeachers(Long msId);
 
+    /** 团队管理专用列表（含全部状态，供负责人重邀）。 */
+    List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId);
+
     /**
      * 判断指定用户是否是该微专业的 LEAD（ACTIVE 状态）。
      */

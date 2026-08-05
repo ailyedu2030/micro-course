@@ -344,7 +344,6 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
                         .set(MicroSpecialtyTeacher::getInviteStatus, "INVITED")
                         .set(MicroSpecialtyTeacher::getRole, role)
                         .set(MicroSpecialtyTeacher::getResponsibility, responsibility)
-                        .set(MicroSpecialtyTeacher::getCourseId, courseId)
                         .set(MicroSpecialtyTeacher::getInvitedBy, SecurityUtil.getCurrentUserId())
                         .set(MicroSpecialtyTeacher::getInvitedAt, LocalDateTime.now())
                         .set(MicroSpecialtyTeacher::getInviteExpiresAt, LocalDateTime.now().plusDays(7))

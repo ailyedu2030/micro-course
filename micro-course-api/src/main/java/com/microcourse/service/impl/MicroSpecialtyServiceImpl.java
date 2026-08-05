@@ -142,6 +142,11 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
     }
 
     @Override
+    public List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId) {
+        return queryService.listTeachersForManage(msId);
+    }
+
+    @Override
     public boolean isLeadOf(Long msId, Long userId) {
         return queryService.isLeadOf(msId, userId);
     }
@@ -396,6 +401,10 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
 
         adminService.requireLeadOf(msId);
+        // P1-C 修复：DTO 层 courseId 改为可选（更新接口复用同 DTO），新增路径显式校验
+        if (request.getCourseId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程ID不能为空");
+        }
 
         // §9.11 编辑范围：RECRUITING 后不允许添加课程（仅可排序）
         String s = ms.getStatus();
@@ -629,6 +638,50 @@ public class MicroSpecialtyServiceImpl implements MicroSpecialtyService {
 
         notificationService.notifyAsync(teacherId, NotificationType.MS_TEAM_REMOVED,
                 "已被移出微专业团队", "您已被移出微专业团队", msId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public MicroSpecialtyTeacherVO assignTeacherToCourse(Long msId, Long teacherId, Long courseId) {
+        adminService.requireLeadOf(msId);
+        MicroSpecialty ms = msRepository.selectById(msId);
+        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
+        adminService.checkNotTerminal(ms);
+        if (courseId == null) throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "courseId 不能为空");
+
+        // 目标教师必须是本微专业 ACTIVE 团队成员
+        MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
+                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                        .eq(MicroSpecialtyTeacher::getTeacherId, teacherId)
+                        .eq(MicroSpecialtyTeacher::getInviteStatus, INVITE_STATUS_ACTIVE));
+        if (teacher == null) {
+            throw new BusinessException(ErrorCode.MS_TEACHER_NOT_FOUND, "教师不在微专业团队中");
+        }
+        if (TEACHER_ROLE_LEAD.equals(teacher.getRole())) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "负责人不可指派，请选择团队成员");
+        }
+
+        // 课程必须属于本微专业
+        Long courseCount = msCourseRepository.selectCount(
+                new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                        .eq(MicroSpecialtyCourse::getId, courseId)
+                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
+        if (courseCount == 0) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_IN_MS);
+        }
+
+        // 同一课程仅保留一位授课教师：清除其他 ACTIVE 成员对该课程的指派
+        msTeacherRepository.update(null,
+                new LambdaUpdateWrapper<MicroSpecialtyTeacher>()
+                        .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
+                        .eq(MicroSpecialtyTeacher::getCourseId, courseId)
+                        .ne(MicroSpecialtyTeacher::getTeacherId, teacherId)
+                        .set(MicroSpecialtyTeacher::getCourseId, null));
+
+        teacher.setCourseId(courseId);
+        msTeacherRepository.updateById(teacher);
+        return queryService.toTeacherVO(teacher);
     }
 
     // ====== LEAD 继任（委托 MicroSpecialtyAdminService） ======

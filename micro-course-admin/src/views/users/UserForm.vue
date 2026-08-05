@@ -369,7 +369,14 @@ const formRules = {
     { required: true, validator: validateConfirmPassword, trigger: ['blur', 'change'] }
   ],
   realName: [{ required: true, message: '请输入姓名', trigger: ['blur', 'change'] }],
-  role: [{ required: true, message: '请选择角色', trigger: ['blur', 'change'] }]
+  role: [{ required: true, message: '请选择角色', trigger: ['blur', 'change'] }],
+  // P1-C 修复：B3.7 邮箱/手机格式校验此前完全缺失（非法值静默通过），补齐格式规则
+  email: [
+    { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式', trigger: ['blur', 'change'] }
+  ],
+  phone: [
+    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: ['blur', 'change'] }
+  ]
 }
 
 // ============== 年级联动逻辑 ==============

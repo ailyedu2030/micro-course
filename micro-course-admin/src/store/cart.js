@@ -7,6 +7,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { logger } from '@/utils/logger'
 import { getCart, addCartItem, removeCartItem as apiRemove, clearCart as apiClear } from '@/api/cart'
+import { getCourseById } from '@/api/course'
 
 const STORAGE_KEY = 'micro_course_cart'
 
@@ -20,7 +21,28 @@ export const useCartStore = defineStore('cart', () => {
   async function loadFromServer() {
     try {
       const res = await getCart()
-      items.value = res.data || []
+      const rawItems = res.data || []
+      // P1-C 修复 (2026-08-04): 服务端购物车仅存 courseId/quantity，不含课程标题/价格/封面，
+      // 原逻辑直接赋值 → 结算页表格行空白、合计 ¥0、支付按钮金额错误。
+      // 修复：并行拉取课程详情合并到购物车条目。
+      const enriched = await Promise.all(rawItems.map(async (it) => {
+        try {
+          const { data: course } = await getCourseById(it.courseId)
+          return {
+            id: it.id,
+            courseId: it.courseId,
+            quantity: it.quantity,
+            title: course?.title || '',
+            price: course?.price != null ? Number(course.price) : (course?.listPrice != null ? Number(course.listPrice) : 0),
+            coverUrl: course?.coverUrl || '',
+            teacherName: course?.teacherName || '',
+            isFree: course?.isFree ?? (course?.price == null || Number(course.price) === 0)
+          }
+        } catch {
+          return { id: it.id, courseId: it.courseId, quantity: it.quantity, title: '', price: 0, coverUrl: '', teacherName: '', isFree: true }
+        }
+      }))
+      items.value = enriched
       synced.value = true
       // 同步到 localStorage 兜底
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items.value))
@@ -38,6 +60,17 @@ export const useCartStore = defineStore('cart', () => {
   async function addItem(course) {
     // 串行化守卫: 同一 course 的 in-flight 提交直接忽略
     if (_pendingAdds.has(course.id)) return false
+    // P0 修复 (2026-08-04): 首次加入购物车时 synced=false（store 未加载过服务端），
+    // 原逻辑直接跳过服务端写入只存 localStorage → 结算页 loadFromServer() 用服务端
+    // 空数据覆盖本地 → "购物车为空"跳回广场，购物车功能整体不可用。
+    // 修复：写入前先同步服务端状态，确保后续 addCartItem 走服务端持久化。
+    if (!synced.value) {
+      try {
+        await loadFromServer()
+      } catch {
+        // 网络异常时继续本地降级（loadFromServer 内部已有 localStorage 兜底）
+      }
+    }
     // 检查是否已在购物车
     const exists = items.value.some(i => i.courseId === course.id)
     if (exists) {

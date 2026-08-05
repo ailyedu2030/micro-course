@@ -600,6 +600,46 @@ public class GradeServiceImpl implements GradeService {
             vo.setCreatedAt(grade.getCreatedAt());
             vo.setComment(grade.getComment());
 
+            // P1-C 修复 (2026-08-04): 关联练习作答记录，识别"待人工批改"的主观题，
+            // 供前端成绩页展示批改入口与逐题批改（此前主观题永远 0 分且无批改入口）。
+            try {
+                LambdaQueryWrapper<ExerciseRecord> recWrapper = new LambdaQueryWrapper<>();
+                // ExerciseRecord 无 courseId 列，按 exerciseId+userId+attemptNo 定位最近作答记录
+                recWrapper.eq(ExerciseRecord::getUserId, grade.getUserId())
+                          .eq(grade.getExerciseId() != null, ExerciseRecord::getExerciseId, grade.getExerciseId())
+                          .eq(grade.getAttemptNo() != null, ExerciseRecord::getAttemptNo, grade.getAttemptNo())
+                          .orderByDesc(ExerciseRecord::getId)
+                          .last("LIMIT 1");
+                ExerciseRecord record = exerciseRecordRepository.selectOne(recWrapper);
+                if (record != null) {
+                    vo.setRecordId(record.getId());
+                    boolean needsManual = Boolean.TRUE.equals(record.getNeedsManualGrading());
+                    vo.setNeedsManualGrading(needsManual);
+                    if (needsManual && record.getAnswers() != null && !record.getAnswers().isBlank()) {
+                        List<Map<String, Object>> answerList = objectMapper.readValue(
+                                record.getAnswers(),
+                                new TypeReference<List<Map<String, Object>>>() {});
+                        List<Map<String, Object>> pending = new ArrayList<>();
+                        for (Map<String, Object> answer : answerList) {
+                            if (Boolean.TRUE.equals(answer.get("needsManualGrading"))) {
+                                Map<String, Object> item = new HashMap<>();
+                                Object qidObj = answer.get("questionId");
+                                item.put("questionId", qidObj instanceof Number
+                                        ? ((Number) qidObj).longValue() : null);
+                                item.put("studentAnswer", answer.get("answer"));
+                                // 满分取练习总分（单题主观题即该题满分；answer.score 是学生得分 0）
+                                item.put("maxScore", grade.getTotalScore() != null
+                                        ? grade.getTotalScore().intValue() : 0);
+                                pending.add(item);
+                            }
+                        }
+                        vo.setPendingQuestions(pending);
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("[Grade] 关联作答记录解析失败 gradeId={}", grade.getId(), e);
+            }
+
             Course course = courseMap.get(grade.getCourseId());
             if (course != null) {
                 vo.setCourseName(course.getTitle());

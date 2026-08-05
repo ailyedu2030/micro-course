@@ -54,7 +54,10 @@ class StorageApplicationExportServiceImplTest {
 
         assertArrayEquals("word-bytes".getBytes(), exported);
         assertFalse(txManager.isActive(), "导出结束后事务必须关闭");
-        assertTrue(txManager.isReadOnly(), "快照查询必须使用只读事务");
+        // P1-C(2026-08-04): 快照查询含 SELECT ... FOR UPDATE，PostgreSQL 拒绝在
+        // 只读事务中执行，故事务必须可写（原断言 assertTrue(isReadOnly) 是修复前
+        // 的陈旧期望，导出曾因此 100% 失败）
+        assertFalse(txManager.isReadOnly(), "快照查询事务必须可写（SELECT FOR UPDATE 需要）");
     }
 
     @Test

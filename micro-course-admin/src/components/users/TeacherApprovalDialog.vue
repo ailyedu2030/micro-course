@@ -22,7 +22,7 @@
       <el-table-column prop="realName" label="姓名" min-width="100" />
       <el-table-column prop="teacherNo" label="教师编号" min-width="120" />
       <el-table-column prop="departmentName" label="院系" min-width="120" />
-      <el-table-column prop="createdAt" label="申请时间" min-width="160" />
+      <el-table-column prop="createdAt" label="申请时间" min-width="160" :formatter="$formatDateTime" />
       <el-table-column label="操作" width="160" align="center">
         <template #default="{ row }">
           <el-button type="success" size="small" @click="handleApprove(row)">通过</el-button>

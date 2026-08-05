@@ -126,11 +126,7 @@
                           </el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column prop="enrolledAt" label="加入时间" width="160">
-                        <template #default="{ row }">
-                          <span class="text-secondary">{{ formatDate(row.enrolledAt) }}</span>
-                        </template>
-                      </el-table-column>
+                      <el-table-column prop="enrolledAt" label="加入时间" width="160" :formatter="$formatDateTime" />
                       <el-table-column label="操作" width="140" fixed="right">
                         <template #default="{ row }">
                           <el-button type="primary" link size="small" @click="handleChangeStatus(cls, row)">
@@ -190,9 +186,9 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="changeStatusForm.status" class="full-width">
-            <el-option label="正常" value="ACTIVE" />
-            <el-option label="禁用" value="DISABLED" />
-            <el-option label="休学" value="SUSPENDED" />
+            <el-option label="在读" value="ENROLLED" />
+            <el-option label="已退课" value="DROPPED" />
+            <el-option label="已结业" value="COMPLETED" />
           </el-select>
         </el-form-item>
       </el-form>
@@ -216,7 +212,7 @@ import {
   removeStudentFromClass,
   updateStudentStatus
 } from '@/api/teaching-class'
-import { getUsers } from '@/api/user'
+import { searchStudents } from '@/api/teaching-class'
 import { getCourses } from '@/api/course'
 
 const userStore = useUserStore()
@@ -252,9 +248,9 @@ const statusMap = {
 }
 
 const studentStatusMap = {
-  ACTIVE: { text: '正常', type: 'success' },
-  DISABLED: { text: '禁用', type: 'danger' },
-  SUSPENDED: { text: '休学', type: 'warning' }
+  ENROLLED: { text: '在读', type: 'success' },
+  DROPPED: { text: '已退课', type: 'info' },
+  COMPLETED: { text: '已结业', type: 'warning' }
 }
 
 function getStatusText(status) {
@@ -404,13 +400,11 @@ async function handleSearchStudent() {
     return
   }
   try {
-    const { data } = await getUsers({
+    const { data } = await searchStudents({
       keyword: addStudentForm.realName.trim(),
-      role: 'STUDENT',
-      size: 20,
-      status: 1
+      size: 20
     })
-    const items = data.items || []
+    const items = Array.isArray(data) ? data : (data?.items || [])
     searchResults.value = items
     if (items.length === 0) {
       ElMessage.info('未找到匹配的学生')
@@ -464,7 +458,7 @@ async function confirmAddStudent() {
 async function handleRemoveStudent(cls, student) {
   try {
     await ElMessageBox.confirm('确定移除该学生？', '提示', { type: 'warning' })
-    await removeStudentFromClass(cls.id, student.id)
+    await removeStudentFromClass(cls.id, student.userId)
     ElMessage.success('移除成功')
     // 清除缓存以便刷新
     delete studentData[cls.id]
@@ -480,14 +474,14 @@ async function handleRemoveStudent(cls, student) {
 
 // 修改状态弹窗
 const changeStatusVisible = ref(false)
-const changeStatusForm = reactive({ status: 'ACTIVE' })
+const changeStatusForm = reactive({ status: 'ENROLLED' })
 const currentStudentItem = ref(null)
 const currentClassForStatus = ref(null)
 
 function handleChangeStatus(cls, student) {
   currentClassForStatus.value = cls
   currentStudentItem.value = student
-  changeStatusForm.status = student.status || 'ACTIVE'
+  changeStatusForm.status = student.status || 'ENROLLED'
   changeStatusVisible.value = true
 }
 
@@ -495,7 +489,7 @@ async function confirmChangeStatus() {
   if (!currentClassForStatus.value || !currentStudentItem.value) return
   changingStatus.value = true
   try {
-    await updateStudentStatus(currentClassForStatus.value.id, currentStudentItem.value.id, changeStatusForm.status)
+    await updateStudentStatus(currentClassForStatus.value.id, currentStudentItem.value.userId, changeStatusForm.status)
     ElMessage.success('状态修改成功')
     changeStatusVisible.value = false
     // 清除缓存以便刷新

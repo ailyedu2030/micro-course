@@ -84,7 +84,11 @@ const fetchHealth = async () => {
       const free = parseFloat(data.diskFree || '0')
       if (total > 0) healthInfo.diskUsage = `${((total - free) / total * 100).toFixed(1)}%`
     }
-    if (data?.mem) {
+    // P2 修复 (2026-08-04): 后端实际返回 memory / memUsage / systemMemoryDetail，
+    // 前端原读取 mem / memTotal / memFree 字段名错位 → 内存使用率永远 "—"。
+    healthInfo.mem = data?.memory || data?.mem || '—'
+    healthInfo.memUsage = data?.memUsage || data?.systemMemoryDetail || '—'
+    if (data?.mem && data.memTotal && data.memFree) {
       if (data.memTotal && data.memFree) {
         healthInfo.memUsage = `${((data.memTotal - data.memFree) / data.memTotal * 100).toFixed(1)}%`
       }

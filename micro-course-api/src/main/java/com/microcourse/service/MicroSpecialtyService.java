@@ -212,6 +212,12 @@ public interface MicroSpecialtyService {
     List<MicroSpecialtyTeacherVO> listTeachers(Long msId);
 
     /**
+     * 教师端团队管理专用列表：返回全部状态（ACTIVE/INVITED/PENDING_ACADEMIC/DECLINED/REMOVED），
+     * 供负责人重邀/管理。P1-C 修复：公开端点仅返回 ACTIVE（隐私），导致前端"重邀"按钮永不可达。
+     */
+    List<MicroSpecialtyTeacherVO> listTeachersForManage(Long msId);
+
+    /**
      * LEAD 发送教师邀请。自动判断跨学院：同学院直接 ACTIVE，
      * 跨学院 → PENDING_ACADEMIC（需教务处审批）。
      *
@@ -220,6 +226,17 @@ public interface MicroSpecialtyService {
      * @return 教师团队 VO
      */
     MicroSpecialtyTeacherVO inviteTeacher(Long msId, MicroSpecialtyTeacherRequest request);
+
+    /**
+     * 指派已入团队教师到课程（课程编排页"指派教师"）。
+     * P1-C 修复：此前复用 inviteTeacher，已接受团队成员必然报"教师已在微专业团队中"，
+     * 指派教师功能 100% 失效。
+     *
+     * @param msId      微专业 ID
+     * @param teacherId 目标教师 ID（须为 ACTIVE 团队成员）
+     * @param courseId  微专业课程 ID
+     */
+    MicroSpecialtyTeacherVO assignTeacherToCourse(Long msId, Long teacherId, Long courseId);
 
     /**
      * LEAD/ADMIN 移除教师。发通知给被移除教师。

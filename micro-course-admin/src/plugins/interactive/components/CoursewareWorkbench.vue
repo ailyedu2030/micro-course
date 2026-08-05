@@ -91,23 +91,35 @@
     </div>
 
     <!-- HTML 工作流 -->
-    <div v-if="coursewareType === 'HTML' && tree?.type === 'HTML'" class="cw-html">
+    <!-- P1-C 修复：HTML 课件首次上传时 html_unit 尚不存在（tree.type 非 HTML），
+         原条件导致 HtmlBlockEditor 永不可达 → 内容编辑/单元创建入口死循环。
+         改为按 coursewareType 渲染，HtmlBlockEditor 保存时懒创建 unit。 -->
+    <div v-if="coursewareType === 'HTML'" class="cw-html">
       <div class="cw-panels">
         <el-tabs v-model="activePanel" type="card" class="cw-tabs">
           <el-tab-pane name="content" label="HTML 内容">
-            <HtmlBlockEditor :course-id="courseId" :section-id="sectionId" />
+            <HtmlBlockEditor :course-id="courseId" :section-id="sectionId" @unit-saved="loadTree" />
           </el-tab-pane>
           <el-tab-pane name="segment" label="分段脚本">
+            <el-alert
+              v-if="!tree?.htmlUnit"
+              type="info"
+              :closable="false"
+              show-icon
+              title="单元尚未初始化"
+              description="请在「HTML 内容」中编辑并保存一次，系统将自动创建课件单元，之后即可为各分段配置脚本与音频。"
+              class="cw-segment-empty"
+            />
             <!--
               【BUG #20 修复】 默认显示 5 个 segment 编辑入口 (与 detectedSegments 取较大值).
               若 detectedSegments=0 (新建 unit),仍允许教师编辑默认 5 段.
               若 detectedSegments=10,显示 10 段.
             -->
               <div
-                v-for="(seg, idx) in Array.from(
-                  { length: Math.max(tree.htmlUnit.detectedSegments || 0, 5) },
+                v-for="(seg, idx) in tree?.htmlUnit ? Array.from(
+                  { length: Math.max((tree.htmlUnit.detectedSegments || 0), 5) },
                   (_, i) => ({ idx: i + 1 })
-                )"
+                ) : []"
                 :key="idx"
                 class="cw-segment-block"
               >

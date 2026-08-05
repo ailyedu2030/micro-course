@@ -45,6 +45,7 @@
             <el-image
               v-if="row.coverUrl"
               :src="row.coverUrl"
+              :alt="(row.title || '课程') + '封面'"
               fit="cover"
               class="table-thumb"
               :preview-src-list="[row.coverUrl]"
@@ -55,7 +56,7 @@
         </el-table-column>
         <el-table-column prop="courseTitle" label="课程名称" min-width="180" show-overflow-tooltip />
         <el-table-column prop="teacherName" label="授课教师" min-width="120" />
-        <el-table-column prop="createdAt" label="收藏时间" width="170" />
+        <el-table-column prop="createdAt" label="收藏时间" width="170" :formatter="$formatDateTime" />
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="danger" link size="small" @click="handleCancelFavorite(row)">取消收藏</el-button>

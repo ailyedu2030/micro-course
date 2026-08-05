@@ -151,7 +151,11 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         comment.setIsAnonymous(req.getIsAnonymous() != null ? req.getIsAnonymous() : false);
         comment.setIsTeacherReply(isTeacherOrAdmin);
         comment.setLikeCount(0);
-        comment.setStatus(0); // P1#8: 评论默认待审核（0=PENDING），由审核员通过后才发布
+        // P1-C 修复 (2026-08-04): 评论原默认 PENDING(0)，但全项目无评论审核通过端点
+        // （仅 delete/pin），评论将永远停留待审核、评论区永不可见 → 讨论互动功能失效。
+        // 修复：评论创建即 PUBLISHED(1) 即时展示；防滥用已有三重机制
+        // （30s 间隔 / 每小时 20 条 / XSS 净化 / 管理端可删除隐藏）。
+        comment.setStatus(DiscussionCommentStatus.PUBLISHED.getCode());
         comment.setCreatedAt(LocalDateTime.now());
         comment.setUpdatedAt(LocalDateTime.now());
         commentRepository.insert(comment);

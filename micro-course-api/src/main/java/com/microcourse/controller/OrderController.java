@@ -81,6 +81,14 @@ public class OrderController {
         return R.ok(orderService.getOrder(id));
     }
 
+    /** B14.4 管理端订单明细（营收看板下钻，ADMIN only） */
+    @GetMapping("/admin/list")
+    @PreAuthorize("hasRole('ADMIN')")
+    public R<java.util.List<OrderVO>> adminList(
+            @RequestParam(required = false) Long teacherId) {
+        return R.ok(orderService.adminListOrders(teacherId));
+    }
+
     /**
      * 【根因】P2-10: 退课确认文案无法根据是否有付费订单动态提示退款信息
      * 【修复】增加 courseId/status 可选筛选参数，前端可查询某课程是否有 PAID 订单

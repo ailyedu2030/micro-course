@@ -192,7 +192,14 @@ public class NotificationServiceImpl implements NotificationService {
         LambdaQueryWrapper<Notification> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Notification::getUserId, userId);
         if (type != null && !type.isEmpty()) {
-            wrapper.eq(Notification::getType, type);
+            // 前端分类 tab 传短分类（ENROLLMENT/GRADE/DISCUSSION/SYSTEM），
+            // 后端持久化的是全量类型码（如 ENROLLMENT_SUCCESS），需映射为码集合
+            java.util.List<String> codes = TYPE_CATEGORY.get(type);
+            if (codes != null) {
+                wrapper.in(Notification::getType, codes);
+            } else {
+                wrapper.eq(Notification::getType, type);
+            }
         }
         wrapper.orderByDesc(Notification::getCreatedAt);
 
@@ -209,6 +216,29 @@ public class NotificationServiceImpl implements NotificationService {
         result.setTotalPages(ipage.getPages());
         return result;
     }
+
+    /** 通知分类 tab → 全量类型码集合（与 NotificationType 枚举保持一致） */
+    private static final java.util.Map<String, java.util.List<String>> TYPE_CATEGORY =
+            java.util.Map.of(
+                    "ENROLLMENT", java.util.List.of(
+                            "ENROLLMENT_SUCCESS", "ENROLLMENT_WAITLIST", "ENROLLMENT_DROPPED",
+                            "MS_ENROLLMENT_AUTO_ENROLL", "MS_ENROLLMENT_APPROVED",
+                            "MS_ENROLLMENT_REJECTED", "MS_ENROLLMENT_PENDING", "MS_ENROLLMENT_DROPPED",
+                            "MS_ENROLLMENT_REAPPLIED", "MS_ENROLLMENT_FAILED"),
+                    "GRADE", java.util.List.of(
+                            "EXERCISE_GRADED", "GRADE_ISSUED", "MS_CERTIFICATE_ISSUED", "MS_COMPLETED"),
+                    "DISCUSSION", java.util.List.of(
+                            "DISCUSSION_REPLY", "DISCUSSION_POST_APPROVED"),
+                    "SYSTEM", java.util.List.of(
+                            "SYSTEM", "VIDEO_TRANSCODED", "COURSE_APPROVED", "COURSE_REJECTED",
+                            "COURSE_PUBLISHED", "COURSE_UNPUBLISHED", "COURSE_REVIEW_REMINDER",
+                            "COURSE_COMPLETION_WARNING", "REPORT_DISMISSED", "REPORT_RESOLVED",
+                            "MS_INVITE_LEAD", "MS_INVITE_TEAM", "MS_INVITE_ACCEPTED",
+                            "MS_INVITE_EXPIRED", "MS_INVITE_CROSS_DEPT", "MS_PROPOSAL_APPROVED",
+                            "MS_PROPOSAL_REJECTED", "MS_SUBMITTED", "MS_REJECTED", "MS_APPROVED",
+                            "MS_FEATURED_APPROVED", "MS_FEATURED_REJECTED", "MS_OPENED",
+                            "MS_CANCELLED", "MS_TEAM_REMOVED", "MS_TEAM_LEFT", "MS_LEAD_TRANSFERRED",
+                            "MS_ARCHIVED"));
 
     @Override
     @Transactional(rollbackFor = Exception.class)

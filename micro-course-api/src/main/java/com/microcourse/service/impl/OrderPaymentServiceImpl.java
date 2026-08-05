@@ -162,14 +162,8 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
         }
 
         if (isFreeOrder) {
-            // 套餐购买场景：让 enrollBundleCourses 统一处理套餐全部课程（sourceChannel=BUNDLE）
-            // 单课程购买场景：autoEnroll 处理（sourceChannel=PAYMENT）
-            if (bundleId != null) {
-                enrollBundleCourses(userId, bundleId);
-            } else {
-                autoEnroll(userId, courseId);
-            }
-            // 免费套餐/课程也持久化订单为 PAID（带审计、可退款、student_count 防重）
+            // 先落免费 PAID 订单，再选课：autoEnroll 使用 sourceChannel=PAYMENT，
+            // 校验"已存在 PENDING/PAID 订单"，顺序颠倒会必现 9005 非法支付来源
             Order freeOrder = new Order();
             freeOrder.setOrderNo(generateOrderNo());
             freeOrder.setUserId(userId);
@@ -180,6 +174,13 @@ public class OrderPaymentServiceImpl implements OrderPaymentService {
             freeOrder.setCreatedAt(LocalDateTime.now());
             freeOrder.setUpdatedAt(LocalDateTime.now());
             orderRepository.insert(freeOrder);
+            // 套餐购买场景：让 enrollBundleCourses 统一处理套餐全部课程（sourceChannel=BUNDLE）
+            // 单课程购买场景：autoEnroll 处理（sourceChannel=PAYMENT）
+            if (bundleId != null) {
+                enrollBundleCourses(userId, bundleId);
+            } else {
+                autoEnroll(userId, courseId);
+            }
             return orderQueryService.toVO(freeOrder);
         }
 

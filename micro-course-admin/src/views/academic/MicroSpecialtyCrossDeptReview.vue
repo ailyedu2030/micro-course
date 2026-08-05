@@ -31,8 +31,8 @@
             <el-tag :type="statusType(row.inviteStatus)" size="small">{{ statusLabel(row.inviteStatus) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="邀请时间" width="130" align="center">
-          <template #default="{ row }">{{ row.createdAt?.slice(0, 10) || '-' }}</template>
+        <el-table-column prop="createdAt" label="邀请时间" width="130" align="center" :formatter="$formatDateTime">
+          <template #default="{ row }">{{ $formatDate(row.createdAt) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">

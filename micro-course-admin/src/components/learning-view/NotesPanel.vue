@@ -43,9 +43,41 @@
       <div v-if="activeTab === 'discussion'" class="tab-panel" key="discussion">
         <div class="empty-state-card">
           <el-icon size="48" color="#CBD5E1"><ChatDotRound /></el-icon>
-          <p class="empty-title">暂无讨论</p>
-          <p class="empty-desc">点击开始与同学和老师讨论</p>
-          <el-button type="primary" plain size="small" @click="$emit('change-tab', 'course')">返回课程</el-button>
+          <p class="empty-title">参与课程讨论</p>
+          <p class="empty-desc">发帖提问、交流心得，与同学和老师互动</p>
+          <el-button type="primary" plain size="small" @click="goDiscussion">进入讨论区</el-button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 笔记 Tab（P1-C 补全 2026-08-04：原"笔记"按钮无任何功能） -->
+    <transition name="panel-fade">
+      <div v-if="activeTab === 'note'" class="tab-panel" key="note">
+        <div class="note-panel">
+          <div class="note-list">
+            <div v-for="n in notes" :key="n.id" class="note-item">
+              <p class="note-content">{{ n.content }}</p>
+              <div class="note-meta">
+                <span>{{ $formatDateTime(n.createdAt) }}</span>
+                <el-button link type="danger" size="small" @click="handleDelete(n)">删除</el-button>
+              </div>
+            </div>
+            <p v-if="notes.length === 0" class="note-empty">本章节暂无笔记，记录你的学习心得吧</p>
+          </div>
+          <div class="note-editor">
+            <el-input
+              v-model="noteContent"
+              type="textarea"
+              :rows="4"
+              maxlength="1000"
+              show-word-limit
+              placeholder="记录本章节的学习笔记..."
+              aria-label="笔记内容"
+            />
+            <el-button type="primary" size="small" :disabled="!noteContent.trim()" :loading="saving" @click="handleSave">
+              保存笔记
+            </el-button>
+          </div>
         </div>
       </div>
     </transition>
@@ -54,13 +86,87 @@
 
 <script setup>
 import { Document, Bell, ChatDotRound } from '@element-plus/icons-vue'
+import { ref, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCourseNotes, createCourseNote, deleteCourseNote } from '@/api/note'
+import { useRouter } from 'vue-router'
 
-defineProps({
+const props = defineProps({
   activeTab: { type: String, default: 'course' },
-  currentChapter: { type: Object, default: null }
+  currentChapter: { type: Object, default: null },
+  courseId: { type: [Number, String], default: null }
 })
 
 defineEmits(['change-tab'])
+
+const notes = ref([])
+const noteContent = ref('')
+const saving = ref(false)
+const router = useRouter()
+
+// 讨论区为独立页面：携带当前章节上下文跳转，避免学习视图内出现功能空壳
+function goDiscussion() {
+  const chapterId = props.currentChapter?.id
+  router.push({
+    path: '/student/discussions',
+    query: chapterId ? { chapterId } : { courseId: props.courseId }
+  })
+}
+
+async function loadNotes() {
+  if (!props.courseId) return
+  try {
+    const { data } = await getCourseNotes({
+      courseId: props.courseId,
+      chapterId: props.currentChapter?.id || undefined
+    })
+    notes.value = data || []
+  } catch {
+    notes.value = []
+  }
+}
+
+async function handleSave() {
+  if (!noteContent.value.trim() || !props.courseId) return
+  saving.value = true
+  try {
+    await createCourseNote({
+      courseId: props.courseId,
+      chapterId: props.currentChapter?.id || null,
+      content: noteContent.value.trim()
+    })
+    ElMessage.success('笔记已保存')
+    noteContent.value = ''
+    await loadNotes()
+  } catch {
+    ElMessage.error('笔记保存失败，请重试')
+  } finally {
+    saving.value = false
+  }
+}
+
+async function handleDelete(note) {
+  try {
+    await ElMessageBox.confirm('确定删除这条笔记？', '删除笔记', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    await deleteCourseNote(note.id)
+    ElMessage.success('笔记已删除')
+    await loadNotes()
+  } catch {
+    ElMessage.error('删除失败，请重试')
+  }
+}
+
+watch(() => props.activeTab, (tab) => {
+  if (tab === 'note') loadNotes()
+})
+
+watch(() => props.currentChapter?.id, () => {
+  if (props.activeTab === 'note') loadNotes()
+})
 </script>
 
 <style scoped>

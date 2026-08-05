@@ -42,8 +42,8 @@ public class MicroSpecialtyProposalController {
     @GetMapping("/my")
     @PreAuthorize("hasRole('TEACHER')")
     public R<PageResult<?>> getMyProposals(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size) {
         PageResult<?> result = proposalService.getMyProposals(page, size);
         return R.ok(result);
     }
@@ -52,8 +52,8 @@ public class MicroSpecialtyProposalController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
     public R<PageResult<?>> listAllPending(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "0") @jakarta.validation.constraints.PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @org.hibernate.validator.constraints.Range(min = 1, max = 200, message = "size 不能超过 200") int size,
             @RequestParam(required = false) String status) {
         PageResult<?> result = proposalService.getAllPendingProposals(page, size, status);
         return R.ok(result);

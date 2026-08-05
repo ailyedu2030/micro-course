@@ -41,9 +41,7 @@
           </el-table-column>
           <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
           <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
-          <el-table-column prop="createdAt" label="发布时间" width="170">
-            <template #default="{ row }">{{ formatDateTime(row.createdAt) }}</template>
-          </el-table-column>
+          <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime" />
         </el-table>
         <!-- P0-6: PC 端空状态 -->
         <el-empty v-if="!loading && tableData.length === 0" description="暂无帖子" />
@@ -158,6 +156,8 @@
           <div class="post-meta">
             <span>{{ currentPost.isAnonymous ? '匿名用户' : currentPost.authorName }}</span>
             <span>{{ formatDateTime(currentPost.createdAt) }}</span>
+            <el-tag v-if="currentPost.status === 0" type="warning" size="small">待审核</el-tag>
+            <el-tag v-else-if="currentPost.status === 2" type="info" size="small">已驳回</el-tag>
           </div>
         </div>
         <div class="post-content">{{ currentPost.content }}</div>
@@ -179,7 +179,15 @@
         </div>
 
         <!-- 回复输入框 -->
-        <div class="reply-input-area">
+        <el-alert
+          v-if="currentPost.status === 0 || currentPost.status === 2"
+          :title="currentPost.status === 0 ? '帖子审核通过后开放评论' : '帖子已被驳回，无法评论'"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="reply-pending-hint"
+        />
+        <div v-if="currentPost.status === 1 || currentPost.status == null" class="reply-input-area">
           <el-input
             v-model="replyContent"
             type="textarea"

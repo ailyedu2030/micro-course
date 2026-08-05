@@ -3,6 +3,8 @@ package com.microcourse.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.dto.BatchImportResultVO;
 import com.microcourse.dto.PageResult;
+import com.microcourse.dto.ResetPasswordRequest;
+import com.microcourse.dto.StudentSearchVO;
 import com.microcourse.dto.UserCreateRequest;
 import com.microcourse.dto.UserPageQuery;
 import com.microcourse.dto.TeacherStatusRequest;
@@ -119,6 +121,32 @@ public class UserServiceImpl implements UserService {
             }
         }
         return queryService.pageUsers(query);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StudentSearchVO> searchStudents(String keyword, int size) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<User>()
+                .eq(User::getRole, "STUDENT")
+                .eq(User::getStatus, 1)
+                .select(User::getId, User::getRealName, User::getUsername, User::getStudentNo, User::getAvatar, User::getStatus)
+                .last("LIMIT " + Math.min(Math.max(size, 1), 100));
+        if (keyword != null && !keyword.isBlank()) {
+            String kw = keyword.trim();
+            wrapper.and(w -> w.like(User::getRealName, kw)
+                    .or().like(User::getStudentNo, kw)
+                    .or().like(User::getUsername, kw));
+        }
+        return userRepository.selectList(wrapper).stream().map(u -> {
+            StudentSearchVO vo = new StudentSearchVO();
+            vo.setId(u.getId());
+            vo.setRealName(u.getRealName());
+            vo.setUsername(u.getUsername());
+            vo.setStudentNo(u.getStudentNo());
+            vo.setAvatar(u.getAvatar());
+            vo.setStatus(u.getStatus());
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -270,6 +298,22 @@ public class UserServiceImpl implements UserService {
         user.setUpdatedAt(LocalDateTime.now());
         userRepository.updateById(user);
         return convertToVO(user);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(Long id, ResetPasswordRequest request) {
+        if (!PASSWORD_PATTERN.matcher(request.getNewPassword()).matches()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "密码需至少 8 位且包含字母和数字");
+        }
+        User user = userRepository.selectById(id);
+        if (user == null || user.getDeletedAt() != null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setUpdatedAt(LocalDateTime.now());
+        userRepository.updateById(user);
+        log.info("管理员重置用户密码: userId={}, operator={}", id, SecurityUtil.getCurrentUserId());
     }
 
     @Override

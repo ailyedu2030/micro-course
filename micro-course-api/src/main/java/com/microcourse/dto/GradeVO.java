@@ -24,6 +24,12 @@ public class GradeVO {
     private String gradedByName;
     private LocalDateTime gradedAt;
     private LocalDateTime createdAt;
+    /** P1-C 修复 (2026-08-04): 关联的练习作答记录 ID（人工批改用） */
+    private Long recordId;
+    /** 是否含待人工批改的主观题 */
+    private Boolean needsManualGrading;
+    /** 待批改题目列表（questionId/content/studentAnswer/maxScore） */
+    private java.util.List<java.util.Map<String, Object>> pendingQuestions;
 
     public GradeVO() {}
 
@@ -65,4 +71,10 @@ public class GradeVO {
     public void setGradedAt(LocalDateTime gradedAt) { this.gradedAt = gradedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public Long getRecordId() { return recordId; }
+    public void setRecordId(Long recordId) { this.recordId = recordId; }
+    public Boolean getNeedsManualGrading() { return needsManualGrading; }
+    public void setNeedsManualGrading(Boolean needsManualGrading) { this.needsManualGrading = needsManualGrading; }
+    public java.util.List<java.util.Map<String, Object>> getPendingQuestions() { return pendingQuestions; }
+    public void setPendingQuestions(java.util.List<java.util.Map<String, Object>> pendingQuestions) { this.pendingQuestions = pendingQuestions; }
 }

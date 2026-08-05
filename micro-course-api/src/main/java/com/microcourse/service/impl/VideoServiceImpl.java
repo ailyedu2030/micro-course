@@ -342,7 +342,9 @@ public class VideoServiceImpl implements VideoService {
                 new LambdaUpdateWrapper<Video>()
                         .eq(Video::getId, id)
                         .eq(Video::getStatus, VideoStatus.FAILED.getCode())
-                        .set(Video::getStatus, VideoStatus.TRANSCODING.getCode())
+                        // P1-C 修复：重试必须回到 UPLOADING(0)——转码任务的 CAS 要求 0→1，
+                        // 此前直接置 TRANSCODING(1) 导致"已被其他转码任务接管"，重试永远卡在转码中
+                        .set(Video::getStatus, VideoStatus.UPLOADING.getCode())
                         .set(Video::getErrorMessage, (String) null)
                         .set(Video::getProgress, 0)
                         .set(Video::getUpdatedAt, LocalDateTime.now())
@@ -464,11 +466,11 @@ public class VideoServiceImpl implements VideoService {
             ext = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
         String savedFileName = java.util.UUID.randomUUID().toString().replace("-", "") + ext;
-        Path targetPath = Paths.get(baseDir, savedFileName);
+        Path targetPath = Paths.get(baseDir, savedFileName).toAbsolutePath().normalize();
 
-        try {
+        try (InputStream in = file.getInputStream()) {
             Files.createDirectories(targetPath.getParent());
-            file.transferTo(targetPath.toFile());
+            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面保存失败");
         }

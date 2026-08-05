@@ -37,6 +37,11 @@
     </properties>
 
     <dependencies>
+        <!-- B10.5 发送测试邮件真实实现（此前为前端模拟占位，无实际 SMTP 能力） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
         <!-- Spring Boot Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

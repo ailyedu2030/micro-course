@@ -53,6 +53,7 @@ class OrderServiceBundlePriceTest {
     @Mock private com.microcourse.repository.CourseBundleRepository bundleRepository;
     @Mock private com.microcourse.repository.CourseBundleItemRepository bundleItemRepository;
     @Mock private com.microcourse.repository.OrderRepository orderRepository;
+    @Mock private com.microcourse.repository.UserRepository userRepository;
     @Mock private com.microcourse.repository.PaymentRepository paymentRepository;
     @Mock private com.microcourse.repository.EnrollmentRepository enrollmentRepository;
     @Mock private com.microcourse.service.EnrollmentService enrollmentService;
@@ -82,7 +83,7 @@ class OrderServiceBundlePriceTest {
 
         // OrderQueryServiceImpl — 测 getMyOrders
         orderQueryServiceImpl = new OrderQueryServiceImpl(
-                orderRepository, courseRepository, bundleRepository);
+                orderRepository, courseRepository, bundleRepository, userRepository);
 
         // OrderRefundServiceImpl — 测 refund
         orderRefundServiceImpl = new OrderRefundServiceImpl(

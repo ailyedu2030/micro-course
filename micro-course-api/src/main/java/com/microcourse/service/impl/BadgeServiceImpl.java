@@ -143,7 +143,9 @@ public class BadgeServiceImpl implements BadgeService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
+    // P1-C 修复：与证书颁发同源 —— 徽章颁发在完成课程事务内失败会污染外层事务（rollback-only），
+    // 改为独立事务，避免"徽章失败导致完成课程 500"。
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public void checkAndAwardCourseCompletion(Long userId, Long courseId,
                                              long totalEnrollments, long completedCount) {
         // E2-2: 使用 self 代理调用，确保 @Transactional(readOnly) / @Transactional 生效

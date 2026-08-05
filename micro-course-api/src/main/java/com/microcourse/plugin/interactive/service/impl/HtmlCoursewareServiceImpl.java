@@ -81,6 +81,17 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         if (dto.getSlideId() == null) {
             dto.setSlideId(resolveSlideId(dto));
         }
+        // P1-C 修复：前端创建单元不传 chapterId，slide_html_units.chapter_id NOT NULL
+        // 直接插入 → 500。从所属 slide（含 chapter_id/course_id）派生兜底。
+        if (dto.getChapterId() == null && dto.getSlideId() != null) {
+            CourseSlide slide = courseSlideMapper.selectById(dto.getSlideId());
+            if (slide != null) {
+                dto.setChapterId(slide.getChapterId());
+                if (dto.getCourseId() == null) {
+                    dto.setCourseId(slide.getCourseId());
+                }
+            }
+        }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
         String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
         SlideHtmlUnit entity = new SlideHtmlUnit();

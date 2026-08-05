@@ -301,11 +301,25 @@ public class EnrollmentLifecycleServiceImpl implements EnrollmentLifecycleServic
                 // C-13 修复（路径 A）：completed=true 时同步设置 enrollmentStatus=COMPLETED，消除双路径不同步
                 enrollment.setCompletedAt(LocalDateTime.now());
                 enrollment.setEnrollmentStatus(EnrollmentStatus.COMPLETED.getValue());
+                // P1-C 修复：证书颁发改为事务提交后（afterCommit）执行。
+                // 此前直接调用共享事务：证书条件不满足时抛异常把外层事务标记 rollback-only → 完成课程 500；
+                // 改为 REQUIRES_NEW 后：内层事务读不到未提交的 completed=true → 证书永远不颁发。
                 try {
-                    certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
+                    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                certificateService.issueCertificate(enrollment.getUserId(), enrollment.getCourseId());
+                            } catch (Exception ex) {
+                                // DF-006 修复: 证书颁发失败升级为 ERROR 日志(保留 fail-open 不中断完成流程)
+                                LOG.error("[Enrollment] 证书自动颁发失败(提交后) userId={} courseId={}",
+                                        enrollment.getUserId(), enrollment.getCourseId(), ex);
+                            }
+                        }
+                    });
                 } catch (Exception e) {
-                    // DF-006 修复: 证书颁发失败升级为 ERROR 日志(保留 fail-open 不中断完成流程)
-                    LOG.error("[Enrollment] 证书自动颁发失败 userId={} courseId={}", enrollment.getUserId(), enrollment.getCourseId(), e);
+                    LOG.error("[Enrollment] 注册证书颁发回调失败 userId={} courseId={}",
+                            enrollment.getUserId(), enrollment.getCourseId(), e);
                 }
                 try {
                     badgeService.checkAndAwardCourseCompletion(

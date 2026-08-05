@@ -41,7 +41,7 @@
         </div>
         <el-scrollbar class="chapter-scrollbar">
           <div class="chapter-list">
-            <div v-for="ch in enr.chapters" :key="ch.id" class="chapter-item" role="button" tabindex="0" :aria-label="`进入章节练习 ${ch.title}`" @click="goExercise(ch.id)" @keydown.enter="goExercise(ch.id)" @keydown.space.prevent="goExercise(ch.id)">
+            <div v-for="ch in enr.chapters" :key="ch.id" class="chapter-item" role="button" tabindex="0" :aria-label="`进入章节练习 ${ch.title}`" @click.stop="goExercise(ch.id)" @keydown.enter.stop="goExercise(ch.id)" @keydown.space.prevent.stop="goExercise(ch.id)">
               <span>{{ ch.title }}</span>
               <el-tag v-if="ch.exerciseCount > 0" size="small" type="success">{{ ch.exerciseCount }} 练习</el-tag>
               <el-tag v-else size="small" type="info">暂无练习</el-tag>

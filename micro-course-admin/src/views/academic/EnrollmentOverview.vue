@@ -94,9 +94,7 @@
             <span>{{ row.progress != null ? row.progress + '%' : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="选课时间" width="170">
-          <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-        </el-table-column>
+        <el-table-column prop="createdAt" label="选课时间" width="170" :formatter="$formatDateTime" />
       </el-table>
       <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination

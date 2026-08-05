@@ -44,7 +44,10 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     private static final Logger log = LoggerFactory.getLogger(TeachingClassServiceImpl.class);
 
     /** P1-1: 学生状态白名单（V316 修复：仅允许 APPROVED/DROPPED/COMPLETED） */
-    private static final Set<String> VALID_STUDENT_STATUSES = Set.of("APPROVED", "DROPPED", "COMPLETED");
+    // P1-C 修复：与 DB chk_tcs_status 约束保持一致（ENROLLED/DROPPED/COMPLETED）。
+    // 此前用课程选课域枚举值 APPROVED，插入时违反约束导致"添加学生"必失败；
+    // 前端原传 ACTIVE/DISABLED/SUSPENDED 同样不在白名单内，"修改状态"也必失败。
+    private static final Set<String> VALID_STUDENT_STATUSES = Set.of("ENROLLED", "DROPPED", "COMPLETED");
 
     private final TeachingClassRepository teachingClassRepository;
     private final TeachingClassStudentRepository teachingClassStudentRepository;
@@ -274,7 +277,9 @@ public class TeachingClassServiceImpl implements TeachingClassService {
             throw new BusinessException(ErrorCode.NO_PERMISSION, "无权查看该教学班学生名单");
         }
 
-        List<TeachingClassStudent> students = teachingClassStudentRepository.selectActiveByClassId(classId);
+        // P1-C 修复：展示全部班级成员（含 DROPPED/COMPLETED），
+        // 此前仅查 ENROLLED，学生被"结业/退课"后从名单消失，无法在 UI 修改回状态或移除
+        List<TeachingClassStudent> students = teachingClassStudentRepository.selectByClassId(classId);
         if (students.isEmpty()) {
             return new ArrayList<>();
         }
@@ -345,7 +350,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
         record.setClassId(classId);
         record.setUserId(userId);
         record.setEnrolledAt(LocalDateTime.now());
-        record.setStatus(EnrollmentStatus.APPROVED.getValue());
+        record.setStatus("ENROLLED");
         try {
             teachingClassStudentRepository.insert(record);
         } catch (org.springframework.dao.DuplicateKeyException dupEx) {
@@ -400,7 +405,7 @@ public class TeachingClassServiceImpl implements TeachingClassService {
     public void updateStudentStatus(Long classId, Long userId, String status) {
         // P1-1: 状态白名单校验
         if (status == null || !VALID_STUDENT_STATUSES.contains(status)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学生状态值无效，应为 APPROVED/DROPPED/COMPLETED");
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "学生状态值无效，应为 ENROLLED/DROPPED/COMPLETED");
         }
 
         // P0-3: 越权校验

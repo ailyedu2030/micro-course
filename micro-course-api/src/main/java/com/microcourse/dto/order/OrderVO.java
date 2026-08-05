@@ -7,6 +7,8 @@ public class OrderVO {
     private Long id;
     private String orderNo;
     private Long userId;
+    /** B14.4 明细下钻：下单用户名 */
+    private String userName;
     private Long courseId;
     private String courseTitle;
     private Long bundleId;
@@ -28,6 +30,8 @@ public class OrderVO {
     public void setOrderNo(String orderNo) { this.orderNo = orderNo; }
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
     public Long getCourseId() { return courseId; }
     public void setCourseId(Long courseId) { this.courseId = courseId; }
     public String getCourseTitle() { return courseTitle; }
