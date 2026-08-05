@@ -94,7 +94,9 @@ public class PptCoursewareController {
                                @PathVariable Long pageId,
                                @RequestBody SaveScriptRequest body) {
         return R.ok(pptService.saveScript(pageId, body.scriptText(),
-                body.voice(), body.ttsModel(), body.createdBy()));
+                body.voice(), body.ttsModel(),
+                body.createdBy() != null ? body.createdBy()
+                        : com.microcourse.util.SecurityUtil.getCurrentUserId()));
     }
 
     // ====== Audios ======
@@ -102,8 +104,22 @@ public class PptCoursewareController {
     @GetMapping("/scripts/{scriptId}/audios")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptAudioDTO>> listAudios(@PathVariable Long courseId,
-                                            @PathVariable Long scriptId) {
-        return R.ok(pptService.listAudios(scriptId));
+                                            @PathVariable String scriptId) {
+        // 容错：前端无脚本时可能传 "null"/非法值，返回空列表而非 500
+        Long parsed = parseLongOrNull(scriptId);
+        if (parsed == null) {
+            return R.ok(new java.util.ArrayList<>());
+        }
+        return R.ok(pptService.listAudios(parsed));
+    }
+
+    private Long parseLongOrNull(String value) {
+        if (value == null || value.isBlank() || "null".equalsIgnoreCase(value)) return null;
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     @PostMapping("/scripts/{scriptId}/audios")

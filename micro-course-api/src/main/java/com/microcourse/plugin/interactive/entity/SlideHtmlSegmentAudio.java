@@ -41,7 +41,7 @@ public class SlideHtmlSegmentAudio {
     @TableField("model_used")
     private String modelUsed;
 
-    @TableField("generation_params")
+    @TableField(value = "generation_params", typeHandler = com.microcourse.util.JsonbStringTypeHandler.class)
     private String generationParams;
 
     @TableField("generation_started_at")

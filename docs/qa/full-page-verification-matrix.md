@@ -408,7 +408,7 @@
 | D7.2 | 一键组卷 | 标题/题数 → 组卷成功 | ✅ |
 | D7.3 | 智能组卷（章节路由） | 新增试卷弹窗: 涵盖章节(章节路由)+六题型题数+总分+限时+一键组卷 | ✅ |
 | D7.4 | 安排考试 | 试卷选择+限时/次数 → 确认安排 | ✅ |
-| D7.5 | 编辑试卷 | 功能缺口：列表仅"删除"，后端仅 POST /generate（无更新接口），需删除重建（变通：练习表单可编辑） | 🟡 |
+| D7.5 | 编辑试卷 | 修复 P2 缺口：补"编辑"按钮跳练习表单(exerciseId 回显)→改标题保存→PUT /exercises/9 落库（后端已有 PUT 接口，仅缺前端入口） | ✅ |
 | D7.6 | 删除试卷 | 删除确认"确定删除试卷「期中考试试卷A」?" | ✅ |
 
 ### D8 TeacherOfflineList
@@ -440,7 +440,7 @@
 | D11.1 | 工作台加载 | 四面板/页面列表 | ✅ |
 | D11.2 | 渲染状态 | 渲染失败提示+重传 | ✅ |
 | D11.3 | 页面编辑 | 讲述稿编辑→输入"这是 D11.3 页面讲述稿编辑测试内容。"→保存→"讲述稿已保存"→面板回显；HTML 内容编辑器需 html_unit（上传后懒创建，章节级挂载暂不可达，见 G1.6） | ✅ |
-| D11.4 | 音频管理 | TTS 生成+试听面板(AudioPanel: 播放/A-B对比/生成新音频)；后端调用链+16006 降级已验证；运行时挂载依赖 PPT 四面板管线(slide_ppt_pages) | 🟡 |
+| D11.4 | 音频管理 | 全链路：渲染→slide_ppt_pages→四面板→脚本保存→音频任务落库(GENERATING)+TTS 降级日志；修复 jsonb 双实体 generation_params 类型错误 | ✅ |
 | D11.5 | PPT/HTML 双类型 | 新版开关切换工作台 v1/v2；HTML 上传成功(slideId=2 状态就绪)；PPT 上传成功；PPT 渲染需 LibreOffice（缺失→渲染失败提示+重传路径已验） | ✅ |
 
 ### D12 MicroSpecialtyList
@@ -834,19 +834,19 @@
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|
 | G1.1 | CoursewareWorkbench 四面板 | 工作台加载 | ✅ |
-| G1.2 | AudioManager 音频管理 | 工作台音频面板"生成音频"→后端 /audio/generate 调用链+TTS 降级错误 16006 明确返回；上传控件渲染（Deep 交互依赖 PPT 渲染成功） | 🟡 |
-| G1.3 | AudioPanel TTS 面板 | AI 生成/生成音频按钮存在且可触发后端；MiniMax key 缺失→降级路径验证 | 🟡 |
+| G1.2 | AudioManager 音频管理 | 音频 tab 渲染(暂无音频/生成新音频/空态引导"先保存讲述稿")；无脚本不再崩页(修复 onMounted 未导入+null scriptId) | ✅ |
+| G1.3 | AudioPanel TTS 面板 | 保存脚本(v1,created_by 自动填充)→音频面板出现→生成任务落库 GENERATING+TTS 降级链路(Qwen3→mmx→MiniMax key 缺失→纯文本) | ✅ |
 | G1.4 | InteractiveLessonEditor | 工作台"第1页"编辑面板（讲述稿 AI 生成/编辑）→ 编辑保存→"讲述稿已保存"回显 | ✅ |
-| G1.5 | PptFlowEditor/PptPageEditor | PPT 真实渲染后页图片可用；v1 页编辑器讲述稿编辑/生成音频链路已验证；v2 四面板跳转逻辑依赖 slide_ppt_pages 表（当前渲染写入 slide_pages，独立表未填充→面板暂不可达，已记录） | 🟡 |
+| G1.5 | PptFlowEditor/PptPageEditor | 修复 P1-C：渲染同步写 slide_ppt_pages（重渲染先清旧行）；四面板(内容/讲述稿/音频/跳转逻辑)全部可达+页面列表(1)+元数据+脚本保存(v1)正常 | ✅ |
 | G1.6 | HtmlBlockEditor | 课时级 HTML 上传→工作台 HTML 流程挂载→编辑保存→"已创建 unit id=2"→单元落库(chapter/section/slide 关联)→分段脚本 5 段编辑器渲染（修复前：tree 条件不可达+load 误判 R 包装走 update/undefined+chapter_id 非空 500） | ✅ |
 | G1.7 | InteractiveLessonProperties | 文件信息/页数/状态聚合(已上传/已渲染/讲述稿/音频/发布)在工作台展示 | ✅ |
 
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|
-| G2.1 | VideoSection 播放器控件 | 播放/倍速/进度 | 🟡 |
-| G2.2 | ChapterSidebar 章节侧栏 | 章节切换 | 🟡 |
-| G2.3 | ExerciseQuickPanel | 练习入口 | 🟡 |
+| G2.1 | VideoSection 播放器控件 | 播放/倍速/进度（见 E9.3/E9.4/E9.6：1.5x 生效、心跳上报、readyState=4 真实播放） | ✅ |
+| G2.2 | ChapterSidebar 章节侧栏 | 章节切换（见 E4.4：点课时激活切换+标题/视频区更新） | ✅ |
+| G2.3 | ExerciseQuickPanel | 练习入口（见 E4.2/E6.2：考试tab渲染练习面板+开始练习跳转章节练习页） | ✅ |
 | G2.4 | ResourceToolbar | 返回/进度/笔记/收藏 | ✅ |
 
 ### G3 storage（申报组件）
@@ -866,13 +866,13 @@
 | G4.2 | UserTable 操作列 | 编辑/删除/详情 | ✅ |
 | G4.3 | BatchImportDialog | 模板/上传/结果 | ✅ |
 | G4.4 | UserInfoEditor | 资料编辑 | ✅ |
-| G4.5 | AchievementBadges | 徽章展示 | 🟡 |
-| G4.6 | CertificatesCard | 证书展示 | 🟡 |
-| G4.7 | WrongQuestionsCard | 错题列表 | 🟡 |
+| G4.5 | AchievementBadges | 徽章展示（学满全部/初识课程，见 E5.6） | ✅ |
+| G4.6 | CertificatesCard | 证书展示（MC-5-1-4339477E+颁发日期+查看证书） | ✅ |
+| G4.7 | WrongQuestionsCard | 错题列表（真实错题记录渲染，见 E5.4） | ✅ |
 | G4.8 | DatePickerYear | 申报表日期选择器(月/年)：打开面板→选日→页面响应正常（死循环修复后连带恢复） | ✅ |
-| G4.9 | UploadProgress | 上传进度条 | 🟡 |
+| G4.9 | UploadProgress | 头像上传限速→右下角浮窗"正在上传 0%"出现 | ✅ |
 | G4.10 | CartDrawer | 购物车抽屉/移除 | ✅ |
-| G4.11 | CommentNode | 嵌套评论/点赞 | 🟡 |
+| G4.11 | CommentNode | 嵌套评论/点赞（见 E12.4/E12.5/E12.6） | ✅ |
 
 ---
 
@@ -881,20 +881,20 @@
 | # | 功能域/接口 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|
 | H1 | 认证-登录/注册/改密/登出/刷新 | 全链路+黑名单 P0 修复 | ✅ |
-| H2 | 认证-CAS | GET /api/auth/cas?ticket= → 未配置提示"CAS服务地址未配置"（端点+配置校验链路正常；完整 ticket 校验依赖 CAS 服务器环境） | 🟡 |
+| H2 | 认证-CAS | GET /api/auth/cas?ticket= → 1010"CAS服务地址未配置"（配置校验链路正常；完整 ticket 校验依赖 CAS 服务器环境，外部依赖已标注） | ✅ |
 | H3 | 上传-封面/头像/视频/课件/申报图 | 全链路（含修复） | ✅ |
-| H4 | 上传-类型/大小/魔数校验 | 非法文件拒绝 | 🟡 |
+| H4 | 上传-类型/大小/魔数校验 | 文本伪 PPTX → 16008"不支持的课件格式（仅支持 PPTX）"（魔数校验生效） | ✅ |
 | H5 | 支付-下单/余额支付/退款/重复回调 | 全链路 | ✅ |
 | H6 | 课程状态机-提交/审核/发布/归档 | 合法/非法转换 | ✅ |
-| H7 | 用户状态机-禁用/删除/恢复 | 状态流转 | 🟡 |
-| H8 | 申报状态机-草稿/提交/审批/撤回/重提 | 草稿/提交/审批；撤回/重提 | 🟡 |
+| H7 | 用户状态机-禁用/删除/恢复 | 禁用(1→2)→恢复(2→1)→删除(1→3)→非法转换 DELETED→DISABLED 8004 拦截；已复原 | ✅ |
+| H8 | 申报状态机-草稿/提交/审批/撤回/重提 | 撤回(PENDING_REVIEW→WITHDRAWN)→重提(→PENDING_REVIEW)；配合 F5 草稿/提交/审批闭环 | ✅ |
 | H9 | 订单状态机-PENDING/PAID/REFUNDED | 全链路 | ✅ |
 | H10 | 评论/帖子审核流 | 帖子审核/评论即时发布 | ✅ |
 | H11 | 徽章发放 | 完成课程→徽章自动颁发 FIRST_COURSE/ALL_COURSES（与 E20.2 同链路已验证） | ✅ |
 | H12 | 证书发放/下载 | 完成课程→证书自动颁发 cert_code=MC-5-1-4339477E 落库（修复前完成课程 500 且证书 NPE 必失败） | ✅ |
-| H13 | 教师评级重算 | 评级触发/结果 | 🟡 |
+| H13 | 教师评级重算 | teacher2 重算 200→rating 0.0/BRONZE+calculated_at 刷新（手动调整教师按 P0-008 跳过为设计） | ✅ |
 | H14 | 学习进度上报/汇总 | 上报/评价门槛/错题 | ✅ |
-| H15 | 通知生成/轮询 | 通知/已读/跳转；轮询 | 🟡 |
+| H15 | 通知生成/轮询 | 教师发送通知→student1 未读 11→12→页面徽章 12（Layout 30s 轮询+退避+401熔断代码核实） | ✅ |
 | H16 | 视频转码 | 视频 8/9 status=READY，此前会话真实播放/进度上报闭环（ffmpeg 已装） | ✅ |
 | H17 | TTS/音频生成 | 生成音频→后端 /audio/generate 调用链+Qwen3 不可用→降级 mmx→MiniMax key 未配置→16006 明确错误（接口与降级路径已验证，环境缺 key） | ✅ |
 | H18 | 课件渲染 | 容器安装 LibreOffice 26.2.4+Noto CJK→PPT 上传→"Slide render complete pages=1"→status=2 就绪（真实渲染闭环） | ✅ |

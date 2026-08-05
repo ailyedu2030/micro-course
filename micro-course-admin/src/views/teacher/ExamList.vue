@@ -43,8 +43,9 @@
         <el-table-column label="创建时间" width="170">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="150" fixed="right">
           <template #default="{ row }">
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
             <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :loading="deleting === row.id" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -156,7 +157,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
@@ -167,6 +168,7 @@ import { formatDateTime } from '@/utils/format'
 import { useUserStore } from '@/store/user'
 
 const route = useRoute()
+const router = useRouter()
 const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
 
 const userStore = useUserStore()
@@ -428,6 +430,16 @@ async function handleDelete(row) {
   } finally {
     deleting.value = null
   }
+}
+
+/** 编辑试卷：跳转练习表单（后端 PUT /exercises/{id} 支持更新，表单按 exerciseId 回显） */
+function handleEdit(row) {
+  const courseId = row.courseId
+  if (!courseId) {
+    ElMessage.warning('该试卷缺少课程信息，无法编辑')
+    return
+  }
+  router.push({ path: `/courses/${courseId}/exercises/form`, query: { exerciseId: row.id } })
 }
 
 // P1-修复: 从 manage-exam 路由打开时,预填课程+章节信息

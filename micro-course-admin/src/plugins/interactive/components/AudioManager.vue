@@ -34,11 +34,17 @@
     <!-- PPT 单段模式 / HTML 多段模式 -->
     <div v-if="pageType === 'PPT' || (segments && segments.length === 1)" class="am-single">
       <AudioPanel
+        v-if="effectiveScriptId"
         :course-id="courseId"
         :script-id="effectiveScriptId"
         :token-loader="loadPptAudios"
         :audio-url-factory="pptAudioUrl"
         :audio-status="statusLabel"
+      />
+      <el-empty
+        v-else
+        description="请先保存页面讲述稿，再生成音频"
+        :image-size="60"
       />
     </div>
 
@@ -88,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset, Plus } from '@element-plus/icons-vue'
 import { listPptAudios, generatePptAudio } from '../api/pptCourseware'

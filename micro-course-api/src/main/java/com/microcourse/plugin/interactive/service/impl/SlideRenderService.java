@@ -2,8 +2,11 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlidePage;
+import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.w3c.dom.Document;
@@ -39,6 +42,7 @@ public class SlideRenderService {
 
     private final CourseSlideMapper courseSlideMapper;
     private final SlidePageMapper slidePageMapper;
+    private final SlidePptPageMapper slidePptPageMapper;
     private final TransactionTemplate transactionTemplate;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
@@ -52,9 +56,11 @@ public class SlideRenderService {
 
     public SlideRenderService(CourseSlideMapper courseSlideMapper,
                               SlidePageMapper slidePageMapper,
+                              SlidePptPageMapper slidePptPageMapper,
                               TransactionTemplate transactionTemplate) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
+        this.slidePptPageMapper = slidePptPageMapper;
         this.transactionTemplate = transactionTemplate;
     }
 
@@ -146,6 +152,37 @@ public class SlideRenderService {
             // BATCH INSERT with short transaction for data integrity
             transactionTemplate.execute(status -> {
                 slidePageMapper.insertBatch(batchPages);
+                // v2 四面板编辑器读 slide_ppt_pages：渲染时同步写入（重渲染先清旧行，
+                // 避免 uk_ppt_pages_slide_page (slide_id, page_number) 唯一冲突）
+                if (sectionId != null) {
+                    slidePptPageMapper.delete(new LambdaQueryWrapper<SlidePptPage>()
+                            .eq(SlidePptPage::getSlideId, slideId));
+                    List<SlidePptPage> pptPages = new ArrayList<>();
+                    for (SlidePage sp : batchPages) {
+                        SlidePptPage pptPage = new SlidePptPage();
+                        pptPage.setCourseId(sp.getCourseId());
+                        pptPage.setChapterId(sp.getChapterId());
+                        pptPage.setSectionId(sectionId);
+                        pptPage.setSlideId(slideId);
+                        pptPage.setPageNumber(sp.getPageNumber());
+                        pptPage.setPageTitle("第 " + sp.getPageNumber() + " 页");
+                        pptPage.setImageUrl(sp.getImageUrl());
+                        pptPage.setThumbnailUrl(sp.getThumbnailUrl());
+                        pptPage.setImageWidth(sp.getImageWidth());
+                        pptPage.setImageHeight(sp.getImageHeight());
+                        pptPage.setFileUuid(sp.getFileUuid());
+                        pptPage.setExtractedText(sp.getExtractedText());
+                        pptPage.setHasAnimation(sp.getHasAnimation());
+                        pptPage.setHasEmbeddedMedia(sp.getHasEmbeddedMedia());
+                        pptPage.setCreatedAt(LocalDateTime.now());
+                        pptPage.setUpdatedAt(LocalDateTime.now());
+                        pptPage.setVersion(1);
+                        pptPages.add(pptPage);
+                    }
+                    for (SlidePptPage pptPage : pptPages) {
+                        slidePptPageMapper.insert(pptPage);
+                    }
+                }
                 return null;
             });
 

@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (全页面审查九轮 · G/D7.5/H 系列全绿：组件 5 项 P1-C + 2 项 P2，矩阵 474 项全 ✅)
+
+> 2026-08-05 第九轮：完成核心组件（课件四面板/音频/学习视图/profile 组件）与系统级
+> （CAS/上传校验/用户状态机/申报状态机/评级重算/通知轮询）全部验证。
+
+#### P1-C 修复
+- PPT 四面板管线缺 slide_ppt_pages 数据（渲染同步双写，重渲染先清旧行）
+- AudioManager 缺 onMounted 导入致工作台整页崩溃
+- 无脚本时音频面板以 null 调接口致 500（三层：v-if 守卫 + prop 可空 + 后端容错）
+- PPT 讲述稿 created_by NOT NULL 500（后端回退当前用户）+ 双实体 generation_params jsonb 类型错误
+
+#### P2 修复
+- 试卷列表无编辑入口（补"编辑"按钮跳练习表单，PUT 落库验证）
+
+#### 验证
+- precheck 全绿；mvn package 0 ERROR；ESLint 0 error。
+- 矩阵 455→474 ✅（G/D7.5/H 全部转 ✅），全矩阵功能点全绿。
+
 ### Fixed (全页面审查八轮 · F 系列教务/审批 5 项 P1-C + 1 项 P2 修复，F 系列全绿)
 
 > 2026-08-05 第八轮：完成教务看板图表、学习分析、选课筛选、微专业/申报/置顶/

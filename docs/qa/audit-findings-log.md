@@ -332,3 +332,34 @@
 - **症状**：导入含已有 PENDING 修读记录的学生时，insert 命中 `uk_mse_active` 唯一约束 → 该班级全部失败。
 - **直接原因**：去重查询仅排除 APPROVED/IN_PROGRESS；`uk_mse_active` 是部分唯一索引（排除 REJECTED/DROPPED/FAILED 之外均唯一），PENDING 也在索引内。
 - **修复**：去重与名额占用口径改为 notIn(REJECTED, DROPPED, FAILED)，与索引语义一致。已复测：PENDING 学生跳过、其余导入成功。
+
+## 2026-08-05 · 组件/系统级批次补测（G/D7.5/H 系列）
+
+### F-2026-08-05-26 · PPT 四面板管线缺 slide_ppt_pages 数据（P1-C，功能不可达）
+
+- **症状**：新版课件四面板编辑器"面板暂不可达"（此前仅记录缺口）。
+- **直接原因**：渲染服务只写 slide_pages（v1 表），v2 四面板读 slide_ppt_pages → 恒空。
+- **修复**：SlideRenderService 渲染成功事务内同步写入 slide_ppt_pages（重渲染先删旧行防唯一冲突），字段与 slide_pages 同源。已复测：重新上传 PPTX → slide_ppt_pages 1 行 → 四面板(内容/讲述稿/音频/跳转逻辑)全部可达。
+
+### F-2026-08-05-27 · AudioManager 缺 onMounted 导入致工作台整页崩溃（P1-C）
+
+- **症状**：sectionId 模式打开课件管理页 → ErrorBoundary "页面出了点问题"。
+- **直接原因**：`AudioManager.vue` 使用 `onMounted(loadAllAudios)` 但 import 仅 `{ref, computed, watch}` → ReferenceError。
+- **修复**：补齐 onMounted 导入。已复测：工作台正常加载。
+
+### F-2026-08-05-28 · 无脚本时音频面板以 null 调接口致 500（P1-C，三处叠加）
+
+- **症状**：有页面无脚本时 AudioPanel 挂载 → GET /scripts/null/audios → 500 → 崩页。
+- **直接原因**：① AudioPanel `scriptId` 必填 Number，父级 null 也渲染；② 后端 @PathVariable Long 解析 "null" 抛 MethodArgumentTypeMismatch → 500。
+- **修复**：AudioManager 无脚本时渲染空态引导（v-if 守卫）+ AudioPanel 可选 prop/静默空 + 后端 scriptId 改 String 容错返回空列表。
+
+### F-2026-08-05-29 · PPT 讲述稿/音频 jsonb+NOT NULL 写入失败（P1-C）
+
+- **症状**：保存讲述稿 500（created_by NOT NULL）；生成音频 500（generation_params jsonb 类型错误，PPT/HTML 双实体）。
+- **直接原因**：① saveScript 依赖客户端传 createdBy，缺失即 null；② 两个音频实体 generation_params 与 pending_courses 同型（JacksonTypeHandler 对 String 失效）。
+- **修复**：saveScript 后端回退 SecurityUtil 当前用户；两个实体换 JsonbStringTypeHandler。已复测：脚本 v1 落库(created_by=3)、音频任务 GENERATING 落库、TTS 降级链路(Qwen3→mmx→key 缺失)日志完整。
+
+### F-2026-08-05-30 · 试卷列表无编辑入口（P2，功能未开发完整）
+
+- **症状**：教师试卷列表仅"删除"，无法编辑试卷（后端 PUT /exercises/{id} 早已存在，表单支持 exerciseId 回显）。
+- **修复**：补"编辑"按钮 → /courses/{courseId}/exercises/form?exerciseId=。已复测：点击编辑→表单回显→改标题→保存→PUT 落库。
