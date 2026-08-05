@@ -45,6 +45,7 @@
             <el-image
               v-if="row.coverUrl"
               :src="row.coverUrl"
+              :alt="(row.title || '课程') + '封面'"
               fit="cover"
               class="table-thumb"
               :preview-src-list="[row.coverUrl]"

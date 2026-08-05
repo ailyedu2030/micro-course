@@ -68,6 +68,7 @@
             <el-image
               v-if="row.coverUrl"
               :src="row.coverUrl"
+              :alt="(row.title || '视频') + '封面'"
               fit="cover"
               class="table-thumb"
               :preview-src-list="[row.coverUrl]"
@@ -202,7 +203,7 @@
     <!-- 封面设置弹窗 -->
     <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true" @close="handleCoverDialogClose">
       <div class="cover-preview">
-        <el-image v-if="currentCoverUrl" :src="currentCoverUrl" fit="contain" class="cover-img" />
+        <el-image v-if="currentCoverUrl" :src="currentCoverUrl" alt="视频封面预览" fit="contain" class="cover-img" />
         <span v-else class="no-cover">暂无封面</span>
       </div>
       <el-upload
@@ -221,7 +222,7 @@
 
     <!-- 封面预览弹窗 -->
     <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px" :close-on-press-escape="true">
-      <el-image v-if="previewCoverUrl" :src="previewCoverUrl" fit="contain" class="preview-img" />
+      <el-image v-if="previewCoverUrl" :src="previewCoverUrl" alt="封面预览" fit="contain" class="preview-img" />
       <span v-else class="no-cover">无封面</span>
     </el-dialog>
   </div>

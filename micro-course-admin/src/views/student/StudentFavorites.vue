@@ -21,7 +21,7 @@
         @keydown.enter="goCourse(item.courseId)"
       >
         <div class="course-cover" v-if="item.coverUrl">
-          <el-image :src="item.coverUrl" fit="cover" class="thumb-img" lazy />
+          <el-image :src="item.coverUrl" :alt="(item.title || '课程') + '封面'" fit="cover" class="thumb-img" lazy />
         </div>
         <div class="course-cover placeholder" v-else>
           <el-icon><VideoCamera /></el-icon>

@@ -415,3 +415,9 @@
 
 - **症状**：VideoPlayer 三处倍速按钮 `$t('video.playbackSpeed', {speed})`，但语言包只有 `video.speed`，aria-label 渲染为原始 key "video.playbackSpeed"。
 - **修复**：zh/en 补 `playbackSpeed: '倍速 {speed}' / 'Speed {speed}'`；i18n 完整性扫描清零（静态 key 全覆盖，无动态拼接 key）。
+
+### F-2026-08-05-39 · 管理端/教务端 a11y：封面图缺 alt + 轮播开关缺 label（P2，无障碍）
+
+- **症状**：admin /courses 封面 el-image 无 alt（image-alt serious）；/admin/banners 两个 el-switch 无 label。
+- **修复**：CourseList/VideoList/FavoriteList/StudentFavorites/Checkout 封面图补 alt；BannerList 两个开关补 aria-label；横向扫描 4 个含 el-image 无 alt 的文件一次补齐。
+- **验证**：admin 6 页 + academic 5 页 + 额外管理 7 页 axe 全部 0 critical/serious。

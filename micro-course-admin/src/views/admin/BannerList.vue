@@ -75,6 +75,7 @@
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
+              aria-label="轮播图启用状态"
               active-text="启用"
               inactive-text="禁用"
               @change="handleToggleStatus(row)"
@@ -170,7 +171,7 @@
           <span class="form-tip-inline">数值越小越靠前</span>
         </el-form-item>
         <el-form-item label="状态">
-          <el-switch v-model="form.enabled" />
+          <el-switch v-model="form.enabled" aria-label="启用" />
           <span class="form-hint">{{ form.enabled ? '启用' : '禁用' }}</span>
         </el-form-item>
       </el-form>

@@ -20,7 +20,7 @@
             <el-table-column :label="$t('course.title')" min-width="200">
               <template #default="{ row }">
                 <div class="course-cell">
-                  <el-image v-if="row.coverUrl" :src="row.coverUrl" class="cell-cover" fit="cover" />
+                  <el-image v-if="row.coverUrl" :src="row.coverUrl" :alt="(row.title || '课程') + '封面'" class="cell-cover" fit="cover" />
                   <span>{{ row.title }}</span>
                 </div>
               </template>
