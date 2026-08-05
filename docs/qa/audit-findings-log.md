@@ -421,3 +421,9 @@
 - **症状**：admin /courses 封面 el-image 无 alt（image-alt serious）；/admin/banners 两个 el-switch 无 label。
 - **修复**：CourseList/VideoList/FavoriteList/StudentFavorites/Checkout 封面图补 alt；BannerList 两个开关补 aria-label；横向扫描 4 个含 el-image 无 alt 的文件一次补齐。
 - **验证**：admin 6 页 + academic 5 页 + 额外管理 7 页 axe 全部 0 critical/serious。
+
+### F-2026-08-05-40 · 管理/教务端 a11y 未入持久回归（P2，测试覆盖缺口）
+
+- **背景**：e2e a11y 仅覆盖学生/教师端；管理/教务端此前为一次性手工 axe 扫描。
+- **修复**：新增 e2e/admin-audit.spec.js（管理端 7 页 + 教务端 5 页，账号默认对齐门禁种子 admin/admin123、academic1/password123）。staging 12/12 通过；全量套件将扩至 49 项。
+- **附注**：staging 上用 gate 专用账号（student/student123 等）登录会触发登录锁定（5 次失败锁），验证了锁定机制生效；锁已清除。门禁专用账号不应在 staging 使用。
