@@ -397,9 +397,12 @@ section "7. Playwright UI 测试"
 
 if [ "${PLAYWRIGHT_TEST:-0}" = "1" ]; then
   echo "  PLAYWRIGHT_TEST=1, 运行 Playwright..."
-  BASE_URL="http://localhost:${ADMIN_PORT}" npx playwright test \
+  # 依赖解析修复：@playwright/test 安装在 micro-course-admin，且 e2e 用例在其 e2e/ 目录；
+  # 根目录 playwright.config.local.ts 为遗留文件，全局 CLI 无法解析依赖
+  (cd micro-course-admin && \
+   BASE_URL="http://localhost:${ADMIN_PORT}" npx playwright test \
     --config=playwright.config.local.ts \
-    tests/storage-application.spec.ts 2>&1 | tail -20 || \
+    --project=chromium-desktop 2>&1 | tail -20) || \
     fail "Playwright UI 测试失败"
 else
   ok "跳过 Playwright UI 测试 (设置 PLAYWRIGHT_TEST=1 启用)"
