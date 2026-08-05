@@ -247,6 +247,7 @@ export default {
     fullscreen: 'Fullscreen',
     exitFullscreen: 'Exit Fullscreen',
     speed: 'Speed',
+    playbackSpeed: 'Speed {speed}',
     subtitle: 'Subtitles',
     pip: 'Picture-in-Picture',
     exitPip: 'Exit PiP',

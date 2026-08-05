@@ -264,6 +264,7 @@ export default {
     fullscreen: '全屏',
     exitFullscreen: '退出全屏',
     speed: '倍速',
+    playbackSpeed: '倍速 {speed}',
     subtitle: '字幕',
     pip: '画中画',
     exitPip: '退出画中画',

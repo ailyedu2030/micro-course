@@ -410,3 +410,8 @@
 - **症状**：ADMIN 在 /courses/create 建课：后端修复前 409，修复后提示"必须指定授课教师"，但表单根本没有教师字段 → 管理员 UI 建课不可用。
 - **直接原因**：CourseDetail.vue 建课表单仅显示禁用教师名输入框，teacherId 只在请求体里透传，管理员无渠道填写。
 - **修复**：创建模式 + ADMIN/教务角色显示教师下拉（getUsers role=TEACHER 加载，过滤可搜索），teacherId 必填校验；后端已有明确错误兜底。已复测：选测试教师1 → POST teacherId=3 → 200 → 跳 /courses/7（测试课程已清理）。
+
+### F-2026-08-05-38 · 视频倍速按钮 aria-label 引用缺失 i18n key（P3，无障碍）
+
+- **症状**：VideoPlayer 三处倍速按钮 `$t('video.playbackSpeed', {speed})`，但语言包只有 `video.speed`，aria-label 渲染为原始 key "video.playbackSpeed"。
+- **修复**：zh/en 补 `playbackSpeed: '倍速 {speed}' / 'Speed {speed}'`；i18n 完整性扫描清零（静态 key 全覆盖，无动态拼接 key）。
