@@ -102,13 +102,10 @@ echo "✅ HTTP 200"
 # === Step 10: 备份当前 dist 到 /opt/micro-course/backups (双备份策略) ===
 echo ""
 echo "=== Step 10: 备份到 /opt/micro-course/backups/$BAK_NAME ==="
-ssh -o ConnectTimeout=10 "$SERVER" "docker exec $ADMIN_CONTAINER sh -c '
-  rm -rf $BAK_DIR/$BAK_NAME 2>/dev/null || true
-  mkdir -p $BAK_DIR
-'"
-ssh -o ConnectTimeout=10 "$SERVER" "docker cp $ADMIN_CONTAINER:/usr/share/nginx/html.bak-newest /tmp/$(basename $BAK_DIR)/$(basename $BAK_NAME)/ 2>&1 || true"
-# 备份副本: 复制到 backups 目录
-ssh -o ConnectTimeout=10 "$SERVER" "cp -r /usr/share/nginx/html.bak-newest $BAK_DIR/$BAK_NAME/ 2>&1 || true"
+ssh -o ConnectTimeout=10 "$SERVER" "mkdir -p $BAK_DIR/$BAK_NAME"
+ssh -o ConnectTimeout=10 "$SERVER" "docker cp $ADMIN_CONTAINER:/usr/share/nginx/html.bak-newest $BAK_DIR/$BAK_NAME/"
+BACKUP_FILES=$(ssh -o ConnectTimeout=10 "$SERVER" "find $BAK_DIR/$BAK_NAME -type f | wc -l")
+[ "$BACKUP_FILES" -gt 0 ] || { echo "❌ 备份失败: $BAK_DIR/$BAK_NAME 无文件"; exit 1; }
 echo "✅ 双备份 OK"
 
 # === Step 11: 清理临时文件 ===
