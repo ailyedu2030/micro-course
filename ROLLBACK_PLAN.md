@@ -27,6 +27,16 @@
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
 
+### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API 镜像 | 重建 `micro-course-micro-course-api:fontfix`（8b3465，1.31GB，含 font-noto-cjk + aliyun 源），容器已 recreate，16s 启动健康 | `docker tag micro-course-micro-course-api:fontfix-pre-20260806 micro-course-micro-course-api:fontfix && cd /opt/micro-course && docker compose up -d micro-course-api`（旧镜像 e70be58b 已留 tag） |
+| Redis | 启用 requirepass（REDIS_PASSWORD 映射入容器）+ 端口改 127.0.0.1 回环 + 带密码健康检查；compose 已改并备份 `docker-compose.yml.bak.20260806` | `cp /opt/micro-course/docker-compose.yml.bak.20260806 /opt/micro-course/docker-compose.yml && cd /opt/micro-course && docker compose up -d redis`（恢复无密码 + 公网端口；数据在 redis_data 卷不受影响） |
+| API jar | 未变（仍为 9055b31e / V326） | — |
+
+> ⚠️ 变更后 Redis 需密码访问：`redis-cli -a $REDIS_PASSWORD ping`；生产 .env 中 REDIS_PASSWORD 为唯一凭据。
+
 | 资产 | 路径（生产 100.74.122.13） | 说明 |
 |------|---------------------------|------|
 | 旧后端 jar（部署前版本） | `/tmp/app.jar.backup.20260805_2028` | md5 `684ef41f…`，8/4 构建，Flyway V325 |
