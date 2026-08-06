@@ -147,6 +147,7 @@ import { useUserStore } from '@/store/user'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCourses } from '@/api/course'
 import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import SectionList from '@/components/course/SectionList.vue'
 import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
 
@@ -185,8 +186,12 @@ const fetchSections = async (chapterId) => {
   if (!searchForm.courseId || !chapterId) return
   sectionLoading[chapterId] = true
   try {
-    const { data } = await listSections(searchForm.courseId, chapterId, { page: 0, size: 999 })
-    sectionsByChapterId[chapterId] = data.items || []
+    // R11 后端 size 上限 200：size=999 会 400，改为分页循环拉全量
+    sectionsByChapterId[chapterId] = await fetchAllPages(
+      (params) => listSections(searchForm.courseId, chapterId, params),
+      { page: 0 },
+      200
+    )
   } catch {
     sectionsByChapterId[chapterId] = []
   } finally {

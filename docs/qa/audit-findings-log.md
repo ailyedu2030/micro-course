@@ -449,3 +449,17 @@
 - **症状**：新增的 TYPE_CATEGORY 完整性回归测试失败——`MS_ENROLLMENT_AUTO_ENROLL` 未进入任何分类映射。
 - **直接原因**：映射中写成了 `ENROLLMENT_AUTO_ENROLL`（漏 MS_ 前缀），此类通知在任何筛选 tab 都不可见（仅"全部"可看）。
 - **修复**：改为 `MS_ENROLLMENT_AUTO_ENROLL`；同时新增 5 个修复回归测试（软删收藏恢复/管理员建课教师校验/通知分类覆盖全枚举/考试 attempt 汇总/免费订单先建单后选课），防止同类问题复发。
+
+## 2026-08-06 · 生产 console 400 排查（用户上报）
+
+### F-2026-08-06-01 · 章节页课时列表 size=999 触后端上限 400，课时全部加载失败（P1-C）
+
+- **症状**：课程 52 章节管理页（/chapters）浏览器 console 并发 8 个 400：`GET /api/courses/52/chapters/{144-151}/sections?page=0&size=999`。生产 nginx 日志佐证：真实用户（Mac/Chrome，referer /chapters）12:24 +08 请求全部 400，每章课时数为 0、课时管理不可用。
+- **直接原因**：前端 `ChapterList.vue` `fetchSections` 传 `size: 999`；后端 `SectionController:23` R11 安全收敛后 `@Range(max=200)` 校验拦截 → 400（校验先于业务，`listByChapter` 本身忽略分页返回全量）。
+- **根本原因**：R11 将 22 个控制器 size 上限从 10000 收敛到 100/200 时，未同步收敛前端所有"拉全量"调用（历史模式 `size: 999/1000/9999`），契约漂移；e2e 未覆盖章节页课时加载，回归漏检。
+- **横向扫描**（全量映射前端 size>100 调用点 ↔ 后端上限）：
+  - **唯一实际 400**：ChapterList listSections(999) → SectionController max=200 ✅已修
+  - 其余全部安全：getCourses 无上限（CourseController:60）；getDepartments/getMajors/getClasses/getCategories/getChapters/getUsers/getMyEnrollments(/enrollments/my 无 size)/getAttendance 等 max=10000 或忽略 size；EnrollmentOverview `/enrollments` max=10000；DiscussionList 实为 getCourses
+  - 治理项：前端 16 处 `size:999/1000/9999` 虽当前不报错，但依赖后端宽松上限，后续收紧即复发（P1-I，已登记本文档，未批量改动以免无谓 churn）
+- **修复**：新增 `src/utils/fetchAllPages.js`（以 size=200 循环翻页直至收齐 totalElements，兼容"后端忽略分页返回全量"语义）；`ChapterList.vue` 改用之；新增 `src/__tests__/fetchAllPages.test.js` 5 用例（单页/多页/忽略分页/空/异常）。单测 212/212、ESLint 0 error、precheck 8/8。
+- **防止再发**：① 前端"拉全量"统一走 fetchAllPages，size 恒 ≤ 后端上限；② 单测固化分页契约；③ 同步 `.agents/skills/microcourse/scripts/precheck.sh` 白名单（补 CourseNoteController/CourseCopyContentServiceImpl/VideoStreamServiceImpl，消除与 `.claude` 版的漂移）。
