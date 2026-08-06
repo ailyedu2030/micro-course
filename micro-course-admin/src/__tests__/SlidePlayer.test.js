@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
+import { createLearningProgress } from '@/api/learning-progress'
 
 // Mock the slide API
 vi.mock('@/plugins/interactive/api/slide', () => ({
@@ -18,6 +19,12 @@ vi.mock('@/api/learning-progress', () => ({
   getLearningProgress: vi.fn(() => Promise.resolve({ data: [] })),
   createLearningProgress: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
   updateLearningProgress: vi.fn(() => Promise.resolve({ data: {} })),
+}))
+
+// Mock user store（避免真实 store 引入 vue-router createRouter，导致套件收集失败）
+let mockUserRole = 'STUDENT'
+vi.mock('@/store/user', () => ({
+  useUserStore: () => ({ role: mockUserRole }),
 }))
 
 // Mock vue-router
@@ -78,6 +85,8 @@ const elementPlusStubs = {
 import SlidePlayer from '@/views/student/SlidePlayer.vue'
 
 describe('SlidePlayer.vue iframe branch', () => {
+  beforeEach(() => { mockUserRole = 'STUDENT' })
+
   // 3.1.1 (tasks.md 3.5.1): contentType='HTML_DIRECT' → render iframe
   it('renders iframe when current page has contentType=HTML_DIRECT', async () => {
     const wrapper = mount(SlidePlayer, {
@@ -246,5 +255,26 @@ describe('SlidePlayer.vue iframe branch', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('button.keyboard-hint-dismiss').exists()).toBe(true)
+  })
+
+  // 2026-08-06: 教师/管理员在管理页"预览"打开播放器时不得上报学习进度
+  // （后端 POST /learning-progress/progress 为 hasRole('STUDENT')，教师触发 403 console 噪音）
+  it('non-student 角色打开播放器不调用 createLearningProgress', async () => {
+    mockUserRole = 'TEACHER'
+    const createLearningProgressMock = vi.mocked(createLearningProgress)
+    createLearningProgressMock.mockClear()
+
+    await mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+    await nextTick()
+
+    expect(createLearningProgressMock).not.toHaveBeenCalled()
   })
 })
