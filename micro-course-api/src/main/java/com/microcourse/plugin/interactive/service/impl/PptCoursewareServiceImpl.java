@@ -140,7 +140,9 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         next.setTtsModel(ttsModel);
         LocalDateTime now = LocalDateTime.now();
         next.setCreatedAt(now);
-        next.setCreatedBy(createdBy);
+        // F-2026-08-07-11：审计字段不信任客户端——createdBy 缺失时回退当前登录用户，
+        // 否则 slide_ppt_page_scripts.created_by NOT NULL 导致 PPT 脚本保存必 500
+        next.setCreatedBy(createdBy != null ? createdBy : com.microcourse.util.SecurityUtil.getCurrentUserId());
         next.setUpdatedAt(now);
         scriptMapper.insert(next);
         log.info("[PPT-Script] saved: id={}, pageId={}, version={}",

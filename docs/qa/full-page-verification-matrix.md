@@ -844,6 +844,11 @@
 | G1.9 | 工作台空态上传+sectionId 落库 | 2026-08-07 增量2：PPT 空态拖拽上传（.pptx/.html 大小/类型/MIME/魔数校验）→上传成功→渲染中显示「正在后台渲染处理」→完成自动切工作流；本地实测 course_slides/slide_pages.section_id 正确写入（修复前 uploadSlide 不传 sectionId → section_id=NULL → 树/页面列表查不到） | ✅ |
 | G1.10 | HtmlBlockEditor 预载+类型记忆 | 2026-08-07 增量2：无单元时自动预载已上传 HTML_DIRECT 内容（防上传后编辑器为空丢内容）；课件类型按 section 记忆 sessionStorage 刷新不丢；「保存」→ 单元创建(chapter 由 section 反查派生) → 分段脚本渲染 | ✅ |
 | G1.11 | createHtmlUnit 章节派生 | 2026-08-07 增量2：课时级 slide.chapter_id=NULL 时从 course_sections 反查 chapterId，修复 slide_html_units.chapter_id NOT NULL 导致的保存 500（本地实测创建单元 chapter_id=1/section_id=1；单测 createUnitDerivesChapterIdFromSection） | ✅ |
+| G1.12 | AI 讲述稿生成（MMX 优先） | 2026-08-07 增量3：v1/v2 统一走 LlmChatClient（MiniMax OpenAI 兼容端点 + MiniMax-M3，DeepSeek 兜底，剥 think 标签）；无 key 时明确提示「需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY」（实测 toast 透传）；单测 4 例 | ✅ |
+| G1.13 | PPT 音频生成守卫 | 2026-08-07 增量3：无讲述稿时「生成新音频」禁用 + tooltip「请先保存页面讲述稿，再生成音频」，消除 /ppt/scripts/null/audios 500（实测按钮禁用+后端无 500） | ✅ |
+| G1.14 | PPT/HTML 讲述稿保存 | 2026-08-07 增量3：created_by 服务端回退当前用户，PPT/HTML 脚本保存 500 消除（实测分段脚本 9999→200；单测 saveSegmentScriptFallsBackCreatedBy） | ✅ |
+| G1.15 | 学生播放器 PPT 图片显示 | 2026-08-07 增量3：修复 lazy+auto 死锁（移除 loading=lazy + 显式宽度），实测 3 页 PPT 图片全部解码（640×480）、1/3→2/3→3/3 翻页、0 console 错误 | ✅ |
+| G1.16 | 学生播放器 HTML 段链路 | 2026-08-07 增量3：iframe srcdoc 注入 data-segment="1" + active CSS + bridge；字幕跟随（"这是第一段的讲述稿内容"）；segment-active 消息经 iframe.contentWindow 投递处理无异常；0 console 错误 | ✅ |
 
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |

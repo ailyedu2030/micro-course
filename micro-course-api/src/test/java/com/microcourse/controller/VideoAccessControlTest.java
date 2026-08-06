@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 /**
  * Round 8-1 · 视频访问选课控制集成测试（商业致命 P0 修复回归）。
@@ -40,6 +41,10 @@ class VideoAccessControlTest extends BaseIntegrationTest {
 
     @Autowired
     private VideoSignUtil videoSignUtil;
+
+    /** 与服务端一致的真实存储目录（application.yml video.storage-base-dir=uploads/videos） */
+    @Value("${video.storage-base-dir:uploads/videos}")
+    private String videoStorageBaseDir;
 
     private final List<Long> createdVideoIds = new ArrayList<>();
 
@@ -71,7 +76,9 @@ class VideoAccessControlTest extends BaseIntegrationTest {
     /** 删除 HLS 流文件存在性检查路径（默认 video.storage-base-dir=/data/videos） */
     private void deleteVideoFiles(long courseId, long videoId) {
         try {
-            Path dir = Paths.get(System.getProperty("video.storage-base-dir", "/data/videos"),
+            // F-2026-08-07-12：修复清理路径与服务端不一致——旧实现写死 /data/videos，
+            // 服务端实际配置 uploads/videos，导致历史残留 + id 序列重置后文件存在性误判 200
+            Path dir = Paths.get(videoStorageBaseDir,
                     String.valueOf(courseId), String.valueOf(videoId));
             if (Files.exists(dir)) {
                 try (java.util.stream.Stream<Path> walk = Files.walk(dir)) {

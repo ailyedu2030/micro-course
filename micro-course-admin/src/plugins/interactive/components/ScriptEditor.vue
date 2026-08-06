@@ -190,6 +190,9 @@ async function handleAiGenerate() {
       return
     }
     aiPreview.value = script
+  } catch (e) {
+    // F-2026-08-07-09：透传后端明确错误（如 LLM Key 未配置），禁止吞成"服务器错误"
+    ElMessage.error(e?.response?.data?.message || e?.message || 'AI 讲述稿生成失败，请稍后重试')
   } finally {
     aiLoading.value = false
   }

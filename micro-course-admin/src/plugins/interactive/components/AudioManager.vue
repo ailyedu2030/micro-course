@@ -26,9 +26,20 @@
         <el-tag v-else-if="hasGenerating" type="warning" size="small">生成中...</el-tag>
         <el-tag v-else type="info" size="small">暂无音频</el-tag>
       </h3>
-      <el-button :icon="Plus" size="small" type="primary" plain @click="showGenerate = true">
-        生成新音频
-      </el-button>
+      <el-tooltip :disabled="canGenerate" content="请先保存页面讲述稿，再生成音频" placement="top">
+        <span>
+          <el-button
+            :icon="Plus"
+            size="small"
+            type="primary"
+            plain
+            :disabled="!canGenerate"
+            @click="showGenerate = true"
+          >
+            生成新音频
+          </el-button>
+        </span>
+      </el-tooltip>
     </div>
 
     <!-- PPT 单段模式 / HTML 多段模式 -->
@@ -163,6 +174,12 @@ const effectiveScriptId = computed(() => {
   return null
 })
 
+// F-2026-08-07-10：无脚本时禁止生成，避免 /ppt/scripts/null/audios 后端 500
+const canGenerate = computed(() => {
+  if (props.pageType === 'PPT') return !!effectiveScriptId.value
+  return (props.segments || []).some(s => !!s.segmentScriptId)
+})
+
 // Loaders passed to AudioPanel (encapsulated by page type)
 function loadPptAudios(scriptId) {
   return listPptAudios(props.courseId, scriptId).then(r => r.data || r)
@@ -232,6 +249,10 @@ onMounted(() => {
 // 生成新音频
 async function handleGenerate() {
   if (generating.value) return // R-15：生成中禁用重复提交，防重复计费
+  if (!canGenerate.value) {
+    ElMessage.warning('请先保存讲述稿，再生成音频')
+    return
+  }
   generating.value = true
   try {
     let res
@@ -254,7 +275,8 @@ async function handleGenerate() {
     await refreshActiveAudios()
     pollUntilSettled() // R-10：3s 轮询直至 READY/FAILED
   } catch (e) {
-    ElMessage.error('生成失败: ' + (e.message || '未知错误'))
+    // F-2026-08-07-09：透传后端明确错误（如 TTS Key 未配置/超时），禁止吞成通用错误
+    ElMessage.error('生成失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
   } finally {
     generating.value = false
   }

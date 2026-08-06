@@ -18,6 +18,7 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -223,7 +224,9 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         next.setTtsModel(ttsModel);
         LocalDateTime now = LocalDateTime.now();
         next.setCreatedAt(now);
-        next.setCreatedBy(createdBy);
+        // F-2026-08-07-11：审计字段不信任客户端——createdBy 缺失时回退当前登录用户，
+        // 否则 slide_html_segment_scripts.created_by NOT NULL 导致分段讲述稿保存必 500
+        next.setCreatedBy(createdBy != null ? createdBy : SecurityUtil.getCurrentUserId());
         next.setUpdatedAt(now);
         segmentScriptMapper.insert(next);
         log.info("[HTML-Segment-Script] saved: id={}, unitId={}, segmentIndex={}, version={}",

@@ -592,3 +592,36 @@
 - **修复**：`createUnitFresh` 增加第二级兜底——slide 无 chapterId 时通过 `CourseSectionRepository.selectById(sectionId)` 反查 section 所属 chapter；`courseId` 也优先从 slide 派生。
 - **横向扫描**：`updateUnit` 按已存在 unit id 更新，不受影响；PPT 路径无此表约束。
 - **验证**：新增单测 `createUnitDerivesChapterIdFromSection`（slide.chapterId=null → 从 section 派生 55）；后端全量 1137/0/0；本地 UI 实测保存单元成功（chapter_id=1、section_id=1）。
+
+### F-2026-08-07-08 · AI 讲述稿生成使用 DeepSeek 而非用户要求的 MMX → 生产 100% 失败（P0）
+
+- **根因**：`AiScriptService`/`NarrationServiceImpl`（v1+v2 两条路径）只支持 `plugin.interactive.deepseek.api-key`；生产仅配置 `MINIMAX_API_KEY` → 教师点"AI 生成讲述稿"必报"需要配置 DEEPSEEK_API_KEY"（生产 0 脚本可经 AI 生成）。用户铁律："讲述稿生成系统与 TTS 统一使用 mmx"未在代码落实。
+- **修复**：新增共享 `LlmChatClient`（MiniMax 优先：`https://api.minimaxi.com/v1/chat/completions` + Bearer + MiniMax-M3，DeepSeek 兜底；忽略本地 dev 占位符；剥离 M 系列响应 `<think>` 标签；3 次重试 + 429/超时退避）。v1 `NarrationServiceImpl` 与 v2 `AiScriptService` 统一接入；`application.yml` 新增 `minimax.chat-model/chat-base-url`。生产已有 MINIMAX_API_KEY，部署后无需新增凭据即可用。
+- **验证**：新增 `LlmChatClientTest` 4 例（MMX 端点/鉴权、DeepSeek 兜底、占位符视为未配置、think 剥离）；后端全量通过；本地实测 AI 生成错误提示由"服务器错误"变为明确"需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY"。
+
+### F-2026-08-07-09 · AI/TTS 失败错误被吞成"服务器错误，请稍后重试"（P1-C）
+
+- **根因**：`ScriptEditor.handleAiGenerate` 只有 try/finally 无 catch（异常上抛被全局兜底）；`AudioManager` 用 `e.message` 而非 `e.response.data.message`。后端明确原因（Key 未配置/超时/限流）全部丢失。
+- **修复**：ScriptEditor 补 catch 透传 `response.data.message`；AudioManager 改为 `e?.response?.data?.message || e?.message`；AudioPanel.load 补 catch 防未处理 rejection。
+- **横向扫描**：全仓扫描 try/finally+await 无 catch 模式，除以上 3 处均为加载类（已有容错）或测试文件。
+- **验证**：本地实测 AI 生成 toast 显示真实原因。
+
+### F-2026-08-07-10 · PPT 无脚本时生成音频请求 /ppt/scripts/null/audios → 后端 500（P0/P1-C）
+
+- **根因**：`AudioManager.handleGenerate` 对 PPT 未校验 `effectiveScriptId`（空值时 URL 拼 "null"），后端 `@PathVariable Long scriptId` 转换失败 500。
+- **修复**：新增 `canGenerate` computed（PPT 需有效 scriptId；HTML 需至少一个 segmentScriptId），"生成新音频"按钮禁用 + tooltip，handleGenerate 前置守卫提示"请先保存讲述稿"。
+- **验证**：本地实测无脚本时按钮禁用、空态文案"请先保存页面讲述稿"；后端不再出现 null/audios 500。
+
+### F-2026-08-07-11 · PPT/HTML 讲述稿保存 created_by NOT NULL → 保存必 500（P0）
+
+- **根因**：`slide_ppt_page_scripts`/`slide_html_segment_scripts.created_by NOT NULL`，`PptCoursewareServiceImpl.saveScript` 与 `HtmlCoursewareServiceImpl.saveSegmentScript` 直接使用客户端传入 createdBy（可能 null）→ 保存分段/页面讲述稿 100% 500（HTML 音频同步链路核心断裂点）。
+- **修复**：两处 `createdBy != null ? createdBy : SecurityUtil.getCurrentUserId()`（审计字段不信任客户端，符合问题模式库）。
+- **横向扫描**：全库核查 created_by NOT NULL 表仅这两张，音频表无约束；均修复。
+- **验证**：新增单测 `saveSegmentScriptFallsBackCreatedBy`；本地实测分段脚本保存 9999 → 200；后端全量 1142/0/0。
+
+### F-2026-08-07-12 · SlidePlayer 页面图片永不显示（lazy + auto 尺寸死锁） + 视频测试清理路径错配（P1-C / 测试基建）
+
+- **根因（播放器）**：`.slide-image { width:auto }` + `loading="lazy"` → 容器 0×0 → 懒加载永不触发 → 图片永不解码（实测 naturalWidth=0、frame 0×5）。
+- **修复（播放器）**：移除 `loading="lazy"`，`.slide-image` 显式 `width: min(92vw,1400px)`。实测 3 页 PPT 全部 640×480 解码、1400×900 容器、翻页零错误。
+- **根因（测试基建）**：`VideoAccessControlTest.deleteVideoFiles` 写死 `/data/videos`，服务端实际 `uploads/videos`；本地门禁 drop+recreate 重置视频 id 序列与历史残留目录碰撞 → 已选课+有效签名期望 404 实际 200（CI 后端门禁红）。
+- **修复（测试）**：改用 `@Value("${video.storage-base-dir:uploads/videos}")` 与服务端一致；历史残留目录已移至 /tmp（gitignored 测试产物）。实测 VideoAccessControlTest 9/9。

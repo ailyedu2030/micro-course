@@ -178,6 +178,9 @@ plugin:
       # MiniMax TTS API 配置
       api-key: ${MINIMAX_API_KEY:}
       tts-model: speech-2.8-hd
+      # MiniMax 对话（AI 讲述稿）OpenAI 兼容配置（F-2026-08-07-08）
+      chat-model: ${MINIMAX_CHAT_MODEL:MiniMax-M3}
+      chat-base-url: ${MINIMAX_CHAT_BASE_URL:https://api.minimaxi.com/v1}
       # MiniMax TTS 预定义声音 ID：
       #   female-shaonv（甜美少女）, female-qingxin（清新）, female-yujie（御姐）
       #   male-shaonian（少年）, male-qingnian（青年）, male-dashu（大叔）

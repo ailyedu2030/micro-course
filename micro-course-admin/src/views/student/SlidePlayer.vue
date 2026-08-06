@@ -87,7 +87,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
               <img
                 v-else-if="imageUrls[current] && !imageErrors[current]"
                 :src="imageUrls[current]" class="slide-image"
-                :alt="'第' + (current + 1) + '页'" loading="lazy"
+                :alt="'第' + (current + 1) + '页'"
                 @error="imageErrors[current] = true"
               />
               <!-- 图片加载失败：占位图 + 重试按钮 -->
@@ -1300,7 +1300,7 @@ onUnmounted(() => {
 .slide-container { position: relative; display: flex; align-items: center; justify-content: center; }
 .slide-wrapper { line-height: 0; position: relative; }
 .slide-image {
-  max-width: min(92vw, 1400px); max-height: min(82vh, 900px); width: auto; height: auto;
+  width: min(92vw, 1400px); max-width: min(92vw, 1400px); max-height: min(82vh, 900px); height: auto;
   object-fit: contain; border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
 }
 .slide-iframe {

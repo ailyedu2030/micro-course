@@ -8,6 +8,7 @@ import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.NarrationService;
+import com.microcourse.plugin.interactive.service.LlmChatClient;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.service.NarrationSettingService;
 import com.microcourse.util.SecurityUtil;
@@ -15,24 +16,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.transaction.support.TransactionTemplate;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 @Service
 @ConditionalOnProperty(value = "plugin.interactive.enabled", havingValue = "true", matchIfMissing = true)
@@ -43,31 +37,23 @@ public class NarrationServiceImpl implements NarrationService {
     private final SlidePageMapper slidePageMapper;
     private final CourseRepository courseRepository;
     private final NarrationSettingService narrationSettingService;
-    private final RestTemplate restTemplate;
     private final TransactionTemplate transactionTemplate;
+    private final LlmChatClient llmChatClient;
 
     @Value("${plugin.interactive.slides.storage-path:/data/slides}")
     private String storagePath;
-
-    @Value("${plugin.interactive.deepseek.api-key:}")
-    private String deepseekApiKey;
-
-    @Value("${plugin.interactive.deepseek.model:deepseek-chat}")
-    private String deepseekModel;
-
-    @Value("${plugin.interactive.deepseek.base-url:https://api.deepseek.com}")
-    private String deepseekBaseUrl;
 
     public NarrationServiceImpl(SlidePageMapper slidePageMapper,
                                 CourseRepository courseRepository,
                                 NarrationSettingService narrationSettingService,
                                 RestTemplate interactiveRestTemplate,
-                                TransactionTemplate transactionTemplate) {
+                                TransactionTemplate transactionTemplate,
+                                LlmChatClient llmChatClient) {
         this.slidePageMapper = slidePageMapper;
         this.courseRepository = courseRepository;
         this.narrationSettingService = narrationSettingService;
-        this.restTemplate = interactiveRestTemplate;
         this.transactionTemplate = transactionTemplate;
+        this.llmChatClient = llmChatClient;
     }
 
     @Override
@@ -75,9 +61,9 @@ public class NarrationServiceImpl implements NarrationService {
     public SlidePageVO generate(Long courseId, Integer pageNumber, Long sectionId) {
         checkOwner(courseId);
 
-        if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
+        if (!llmChatClient.isConfigured()) {
             throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
-                    "需要配置 DEEPSEEK_API_KEY 环境变量");
+                    "需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY 环境变量");
         }
 
         SlidePage page = getPage(courseId, pageNumber, sectionId);
@@ -108,9 +94,9 @@ public class NarrationServiceImpl implements NarrationService {
 
         String narrationScript;
         try {
-            narrationScript = callDeepSeek(systemPrompt, userPrompt);
+            narrationScript = llmChatClient.generate(systemPrompt, userPrompt);
         } catch (Exception e) {
-            log.error("[Narration] DeepSeek API failed for courseId={} pageNumber={} sectionId={}", courseId, pageNumber, sectionId, e);
+            log.error("[Narration] LLM API failed for courseId={} pageNumber={} sectionId={}", courseId, pageNumber, sectionId, e);
             throw e;
         }
 
@@ -154,9 +140,9 @@ public class NarrationServiceImpl implements NarrationService {
     @Override
     @Async("slideRenderExecutor")
     public void generateAll(Long courseId) {
-        if (deepseekApiKey == null || deepseekApiKey.isBlank()) {
-            log.warn("[Narration] DEEPSEEK_API_KEY 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);
-            markAllPagesError(courseId, "AI 讲述稿生成失败：DeepSeek API Key 未配置");
+        if (!llmChatClient.isConfigured()) {
+            log.warn("[Narration] LLM API Key 未配置，跳过 AI 讲述稿批量生成 courseId={}", courseId);
+            markAllPagesError(courseId, "AI 讲述稿生成失败：MINIMAX_API_KEY / DEEPSEEK_API_KEY 未配置");
             return;
         }
 
@@ -206,7 +192,7 @@ public class NarrationServiceImpl implements NarrationService {
 
         String fullScript;
         try {
-            fullScript = callDeepSeek(systemPrompt, userPrompt);
+            fullScript = llmChatClient.generate(systemPrompt, userPrompt);
         } catch (Exception e) {
             log.error("[Narration] 批量生成连贯讲述稿失败 courseId={}", courseId, e);
             markAllPagesError(courseId, "AI 讲述稿生成失败：" + e.getMessage());
@@ -249,105 +235,6 @@ public class NarrationServiceImpl implements NarrationService {
 
         log.info("[Narration] 批量生成完成 courseId={}, 共 {} 页, 成功 {} 页",
                 courseId, totalPages, savedCount);
-    }
-
-    private String callDeepSeek(String systemPrompt, String userPrompt) {
-        int maxRetries = 3;
-        int attempt = 0;
-        Exception lastException = null;
-
-        while (attempt < maxRetries) {
-            attempt++;
-            try {
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.APPLICATION_JSON);
-                headers.setBearerAuth(deepseekApiKey);
-
-                Map<String, Object> systemMsg = new LinkedHashMap<>();
-                systemMsg.put("role", "system");
-                systemMsg.put("content", systemPrompt);
-
-                Map<String, Object> userMsg = new LinkedHashMap<>();
-                userMsg.put("role", "user");
-                userMsg.put("content", userPrompt);
-
-                Map<String, Object> body = new LinkedHashMap<>();
-                body.put("model", deepseekModel);
-                body.put("messages", List.of(systemMsg, userMsg));
-                body.put("temperature", 0.7);
-                body.put("max_tokens", 4096);
-
-                HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
-
-                String url = deepseekBaseUrl + "/v1/chat/completions";
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> response = restTemplate.postForObject(url, request, Map.class);
-
-                if (response == null) {
-                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空响应");
-                }
-
-                @SuppressWarnings("unchecked")
-                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-                if (choices == null || choices.isEmpty()) {
-                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空 choices");
-                }
-
-                @SuppressWarnings("unchecked")
-                Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                if (message == null) {
-                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空 message");
-                }
-                String content = (String) message.get("content");
-
-                if (content == null || content.isBlank()) {
-                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED, "DeepSeek 返回空内容");
-                }
-
-                return content.trim();
-            } catch (ResourceAccessException e) {
-                lastException = e;
-                log.warn("[DeepSeek] 第 {}/{} 次调用超时，准备重试", attempt, maxRetries);
-                if (attempt < maxRetries) {
-                    try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.warn("线程中断: {}", ie.getMessage());
-                        break;
-                    }
-                }
-            } catch (HttpClientErrorException e) {
-                if (e.getStatusCode().value() == 429 && attempt < maxRetries) {
-                    lastException = e;
-                    log.warn("[DeepSeek] 第 {}/{} 次调用限流(429)，准备重试", attempt, maxRetries);
-                    try { Thread.sleep(2000L * attempt); } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.warn("线程中断: {}", ie.getMessage());
-                        break;
-                    }
-                } else {
-                    log.error("[DeepSeek] HTTP 错误 status={} body={}", e.getStatusCode(), e.getResponseBodyAsString());
-                    throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
-                            "AI 讲述稿生成服务暂时不可用", e);
-                }
-            } catch (BusinessException e) {
-                throw e;
-            } catch (Exception e) {
-                lastException = e;
-                log.error("[DeepSeek] 第 {}/{} 次调用异常", attempt, maxRetries, e);
-                if (attempt < maxRetries) {
-                    try { Thread.sleep(1000L * attempt); } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                        log.warn("线程中断: {}", ie.getMessage());
-                        break;
-                    }
-                }
-            }
-        }
-
-        log.error("[DeepSeek] 重试 {} 次后仍失败", maxRetries, lastException);
-        throw new BusinessException(ErrorCode.NARRATION_GENERATE_FAILED,
-                "AI 讲述稿生成服务暂时不可用，请稍后重试", lastException);
     }
 
     private SlidePage getPage(Long courseId, Integer pageNumber, Long sectionId) {

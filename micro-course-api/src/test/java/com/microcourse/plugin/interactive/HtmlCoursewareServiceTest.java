@@ -1,5 +1,7 @@
 package com.microcourse.plugin.interactive;
 
+import java.util.List;
+
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.entity.CourseSection;
@@ -19,6 +21,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -201,6 +206,36 @@ class HtmlCoursewareServiceTest {
                     "chapterId must be derived from section to satisfy NOT NULL constraint");
             assertEquals(1L, captor.getValue().getCourseId(),
                     "courseId must be derived from slide");
+        }
+
+        @Test
+        @DisplayName("saveSegmentScript falls back to current user when createdBy is null (NOT NULL constraint)")
+        void saveSegmentScriptFallsBackCreatedBy() {
+            SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+            ctx.setAuthentication(new UsernamePasswordAuthenticationToken(123L, null, List.of()));
+            SecurityContextHolder.setContext(ctx);
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(100L);
+            unit.setSectionId(99L);
+            when(unitMapper.selectById(100L)).thenReturn(unit);
+            when(segmentScriptMapper.findActiveByUnitAndIndex(100L, 1)).thenReturn(null);
+            when(segmentScriptMapper.insert(any(SlideHtmlSegmentScript.class))).thenAnswer(inv -> {
+                SlideHtmlSegmentScript e = inv.getArgument(0);
+                e.setId(2001L);
+                return 1;
+            });
+
+            // createdBy 为空 → 服务端必须回退当前用户（SecurityUtil.getCurrentUserId 有测试上下文）
+            Long id = service.saveSegmentScript(100L, 1, "脚本内容",
+                    "female-shaonv", "speech-2.8-hd", "#seg1", null);
+
+            assertNotNull(id);
+            ArgumentCaptor<SlideHtmlSegmentScript> captor =
+                    ArgumentCaptor.forClass(SlideHtmlSegmentScript.class);
+            verify(segmentScriptMapper).insert(captor.capture());
+            assertNotNull(captor.getValue().getCreatedBy(),
+                    "created_by must not be null to satisfy NOT NULL constraint");
+            SecurityContextHolder.clearContext();
         }
     }
 
