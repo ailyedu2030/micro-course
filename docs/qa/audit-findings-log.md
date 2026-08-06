@@ -564,3 +564,11 @@
 - **mediaSession**（P3-3）：播放/暂停/seek 系统媒体控制 + 元数据（页进度 + 当前讲述稿标题）。
 - **移动端**（P3-4）：375px 布局回归列入验收。
 - precheck 白名单登记 `AiScriptController` / `AiScriptService`（.claude + .agents 同步）。
+
+### F-2026-08-07-04 · 生产部署（P0-P3 全量上线）
+
+- **门禁**：`scripts/local-dev-deploy.sh` 16/16 通过（含修复本地 JDK 的 jacoco.exec 损坏导致的构建/测试失败——构建与测试命令加 `-Djacoco.skip=true`，CI JDK17 不受影响）→ 生产门禁自动打开。
+- **后端**：备份旧 jar（`backups/micro-course-api-1.0.0.jar.backup.20260807_0130`，md5 9055b31e）→ 上传新 jar（md5 cbf0e785）→ bind-mount 原位替换 → `kill -s HUP 1`；16s 启动，actuator UP。
+- **前端**：`deploy-frontend.sh` 部署新 bundle `index-y7MdGbbB.js`（旧 dist 备份 `admin.dist.backup.20260807_013414`），HTTP 200。
+- **验证**：新 bundle 生效、`/courseware/tts-options` 与 `/flow/evaluate` 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
+- **待办**：PR #193 合并待 GitHub Actions 恢复（今日基础设施故障 `Service Unavailable`，所有失败均非代码问题）；本地验证已全绿（后端 1136/0/0、前端 220/220、Playwright e2e 0 错误、预检 26/26）。回滚路径见 ROLLBACK_PLAN.md「2026-08-07 增量」。

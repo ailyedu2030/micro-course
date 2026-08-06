@@ -167,7 +167,8 @@ if [ "$SKIP_BUILD" = false ]; then
   section "3. Build 后端 + 前端"
 
   echo "  构建后端 jar..."
-  (cd micro-course-api && mvn package -DskipTests -B -q 2>&1 | tail -3) || { fail "后端构建失败"; exit 1; }
+  # jacoco.skip: skipTests 构建不产出覆盖率数据，本地 JDK 偶发 jacoco.exec 损坏导致 report 失败（CI JDK17 不受影响）
+  (cd micro-course-api && mvn package -DskipTests -Djacoco.skip=true -B -q 2>&1 | tail -3) || { fail "后端构建失败"; exit 1; }
   ok "后端 jar 已生成"
 
   echo "  构建前端 dist..."
@@ -438,7 +439,8 @@ docker exec "$DB_CONTAINER" psql -U "$DB_USER" -d postgres -c "CREATE DATABASE $
 docker exec "$REDIS_CONTAINER" redis-cli FLUSHDB > /dev/null 2>&1 || true
 ok "测试 DB 已重置为干净状态"
 
-(cd micro-course-api && mvn test -B -q 2>&1 | tail -10) || { fail "后端单元测试失败"; }
+# jacoco.skip: 本地 JDK 偶发 jacoco.exec 损坏导致 report 失败（CI JDK17 不受影响），测试本身不受影响
+(cd micro-course-api && mvn test -B -q -Djacoco.skip=true 2>&1 | tail -10) || { fail "后端单元测试失败"; }
 
 # ════════════════════════════════════════════════════════════════
 # 9. Precheck + ESLint

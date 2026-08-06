@@ -27,6 +27,23 @@
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
 
+### 2026-08-07 增量：PPT/HTML 音频同步 P0-P3 部署（用户批准，门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar md5 `cbf0e785…`（P0-P3：origin 修复/父页 AudioHost/TtsWorker/getPages 聚合/flow 求值/HTML 段高亮/AI 讲述稿/字幕/mediaSession，零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0130 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle `index-y7MdGbbB.js`（P0-P3 全部前端改动） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_013414 /micro-course-admin/…` + `nginx -s reload`（同 deploy-frontend.sh 11 步 SOP） |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0130` | md5 `9055b31e…`（V326） |
+| 部署前前端 dist | `/opt/micro-course/backups/admin.dist.backup.20260807_013414` | bundle `index-DNMVOIXI.js` |
+| 新 jar（当前运行） | `/opt/micro-course/micro-course-api-1.0.0.jar` | md5 `cbf0e785…` |
+| 新前端 dist（当前运行） | 容器 `/usr/share/nginx/html` | bundle `index-y7MdGbbB.js` |
+
+> 部署验证：后端 16s 启动健康（actuator UP）、前端 HTTP 200、新 bundle 生效、tts-options/flow-evaluate 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
+> PR #193（含本批全部代码）合并待 GitHub Actions 恢复后补跑 CI（今日 GitHub 基础设施故障，本地验证已全绿：后端 1136/0/0、前端 220/220、Playwright e2e 0 错误）。
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |
