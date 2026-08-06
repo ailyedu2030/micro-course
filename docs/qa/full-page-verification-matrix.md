@@ -840,6 +840,10 @@
 | G1.5 | PptFlowEditor/PptPageEditor | 修复 P1-C：渲染同步写 slide_ppt_pages（重渲染先清旧行）；四面板(内容/讲述稿/音频/跳转逻辑)全部可达+页面列表(1)+元数据+脚本保存(v1)正常 | ✅ |
 | G1.6 | HtmlBlockEditor | 课时级 HTML 上传→工作台 HTML 流程挂载→编辑保存→"已创建 unit id=2"→单元落库(chapter/section/slide 关联)→分段脚本 5 段编辑器渲染（修复前：tree 条件不可达+load 误判 R 包装走 update/undefined+chapter_id 非空 500） | ✅ |
 | G1.7 | InteractiveLessonProperties | 文件信息/页数/状态聚合(已上传/已渲染/讲述稿/音频/发布)在工作台展示 | ✅ |
+| G1.8 | CoursewareWorkbench 预览入口 | 2026-08-07 增量2：PPT/HTML 工作台顶部「预览」按钮→全屏学生视角播放器渲染（HTML srcdoc 1/1 页+音频控制+快捷键提示）；EMPTY 态不显示、渲染中禁用+tooltip「渲染中，完成后方可预览」（修复前 v2 无任何预览入口=用户反馈"课件管理页无预览"） | ✅ |
+| G1.9 | 工作台空态上传+sectionId 落库 | 2026-08-07 增量2：PPT 空态拖拽上传（.pptx/.html 大小/类型/MIME/魔数校验）→上传成功→渲染中显示「正在后台渲染处理」→完成自动切工作流；本地实测 course_slides/slide_pages.section_id 正确写入（修复前 uploadSlide 不传 sectionId → section_id=NULL → 树/页面列表查不到） | ✅ |
+| G1.10 | HtmlBlockEditor 预载+类型记忆 | 2026-08-07 增量2：无单元时自动预载已上传 HTML_DIRECT 内容（防上传后编辑器为空丢内容）；课件类型按 section 记忆 sessionStorage 刷新不丢；「保存」→ 单元创建(chapter 由 section 反查派生) → 分段脚本渲染 | ✅ |
+| G1.11 | createHtmlUnit 章节派生 | 2026-08-07 增量2：课时级 slide.chapter_id=NULL 时从 course_sections 反查 chapterId，修复 slide_html_units.chapter_id NOT NULL 导致的保存 500（本地实测创建单元 chapter_id=1/section_id=1；单测 createUnitDerivesChapterIdFromSection） | ✅ |
 
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
