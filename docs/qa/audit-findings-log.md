@@ -463,3 +463,13 @@
   - 治理项：前端 16 处 `size:999/1000/9999` 虽当前不报错，但依赖后端宽松上限，后续收紧即复发（P1-I，已登记本文档，未批量改动以免无谓 churn）
 - **修复**：新增 `src/utils/fetchAllPages.js`（以 size=200 循环翻页直至收齐 totalElements，兼容"后端忽略分页返回全量"语义）；`ChapterList.vue` 改用之；新增 `src/__tests__/fetchAllPages.test.js` 5 用例（单页/多页/忽略分页/空/异常）。单测 212/212、ESLint 0 error、precheck 8/8。
 - **防止再发**：① 前端"拉全量"统一走 fetchAllPages，size 恒 ≤ 后端上限；② 单测固化分页契约；③ 同步 `.agents/skills/microcourse/scripts/precheck.sh` 白名单（补 CourseNoteController/CourseCopyContentServiceImpl/VideoStreamServiceImpl，消除与 `.claude` 版的漂移）。
+
+### F-2026-08-06-02 · 课件管理页预览功能消失：useFeatureFlag 暴露普通对象非 ref，v2 恒渲染/旧版头部恒隐藏（P1-C）
+
+- **症状**：用户上报 `/teacher/courses/52/slides/manage?sectionId=573`（HTML 课件）"没有预览功能，之前是有大图预览"。生产 nginx 日志显示同一次访问同时请求旧版接口（/slides、/slides/pages）与 v2 接口（/courseware/573、/html/sections/573/unit）——新旧 UI 并存。
+- **直接原因**：`useFeatureFlag.js` 把普通对象 `{ value: readPersisted() }` 作为 `coursewareV2` 暴露；模板中普通对象恒为 truthy → `v-if="coursewareV2 && sectionId"`（v2 工作台）永远成立、`v-if="!coursewareV2"`（旧版头部，含"预览/替换/更多"按钮）永远隐藏、`el-switch` v-model 失效。本地实测：localStorage `mc:feature:courseware_v2='false'` 时工作台仍渲染、头部按钮消失。
+- **根本原因**：早期灰度开关代码未用 `ref()` 包裹（Vue3 模板自动解包语义缺失），属"响应式状态封装错误"模式；旧版 UI 各 section 仅头部受 coursewareV2 门控、workspace 未门控 → v2 开启时新旧 UI 并存。
+- **横向扫描**：全仓 `useFeatureFlag` 仅此一处；旧版 UI 对 HTML 页预览为后端占位图（"第N页"灰色框）而非真实内容，属第二处预览缺陷（HTML 课件无可视化预览）。
+- **修复**：① `useFeatureFlag.js` 改 `ref(readPersisted())`，恢复模板自动解包；② `SlideManage.vue` 旧版 upload-hero/processing/error/workspace 全部加 `!coursewareV2` 门控，v2 开启时不再与旧 UI 并存；③ 旧版编辑器预览区对 HTML_DIRECT 页改渲染 `iframe :srcdoc=htmlContent`（真实预览），缩略图跳过占位图请求并渲染 HTML 图标块；④ 新增 `useFeatureFlag.test.js` 3 用例（isRef/持久化/模板解包语义）。
+- **复测**（本地 ego-browser 真实交互）：flag=false → 旧版头部"预览/替换/更多"恢复、v2 工作台隐藏、HTML 缩略图为专用块；点击缩略图 → 编辑器 iframe 渲染 HTML 内容（srcdoc 命中）；点击头部"预览" → 全屏 SlidePlayer iframe 渲染 HTML；切换 v2 开关 → 工作台 HTML 流程（HtmlBlockEditor"预览/保存"）出现、旧 UI 完全隐藏。
+- **防止再发**：① 单测固化"暴露给模板的状态必须是 ref"；② 矩阵补录课件管理页 HTML 预览功能点；③ 旧版 HTML 预览缺口的同类页面（学生端 CourseDetail 播放）已由 SlidePlayer iframe 覆盖，无需重复修复。

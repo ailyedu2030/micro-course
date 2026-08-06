@@ -13,6 +13,8 @@
  *   if (coursewareV2.value) { /* 新版 UI *\/ }
  */
 
+import { ref } from 'vue'
+
 const STORAGE_KEY = 'mc:feature:courseware_v2'
 const DEFAULT_VALUE = false
 
@@ -45,8 +47,13 @@ function writePersisted(value) {
 
 /**
  * 创建响应式 feature flag (单例模式, 多组件共享状态)
+ *
+ * 2026-08-06 修复: 此前直接暴露普通对象 `{ value }`，模板中普通对象恒为
+ * truthy → `v-if="coursewareV2 && sectionId"` 永远成立、`v-if="!coursewareV2"`
+ * 永远隐藏、el-switch v-model 失效（旧版头部"预览/替换/更多"按钮消失）。
+ * 必须用 `ref()` 包裹，模板才会自动解包并正确响应。
  */
-const stateRef = { value: readPersisted() }
+const stateRef = ref(readPersisted())
 
 export function useFeatureFlag() {
   const coursewareV2 = stateRef
