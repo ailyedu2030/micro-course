@@ -196,6 +196,9 @@ public class SecurityConfig {
                         .requestMatchers("GET", "/api/files/system/**").permitAll()
                         // 其他文件（slides 课件、storage 申报图片等私有资源）：需登录 + FileAccessController 层 owner 校验
                         .requestMatchers("GET", "/api/files/**").authenticated()
+                        // P0（R-6/R-7）：课件音频 token 流式 GET 公开 —— HTML5 <audio> 无法携带 Authorization header，
+                        // token（32 位 UUID）即能力凭证；Controller 层已做 IDOR 归属校验 + READY 检查 + 路径遍历防护
+                        .requestMatchers("GET", "/api/courses/*/courseware/audio/*").permitAll()
                         // P0-SEC-FIX: 放行支付回调端点，外部支付网关无法携带 JWT
                         .requestMatchers("POST", "/api/orders/callback").permitAll()
                         // Hermes 课程同步 Webhook（API Key 校验在 Controller 层）

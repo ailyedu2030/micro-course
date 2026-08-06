@@ -79,6 +79,7 @@ import { ElMessage } from 'element-plus'
 import { Document, Check, MagicStick, Clock } from '@element-plus/icons-vue'
 import { getActivePptScript, listPptScriptHistory, savePptScript } from '../api/pptCourseware'
 import { getActiveHtmlSegment, saveHtmlSegmentScript } from '../api/htmlCourseware'
+import { useUserStore } from '@/store/user'
 
 const props = defineProps({
   courseId: { type: Number, required: true },

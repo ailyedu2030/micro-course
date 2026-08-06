@@ -8,6 +8,7 @@ import com.microcourse.plugin.interactive.dto.PptAudioDTO;
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
+import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
@@ -63,6 +64,21 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
     private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
+
+    /** MiniMax 官方模型（application.yml 契约，R-6） */
+    private static final List<String> TTS_MODELS = java.util.List.of(
+            "speech-2.8-hd", "speech-2.6-hd", "speech-01", "speech-02");
+
+    /** MiniMax 官方 voice_id（application.yml 注释预定义音色，R-6） */
+    private static final List<TtsOptionsVO.VoiceOption> TTS_VOICES = java.util.List.of(
+            new TtsOptionsVO.VoiceOption("female-shaonv", "女声·甜美少女"),
+            new TtsOptionsVO.VoiceOption("female-qingxin", "女声·清新"),
+            new TtsOptionsVO.VoiceOption("female-yujie", "女声·御姐"),
+            new TtsOptionsVO.VoiceOption("female-warm", "女声·温暖"),
+            new TtsOptionsVO.VoiceOption("male-shaonian", "男声·少年"),
+            new TtsOptionsVO.VoiceOption("male-qingnian", "男声·青年"),
+            new TtsOptionsVO.VoiceOption("male-dashu", "男声·大叔"),
+            new TtsOptionsVO.VoiceOption("male-chengzhao", "男声·沉稳"));
 
     public CoursewareQueryServiceImpl(SlidePptPageMapper pageMapper,
                                        SlidePptPageScriptMapper pageScriptMapper,
@@ -257,6 +273,16 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         log.warn("[Audio-Stream] token not found (masked): token.length={}", token.length());
         throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
                 "Audio token invalid: " + (token.length() > 8 ? token.substring(0, 8) + "..." : token));
+    }
+
+    @Override
+    public TtsOptionsVO getTtsOptions() {
+        TtsOptionsVO vo = new TtsOptionsVO();
+        vo.setModels(TTS_MODELS);
+        vo.setVoices(TTS_VOICES);
+        vo.setDefaultModel("speech-2.8-hd");
+        vo.setDefaultVoice("female-shaonv");
+        return vo;
     }
 
     // ====== Converters ======

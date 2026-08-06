@@ -483,3 +483,62 @@
 - **修复**：`SlidePlayer.vue` 引入 `useUserStore`，`ensureProgress`/`markSlideComplete` 增加 `isStudent` 守卫（非 STUDENT 直接跳过，不产生 403 与 console 噪音）。
 - **复测**：本地 ego-browser 以 admin 打开预览 → 全屏 SlidePlayer 渲染 HTML ✅、本地 API 日志 3 分钟内 0 次 `POST /learning-progress/progress` ✅；新增 SlidePlayer.test.js 回归用例（TEACHER 角色挂载不调用 createLearningProgress），单测 216/216。
 - **防止再发**：① 复用学生播放器/组件的教师预览路径统一加角色守卫；② 回归单测固化"非 STUDENT 不上报进度"；③ 模式库补"播放器跨角色复用需按角色守卫副作用调用"。
+
+### F-2026-08-06-04 · SlidePlayer origin 守卫语义错误：iframe→父页消息全部被拒（P0，根因已锁定，待 P0 实施）
+
+- **症状（用户核心诉求）**："现在还不能跟着 PPT 或 HTML 控制播放"——HTML 课件内点击段落/完成按钮/音频状态上报对播放器全部无效。
+- **直接原因**：`SlidePlayer.vue:367` `if (event.origin !== null) return`。`MessageEvent.origin` 是 DOMString，srcdoc + sandbox（无 allow-same-origin）iframe 的 opaque origin 序列化为**字符串 `"null"`**；`"null" !== null` 恒为 true → iframe 发出的 `slide-audio-state` / `slide-interactive-complete` /（v2）`segment-active` 等消息全部在入口被丢弃。
+- **根本原因**：`docs/postMessage-音频控制方案.md`（v1 设计文档）把「origin 为 null」写成 JS `null` 字面量并照搬到代码；测试未覆盖 sandboxed srcdoc postMessage 的 origin 序列化语义（`SlidePlayer.test.js` 无 postMessage 消息用例）。
+- **横向扫描**：v1 协议文档 §安全校验、`SlidePlayer.onSlideAudioMessage`（唯一消息入口）为全部受影响面；父→iframe 方向 `postMessage(msg, '*')` 在 opaque origin 下正确，无需改。
+- **修复（已入 `docs/design/2026-08-06-PPT-HTML-音频同步控制方案.md` §6.3/P0-1，待实施）**：守卫改 `event.origin === 'null'`；同步修正 v1 设计文档伪码；新增单测覆盖 sandboxed srcdoc 消息（origin="null" 放行、其他 origin 拒绝）。
+- **防止再发**：① 协议实现必须对照浏览器 origin 序列化语义写单测；② 评审清单增加「postMessage origin 字符串 vs null」检查项。
+
+## 2026-08-06 晚 · P0 实施闭环（PPT/HTML 音频同步控制方案 P0，R-1~R-16 主体）
+
+### F-2026-08-06-05 · D9 修复：origin 守卫改 `event.origin === 'null'` + source 校验（P0）
+
+- **症状**：HTML 课件内点击段落/完成按钮/音频状态上报对播放器全部无效（用户核心诉求"不能跟着 HTML 控制播放"）。
+- **根因**：`SlidePlayer.vue` 旧守卫 `event.origin !== null`；`MessageEvent.origin` 是 DOMString，sandbox srcdoc opaque origin 序列化为 `"null"` → 恒 true → 全部拒收（Playwright+Chromium 实测 + WHATWG html#3585 双重确认）。
+- **修复**：守卫改 `event.origin === 'null' && event.source === 当前 iframe.contentWindow`（R-1/H-1）；新增单测覆盖 origin 字符串与 source 不匹配两态；Playwright e2e 实证 iframe→父 `ready` 消息被接收并回发 `slide-audio-state-v2 loaded`（bridge 日志）。
+
+### F-2026-08-06-06 · D1 修复：废除注入音频控制器，HTML 音频改父页 AudioHost（P0）
+
+- **根因**：`SlideServiceImpl.buildSegmentControllerJs()` 拼接的 `<script>` 语法错误（Node `new Function()` 报 `Unexpected token ')'`），iframe 内分段音频控制器整体失效。
+- **修复**：删除注入脚本与 `injectBeforeBodyEnd`；HTML 段音频由父页 `<audio>` 顺序播放（协议 v2），legacy `AUDIO_SEG_XX_URL` 占位符仅替换不注入；e2e 实证 HTML 段1→段2 自动续播。
+
+### F-2026-08-06-07 · D3 修复：新建 TtsWorkerService 消费 v2 GENERATING→MiniMax→READY（P0，R-11）
+
+- **根因**：`PptCoursewareServiceImpl.generateAudio` / `HtmlCoursewareServiceImpl.generateSegmentAudio` 只插 `GENERATING` 行，全仓无消费者 → v2 音频永不 READY。
+- **修复**：新增 `TtsWorkerService`（@Scheduled 15s 轮询两张 v2 音频表；并发≤2；3s 插入延迟避开事务；10min 超时标记 FAILED；MiniMax `TtsService.synthesize` 公共方法；音色别名映射 male-young→male-qingnian 等 R-6）。已登记 precheck 白名单（.claude + .agents 两处）。
+
+### F-2026-08-06-08 · D4/D9b 修复：getPages 聚合 v1+v2 + 播放器消费（P0，R-7）
+
+- **根因**：`SlideService.getPages` 只查 legacy `slide_pages`，v2（slide_ppt_pages / slide_html_units）课件学生端不可见。
+- **修复**：getPages 按 section 优先聚合 v2 PPT（含 activeScript→READY audio + flows）与 HTML unit（含 segments + 每段 audio），回退 legacy；SlidePageVO 扩展 `audio/segments/flows`（PageAudioVO/HtmlSegmentVO/PptFlowVO）；播放器 loadAudio 支持 v2 PPT 直载 token URL 与 HTML 分段顺序播放。curl + Playwright 实证聚合 JSON 与浏览器播放。
+
+### F-2026-08-06-09 · P1-C 修复：学生图片 403（getPageImage/Thumbnail 误走 verifyOwner）
+
+- **症状**：学生播放器 PPT 图片/缩略图全部 403 → "图片加载失败"占位。
+- **根因**：`SlideService.getPageImage/getPageThumbnail` 调 `getPage`→`verifyOwner`（教师/管理员专属），控制器虽已 `verifyAccess`（选课校验）但服务层仍拦截学生。
+- **修复**：图片路径改用 `findPageForAccess`（无 verifyOwner，控制器选课校验兜底）；e2e 实证 `hasImg=1`。
+
+### F-2026-08-06-10 · P1-C 修复：学生打开课件播放器 learning-progress 400（sectionId 误当 Video ID）
+
+- **症状**：学生打开 SlidePlayer 每次 `POST /api/learning-progress/progress 400`（console 噪音 + 进度未记录）。
+- **根因**：`LearningProgressServiceImpl.create` 对 sectionId 只按 `videos` 表校验，SlidePlayer 传的是 `course_sections.id`（课时）→ 必现 400 "视频与章节归属不匹配"。
+- **修复**：校验放宽为 videos 或 course_sections 任一归属成立；e2e 实证 BAD=[]（0 错误）。
+
+### F-2026-08-06-11 · R-3/R-4/R-9/R-10 前端体验闭环（P0）
+
+- R-3：PPT 页补音频状态栏（原仅 HTML 显示）——e2e 实证 PPT 显示「▶ 点击开始」。
+- R-4：Autoplay 解锁层——首次 pointerdown 仅置 unlocked（修复"解锁自动起播→同一 click 暂停"的 0.3s 卡死 BUG），播放交由 togglePlay/autoMode；e2e 实证点击后音频推进且播完自动翻页 1/2→2/2。
+- R-9：timeupdate 消息节流 250ms（4Hz）。
+- R-10 部分：全部播完显示「本课学习完成」；AudioManager 生成后 3s 轮询直至 READY/FAILED、生成中防重复提交。
+
+### F-2026-08-06-12 · D5/R-6 音色/模型契约（P0）
+
+- 新增 `GET /api/courses/{cid}/courseware/tts-options`（models: speech-2.8-hd 等 + 官方 voice_id 中文名），`AudioManager` 下拉改由后端契约渲染；`TtsWorker` 内做历史枚举别名映射；`SecurityConfig` 放行 `GET /api/courses/*/courseware/audio/*`（HTML5 `<audio>` 无 Auth 头，token 即能力凭证，Controller 层 IDOR/READY/路径校验兜底）。
+
+### F-2026-08-06-13 · D2 修复：ScriptEditor 补 `useUserStore` 导入（P1-C）
+
+- v2 讲述稿保存必现 `ReferenceError: useUserStore is not defined`（vite AutoImport 仅解析 Element Plus）。已补 `import { useUserStore } from '@/store/user'`。

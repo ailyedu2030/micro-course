@@ -8,10 +8,27 @@ import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePageVO;
 import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
+import com.microcourse.plugin.interactive.dto.PageAudioVO;
+import com.microcourse.plugin.interactive.dto.HtmlSegmentVO;
+import com.microcourse.plugin.interactive.dto.PptFlowVO;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlidePage;
+import com.microcourse.plugin.interactive.entity.SlidePptPage;
+import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
+import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.entity.SlidePptFlow;
+import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
+import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptFlowMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.entity.CourseChapter;
@@ -69,6 +86,14 @@ public class SlideServiceImpl implements SlideService {
     private final CourseChapterRepository courseChapterRepository;
     private final CourseSectionRepository sectionRepo;
     private final SlideRenderService slideRenderService;
+    // P0 聚合（v1+v2 双轨，方案 P0-4）
+    private final SlidePptPageMapper pptPageMapper;
+    private final SlidePptPageScriptMapper pptScriptMapper;
+    private final SlidePptPageAudioMapper pptAudioMapper;
+    private final SlidePptFlowMapper pptFlowMapper;
+    private final SlideHtmlUnitMapper htmlUnitMapper;
+    private final SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
+    private final SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper;
 
     // Micrometer 指标 (HTML 互动课件 - 灰度监控)
     private final io.micrometer.core.instrument.Counter htmlLoadCounter;
@@ -86,6 +111,13 @@ public class SlideServiceImpl implements SlideService {
                             CourseChapterRepository courseChapterRepository,
                             CourseSectionRepository sectionRepo,
                             SlideRenderService slideRenderService,
+                            SlidePptPageMapper pptPageMapper,
+                            SlidePptPageScriptMapper pptScriptMapper,
+                            SlidePptPageAudioMapper pptAudioMapper,
+                            SlidePptFlowMapper pptFlowMapper,
+                            SlideHtmlUnitMapper htmlUnitMapper,
+                            SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper,
+                            SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper,
                             io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
@@ -93,6 +125,13 @@ public class SlideServiceImpl implements SlideService {
         this.courseChapterRepository = courseChapterRepository;
         this.sectionRepo = sectionRepo;
         this.slideRenderService = slideRenderService;
+        this.pptPageMapper = pptPageMapper;
+        this.pptScriptMapper = pptScriptMapper;
+        this.pptAudioMapper = pptAudioMapper;
+        this.pptFlowMapper = pptFlowMapper;
+        this.htmlUnitMapper = htmlUnitMapper;
+        this.htmlSegmentScriptMapper = htmlSegmentScriptMapper;
+        this.htmlSegmentAudioMapper = htmlSegmentAudioMapper;
         // HTML 互动课件监控指标 (灰度观察 6.4 用)
         this.htmlLoadCounter = io.micrometer.core.instrument.Counter.builder("interactive_html_load_total")
                 .description("HTML 课件成功加载次数（白名单教师上传后学生可访问）")
@@ -516,6 +555,18 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public List<SlidePageVO> getPages(Long courseId, Long sectionId, Long chapterId) {
+        // P0-4: v2 优先聚合（slide_ppt_pages / slide_html_units），无 v2 则回退 legacy。
+        if (sectionId != null) {
+            List<SlidePptPage> v2PptPages = pptPageMapper.listBySection(sectionId);
+            if (!v2PptPages.isEmpty()) {
+                return buildV2PptPages(courseId, sectionId, v2PptPages);
+            }
+            SlideHtmlUnit v2HtmlUnit = htmlUnitMapper.findBySection(sectionId);
+            if (v2HtmlUnit != null) {
+                return java.util.Collections.singletonList(buildV2HtmlPage(courseId, v2HtmlUnit));
+            }
+        }
+
         LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<>();
         qw.eq(SlidePage::getCourseId, courseId);
         // P1-C 修复：章节级课件页存于 chapter_id、section_id 为 NULL。
@@ -532,28 +583,161 @@ public class SlideServiceImpl implements SlideService {
         List<SlidePage> dbPages = slidePageMapper.selectList(qw);
         List<SlidePageVO> vos = dbPages.stream().map(this::toPageVO).collect(Collectors.toList());
 
+        // P0-1: 仅替换 AUDIO_SEG_XX_URL 占位符（供 HTML 模板内原生 <audio> 引用），
+        // 不再注入分段音频控制器脚本（buildSegmentControllerJs 语法损坏，见 D1）。
         Map<Integer, String> segUrls = new HashMap<>();
         for (SlidePageVO vo : vos) {
             if (vo.getSegmentAudio() != null) {
                 segUrls.put(vo.getPageNumber(), vo.getSegmentAudio().getUrl());
             }
         }
-        if (!segUrls.isEmpty()) {
-            String segmentControllerJs = buildSegmentControllerJs();
-            for (SlidePageVO vo : vos) {
-                String html = vo.getHtmlContent();
-                if ("HTML_DIRECT".equals(vo.getContentType()) && html != null && html.contains("AUDIO_SEG_")) {
-                    for (Map.Entry<Integer, String> entry : segUrls.entrySet()) {
-                        String placeholder = "AUDIO_SEG_" + String.format("%02d", entry.getKey()) + "_URL";
-                        html = html.replace(placeholder, entry.getValue());
-                    }
-                    html = injectBeforeBodyEnd(html, segmentControllerJs);
-                    vo.setHtmlContent(html);
+        for (SlidePageVO vo : vos) {
+            String html = vo.getHtmlContent();
+            if ("HTML_DIRECT".equals(vo.getContentType()) && html != null && html.contains("AUDIO_SEG_")) {
+                for (Map.Entry<Integer, String> entry : segUrls.entrySet()) {
+                    String placeholder = "AUDIO_SEG_" + String.format("%02d", entry.getKey()) + "_URL";
+                    html = html.replace(placeholder, entry.getValue());
                 }
+                vo.setHtmlContent(html);
             }
         }
 
         return vos;
+    }
+
+    // ==================== P0-4: v2 播放数据聚合 ====================
+
+    private List<SlidePageVO> buildV2PptPages(Long courseId, Long sectionId, List<SlidePptPage> pages) {
+        List<SlidePageVO> vos = new java.util.ArrayList<>(pages.size());
+        for (SlidePptPage p : pages) {
+            SlidePageVO vo = new SlidePageVO();
+            vo.setId(p.getId());
+            vo.setSlideId(p.getSlideId());
+            vo.setChapterId(p.getChapterId());
+            vo.setSectionId(p.getSectionId());
+            vo.setCourseId(p.getCourseId());
+            vo.setPageNumber(p.getPageNumber());
+            vo.setContentType("PPT_RENDERED");
+            vo.setImageUrl(p.getImageUrl());
+            vo.setThumbnailUrl(p.getThumbnailUrl());
+            vo.setImageWidth(p.getImageWidth());
+            vo.setImageHeight(p.getImageHeight());
+            vo.setExtractedText(p.getExtractedText());
+            vo.setHasAnimation(p.getHasAnimation());
+            vo.setHasEmbeddedMedia(p.getHasEmbeddedMedia());
+            vo.setCreatedAt(p.getCreatedAt());
+            vo.setUpdatedAt(p.getUpdatedAt());
+
+            SlidePptPageScript active = pptScriptMapper.findActiveByPage(p.getId());
+            if (active != null) {
+                vo.setNarrationScript(active.getScriptText());
+                List<SlidePptPageAudio> audios = pptAudioMapper.listByScript(active.getId());
+                SlidePptPageAudio ready = audios.stream()
+                        .filter(a -> "READY".equals(a.getStatus()))
+                        .findFirst().orElse(null);
+                if (ready != null) {
+                    vo.setAudio(toPageAudioVO(courseId, ready));
+                    vo.setNarrationAudioUrl(ready.getAudioUrl());
+                    vo.setAudioDuration(ready.getAudioDurationMs() != null
+                            ? Math.max(1, ready.getAudioDurationMs() / 1000) : null);
+                    vo.setNarrationStatus("AUDIO_READY");
+                } else {
+                    vo.setNarrationStatus("AUDIO_GENERATING");
+                }
+                vo.setVoice(active.getVoice());
+                vo.setTtsModel(active.getTtsModel());
+            } else {
+                vo.setNarrationStatus("PENDING");
+            }
+            vo.setNarrationStatusText(SlidePageVO.narrationStatusText(vo.getNarrationStatus()));
+            vos.add(vo);
+        }
+        // section 级 flow 规则（挂在每页节点，前端按 fromPageId 建索引）
+        List<PptFlowVO> flows = pptFlowMapper.listBySection(sectionId).stream()
+                .map(this::toPptFlowVO).collect(Collectors.toList());
+        for (SlidePageVO vo : vos) {
+            vo.setFlows(flows);
+        }
+        return vos;
+    }
+
+    private SlidePageVO buildV2HtmlPage(Long courseId, SlideHtmlUnit unit) {
+        SlidePageVO vo = new SlidePageVO();
+        vo.setId(unit.getId());
+        vo.setSlideId(unit.getSlideId());
+        vo.setChapterId(unit.getChapterId());
+        vo.setSectionId(unit.getSectionId());
+        vo.setCourseId(unit.getCourseId());
+        vo.setPageNumber(1);
+        vo.setContentType("HTML_DIRECT");
+        vo.setHtmlContent(unit.getHtmlSanitized() != null ? unit.getHtmlSanitized() : unit.getHtmlContent());
+        vo.setCreatedAt(unit.getCreatedAt());
+        vo.setUpdatedAt(unit.getUpdatedAt());
+
+        List<SlideHtmlSegmentScript> segs = htmlSegmentScriptMapper.listActiveByUnit(unit.getId());
+        List<HtmlSegmentVO> segmentVos = new java.util.ArrayList<>();
+        int readyCount = 0;
+        boolean generating = false;
+        for (SlideHtmlSegmentScript s : segs) {
+            HtmlSegmentVO segVo = new HtmlSegmentVO();
+            segVo.setIndex(s.getSegmentIndex());
+            segVo.setMarker(s.getSegmentMarker());
+            segVo.setText(s.getSegmentText());
+            segVo.setScriptText(s.getScriptText());
+            List<SlideHtmlSegmentAudio> audios = htmlSegmentAudioMapper.listByScript(s.getId());
+            SlideHtmlSegmentAudio ready = audios.stream()
+                    .filter(a -> "READY".equals(a.getStatus()))
+                    .findFirst().orElse(null);
+            if (ready != null) {
+                segVo.setAudio(toPageAudioVO(courseId, ready));
+                readyCount++;
+            } else if (audios.stream().anyMatch(a -> "GENERATING".equals(a.getStatus()))) {
+                generating = true;
+            }
+            segmentVos.add(segVo);
+        }
+        vo.setSegments(segmentVos);
+        vo.setNarrationStatus(readyCount == segs.size() && !segs.isEmpty()
+                ? "AUDIO_READY"
+                : (readyCount > 0 || generating) ? "AUDIO_GENERATING" : "PENDING");
+        vo.setNarrationStatusText(SlidePageVO.narrationStatusText(vo.getNarrationStatus()));
+        return vo;
+    }
+
+    private PageAudioVO toPageAudioVO(Long courseId, SlidePptPageAudio a) {
+        PageAudioVO vo = new PageAudioVO();
+        vo.setToken(a.getAudioToken());
+        vo.setUrl("/api/courses/" + courseId + "/courseware/audio/" + a.getAudioToken());
+        vo.setDurationMs(a.getAudioDurationMs());
+        vo.setStatus(a.getStatus());
+        vo.setVoiceUsed(a.getVoiceUsed());
+        vo.setModelUsed(a.getModelUsed());
+        vo.setScriptId(a.getScriptId());
+        return vo;
+    }
+
+    private PageAudioVO toPageAudioVO(Long courseId, SlideHtmlSegmentAudio a) {
+        PageAudioVO vo = new PageAudioVO();
+        vo.setToken(a.getAudioToken());
+        vo.setUrl("/api/courses/" + courseId + "/courseware/audio/" + a.getAudioToken());
+        vo.setDurationMs(a.getAudioDurationMs());
+        vo.setStatus(a.getStatus());
+        vo.setVoiceUsed(a.getVoiceUsed());
+        vo.setModelUsed(a.getModelUsed());
+        vo.setScriptId(a.getSegmentScriptId());
+        return vo;
+    }
+
+    private PptFlowVO toPptFlowVO(SlidePptFlow e) {
+        PptFlowVO vo = new PptFlowVO();
+        vo.setFromPageId(e.getFromPageId());
+        vo.setToPageId(e.getToPageId());
+        vo.setFlowType(e.getFlowType());
+        vo.setPriority(e.getPriority());
+        vo.setDependsOnQuizId(e.getDependsOnQuizId());
+        vo.setConditionExpression(e.getConditionExpression());
+        vo.setDescription(e.getDescription());
+        return vo;
     }
 
     @Override
@@ -582,7 +766,9 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public byte[] getPageImage(Long courseId, Integer pageNumber) {
-        SlidePageVO p = getPage(courseId, pageNumber);
+        // P1-C 修复：图片/缩略图是学生播放器核心资源，控制器已做 verifyAccess（选课校验）；
+        // 此处不得再用 getPage → verifyOwner（仅教师/管理员），否则学生 403 全部占位。
+        SlidePageVO p = findPageForAccess(courseId, pageNumber);
         String fn = p.getFileUuid() != null ? p.getFileUuid() + ".png" : "page_" + pageNumber + ".png";
         Path imgPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "images", fn);
         byte[] d = readImage(imgPath);
@@ -591,11 +777,19 @@ public class SlideServiceImpl implements SlideService {
 
     @Override
     public byte[] getPageThumbnail(Long courseId, Integer pageNumber) {
-        SlidePageVO p = getPage(courseId, pageNumber);
+        SlidePageVO p = findPageForAccess(courseId, pageNumber);
         String fn = p.getFileUuid() != null ? p.getFileUuid() + "_thumbnail.png" : "page_" + pageNumber + ".png";
         Path thumbPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "thumbnails", fn);
         byte[] d = readImage(thumbPath);
         return d.length > 0 ? d : generateFallback("第" + pageNumber + "页");
+    }
+
+    private SlidePageVO findPageForAccess(Long courseId, Integer pageNumber) {
+        LambdaQueryWrapper<SlidePage> qw = new LambdaQueryWrapper<SlidePage>()
+                .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, pageNumber);
+        List<SlidePage> list = slidePageMapper.selectList(qw);
+        if (list.isEmpty()) { throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND); }
+        return toPageVO(list.get(0));
     }
 
     private byte[] readImage(Path path) {
@@ -755,34 +949,6 @@ public class SlideServiceImpl implements SlideService {
 
     private String replacePageNumberInUrl(String url, int newPageNum) {
         return url.replaceFirst("/pages/\\d+/audio", "/pages/" + newPageNum + "/audio");
-    }
-
-    private static String buildSegmentControllerJs() {
-        return "<script>" +
-        "(function(){var a={},c=0,d=!1;" +
-        "for(var i=1;i<=15;i++){var e=document.getElementById('segAudio_'+(i<10?'0'+i:i));if(e)a[i]=e}" +
-        "function p(){var e=a[c];if(!e)return;d=!0;e.play().then(function(){parent.postMessage({type:'slide-audio-state',state:'playing'},'*')}).catch(function(){})}" +
-        "function q(){d=!1;for(var k in a)a[k].pause();parent.postMessage({type:'slide-audio-state',state:'paused'},'*')}" +
-        "window.addEventListener('message',function(e){if(!e.data||e.data.type!=='slide-audio')return;" +
-        "switch(e.data.action){" +
-        "case'play':if(!d&&c>0)p();else if(c===0){c=1;p()}break;" +
-        "case'pause':q();break;" +
-        "case'seek':if(e.data.page){c=e.data.page;q();p()}break;" +
-        "case'get-state':parent.postMessage({type:'slide-audio-state',state:d?'playing':'paused'});break;" +
-        "case'get-segments':var r={};for(var i=1;i<=15;i++){var e=a[i];if(e&&e.src)r[i]=e.src}" +
-        "parent.postMessage({type:'slide-audio-segments',segments:r},'*');break;" +
-        "case'speed':if(e.data.rate){for(var k in a)if(a[k])a[k].playbackRate=e.data.rate}break;" +
-        "for(var k in a){!function(el){el.addEventListener('ended',function(){d=!1;" +
-        "parent.postMessage({type:'slide-audio-state',state:'ended'},'*')});" +
-        "el.addEventListener('loadedmetadata',function(){parent.postMessage({type:'slide-audio-state',state:'loaded',duration:el.duration},'*')});" +
-        "el.addEventListener('timeupdate',function(){parent.postMessage({type:'slide-audio-state',state:'time-update',time:el.currentTime,duration:el.duration},'*')})}" +
-        "(a[k])}})();</script>";
-    }
-
-    private static String injectBeforeBodyEnd(String html, String js) {
-        int idx = html.lastIndexOf("</body>");
-        if (idx < 0) return html + js;
-        return html.substring(0, idx) + js + html.substring(idx);
     }
 
     private boolean isZipHeader(byte[] b) {

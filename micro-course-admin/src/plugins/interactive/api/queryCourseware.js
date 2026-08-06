@@ -34,3 +34,11 @@ export function getAudioStreamUrl(courseId, token) {
 export function resolveAudioToken(courseId, token) {
   return request({ method: 'GET', url: `/courses/${courseId}/courseware/audio/${token}` })
 }
+
+/**
+ * TTS 音色/模型契约（P0-5 / R-6）。
+ * 返回 { models: string[], voices: [{id,label}], defaultModel, defaultVoice }
+ */
+export function getTtsOptions(courseId) {
+  return request({ method: 'GET', url: `/courses/${courseId}/courseware/tts-options` })
+}

@@ -122,4 +122,14 @@ public class CoursewareQueryController {
             in.transferTo(response.getOutputStream());
         }
     }
+
+    /**
+     * TTS 音色/模型契约（P0-5 / R-6）：
+     * GET /api/courses/{courseId}/courseware/tts-options
+     * 教师端 AudioManager / ScriptEditor 据此渲染下拉，消除前端非法枚举。
+     */
+    @GetMapping("/tts-options")
+    public com.microcourse.dto.R<com.microcourse.plugin.interactive.dto.TtsOptionsVO> ttsOptions() {
+        return com.microcourse.dto.R.ok(queryService.getTtsOptions());
+    }
 }

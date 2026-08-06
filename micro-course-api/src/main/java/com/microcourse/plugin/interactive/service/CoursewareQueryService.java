@@ -2,6 +2,7 @@ package com.microcourse.plugin.interactive.service;
 
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
+import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
 
 /**
  * 课件读侧统一服务 (CQRS Query 模式).
@@ -34,4 +35,10 @@ public interface CoursewareQueryService {
      * @return AudioStreamInfo 含 courseId 与 pptPageId/segmentIndex
      */
     AudioStreamInfo resolveAudioToken(String token);
+
+    /**
+     * TTS 音色/模型契约（P0-5 / R-6）。
+     * 后端为唯一真相，前端下拉据此渲染；历史非法枚举（male-young 等）由 TTS 层别名映射。
+     */
+    TtsOptionsVO getTtsOptions();
 }

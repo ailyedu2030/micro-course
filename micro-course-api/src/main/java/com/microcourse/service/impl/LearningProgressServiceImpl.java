@@ -39,17 +39,20 @@ public class LearningProgressServiceImpl implements LearningProgressService {
     private final CourseChapterRepository courseChapterRepository;
     private final VideoRepository videoRepository;
     private final EnrollmentRepository enrollmentRepository;
+    private final com.microcourse.repository.CourseSectionRepository courseSectionRepository;
 
     public LearningProgressServiceImpl(LearningProgressRepository learningProgressRepository,
                                        CourseRepository courseRepository,
                                        CourseChapterRepository courseChapterRepository,
                                        VideoRepository videoRepository,
-                                       EnrollmentRepository enrollmentRepository) {
+                                       EnrollmentRepository enrollmentRepository,
+                                       com.microcourse.repository.CourseSectionRepository courseSectionRepository) {
         this.learningProgressRepository = learningProgressRepository;
         this.courseRepository = courseRepository;
         this.courseChapterRepository = courseChapterRepository;
         this.videoRepository = videoRepository;
         this.enrollmentRepository = enrollmentRepository;
+        this.courseSectionRepository = courseSectionRepository;
     }
 
     @Override
@@ -320,12 +323,19 @@ public class LearningProgressServiceImpl implements LearningProgressService {
             }
         }
 
-        // Validate sectionId (video/lesson) belongs to the given chapter if both provided
+        // Validate sectionId (video/lesson 或 course_section/课时) belongs to the given chapter if both provided
+        // 【P1-C 修复】 SlidePlayer 课件播放器传的是 course_sections.id（课时），
+        // 旧逻辑只按 videos 校验 → 学生打开课件必现 400 "视频与章节归属不匹配"，进度记录失败。
         if (request.getSectionId() != null && request.getChapterId() != null) {
-            LambdaQueryWrapper<Video> videoCheck = new LambdaQueryWrapper<>();
-            videoCheck.eq(Video::getId, request.getSectionId())
-                      .eq(Video::getChapterId, request.getChapterId());
-            if (videoRepository.selectCount(videoCheck) == 0) {
+            boolean videoOk = videoRepository.selectCount(
+                    new LambdaQueryWrapper<Video>()
+                            .eq(Video::getId, request.getSectionId())
+                            .eq(Video::getChapterId, request.getChapterId())) > 0;
+            boolean sectionOk = courseSectionRepository.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.CourseSection>()
+                            .eq(com.microcourse.entity.CourseSection::getId, request.getSectionId())
+                            .eq(com.microcourse.entity.CourseSection::getChapterId, request.getChapterId())) > 0;
+            if (!videoOk && !sectionOk) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "视频与章节归属不匹配");
             }
         }

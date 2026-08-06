@@ -2346,3 +2346,18 @@ HTML 上传受灰度白名单控制。
 LEAD 继任转移。ACADEMIC 权限。
 
 完整 API 请参考 docs/开发规划/phase14-micro-specialty-spec.md §7（51 个端点，含主表 14+、申报 7、课程编排 4、教师 9、修读 8、置顶 6、统计证书 3）。
+
+## P0 课件播放聚合契约（2026-08-06，方案 R-6/R-7/R-14）
+
+### GET /api/courses/{courseId}/slides/pages（v2 优先聚合）
+
+- 同一路径，响应在 section 存在 v2 课件时扩展字段（PPT）：`audio{url,token,durationMs,status,voiceUsed,modelUsed,scriptId}`、`flows[{fromPageId,toPageId,flowType,priority,dependsOnQuizId,conditionExpression,description}]`；HTML：`segments[{index,marker,selector,text,scriptText,interactive,audio}]`。无 v2 时回退 legacy 响应（兼容）。
+- 权限：`isAuthenticated()` + `verifyAccess`（学生需选课）。
+
+### GET /api/courses/{courseId}/courseware/audio/{token}
+
+- 音频流式 GET（token 即能力凭证，**无需登录**；SecurityConfig permitAll）。Controller 层校验：token 归属 course（IDOR）、status=READY（非 READY 返 202）、storage_path 白名单（防路径遍历）。响应 `audio/mpeg`，浏览器 `<audio src>` 直连。
+
+### GET /api/courses/{courseId}/courseware/tts-options
+
+- 返回 `{models:["speech-2.8-hd","speech-2.6-hd","speech-01","speech-02"], voices:[{id,label}], defaultModel:"speech-2.8-hd", defaultVoice:"female-shaonv"}`。教师端 AudioManager/ScriptEditor 音色/模型下拉的唯一真相（R-6）。

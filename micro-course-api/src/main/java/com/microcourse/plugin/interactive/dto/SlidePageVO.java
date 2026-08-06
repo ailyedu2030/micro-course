@@ -27,6 +27,10 @@ public class SlidePageVO {
     private Integer segmentCount;
     private SegmentAudioVO segmentAudio;
     private List<SegmentAudioVO> segmentAudios;
+    // P0 聚合契约（方案 §5.1）：v2 课件播放数据
+    private PageAudioVO audio;              // PPT 页可播放音频
+    private List<HtmlSegmentVO> segments;   // HTML 段（含每段 audio）
+    private List<PptFlowVO> flows;          // PPT 页间跳转规则（section 级）
     private String voice;
     private String ttsModel;
     private LocalDateTime generatedAt;
@@ -79,6 +83,12 @@ public class SlidePageVO {
     public void setSegmentAudio(SegmentAudioVO segmentAudio) { this.segmentAudio = segmentAudio; }
     public List<SegmentAudioVO> getSegmentAudios() { return segmentAudios; }
     public void setSegmentAudios(List<SegmentAudioVO> segmentAudios) { this.segmentAudios = segmentAudios; }
+    public PageAudioVO getAudio() { return audio; }
+    public void setAudio(PageAudioVO audio) { this.audio = audio; }
+    public List<HtmlSegmentVO> getSegments() { return segments; }
+    public void setSegments(List<HtmlSegmentVO> segments) { this.segments = segments; }
+    public List<PptFlowVO> getFlows() { return flows; }
+    public void setFlows(List<PptFlowVO> flows) { this.flows = flows; }
     public Integer getSegmentCount() { return segmentCount; }
     public void setSegmentCount(Integer segmentCount) { this.segmentCount = segmentCount; }
     public String getVoice() { return voice; }
