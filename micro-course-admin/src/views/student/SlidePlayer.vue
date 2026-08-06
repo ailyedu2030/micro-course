@@ -231,11 +231,15 @@ import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
+import { useUserStore } from '@/store/user'
 import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const userStore = useUserStore()
 const courseId = computed(() => route.params.courseId)
 const chapterId = computed(() => route.query.chapterId)
+// 学习进度仅对 STUDENT 上报；教师/管理员在管理页"预览"打开播放器时不写入进度（后端 hasRole('STUDENT') 会 403）
+const isStudent = computed(() => userStore.role === 'STUDENT')
 
 const pages = ref([])
 const current = ref(0)
@@ -787,7 +791,7 @@ const sectionId = computed(() => route.query.sectionId)
 
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {
-  if (!courseId.value) return
+  if (!courseId.value || !isStudent.value) return
   try {
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []
@@ -804,7 +808,7 @@ async function ensureProgress() {
 
 // P0-2: 翻到最后一页时标记完成
 async function markSlideComplete() {
-  if (!courseId.value) return
+  if (!courseId.value || !isStudent.value) return
   try {
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []

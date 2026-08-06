@@ -473,3 +473,13 @@
 - **修复**：① `useFeatureFlag.js` 改 `ref(readPersisted())`，恢复模板自动解包；② `SlideManage.vue` 旧版 upload-hero/processing/error/workspace 全部加 `!coursewareV2` 门控，v2 开启时不再与旧 UI 并存；③ 旧版编辑器预览区对 HTML_DIRECT 页改渲染 `iframe :srcdoc=htmlContent`（真实预览），缩略图跳过占位图请求并渲染 HTML 图标块；④ 新增 `useFeatureFlag.test.js` 3 用例（isRef/持久化/模板解包语义）。
 - **复测**（本地 ego-browser 真实交互）：flag=false → 旧版头部"预览/替换/更多"恢复、v2 工作台隐藏、HTML 缩略图为专用块；点击缩略图 → 编辑器 iframe 渲染 HTML 内容（srcdoc 命中）；点击头部"预览" → 全屏 SlidePlayer iframe 渲染 HTML；切换 v2 开关 → 工作台 HTML 流程（HtmlBlockEditor"预览/保存"）出现、旧 UI 完全隐藏。
 - **防止再发**：① 单测固化"暴露给模板的状态必须是 ref"；② 矩阵补录课件管理页 HTML 预览功能点；③ 旧版 HTML 预览缺口的同类页面（学生端 CourseDetail 播放）已由 SlidePlayer iframe 覆盖，无需重复修复。
+
+### F-2026-08-06-03 · 教师预览 SlidePlayer 触发学习进度 403（P1-C 控制台噪音）
+
+- **症状**：用户打开课件管理页"预览"（SlidePlayer）后 console 报 `POST /api/learning-progress/progress 403 (Forbidden)` + `[SlidePlayer] ensureProgress failed`。与 F-2026-08-06-02 同一次修复后预览可用即暴露此问题。
+- **直接原因**：`SlidePlayer.onMounted → ensureProgress()` 无条件上报进度；后端 `POST /learning-progress/progress` 为 `@PreAuthorize("hasRole('STUDENT')")`，教师/管理员预览（管理页"预览"按钮打开同一播放器）→ 403 → console.warn。
+- **根本原因**：SlidePlayer 是学生播放器被教师预览复用，未按角色区分"上报进度"语义；后端 STUDENT-only 是正确契约（教师预览不应产生学习进度），前端缺角色守卫。
+- **横向扫描**：`markSlideComplete`（翻至末页）同样无条件 PUT/POST 进度 → 教师预览同样触发（已静默 catch，但语义错误）；学生端正常路径不受影响（角色 STUDENT 守卫放行）。全仓仅 SlidePlayer 复用播放器于教师预览。
+- **修复**：`SlidePlayer.vue` 引入 `useUserStore`，`ensureProgress`/`markSlideComplete` 增加 `isStudent` 守卫（非 STUDENT 直接跳过，不产生 403 与 console 噪音）。
+- **复测**：本地 ego-browser 以 admin 打开预览 → 全屏 SlidePlayer 渲染 HTML ✅、本地 API 日志 3 分钟内 0 次 `POST /learning-progress/progress` ✅；新增 SlidePlayer.test.js 回归用例（TEACHER 角色挂载不调用 createLearningProgress），单测 216/216。
+- **防止再发**：① 复用学生播放器/组件的教师预览路径统一加角色守卫；② 回归单测固化"非 STUDENT 不上报进度"；③ 模式库补"播放器跨角色复用需按角色守卫副作用调用"。

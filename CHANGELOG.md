@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (教师预览 SlidePlayer 不再触发学习进度 403 控制台噪音)
+
+> 2026-08-06 用户上报：课件管理页"预览"打开播放器后 console 报
+> `POST /api/learning-progress/progress 403`。
+
+- `SlidePlayer.vue`：`ensureProgress`/`markSlideComplete` 增加 STUDENT 角色守卫
+  （后端该端点 `hasRole('STUDENT')`，教师/管理员预览不应上报学习进度）
+- 新增 SlidePlayer.test.js 回归用例（TEACHER 挂载不调用 createLearningProgress），单测 216/216
+- 本地真实交互复测：admin 预览全屏播放器渲染正常，API 日志 0 次进度 POST
+
 ### Fixed (课件管理页预览回归：useFeatureFlag 非 ref 致 v2 恒渲染/旧版头部隐藏 + HTML 课件真实预览)
 
 > 2026-08-06 用户上报 PPT 课件管理页"没有预览功能"（HTML 课件 section 573）。
