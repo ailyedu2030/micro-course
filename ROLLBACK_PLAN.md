@@ -43,7 +43,7 @@
 | 旧后端 jar（宿主 bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260805_2029` | 与上同内容 |
 | 新后端 jar（当前运行） | `/opt/micro-course/micro-course-api-1.0.0.jar` | md5 `9055b31e…`，V326 已应用 |
 | 旧前端 dist（部署前版本） | `/opt/micro-course/backups/admin.dist.backup.20260805_2026/html.bak-newest` | bundle `index-Cy5FoWZm.js`，500 文件 |
-| 新前端 dist（当前运行） | 容器 `/usr/share/nginx/html` | bundle `index-CCE-iapk.js` |
+| 新前端 dist（当前运行） | 容器 `/usr/share/nginx/html` | bundle `index-DA6FZzQQ.js`（08-06 课件预览修复；上一版 `index-bBhVESNr.js` 备份于 `backups/admin.dist.backup.20260806_142034`，再上一版 `index-CCE-iapk.js` 备份于 `backups/admin.dist.backup.20260806_123208`） |
 
 回滚后端：`cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260805_2029 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1`（bind-mount 需原位覆盖，禁止 docker cp 直替）。
 回滚前端：`docker cp` 旧 dist 目录原子替换 + `nginx -s reload`（见 `scripts/deploy-frontend.sh` 同款 11 步流程）。
