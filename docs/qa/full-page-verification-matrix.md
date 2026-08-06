@@ -925,3 +925,20 @@
 > 已知外部依赖：H2 CAS 完整 ticket 校验需 CAS 服务器环境；D11.4/G1.3 TTS
 > 生成需配置 MiniMax key（降级路径已验证）。staging 容器 /uploads 未持久化，
 > 重建后历史上传文件丢失（部署镜像/卷需固化 uploads）。
+
+---
+
+## 2026-08-07 增量 2/3 部署后 · 四角色全页面回归 smoke（ego-browser 实测）
+
+> 证据：localhost:8088 本地隔离环境，SPA 逐页导航 + 会话级 error/unhandledrejection 钩子；
+> 判据 = URL 正确 + 内容渲染（表格/表单/空态均可）+ 0 ErrorBoundary + 0 error toast + 0 全局错误。
+
+| 角色 | 覆盖页面 | 结果 |
+|------|---------|------|
+| 管理端 | /admin/dashboard、/users、/departments、/majors、/classes、/courses、/course-categories、/tags、/chapters、/videos、/enrollments、/favorites、/questions、/exercises、/discussions、/reviews、/notifications、/courses/review、/bundles、/admin/users、/admin/logs、/admin/settings、/admin/platform-share-config、/admin/teacher-ratings、/admin/revenue、/admin/banners、/admin/teaching-classes、/admin/system-health、/admin/reports、/profile（29 页） | ✅ 29/29 渲染、0 错误 |
+| 教师端 | /teacher/dashboard、/teacher/courses、/teacher/videos、/teacher/exercises、/teacher/discussions、/teacher/questions、/teacher/students、/teacher/grades、/teacher/teaching-classes、/teacher/profile、/teacher/slides、/teacher/exams、/teacher/offline-list、/teacher/micro-specialties、/teacher/micro-specialties/invites、/teacher/micro-specialties/my-proposals（16 页） | ✅ 16/16 渲染、0 错误 |
+| 教务端 | /academic/dashboard、/academic/stats、/academic/enrollments、/academic/micro-specialties/{review,proposals,featured,cross-dept,class-import,gold,storage-review}（10 页） | ✅ 10/10 渲染、0 错误 |
+| 学生端 | /student/courses、/student/my-courses、/student/training、/student/learning、/student/learning-stats、/student/notifications、/student/exams、/student/profile、/student/report、/student/favorites、/student/orders、/student/my-micro-specialties、/student/discussions、/student/reviews、/student/settings、/student/achievements、/student/bundles（17 页） | ✅ 17/17 渲染（紧凑文本为空态属正常）、0 错误 |
+
+**合计：72/72 页面，0 console 错误 / 0 4xx-5xx toast / 0 ErrorBoundary。**
+功能点级交互证据见各节原有 ✅（474 项，含 D11/G1 课件链路、E 学生端、F 微专业等）。
