@@ -79,7 +79,7 @@
     </header>
 
     <!-- Upload Zone -->
-    <section v-if="!slide" class="upload-hero">
+    <section v-if="!coursewareV2 && !slide" class="upload-hero">
       <div class="create-guide">
         <div class="guide-step active">
           <span class="step-num">1</span>
@@ -119,7 +119,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.
     </section>
 
     <!-- Processing -->
-    <section v-else-if="slide.status === 0 || slide.status === 1" class="processing-card">
+    <section v-else-if="!coursewareV2 && (slide.status === 0 || slide.status === 1)" class="processing-card">
       <div class="processing-content">
         <div class="pulse-ring" />
         <h3>正在渲染幻灯片</h3>
@@ -129,7 +129,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.
     </section>
 
     <!-- Error -->
-    <section v-else-if="slide.status === 3" class="error-card">
+    <section v-else-if="!coursewareV2 && slide.status === 3" class="error-card">
       <el-result icon="error" title="渲染失败" :sub-title="slide.errorMessage || '未知错误'">
         <template #extra>
           <el-upload :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm">
@@ -140,7 +140,7 @@ drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.
     </section>
 
     <!-- Main Workspace -->
-    <section v-else-if="slide.status === 2" class="workspace">
+    <section v-else-if="!coursewareV2 && slide.status === 2" class="workspace">
       <!-- Progress Guide -->
       <div class="workspace-guide">
         <div class="guide-step done">
@@ -193,6 +193,10 @@ v-for="page in pages" :key="page.pageNumber"
 v-if="thumbUrls[page.pageNumber]" :src="thumbUrls[page.pageNumber]"
               :alt="'第' + page.pageNumber + '页'" class="thumb-img" loading="lazy"
 />
+            <div v-else-if="page.contentType === 'HTML_DIRECT'" class="thumb-html">
+              <el-icon :size="26"><Document /></el-icon>
+              <span>HTML 课件</span>
+            </div>
             <div v-else class="thumb-skeleton" />
             <div class="thumb-overlay">
               <span class="thumb-num">{{ page.pageNumber }}</span>
@@ -230,9 +234,13 @@ v-if="page.hasAnimation || page.hasEmbeddedMedia"
           }}</span>
         </div>
 
-        <!-- Image Preview -->
-        <div class="preview-box" v-if="previewUrl">
+        <!-- Image Preview (PPT 渲染页) -->
+        <div class="preview-box" v-if="previewUrl && selectedPage?.contentType !== 'HTML_DIRECT'">
           <img :src="previewUrl" class="preview-img" alt="预览" />
+        </div>
+        <!-- HTML 课件实时预览 (iframe srcdoc 直接渲染课件内容) -->
+        <div class="preview-box html-preview" v-if="selectedPage?.contentType === 'HTML_DIRECT' && selectedPage?.htmlContent">
+          <iframe :srcdoc="selectedPage.htmlContent" sandbox="allow-scripts" class="preview-iframe" title="HTML 课件预览" />
         </div>
 
         <!-- Extracted Text -->
@@ -597,7 +605,9 @@ async function loadThumbnails() {
   for (let i = 0; i < pages.value.length; i += CONCURRENCY) {
     const batch = pages.value.slice(i, i + CONCURRENCY)
     const urls = await Promise.all(batch.map(p =>
-      loadAuthResource(`/courses/${cid}/slides/pages/${p.pageNumber}/thumbnail`)
+      // HTML 课件无渲染图片，跳过占位图请求（模板渲染 HTML 图标块）
+      p.contentType === 'HTML_DIRECT' ? Promise.resolve(null)
+        : loadAuthResource(`/courses/${cid}/slides/pages/${p.pageNumber}/thumbnail`)
     ))
     batch.forEach((p, j) => { if (urls[j]) results[p.pageNumber] = urls[j] })
   }
@@ -639,6 +649,11 @@ function initPageSort() {
 }
 
 async function loadPreviewImage(page) {
+  // HTML 课件直接 iframe 预览，不请求后端占位图
+  if (page?.contentType === 'HTML_DIRECT') {
+    previewUrl.value = ''
+    return
+  }
   previewUrl.value = await loadAuthResource(`/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`)
 }
 
@@ -882,6 +897,8 @@ onUnmounted(() => { stopPolling(); stopProgressSim(); clearImageCache(); if (sor
 
 .preview-box { margin: var(--space-2-5) var(--space-3-5); border: 1px solid var(--el-border-color-light); border-radius: var(--radius-md); overflow: hidden; }
 .preview-img { width: 100%; display: block; }
+.preview-iframe { width: 100%; min-height: 60vh; border: 0; background: #fff; display: block; }
+.thumb-html { width: 100%; aspect-ratio: 16 / 9; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: var(--el-fill-color-light); color: var(--el-text-color-secondary); font-size: 12px; }
 
 .text-section { padding: var(--space-1) var(--space-4); }
 .section-label { font-size: var(--text-xs); font-weight: var(--weight-semibold); color: var(--el-text-color-placeholder); text-transform: uppercase; letter-spacing: var(--tracking-wide); }

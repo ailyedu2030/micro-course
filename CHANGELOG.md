@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (课件管理页预览回归：useFeatureFlag 非 ref 致 v2 恒渲染/旧版头部隐藏 + HTML 课件真实预览)
+
+> 2026-08-06 用户上报 PPT 课件管理页"没有预览功能"（HTML 课件 section 573）。
+
+- `useFeatureFlag.js`：`coursewareV2` 由普通对象改为 `ref()`——此前模板中对象恒 truthy，
+  v2 工作台永远渲染、旧版头部（含"预览/替换/更多"）永远隐藏、开关 v-model 失效（P1-C 回归）
+- `SlideManage.vue`：旧版各 section 补 `!coursewareV2` 门控（v2 开启时不再新旧 UI 并存）；
+  HTML_DIRECT 页编辑器预览改真实 `iframe srcdoc`（原为后端"第N页"占位图），缩略图改 HTML 图标块
+- 新增 `useFeatureFlag.test.js` 3 用例（isRef/持久化/模板解包语义），单测 215/215
+- 本地 ego-browser 真实交互复测：旧版头部按钮恢复、编辑器 iframe 渲染 HTML、
+  头部"预览"全屏 SlidePlayer 渲染 HTML、v2 开关切换互斥正常
+
 ### Fixed (部署镜像固化：PPT 渲染中文字体 + 可靠镜像源)
 
 > 2026-08-05 PR #184 部署后收尾：生产只读审计确认 ffmpeg/uploads 卷已具备，
