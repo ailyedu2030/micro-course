@@ -4,6 +4,8 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateRequest;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateResponse;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
@@ -24,6 +26,10 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
+import com.microcourse.plugin.interactive.flow.FlowEngine;
+import com.microcourse.plugin.interactive.flow.FlowContext;
+import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.entity.CourseSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -64,6 +70,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
     private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
+    private final FlowEngine flowEngine;
+    private final CourseSectionRepository courseSectionRepository;
 
     /** MiniMax 官方模型（application.yml 契约，R-6） */
     private static final List<String> TTS_MODELS = java.util.List.of(
@@ -87,7 +95,9 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        SlideHtmlUnitMapper unitMapper,
                                        SlideHtmlSegmentScriptMapper segmentScriptMapper,
                                        SlideHtmlSegmentAudioMapper segmentAudioMapper,
-                                       com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache) {
+                                       com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache,
+                                       FlowEngine flowEngine,
+                                       CourseSectionRepository courseSectionRepository) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -96,6 +106,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
         this.audioStreamCache = audioStreamCache;
+        this.flowEngine = flowEngine;
+        this.courseSectionRepository = courseSectionRepository;
     }
 
     @Override
@@ -283,6 +295,37 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         vo.setDefaultModel("speech-2.8-hd");
         vo.setDefaultVoice("female-shaonv");
         return vo;
+    }
+
+    @Override
+    public FlowEvaluateResponse evaluateFlow(Long courseId, Long sectionId, FlowEvaluateRequest request) {
+        if (courseId == null || sectionId == null || request == null || request.getCurrentPageId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "courseId / sectionId / currentPageId 必填");
+        }
+        // IDOR：校验 section 归属 course（复用 CoursewareTree 的防护语义）
+        CourseSection section = courseSectionRepository.selectById(sectionId);
+        if (section == null || !courseId.equals(section.getCourseId())) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
+        }
+        FlowContext context = new FlowContext(
+                request.getCurrentPageId(),
+                com.microcourse.util.SecurityUtil.getCurrentUserIdOpt(),
+                request.getUserProgress(),
+                request.getLastQuizId(),
+                request.getLastQuizAnswer());
+        Long next = flowEngine.decideNextPage(sectionId, context);
+        if (next == null) {
+            return new FlowEvaluateResponse(null, "LINEAR");
+        }
+        // 命中的规则类型（供前端展示/日志）
+        String matchedType = flowEngine.listFlows(sectionId).stream()
+                .filter(f -> f.getFromPageId().equals(request.getCurrentPageId()))
+                .filter(f -> f.getToPageId() != null && f.getToPageId().equals(next))
+                .map(f -> f.getFlowType())
+                .findFirst().orElse("NEXT");
+        return new FlowEvaluateResponse(next, matchedType);
     }
 
     // ====== Converters ======

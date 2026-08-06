@@ -44,11 +44,17 @@
         </template>
       </el-table-column>
       <el-table-column prop="priority" label="优先级" width="80" />
+      <el-table-column label="操作" width="140" fixed="right">
+        <template #default="{ row }">
+          <el-button size="small" text type="primary" @click="openEdit(row)">编辑</el-button>
+          <el-button size="small" text type="danger" @click="handleDelete(row)">删除</el-button>
+        </template>
+      </el-table-column>
     </el-table>
     <el-empty v-else description="暂无跳转规则 (默认线性)" :image-size="80" />
 
     <!-- 新建对话框 -->
-    <el-dialog v-model="showCreate" title="新建页间跳转规则" width="520px">
+    <el-dialog v-model="showCreate" :title="editingId ? '编辑页间跳转规则' : '新建页间跳转规则'" width="520px">
       <el-form label-position="top" :model="form">
         <el-form-item label="类型">
           <el-radio-group v-model="form.flowType">
@@ -82,7 +88,9 @@
       </el-form>
       <template #footer>
         <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleCreate">创建</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave">
+          {{ editingId ? '保存' : '创建' }}
+        </el-button>
       </template>
     </el-dialog>
   </div>
@@ -92,7 +100,8 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Connection, Plus, ArrowRight } from '@element-plus/icons-vue'
-import { listPptFlows, createPptFlow } from '../api/pptCourseware'
+import { listPptFlows, createPptFlow, updatePptFlow, deletePptFlow } from '../api/pptCourseware'
+import { ElMessageBox } from 'element-plus'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -103,6 +112,7 @@ const props = defineProps({
 const flows = ref([])
 const showCreate = ref(false)
 const saving = ref(false)
+const editingId = ref(null)
 const form = ref({
   flowType: 'NEXT',
   fromPageId: null,
@@ -119,21 +129,56 @@ async function load() {
 }
 
 function openCreate() {
+  editingId.value = null
   form.value = { flowType: 'NEXT', fromPageId: null, toPageId: null, dependsOnQuizId: null, conditionExpression: '', priority: 0, description: '' }
   showCreate.value = true
 }
 
-async function handleCreate() {
+function openEdit(row) {
+  editingId.value = row.id
+  form.value = {
+    flowType: row.flowType,
+    fromPageId: row.fromPageId,
+    toPageId: row.toPageId,
+    dependsOnQuizId: row.dependsOnQuizId,
+    conditionExpression: row.conditionExpression || '',
+    priority: row.priority ?? 0,
+    description: row.description || ''
+  }
+  showCreate.value = true
+}
+
+async function handleSave() {
   saving.value = true
   try {
-    await createPptFlow(props.courseId, props.sectionId, form.value)
-    ElMessage.success('跳转规则已创建')
+    if (editingId.value) {
+      await updatePptFlow(props.courseId, editingId.value, form.value)
+      ElMessage.success('跳转规则已更新')
+    } else {
+      await createPptFlow(props.courseId, props.sectionId, form.value)
+      ElMessage.success('跳转规则已创建')
+    }
     showCreate.value = false
     await load()
   } catch (e) {
-    ElMessage.error('创建失败: ' + (e.message || '未知错误'))
+    ElMessage.error((editingId.value ? '更新' : '创建') + '失败: ' + (e.message || '未知错误'))
   } finally {
     saving.value = false
+  }
+}
+
+async function handleDelete(row) {
+  try {
+    await ElMessageBox.confirm(`确定删除这条跳转规则（#${row.id}）？`, '确认删除', { type: 'warning' })
+  } catch {
+    return
+  }
+  try {
+    await deletePptFlow(props.courseId, row.id)
+    ElMessage.success('跳转规则已删除')
+    await load()
+  } catch (e) {
+    ElMessage.error('删除失败: ' + (e.message || '未知错误'))
   }
 }
 

@@ -18,10 +18,18 @@
 v-for="(p, i) in pages" :key="i"
             class="thumb-dot" :class="{ active: i === current, 'has-audio': p.audioDuration }"
             @click="goTo(i)" :aria-label="'第' + (i + 1) + '页'"
+            :title="pageDurationText(p)"
 />
         </div>
       </div>
       <div class="header-right">
+        <button
+          class="btn-icon" :class="{ active: showSubtitle }"
+          @click="showSubtitle = !showSubtitle" :aria-label="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
+          :title="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
+        >
+          <el-icon :size="16"><Document /></el-icon>
+        </button>
         <button
 class="btn-icon btn-auto" :class="{ active: autoMode }"
           @click="autoMode = !autoMode" :aria-label="autoMode ? '关闭自动播放' : '开启自动播放'"
@@ -182,6 +190,15 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
             @click="seekAudioByClick"
             @keydown="seekAudioByKeydown"
           >
+            <!-- P2-4：HTML 分段边界刻度 -->
+            <div v-if="segmentMode && segmentBoundaries.length > 1" class="progress-segments">
+              <span
+                v-for="(b, i) in segmentBoundaries"
+                :key="i"
+                class="segment-tick"
+                :style="{ left: b + '%' }"
+              />
+            </div>
             <div class="progress-fill" :style="{ width: audioProgress + '%' }" />
             <div class="progress-thumb" :style="{ left: audioProgress + '%' }" />
           </div>
@@ -201,6 +218,14 @@ v-for="s in speeds" :key="s"
         </div>
       </div>
     </footer>
+
+    <!-- P3-2：讲述稿字幕跟随 -->
+    <transition name="hint-fade">
+      <div v-if="showSubtitle && subtitleText" class="subtitle-bar" aria-live="polite">
+        <span class="subtitle-label">讲述稿</span>
+        <span class="subtitle-text">{{ subtitleText }}</span>
+      </div>
+    </transition>
 
     <!-- Hidden Audio -->
     <audio ref="audioRef" @timeupdate="onTimeUpdate" @ended="onAudioEnded" @loadedmetadata="onAudioLoaded" />
@@ -233,10 +258,11 @@ import { ref, computed, onMounted, onUnmounted, nextTick, reactive, watch } from
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
+import { evaluateFlow } from '@/plugins/interactive/api/queryCourseware'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -260,6 +286,7 @@ const audioProgress = ref(0)
 const autoCountdown = ref(0)
 const transitionName = ref('slide-next')
 const showKeyboardHint = ref(false)
+const showSubtitle = ref(true)
 const playerRef = ref(null)
 const audioRef = ref(null)
 const imageUrls = ref({})
@@ -289,6 +316,28 @@ const unlocked = ref(false)          // autoplay 解锁（首次用户交互）
 let lastStatePush = 0                // 父→iframe 时间消息节流（~4Hz，R-9）
 let iframeReadyV2 = false            // v2 握手完成
 let courseCompleted = false          // 全部播完（完成态，R-10）
+
+// P3-2：讲述稿字幕（PPT=当前页讲述稿；HTML=当前段讲述稿）
+const subtitleText = computed(() => {
+  if (segmentMode.value) {
+    const seg = segments.value[activeSegmentIndex.value]
+    return seg?.scriptText || seg?.text || ''
+  }
+  return currentPage.value?.narrationScript || ''
+})
+
+// P2-4：HTML 段边界百分比刻度（基于各段 durationMs 累计）
+const segmentBoundaries = computed(() => {
+  const total = segments.value.reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
+  if (total <= 0) return []
+  const out = []
+  let acc = 0
+  for (let i = 0; i < segments.value.length - 1; i++) {
+    acc += (segments.value[i]?.audio?.durationMs || 0)
+    out.push(Math.min(99, Math.round((acc / total) * 1000) / 10))
+  }
+  return out
+})
 
 let pageNavLock = false
 
@@ -386,7 +435,17 @@ function sendStateV2(payload) {
 }
 
 function sendSegmentActivated(index) {
-  sendStateV2({ state: 'segment-activated', index })
+  // 协议统一使用 1 基段号（与 data-segment / segment.index 一致）
+  sendStateV2({ state: 'segment-activated', index: posToSegIndex(index) })
+}
+
+// 数组位置(0 基) ↔ 段号(1 基) 换算
+function segIndexToPos(segIndex) {
+  if (segIndex == null) return -1
+  return segments.value.findIndex(s => s.index === segIndex)
+}
+function posToSegIndex(pos) {
+  return segments.value[pos]?.index ?? pos
 }
 
 function sendLoadedV2() {
@@ -403,6 +462,64 @@ function sendLoadedV2() {
     })),
     totalDurationMs: segments.value.reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
   })
+}
+
+function pageDurationText(p) {
+  const ms = p?.audio?.durationMs || (p?.audioDuration != null ? p.audioDuration * 1000 : 0)
+  if (!ms) return ''
+  return formatTime(ms / 1000)
+}
+
+// P1-1：flow 求值后翻页（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），失败退化为线性
+async function advanceToNextPage(expectedGen) {
+  const page = currentPage.value
+  if (page?.flows?.length && page.id != null && sectionId.value != null) {
+    try {
+      const res = await evaluateFlow(courseId.value, sectionId.value, {
+        currentPageId: page.id,
+        userProgress: Math.min(1, (current.value + 1) / Math.max(1, pages.value.length))
+      })
+      const nextId = res.data?.nextPageId
+      if (nextId != null) {
+        const idx = pages.value.findIndex(p => p.id === nextId)
+        if (idx >= 0 && idx !== current.value) {
+          goTo(idx)
+          return
+        }
+      }
+    } catch { /* 求值失败退化为线性 */ }
+  }
+  if (expectedGen !== currentAudioSrcGen.value) return
+  goTo(current.value + 1)
+}
+
+// P3-3：系统媒体会话（锁屏/系统媒体面板控制）
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return
+  try {
+    navigator.mediaSession.setActionHandler('play', () => playAudio())
+    navigator.mediaSession.setActionHandler('pause', () => pauseAudio())
+    navigator.mediaSession.setActionHandler('seekto', (e) => {
+      if (audioRef.value && e.seekTime != null) audioRef.value.currentTime = e.seekTime
+    })
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
+      if (audioRef.value) audioRef.value.currentTime = Math.max(0, audioRef.value.currentTime - 10)
+    })
+    navigator.mediaSession.setActionHandler('seekforward', () => {
+      if (audioRef.value) audioRef.value.currentTime = Math.min(audioDuration.value, audioRef.value.currentTime + 10)
+    })
+  } catch { /* 部分浏览器不支持个别 action，忽略 */ }
+}
+
+function updateMediaSession() {
+  if (!('mediaSession' in navigator) || !navigator.mediaSession) return
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: `${current.value + 1}/${pages.value.length} · ${(subtitleText.value || '课件播放').slice(0, 60)}`,
+      artist: '微课平台'
+    })
+    navigator.mediaSession.playbackState = playing.value ? 'playing' : 'paused'
+  } catch { /* 忽略 */ }
 }
 
 function onSlideAudioMessage(event) {
@@ -432,19 +549,31 @@ function onSlideAudioMessage(event) {
         sendLoadedV2()
         break
       case 'play':
-        playSegment(msg.index != null ? msg.index : (activeSegmentIndex.value || 0))
+        playSegment(msg.index != null ? segIndexToPos(msg.index) : (activeSegmentIndex.value || 0))
         break
       case 'pause':
         pauseAudio()
         break
       case 'seek':
-        playSegment(msg.index != null ? msg.index : (activeSegmentIndex.value || 0), msg.time)
+        playSegment(msg.index != null ? segIndexToPos(msg.index) : (activeSegmentIndex.value || 0), msg.time)
         break
       case 'set-speed':
         if (msg.rate !== undefined) setSpeed(msg.rate)
         break
       case 'segment-active':
-        playSegment(msg.index)
+        // P2-3：iframe 点击段 → 先高亮反馈（即使未解锁），再按解锁状态播放
+        {
+          const pos = segIndexToPos(msg.index)
+          if (segmentMode.value && pos >= 0) {
+            activeSegmentIndex.value = pos
+            sendSegmentActivated(pos)
+            if (unlocked.value) {
+              playSegment(pos)
+            } else {
+              audioStatus.value = 'ready'
+            }
+          }
+        }
         break
       case 'get-state':
         sendStateV2({
@@ -507,7 +636,7 @@ function onSlideAudioMessage(event) {
       })
       sendStateV2({
         state: playing.value ? 'playing' : 'paused',
-        segmentIndex: activeSegmentIndex.value,
+        segmentIndex: posToSegIndex(activeSegmentIndex.value),
         time: audioTime.value,
         duration: audioDuration.value
       })
@@ -546,9 +675,10 @@ function playSegment(index, time) {
   audioEl.play().then(() => {
     playing.value = true
     audioStatus.value = 'ready'
+    updateMediaSession()
     sendStateV2({
       state: 'playing',
-      segmentIndex: index,
+      segmentIndex: posToSegIndex(index),
       time: time || 0,
       duration: seg.audio.durationMs ? seg.audio.durationMs / 1000 : 0
     })
@@ -562,10 +692,11 @@ function playSegment(index, time) {
 function pauseAudio() {
   if (audioRef.value) audioRef.value.pause()
   playing.value = false
+  updateMediaSession()
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'paused', time: audioTime.value, duration: audioDuration.value })
   sendStateV2({
     state: 'paused',
-    segmentIndex: activeSegmentIndex.value,
+    segmentIndex: posToSegIndex(activeSegmentIndex.value),
     time: audioTime.value,
     duration: audioDuration.value
   })
@@ -870,10 +1001,11 @@ function playAudio() {
   if (!unlocked.value) { audioStatus.value = 'ready'; return }
   audioRef.value.play().then(() => {
     playing.value = true
+    updateMediaSession()
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'playing', time: audioTime.value, duration: audioDuration.value })
     sendStateV2({
       state: 'playing',
-      segmentIndex: activeSegmentIndex.value,
+      segmentIndex: posToSegIndex(activeSegmentIndex.value),
       time: audioTime.value,
       duration: audioDuration.value
     })
@@ -909,7 +1041,7 @@ function onTimeUpdate() {
     }
     sendStateV2({
       state: 'time-update',
-      segmentIndex: activeSegmentIndex.value,
+      segmentIndex: posToSegIndex(activeSegmentIndex.value),
       time: audioTime.value,
       duration: audioDuration.value,
       progress: audioProgress.value
@@ -932,6 +1064,7 @@ function onAudioLoaded() {
     audioStatus.value = 'ready'
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'loaded', duration: audioDuration.value })
     sendLoadedV2()
+    updateMediaSession()
   }
 }
 function onAudioEnded() {
@@ -943,7 +1076,7 @@ function onAudioEnded() {
   if (segmentMode.value) {
     const next = activeSegmentIndex.value + 1
     if (next < segments.value.length) {
-      sendStateV2({ state: 'ended', segmentIndex: activeSegmentIndex.value, nextIndex: next })
+      sendStateV2({ state: 'ended', segmentIndex: posToSegIndex(activeSegmentIndex.value), nextIndex: posToSegIndex(next) })
       activeSegmentIndex.value = next
       if (autoMode.value && unlocked.value) {
         autoAdvanceTimer = setTimeout(() => {
@@ -952,12 +1085,12 @@ function onAudioEnded() {
         }, 500)
       }
     } else {
-      sendStateV2({ state: 'ended', segmentIndex: activeSegmentIndex.value, nextIndex: null })
+      sendStateV2({ state: 'ended', segmentIndex: posToSegIndex(activeSegmentIndex.value), nextIndex: null })
       if (autoMode.value) {
         if (current.value < pages.value.length - 1) {
           autoAdvanceTimer = setTimeout(() => {
             if (expectedGen !== currentAudioSrcGen.value) return
-            goTo(current.value + 1)
+            advanceToNextPage(expectedGen)
           }, 1500)
         } else if (!courseCompleted) {
           courseCompleted = true
@@ -973,7 +1106,7 @@ function onAudioEnded() {
   if (autoMode.value && current.value < pages.value.length - 1) {
     autoAdvanceTimer = setTimeout(() => {
       if (expectedGen !== currentAudioSrcGen.value) return
-      goTo(current.value + 1)
+      advanceToNextPage(expectedGen)
     }, 1500)
   } else if (autoMode.value && !courseCompleted) {
     courseCompleted = true
@@ -1079,6 +1212,7 @@ async function markSlideComplete() {
 // P0-2: 翻到最后一页时触发完成标记
 // P1C-019: 单页课件浏览后也应标记完成 — 移除 pages.length <= 1 的提前返回
 watch(current, (newVal) => {
+  updateMediaSession()
   if (newVal >= pages.value.length - 1) markSlideComplete()
 })
 
@@ -1086,6 +1220,7 @@ onMounted(async () => {
   // R-4：首次用户交互解锁自动播放（沙箱 iframe 内点击不构成父页激活，必须父页捕获）
   playerRef.value?.addEventListener('pointerdown', unlockAutoplay, { once: true })
   playerRef.value?.addEventListener('keydown', unlockAutoplay, { once: true })
+  setupMediaSession()
   await ensureProgress()
   await loadPages()
   if (pages.value.length > 0) loadAudio(0)
@@ -1291,6 +1426,24 @@ onUnmounted(() => {
   transform: translate(-50%, -50%) scale(.6); opacity: 0;
   transition: all 200ms ease;
 }
+.progress-segments { position: absolute; inset: 0; pointer-events: none; }
+.segment-tick {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(255,255,255,.5); transform: translateX(-.5px);
+}
+
+/* P3-2 讲述稿字幕 */
+.subtitle-bar {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 24px 8px; padding: 10px 16px; border-radius: 10px;
+  background: rgba(10,10,15,.88); border: 1px solid var(--player-border);
+  backdrop-filter: blur(12px); max-height: 120px; overflow-y: auto;
+}
+.subtitle-label {
+  flex-shrink: 0; font-size: 12px; color: var(--player-accent);
+  font-weight: 600; padding-top: 2px; user-select: none;
+}
+.subtitle-text { font-size: 13px; line-height: 1.7; color: var(--player-text); white-space: pre-wrap; }
 
 .speed-group { display: flex; gap: 2px; background: rgba(255,255,255,.05); border-radius: var(--radius-sm); padding: 2px; }
 .speed-chip {

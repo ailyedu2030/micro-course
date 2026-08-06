@@ -11,6 +11,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
@@ -131,5 +133,20 @@ public class CoursewareQueryController {
     @GetMapping("/tts-options")
     public com.microcourse.dto.R<com.microcourse.plugin.interactive.dto.TtsOptionsVO> ttsOptions() {
         return com.microcourse.dto.R.ok(queryService.getTtsOptions());
+    }
+
+    /**
+     * PPT 页间跳转求值（P1-1 / R-5）：
+     * POST /api/courses/{courseId}/courseware/{sectionId}/flow/evaluate
+     * 播放器传 {currentPageId, userProgress?, lastQuizId?, lastQuizAnswer?}，
+     * 后端复用 FlowEngine 求值（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），响应 {nextPageId, matchedType}。
+     */
+    @PostMapping("/{sectionId}/flow/evaluate")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public com.microcourse.dto.R<com.microcourse.plugin.interactive.dto.FlowEvaluateResponse> evaluateFlow(
+            @PathVariable Long courseId,
+            @PathVariable Long sectionId,
+            @RequestBody com.microcourse.plugin.interactive.dto.FlowEvaluateRequest request) {
+        return com.microcourse.dto.R.ok(queryService.evaluateFlow(courseId, sectionId, request));
     }
 }

@@ -701,7 +701,91 @@ public class SlideServiceImpl implements SlideService {
                 ? "AUDIO_READY"
                 : (readyCount > 0 || generating) ? "AUDIO_GENERATING" : "PENDING");
         vo.setNarrationStatusText(SlidePageVO.narrationStatusText(vo.getNarrationStatus()));
+        // P2-2：读时增强 —— marker 注入 data-segment + 高亮 CSS + bridge.js（不落库）
+        String html = vo.getHtmlContent();
+        if (html != null && !segmentVos.isEmpty()) {
+            vo.setHtmlContent(enhanceHtmlSegments(html, segmentVos));
+        }
         return vo;
+    }
+
+    /**
+     * P2-2（方案 §5.2/§8.2）：为 HTML 课件注入分段标记与平台桥接脚本。
+     * - 有 segment_marker（如 "seg-1"）：给对应 id 元素补 data-segment="N"
+     * - 无 marker：按顺序给前 N 个标题/段落元素补 data-segment
+     * - 注入 .active 高亮 CSS 与 bridge.js（点击段→segment-active；接收 segment-activated 高亮）
+     * 只读增强（入播放器时组装），不写库，不经过 sanitize 白名单（教师内容不被改）。
+     */
+    private String enhanceHtmlSegments(String html, List<HtmlSegmentVO> segments) {
+        String out = html;
+        int autoCursor = 0;
+        for (HtmlSegmentVO seg : segments) {
+            int idx = seg.getIndex();
+            String marker = seg.getMarker();
+            if (marker != null && !marker.isBlank()) {
+                String idAttr = "id=\"" + marker + "\"";
+                String idAttrSingle = "id='" + marker + "'";
+                if (out.contains(idAttr)) {
+                    out = out.replace(idAttr, idAttr + " data-segment=\"" + idx + "\"");
+                    continue;
+                }
+                if (out.contains(idAttrSingle)) {
+                    out = out.replace(idAttrSingle, idAttrSingle + " data-segment=\"" + idx + "\"");
+                    continue;
+                }
+            }
+            // 无 marker（或 marker 未命中）：按顺序给 h1-h3/section/p 元素注入
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("(?is)(<(h[1-3]|section|p)\\b[^>]*?)>")
+                    .matcher(out);
+            int target = 0;
+            while (m.find()) {
+                if (target == autoCursor) {
+                    String tag = m.group(1);
+                    String replacement = (tag.contains("data-segment")
+                            ? tag : tag + " data-segment=\"" + idx + "\"") + ">";
+                    out = out.substring(0, m.start()) + replacement + out.substring(m.end());
+                    autoCursor++;
+                    break;
+                }
+                target++;
+            }
+            autoCursor++;
+        }
+
+        String css = "<style>"
+                + "[data-segment]{scroll-margin-top:12px;transition:box-shadow .25s ease,background-color .25s ease}"
+                + "[data-segment].active{box-shadow:0 0 0 3px #6366f1;background:rgba(99,102,241,.10)}"
+                + "</style>";
+        StringBuilder js = new StringBuilder();
+        js.append("<script>(function(){")
+                .append("var segs=").append(toJsonSegments(segments)).append(";")
+                .append("function post(m){parent.postMessage(m,'*')}")
+                .append("function ready(){post({type:'slide-audio-v2',version:2,action:'ready',segments:segs})}")
+                .append("function onReady(){if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',ready)}else{ready()}}")
+                .append("document.addEventListener('click',function(e){var el=e.target&&e.target.closest?e.target.closest('[data-segment]'):null;if(el){post({type:'slide-audio-v2',version:2,action:'segment-active',index:Number(el.getAttribute('data-segment'))})}});")
+                .append("window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='slide-audio-state-v2')return;if(m.state==='segment-activated'&&m.index!=null){document.querySelectorAll('[data-segment]').forEach(function(n){n.classList.toggle('active',Number(n.getAttribute('data-segment'))===m.index)})}});")
+                .append("onReady();})();</script>");
+        String bridge = css + js;
+        int idx = out.lastIndexOf("</body>");
+        if (idx < 0) return out + bridge;
+        return out.substring(0, idx) + bridge + out.substring(idx);
+    }
+
+    private String toJsonSegments(List<HtmlSegmentVO> segments) {
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < segments.size(); i++) {
+            HtmlSegmentVO s = segments.get(i);
+            if (i > 0) sb.append(",");
+            sb.append("{\"index\":").append(s.getIndex())
+                    .append(",\"marker\":").append(s.getMarker() != null ? "\"" + escapeJson(s.getMarker()) + "\"" : "null")
+                    .append("}");
+        }
+        return sb.append("]").toString();
+    }
+
+    private String escapeJson(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     private PageAudioVO toPageAudioVO(Long courseId, SlidePptPageAudio a) {

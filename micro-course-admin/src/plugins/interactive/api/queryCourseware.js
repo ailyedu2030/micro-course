@@ -42,3 +42,26 @@ export function resolveAudioToken(courseId, token) {
 export function getTtsOptions(courseId) {
   return request({ method: 'GET', url: `/courses/${courseId}/courseware/tts-options` })
 }
+
+/**
+ * PPT 页间跳转求值（P1-1 / R-5）。
+ * payload: { currentPageId, userProgress?, lastQuizId?, lastQuizAnswer? }
+ * 返回 { nextPageId, matchedType }
+ */
+export function evaluateFlow(courseId, sectionId, payload) {
+  return request({ method: 'POST', url: `/courses/${courseId}/courseware/${sectionId}/flow/evaluate`, data: payload })
+}
+
+/**
+ * P3-1：v2 PPT 页 AI 讲述稿生成（后端真实 LLM，替代前端 mock）
+ */
+export function generatePptScriptAi(courseId, pageId) {
+  return request({ method: 'POST', url: `/courses/${courseId}/ppt/pages/${pageId}/scripts/ai-generate`, data: {} })
+}
+
+/**
+ * P3-1：v2 HTML 分段 AI 讲述稿生成（后端真实 LLM）
+ */
+export function generateHtmlSegmentScriptAi(courseId, unitId, idx) {
+  return request({ method: 'POST', url: `/courses/${courseId}/html/units/${unitId}/segments/${idx}/ai-generate`, data: {} })
+}

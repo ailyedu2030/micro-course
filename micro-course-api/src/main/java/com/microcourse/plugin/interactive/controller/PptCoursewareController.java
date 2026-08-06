@@ -156,6 +156,23 @@ public class PptCoursewareController {
         return R.ok(pptService.createFlow(dto));
     }
 
+    @PutMapping("/flows/{flowId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> updateFlow(@PathVariable Long courseId,
+                              @PathVariable Long flowId,
+                              @RequestBody PptFlowDTO dto) {
+        pptService.updateFlow(flowId, dto);
+        return R.ok();
+    }
+
+    @DeleteMapping("/flows/{flowId}")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> deleteFlow(@PathVariable Long courseId,
+                              @PathVariable Long flowId) {
+        pptService.deleteFlow(flowId);
+        return R.ok();
+    }
+
     // ====== Request bodies ======
 
     public record SaveScriptRequest(String scriptText, String voice, String ttsModel, Long createdBy) {}

@@ -8,6 +8,11 @@ vi.mock('@/plugins/interactive/api/slide', () => ({
   getSlidePages: vi.fn(() => Promise.resolve({ data: [] })),
 }))
 
+// P1：播放器新增 flow 求值依赖 —— 避免真实 request 链拉入 router
+vi.mock('@/plugins/interactive/api/queryCourseware', () => ({
+  evaluateFlow: vi.fn(() => Promise.resolve({ data: { nextPageId: null, matchedType: 'LINEAR' } })),
+}))
+
 // Mock auth image utility
 vi.mock('@/utils/authImage', () => ({
   loadAuthResource: vi.fn(() => Promise.resolve(null)),

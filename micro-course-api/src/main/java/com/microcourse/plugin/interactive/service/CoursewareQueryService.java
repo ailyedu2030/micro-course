@@ -2,6 +2,8 @@ package com.microcourse.plugin.interactive.service;
 
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateRequest;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateResponse;
 import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
 
 /**
@@ -41,4 +43,11 @@ public interface CoursewareQueryService {
      * 后端为唯一真相，前端下拉据此渲染；历史非法枚举（male-young 等）由 TTS 层别名映射。
      */
     TtsOptionsVO getTtsOptions();
+
+    /**
+     * PPT 页间跳转求值（P1-1 / R-5）。
+     * 复用后端 FlowEngine（NEXT / BRANCH_DEPENDS / SKIP_IF_KNOWN），
+     * 播放器只传上下文，不做任意表达式求值。
+     */
+    FlowEvaluateResponse evaluateFlow(Long courseId, Long sectionId, FlowEvaluateRequest request);
 }

@@ -210,6 +210,29 @@ class SlideServiceTest {
             assertEquals(1, vo.getSegments().size());
             assertEquals("AUDIO_READY", vo.getNarrationStatus());
         }
+
+        @Test
+        @DisplayName("P2: HTML 段注入 data-segment + bridge.js（读时增强）")
+        void getPages_V2HtmlInjectsSegmentBridge() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<html><body><h1 id=\"seg-1\">第一段</h1><p>内容A</p></body></html>");
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1); seg.setSegmentMarker("seg-1"); seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            SlideHtmlSegmentAudio segAudio = new SlideHtmlSegmentAudio();
+            segAudio.setId(7L); segAudio.setSegmentScriptId(6L); segAudio.setStatus("READY");
+            segAudio.setAudioToken("tok-html"); segAudio.setAudioDurationMs(15000);
+            when(htmlSegmentAudioMapper.listByScript(6L)).thenReturn(List.of(segAudio));
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+            String html = pages.get(0).getHtmlContent();
+            assertTrue(html.contains("data-segment=\"1\""));
+            assertTrue(html.contains("slide-audio-v2"));
+            assertTrue(html.contains("segment-activated"));
+        }
     }
 
     @Nested

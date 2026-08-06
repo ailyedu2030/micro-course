@@ -542,3 +542,25 @@
 ### F-2026-08-06-13 · D2 修复：ScriptEditor 补 `useUserStore` 导入（P1-C）
 
 - v2 讲述稿保存必现 `ReferenceError: useUserStore is not defined`（vite AutoImport 仅解析 Element Plus）。已补 `import { useUserStore } from '@/store/user'`。
+
+## 2026-08-07 · P1/P2/P3 实施（方案 §11 后续阶段，铁律：UX 至上）
+
+### F-2026-08-07-01 · P1：PPT 页间跳转（flow）驱动播放（D6 闭环）
+
+- **新增** `POST /api/courses/{cid}/courseware/{sectionId}/flow/evaluate`：复用后端 FlowEngine + FlowContext（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），IDOR 校验 section 归属 course，请求体 `{currentPageId, userProgress?, lastQuizId?, lastQuizAnswer?}`，响应 `{nextPageId, matchedType}`（R-5/R-12）。
+- **新增** flow CRUD：`PUT/DELETE /api/courses/{cid}/ppt/flows/{flowId}`（PptCoursewareService.updateFlow/deleteFlow）+ PptFlowEditor 编辑/删除操作列。
+- **播放器消费**：音频播完 `advanceToNextPage` 先求值 flow（存在规则时），失败/无规则退化为线性；`userProgress=(current+1)/total`（SKIP 语义）；页点条补每页时长 tooltip（P1-2）。
+
+### F-2026-08-07-02 · P2：HTML 分段标记 + 高亮 + 点击跳转（T2 完整化）
+
+- **读时增强**（`buildV2HtmlPage`→`enhanceHtmlSegments`，不落库）：有 `segment_marker` 给对应 id 元素补 `data-segment="N"`，无 marker 按顺序给 h1-h3/section/p 注入；注入 `.active` 高亮 CSS 与 bridge.js（ready 握手 / 点击 `[data-segment]`→`segment-active` / 接收 `segment-activated` 切换高亮）。
+- **播放器**：协议 v2 `segment-active`/`segment-activated` 已通（P0），进度条补段边界刻度（P2-4，`segmentBoundaries`）。
+- 单测：SlideServiceTest 断言 htmlContent 含 `data-segment="1"`、`slide-audio-v2`、`segment-activated`。
+
+### F-2026-08-07-03 · P3：AI 讲述稿真实化 + 字幕 + mediaSession + 移动端（R-7/R-16）
+
+- **真实 AI 生成**：新增 `AiScriptService`（LLM 兼容 Chat Completions，3 次重试 + 429/超时退避，provider 可配）+ `AiScriptController`（`POST /ppt/pages/{pageId}/scripts/ai-generate` 取相邻页上下文；`POST /html/units/{unitId}/segments/{idx}/ai-generate` 用段文本）；`ScriptEditor.handleAiGenerate` 由 mock 改为调后端（P3-1）。
+- **字幕跟随**（P3-2）：播放器底部字幕条（PPT=当前页讲述稿 / HTML=当前段 scriptText），头部可开关。
+- **mediaSession**（P3-3）：播放/暂停/seek 系统媒体控制 + 元数据（页进度 + 当前讲述稿标题）。
+- **移动端**（P3-4）：375px 布局回归列入验收。
+- precheck 白名单登记 `AiScriptController` / `AiScriptService`（.claude + .agents 同步）。

@@ -79,6 +79,7 @@ import { ElMessage } from 'element-plus'
 import { Document, Check, MagicStick, Clock } from '@element-plus/icons-vue'
 import { getActivePptScript, listPptScriptHistory, savePptScript } from '../api/pptCourseware'
 import { getActiveHtmlSegment, saveHtmlSegmentScript } from '../api/htmlCourseware'
+import { generatePptScriptAi, generateHtmlSegmentScriptAi } from '../api/queryCourseware'
 import { useUserStore } from '@/store/user'
 
 const props = defineProps({
@@ -173,14 +174,22 @@ async function handleSave() {
   }
 }
 
-// 模拟 AI 生成 (opencode 端集成时由后端调用)
 async function handleAiGenerate() {
   aiLoading.value = true
   try {
-    // 简化: 拼接 mock 文本 (真实 AI 由 opencode Skill 调用)
-    await new Promise(r => setTimeout(r, 800))
-    const mock = `【AI 生成】${scriptText.value || '(基于当前页面文本生成讲述稿)'}\n\n• 重点 1\n• 重点 2\n• 总结`
-    aiPreview.value = mock
+    // P3-1：接后端真实 LLM 接口（复用 DeepSeek/MiniMax 兼容 Chat Completions）
+    let res
+    if (props.pageType === 'PPT') {
+      res = await generatePptScriptAi(props.courseId, props.pageId)
+    } else {
+      res = await generateHtmlSegmentScriptAi(props.courseId, props.unitId, props.segmentIndex)
+    }
+    const script = (res.data || res)?.scriptText
+    if (!script) {
+      ElMessage.error('AI 生成返回为空，请重试')
+      return
+    }
+    aiPreview.value = script
   } finally {
     aiLoading.value = false
   }

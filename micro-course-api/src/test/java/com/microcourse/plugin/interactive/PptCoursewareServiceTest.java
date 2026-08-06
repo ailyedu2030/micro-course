@@ -225,4 +225,52 @@ class PptCoursewareServiceTest {
             assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), ex.getCode());
         }
     }
+
+    @Nested
+    @DisplayName("Flow CRUD（P1-3）")
+    class FlowCrud {
+
+        @Test
+        @DisplayName("updateFlow 更新可编辑字段并更新时间戳")
+        void updateFlowUpdatesFields() {
+            com.microcourse.plugin.interactive.entity.SlidePptFlow existing =
+                    new com.microcourse.plugin.interactive.entity.SlidePptFlow();
+            existing.setId(1L); existing.setFlowType("NEXT"); existing.setPriority(0);
+            when(flowMapper.selectById(1L)).thenReturn(existing);
+
+            com.microcourse.plugin.interactive.dto.PptFlowDTO dto =
+                    new com.microcourse.plugin.interactive.dto.PptFlowDTO();
+            dto.setFlowType("SKIP_IF_KNOWN");
+            dto.setPriority(5);
+            dto.setConditionExpression("user_progress >= 0.8");
+            dto.setToPageId(9L);
+            service.updateFlow(1L, dto);
+
+            assertEquals("SKIP_IF_KNOWN", existing.getFlowType());
+            assertEquals(5, existing.getPriority());
+            assertEquals("user_progress >= 0.8", existing.getConditionExpression());
+            assertEquals(9L, existing.getToPageId());
+            assertNotNull(existing.getUpdatedAt());
+            verify(flowMapper).updateById(existing);
+        }
+
+        @Test
+        @DisplayName("updateFlow 不存在抛异常")
+        void updateFlowMissingThrows() {
+            when(flowMapper.selectById(1L)).thenReturn(null);
+            assertThrows(BusinessException.class,
+                    () -> service.updateFlow(1L, new com.microcourse.plugin.interactive.dto.PptFlowDTO()));
+        }
+
+        @Test
+        @DisplayName("deleteFlow 删除成功 / 不存在抛异常")
+        void deleteFlowWorks() {
+            when(flowMapper.deleteById(1L)).thenReturn(1);
+            service.deleteFlow(1L);
+            verify(flowMapper).deleteById(1L);
+
+            when(flowMapper.deleteById(2L)).thenReturn(0);
+            assertThrows(BusinessException.class, () -> service.deleteFlow(2L));
+        }
+    }
 }
