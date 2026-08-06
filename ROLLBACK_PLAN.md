@@ -58,6 +58,20 @@
 
 > 部署验证：后端 16s 启动健康、`POST /html/sections/{id}/unit` 200、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
 
+### 2026-08-07 增量 3：AI 讲述稿 MMX 化 + 脚本保存/播放器图片/音频守卫/错误透传修复（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-08~12：LlmChatClient MMX 优先、created_by 兜底、TTS 守卫后端不变、零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0450 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（ScriptEditor/AudioManager/AudioPanel 错误透传 + 无脚本生成守卫 + SlidePlayer 图片修复） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload` |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0450` | md5 `b3e660b3…`（增量2） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-08~12 |
+
+> 部署验证：后端 16s 启动健康、AI 生成端点改用 MMX（无新凭据）、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |
