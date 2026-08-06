@@ -5,10 +5,11 @@ import request from '@/utils/request'
  * - .pptx → POI 异步渲染 PNG
  * - .html/.htm → HtmlSanitizer 消毒后入库
  */
-export function uploadSlide(courseId, file, onProgress, chapterId) {
+export function uploadSlide(courseId, file, onProgress, chapterId, sectionId) {
   const fd = new FormData()
   fd.append('file', file)
   if (chapterId) fd.append('chapterId', chapterId)
+  if (sectionId) fd.append('sectionId', sectionId)
   const isHtml = file.name && /\.(html?|htm)$/i.test(file.name)
   return request({
     method: 'POST',

@@ -572,3 +572,23 @@
 - **前端**：`deploy-frontend.sh` 部署新 bundle `index-y7MdGbbB.js`（旧 dist 备份 `admin.dist.backup.20260807_013414`），HTTP 200。
 - **验证**：新 bundle 生效、`/courseware/tts-options` 与 `/flow/evaluate` 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
 - **待办**：PR #193 合并待 GitHub Actions 恢复（今日基础设施故障 `Service Unavailable`，所有失败均非代码问题）；本地验证已全绿（后端 1136/0/0、前端 220/220、Playwright e2e 0 错误、预检 26/26）。回滚路径见 ROLLBACK_PLAN.md「2026-08-07 增量」。
+
+### F-2026-08-07-05 · v2 工作台缺预览入口 + 空状态上传死胡同（P1-C）
+
+- **根因**：`CoursewareWorkbench.vue`（新版四面板）头部注释声明"预览与发布"但从未实现；空状态下"上传 PPT/HTML 课件"按钮只弹 `ElMessage` 提示引用不存在的"底部上传按钮"（死胡同）。旧版头部预览按钮随 v2 渲染被替换，即用户反馈"课件管理页没有预览功能"的 v2 场景。
+- **修复**：工作台顶部新增「预览」按钮（PPT/HTML 均可用，渲染中禁用并给 tooltip），打开全屏 `SlidePreview`（复用学生播放器内核，与旧版一致）；PPT 空状态改为真实 `el-upload` 拖拽上传（沿用旧版大小/类型/MIME/魔数校验），上传后轮询 `getCoursewareTree` 至 `type !== EMPTY`（渲染中显示"正在后台渲染处理"而非误报"暂无课件"）；`handleUpload` 按文件类型分支——HTML 上传后自动切到 HTML 工作流并引导保存；课件类型按 section 记忆到 sessionStorage，刷新不丢失。
+- **验证**：本地 Playwright/ego-browser 实测——空状态渲染上传区且无预览按钮；上传 HTML → sectionId 正确落库 → 自动切 HTML 工作流 → 编辑器预载内容 → 保存 → 单元创建 → 分段脚本出现 → 预览按钮启用 → 全屏播放器渲染 1/1 页且无 console 错误。
+
+### F-2026-08-07-06 · 前端 uploadSlide 丢失 sectionId → 上传课件与课时失联（P0/P1-C）
+
+- **根因**：`api/slide.js uploadSlide(courseId, file, onProgress, chapterId)` 的 FormData 只追加 `chapterId`，从不追加 `sectionId`（SlideManage / Workbench / useSlideManager 均如此）。后端 `/slides/upload` 支持 sectionId 且 `uploadHtmlFile`/`upload` 按 (courseId, chapterId, sectionId) UPSERT，但前端从未传 → 管理页上传的 `course_slides`/`slide_pages` 落库 `section_id = NULL`，而 `getCoursewareTree`/`getPages` 按 `section_id` 查询 → 课时维度永远查不到刚上传的内容（树显示 EMPTY、页面列表为空）。
+- **修复**：`uploadSlide` 增加第 5 参 `sectionId`（有值才 append）；SlideManage.handleUpload 与 CoursewareWorkbench.handleUpload 均传 `route.query.sectionId`/`props.sectionId`（与 chapterId 同时传，兼容章节级查询）。
+- **横向扫描**：`useSlideManager`（章节级，无 section 上下文）保持传 chapterId；`TeacherSlideOverview`（课程/章节级上传）不受影响；后端两上传路径已验证均支持 sectionId。
+- **验证**：本地重传后 `course_slides.section_id=1`、`slide_pages.section_id=1`；`GET /slides/pages?sectionId=1` 返回页面；前端新增 2 条单测（含/不含 sectionId）。
+
+### F-2026-08-07-07 · createHtmlUnit 章节派生缺陷 → HTML 单元创建必 500（P0/P1-C）
+
+- **根因**：`HtmlCoursewareServiceImpl.createUnitFresh` 只在 `slide.chapter_id` 非空时能兜底派生 chapterId；课时级上传的 slide `chapter_id=NULL`（section_id 有值）→ `slide_html_units.chapter_id NOT NULL` 约束违反 → 保存 HTML 单元必现 `9999 Internal error`（日志：`null value in column "chapter_id"`）。该缺陷同时阻断 v2 HTML 工作流"上传→保存→分段脚本→预览"整条链路。
+- **修复**：`createUnitFresh` 增加第二级兜底——slide 无 chapterId 时通过 `CourseSectionRepository.selectById(sectionId)` 反查 section 所属 chapter；`courseId` 也优先从 slide 派生。
+- **横向扫描**：`updateUnit` 按已存在 unit id 更新，不受影响；PPT 路径无此表约束。
+- **验证**：新增单测 `createUnitDerivesChapterIdFromSection`（slide.chapterId=null → 从 section 派生 55）；后端全量 1137/0/0；本地 UI 实测保存单元成功（chapter_id=1、section_id=1）。

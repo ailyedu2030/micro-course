@@ -74,6 +74,7 @@ import { Document, Check, View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { getHtmlUnitBySection, createHtmlUnit, updateHtmlUnit } from '../api/htmlCourseware'
+import { getSlidePages } from '../api/slide'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -120,6 +121,19 @@ async function load() {
     htmlDirty.value = false
   } else {
     htmlContent.value = ''
+    // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
+    // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
+    try {
+      const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
+      const pages = pagesRes?.data || []
+      const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
+      if (htmlPage?.htmlContent) {
+        htmlContent.value = htmlPage.htmlContent
+        htmlDirty.value = true
+      }
+    } catch (e) {
+      // 预载失败不阻断编辑器，保持空内容
+    }
   }
 }
 

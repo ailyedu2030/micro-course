@@ -2,6 +2,7 @@ package com.microcourse.plugin.interactive;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
@@ -11,6 +12,7 @@ import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.service.impl.HtmlCoursewareServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +42,7 @@ class HtmlCoursewareServiceTest {
     private SlideHtmlUnitMapper unitMapper;
     private SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private SlideHtmlSegmentAudioMapper segmentAudioMapper;
+    private CourseSectionRepository sectionRepo;
     private HtmlCoursewareServiceImpl service;
 
     @BeforeEach
@@ -48,7 +51,8 @@ class HtmlCoursewareServiceTest {
         unitMapper = mock(SlideHtmlUnitMapper.class);
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
-        service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper, segmentAudioMapper);
+        sectionRepo = mock(CourseSectionRepository.class);
+        service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper, segmentAudioMapper, sectionRepo);
     }
 
     @Nested
@@ -159,6 +163,44 @@ class HtmlCoursewareServiceTest {
             ArgumentCaptor<SlideHtmlUnit> captor = ArgumentCaptor.forClass(SlideHtmlUnit.class);
             verify(unitMapper).insert(captor.capture());
             assertEquals(888L, captor.getValue().getSlideId(), "must persist resolved course slide id");
+        }
+
+        @Test
+        @DisplayName("createUnit derives chapterId from section when slide.chapterId is null (section-level upload)")
+        void createUnitDerivesChapterIdFromSection() {
+            when(unitMapper.findBySection(99L)).thenReturn(null);
+            // 课时级上传的 slide：section_id 有值、chapter_id 为 NULL
+            CourseSlide slide = new CourseSlide();
+            slide.setId(777L);
+            slide.setCourseId(1L);
+            slide.setSectionId(99L);
+            slide.setChapterId(null);
+            when(courseSlideMapper.selectById(777L)).thenReturn(slide);
+            // section 反查 chapter
+            CourseSection sec = new CourseSection();
+            sec.setId(99L);
+            sec.setCourseId(1L);
+            sec.setChapterId(55L);
+            when(sectionRepo.selectById(99L)).thenReturn(sec);
+            when(unitMapper.insert(any(SlideHtmlUnit.class))).thenAnswer(inv -> {
+                SlideHtmlUnit e = inv.getArgument(0);
+                e.setId(102L);
+                return 1;
+            });
+
+            SlideHtmlUnitDTO dto = new SlideHtmlUnitDTO();
+            dto.setSectionId(99L);
+            dto.setSlideId(777L);
+            dto.setHtmlContent("<p>section-level upload</p>");
+
+            service.createUnit(dto);
+
+            ArgumentCaptor<SlideHtmlUnit> captor = ArgumentCaptor.forClass(SlideHtmlUnit.class);
+            verify(unitMapper).insert(captor.capture());
+            assertEquals(55L, captor.getValue().getChapterId(),
+                    "chapterId must be derived from section to satisfy NOT NULL constraint");
+            assertEquals(1L, captor.getValue().getCourseId(),
+                    "courseId must be derived from slide");
         }
     }
 

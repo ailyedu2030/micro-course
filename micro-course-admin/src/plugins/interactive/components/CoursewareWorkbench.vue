@@ -27,9 +27,29 @@
           HTML 课件
         </el-radio-button>
       </el-radio-group>
-      <el-tag v-if="tree" :type="statusTagType(tree.narrationStatus)" size="large" effect="plain" class="cw-status-tag">
-        {{ statusLabel(tree.narrationStatus) }} · {{ tree.audioReadyCount }} 音频就绪
-      </el-tag>
+      <div class="cw-actions">
+        <el-tag v-if="tree" :type="statusTagType(tree.narrationStatus)" size="large" effect="plain" class="cw-status-tag">
+          {{ statusLabel(tree.narrationStatus) }} · {{ tree.audioReadyCount }} 音频就绪
+        </el-tag>
+        <el-tooltip
+          :disabled="!renderPending"
+          content="课件渲染中，完成后方可预览"
+          placement="top"
+        >
+          <span>
+            <el-button
+              v-if="tree && (tree.type !== 'EMPTY' || renderPending)"
+              type="primary"
+              plain
+              :icon="View"
+              :disabled="!previewReady"
+              @click="showPreview = true"
+            >
+              预览
+            </el-button>
+          </span>
+        </el-tooltip>
+      </div>
     </div>
 
     <!-- PPT 工作流 -->
@@ -139,25 +159,49 @@
 
     <!-- 空状态 -->
     <div v-else-if="tree?.type === 'EMPTY'" class="cw-empty">
-      <el-empty :description="`该 section 暂无${coursewareType === 'PPT' ? 'PPT' : 'HTML'}课件`">
-        <el-button type="primary" :icon="UploadFilled" @click="handleUpload">
-          上传 {{ coursewareType }} 课件
-        </el-button>
+      <el-empty
+        v-if="renderPending"
+        :description="`${coursewareType === 'PPT' ? 'PPT' : 'HTML'} 课件正在后台渲染处理…`"
+      >
+        <div class="cw-render-tip">渲染完成后本面板将自动显示课件内容，请稍候</div>
+      </el-empty>
+      <el-empty v-else :description="`该 section 暂无${coursewareType === 'PPT' ? 'PPT' : 'HTML'}课件`">
+        <el-upload
+          drag
+          :show-file-list="false"
+          :before-upload="handleUpload"
+          accept=".pptx,.html,.htm"
+          :disabled="uploading"
+          class="cw-upload-dragger"
+        >
+          <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+          <div class="el-upload__text">拖拽文件到此处，或 <em>点击上传</em></div>
+          <template #tip>
+            <div class="el-upload__tip">支持 .pptx（最大 50MB）和 .html（最大 5MB）</div>
+          </template>
+        </el-upload>
       </el-empty>
     </div>
+
+    <!-- 学生视角预览 -->
+    <el-dialog v-model="showPreview" title="学生视角预览" fullscreen :destroy-on-close="true" class="cw-preview-dialog">
+      <SlidePreview v-if="showPreview" :course-id="courseId" :section-id="sectionId" @close="showPreview = false" />
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Picture, Document, UploadFilled } from '@element-plus/icons-vue'
+import { Picture, Document, UploadFilled, View } from '@element-plus/icons-vue'
 import { getCoursewareTree } from '../api/queryCourseware'
+import { uploadSlide } from '../api/slide'
 import PptPageEditor from './PptPageEditor.vue'
 import HtmlBlockEditor from './HtmlBlockEditor.vue'
 import ScriptEditor from './ScriptEditor.vue'
 import AudioManager from './AudioManager.vue'
 import PptFlowEditor from './PptFlowEditor.vue'
+import SlidePreview from './SlidePreview.vue'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -165,14 +209,27 @@ const props = defineProps({
   sectionId: { type: Number, required: true }
 })
 
-const coursewareType = ref('PPT')
+const coursewareType = ref(sessionStorage.getItem(`cw_type_${props.sectionId}`) || 'PPT')
 const tree = ref(null)
 const activePageIdx = ref(null)
 const activePanel = ref('content')
+const showPreview = ref(false)
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const renderPending = ref(false)
+
+let renderPollTimer = null
 
 const activePage = computed(() => {
   if (!tree.value?.pages) return null
   return tree.value.pages.find(p => p.pageId === activePageIdx.value) || tree.value.pages[0]
+})
+
+const previewReady = computed(() => {
+  const t = tree.value
+  if (!t || t.type === 'EMPTY' || renderPending.value) return false
+  if (t.type === 'PPT') return (t.pages?.length || 0) > 0
+  return true
 })
 
 async function loadTree() {
@@ -196,23 +253,124 @@ function statusTagType(s) {
   return { PENDING: 'info', AUDIO_GENERATING: 'warning', AUDIO_READY: 'success' }[s] || 'info'
 }
 
-function handleUpload() {
-  ElMessage.info('请使用底部上传按钮上传新课件 (兼容旧 UI)')
-  // 实际跳转到上传面板 (此处留给用户操作)
+async function handleUpload(file) {
+  // 防并发：uploading 单值，并发上传会互相覆盖
+  if (uploading.value) {
+    ElMessage.warning('已有课件正在上传，请稍候')
+    return false
+  }
+  // 前端校验：文件大小和类型（与旧版 SlideManage 保持一致）
+  if (file.size > 50 * 1024 * 1024) {
+    ElMessage.warning('文件超过 50MB 限制')
+    return false
+  }
+  const lowerName = file.name.toLowerCase()
+  const isHtmlFile = lowerName.endsWith('.html') || lowerName.endsWith('.htm')
+  const isValidType = lowerName.endsWith('.pptx')
+    || lowerName.endsWith('.html')
+    || lowerName.endsWith('.htm')
+  if (!isValidType) {
+    ElMessage.warning('仅支持 .pptx / .html / .htm 格式')
+    return false
+  }
+  if (isHtmlFile
+      && file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('HTML 文件不能超过 5MB')
+    return false
+  }
+  if (lowerName.endsWith('.pptx')) {
+    const validMime = file.type === '' || file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    if (file.type && !validMime) {
+      ElMessage.warning('PPTX 文件 MIME 类型不匹配，请检查文件格式')
+      return false
+    }
+    try {
+      const slice = file.slice(0, 4)
+      const buf = await slice.arrayBuffer()
+      const header = new Uint8Array(buf)
+      if (header[0] !== 0x50 || header[1] !== 0x4B || header[2] !== 0x03 || header[3] !== 0x04) {
+        ElMessage.warning('PPTX 文件头校验失败：文件可能已损坏或不是有效的 PPTX 格式')
+        return false
+      }
+    } catch {
+      ElMessage.warning('PPTX 文件校验失败，请重试')
+      return false
+    }
+  }
+  uploading.value = true
+  uploadProgress.value = 0
+  try {
+    await uploadSlide(props.courseId, file, (e) => {
+      uploadProgress.value = Math.round((e.loaded / e.total) * 100)
+    }, props.chapterId ? Number(props.chapterId) : null, props.sectionId ? Number(props.sectionId) : null)
+    await loadTree()
+    if (isHtmlFile) {
+      // HTML 上传即完成（sanitize 入库）；单元需在「HTML 内容」中保存一次后创建，
+      // 编辑器会自动预载本次上传的内容，避免内容丢失。
+      coursewareType.value = 'HTML'
+      ElMessage.success('HTML 上传成功，内容已载入编辑器，请点击「保存」完成单元初始化')
+    } else {
+      ElMessage.success('上传成功，正在后台渲染...')
+      startRenderPolling()
+    }
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '上传失败')
+  } finally {
+    uploading.value = false
+  }
+  return false // 阻止 el-upload 默认上传行为
+}
+
+function startRenderPolling() {
+  stopRenderPolling()
+  renderPending.value = true
+  let count = 0
+  renderPollTimer = setInterval(async () => {
+    count++
+    try {
+      const res = await getCoursewareTree(props.courseId, props.sectionId)
+      const t = res.data || res
+      tree.value = t
+      if (t.type !== 'EMPTY') {
+        stopRenderPolling()
+        renderPending.value = false
+        ElMessage.success('课件处理完成')
+      }
+    } catch (e) {
+      // 渲染轮询失败不打断，下一轮重试
+    }
+    if (count > 30) {
+      stopRenderPolling()
+      renderPending.value = false
+      ElMessage.error('课件处理超时，请稍后刷新查看')
+    }
+  }, 3000)
+}
+
+function stopRenderPolling() {
+  if (renderPollTimer) {
+    clearInterval(renderPollTimer)
+    renderPollTimer = null
+  }
 }
 
 watch(() => [props.courseId, props.sectionId], loadTree, { immediate: true })
+watch(coursewareType, (v) => {
+  if (props.sectionId) sessionStorage.setItem(`cw_type_${props.sectionId}`, v)
+})
 watch(() => tree.value?.type, (t) => {
   if (t === 'HTML') coursewareType.value = 'HTML'
   else if (t === 'PPT') coursewareType.value = 'PPT'
 })
 
 onMounted(loadTree)
+onUnmounted(stopRenderPolling)
 </script>
 
 <style scoped>
 .courseware-workbench { padding: 20px; max-width: 1400px; margin: 0 auto; }
 .cw-step { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.cw-actions { display: flex; align-items: center; gap: 12px; }
 .cw-status-tag { margin-left: 12px; }
 .cw-page-list { background: var(--el-fill-color-light); padding: 16px; border-radius: 8px; margin-bottom: 16px; }
 .cw-section-title { margin: 0 0 12px; font-size: 14px; color: var(--el-text-color-secondary); }
@@ -224,4 +382,7 @@ onMounted(loadTree)
 .cw-segment-block { margin-bottom: 16px; padding: 12px; background: var(--el-fill-color-light); border-radius: 6px; }
 .cw-segment-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
 .cw-empty { padding: 60px 0; }
+.cw-render-tip { color: var(--el-text-color-secondary); font-size: 13px; }
+.cw-upload-dragger :deep(.el-upload) { width: 100%; }
+.cw-preview-dialog :deep(.el-dialog__body) { padding: 0; }
 </style>

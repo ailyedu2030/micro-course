@@ -61,10 +61,24 @@ describe('slide.js API layer', () => {
     })
     const onProgress = vi.fn()
 
-    uploadSlide(100, file, onProgress, 42)
+    uploadSlide(100, file, onProgress, 42, 573)
 
     const formData = request.mock.calls[0][0].data
     expect(formData.get('chapterId')).toBe('42')
+    expect(formData.get('sectionId')).toBe('573')
     expect(request.mock.calls[0][0].onUploadProgress).toBe(onProgress)
+  })
+
+  it('uploadSlide() omits sectionId when not provided', () => {
+    request.mockResolvedValue({ data: { id: 1 } })
+    const file = new File(['test'], 'test.pptx', {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    })
+
+    uploadSlide(100, file, undefined, 42)
+
+    const formData = request.mock.calls[0][0].data
+    expect(formData.get('sectionId')).toBeNull()
+    expect(formData.get('chapterId')).toBe('42')
   })
 })

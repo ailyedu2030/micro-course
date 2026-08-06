@@ -3,6 +3,7 @@ package com.microcourse.plugin.interactive.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentAudioDTO;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
@@ -14,6 +15,7 @@ import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import org.slf4j.Logger;
@@ -46,15 +48,18 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
     private final SlideHtmlUnitMapper unitMapper;
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
+    private final CourseSectionRepository sectionRepo;
 
     public HtmlCoursewareServiceImpl(CourseSlideMapper courseSlideMapper,
                                       SlideHtmlUnitMapper unitMapper,
                                       SlideHtmlSegmentScriptMapper segmentScriptMapper,
-                                      SlideHtmlSegmentAudioMapper segmentAudioMapper) {
+                                      SlideHtmlSegmentAudioMapper segmentAudioMapper,
+                                      CourseSectionRepository sectionRepo) {
         this.courseSlideMapper = courseSlideMapper;
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
+        this.sectionRepo = sectionRepo;
     }
 
     // ====== Unit CRUD ======
@@ -86,10 +91,20 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         if (dto.getChapterId() == null && dto.getSlideId() != null) {
             CourseSlide slide = courseSlideMapper.selectById(dto.getSlideId());
             if (slide != null) {
-                dto.setChapterId(slide.getChapterId());
                 if (dto.getCourseId() == null) {
                     dto.setCourseId(slide.getCourseId());
                 }
+                Long chapterId = slide.getChapterId();
+                // 【根因修复】课时级课件（section 上传）slide.chapter_id 为 NULL，
+                // 若直接沿用则 slide_html_units.chapter_id NOT NULL 插入必然 500。
+                // 从 section 反查其所属 chapter 兜底派生。
+                if (chapterId == null && slide.getSectionId() != null) {
+                    CourseSection sec = sectionRepo.selectById(slide.getSectionId());
+                    if (sec != null) {
+                        chapterId = sec.getChapterId();
+                    }
+                }
+                dto.setChapterId(chapterId);
             }
         }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用

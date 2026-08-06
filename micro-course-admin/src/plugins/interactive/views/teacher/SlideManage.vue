@@ -571,7 +571,7 @@ async function handleUpload(file) {
   try {
     await uploadSlide(courseId.value, file, (e) => {
       uploadProgress.value = Math.round((e.loaded / e.total) * 100)
-    }, Number(chapterId.value) || null)
+    }, Number(chapterId.value) || null, sectionId.value ? Number(sectionId.value) : null)
     ElMessage.success('上传成功，正在后台渲染...')
     await loadData()
     startPolling()
