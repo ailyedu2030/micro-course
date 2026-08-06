@@ -44,6 +44,20 @@
 > 部署验证：后端 16s 启动健康（actuator UP）、前端 HTTP 200、新 bundle 生效、tts-options/flow-evaluate 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
 > PR #193（含本批全部代码）合并待 GitHub Actions 恢复后补跑 CI（今日 GitHub 基础设施故障，本地验证已全绿：后端 1136/0/0、前端 220/220、Playwright e2e 0 错误）。
 
+### 2026-08-07 增量 2：v2 工作台预览/上传 + sectionId 落库 + HTML 单元章节派生修复（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-2026-08-07-05/06/07：createUnitFresh 从 section 反查 chapterId，修复 HTML 单元创建 500；零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0330 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（v2 工作台预览按钮/真实上传/HTML 预载/类型记忆 + uploadSlide 传 sectionId + SlideManage 传 sectionId） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload`（同 deploy-frontend.sh 11 步 SOP） |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0330` | md5 `cbf0e785…`（P0-P3） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-05/06/07 修复 |
+
+> 部署验证：后端 16s 启动健康、`POST /html/sections/{id}/unit` 200、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |
