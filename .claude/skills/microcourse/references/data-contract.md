@@ -170,7 +170,7 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 ---
 
-*视图版本：v1.3 · 与源文档 v1.9 对齐*
+*视图版本：v1.3 · 与源文档 v1.10 对齐*
 *最后更新：2026-08-07*
 
 ---
@@ -200,7 +200,7 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 ## 5. 交互式课件 V2（V300-V310，P0 聚合契约）
 
-> **源文档**：[`docs/数据字典.md` §2.19-2.27](../../../docs/数据字典.md) v1.9
+> **源文档**：[`docs/数据字典.md` §2.19-2.27](../../../docs/数据字典.md) v1.10
 > **迁移来源**：`micro-course-api/src/main/resources/db/migration/V300~V310`。**本组表为课件播放器的 v2 数据源**（P0 聚合：`SlideService.getPages` v2 优先，回退 legacy `slide_pages`）。字段冲突以源文档 §2.19-2.27 + migration 为唯一真相（R-14 登记）。
 
 ### 5.1 slide_ppt_pages（V300）— PPT 课件页面表

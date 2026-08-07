@@ -651,3 +651,16 @@
 - **修复**：去掉数量下界，改为**关系不变量**（空库 0/0 亦成立）：① 每条有 `section_id` 的 `course_slides` 必须命中存在的 section（无孤儿）；② 该 section 必须属于同一 course（防跨课程串课时）；③ legacy 迁移 section（`sort_order>=10000`）不得挂载不存在的 chapter；④ 迁移 section 数量不得超过 section 总数。
 - **横向扫描**：逐一核查 `V182SectionMigrationTest` 其余用例（建表 / 删表 / 删列 / 必填列）均为存在性与列结构断言，无顺序/数量下界耦合；`should_migrate_lessons_to_sections` 原 `>= 2` 同类下界一并改为关系不变量。其他 migration 测试未发现同型"依赖他人种子数据"断言。
 - **验证**：CI Linux 22/22 通过（此前空库假阴性消失）；本地 macOS 后端全量回归全绿；断言新增中文 `.as()` 描述便于失败定位。
+
+### F-2026-08-07-E2E-1 · PR #194 e2e job 'Start PostgreSQL + Redis' race condition（CI 基建，P1-I）
+
+- **症状**：PR #194 e2e job 在 `Start PostgreSQL + Redis` 步骤失败：PostgreSQL 循环内 `pg_isready` 成功（break），但立即兜底再次调用 `pg_isready` 失败（PostgreSQL 已接受 TCP 但尚未完成 initdb/连接握手）→ 50ms 内触发 exit 1。失败日志：
+  ```
+  16:16:36.4890774Z PostgreSQL ready            ← 循环内成功
+  16:16:36.5380106Z ##[error]PostgreSQL failed   ← 50ms 后兜底失败
+  16:16:36.5385233Z ##[error]Process exit 1
+  ```
+- **根因**：`start-services` composite action 的 PostgreSQL 启动逻辑：`docker run -d` 后 `for i in 1..30; pg_isready → break`，break 后立即再次 `pg_isready`——break 时 PostgreSQL 处于"TCP 可达但 initdb/连接握手未完成"的中间态，`pg_isready` 极短暂失败。这是典型的 container warmup race condition（30 次循环内成功 ≠ 服务完全就绪）。
+- **修复**（commit 7375c4b8，PR #194）：`start-services` 循环 30 次成功后增加 **retry 10 次（每次 sleep 1s）**，给 PostgreSQL initdb 充分时间完成连接握手；PG/Redis 同构修复，对称性兜底；action 注释明确说明 race condition 场景。同时按 C-3 在 `scripts/validate-commit-message.sh` 增加 Sign-off（DCO）校验（`git commit -s`）。
+- **横向扫描**：`ci.yml` backend/e2e 两 job 此前各有一段复制粘贴的 Start PostgreSQL/Redis 步骤（Q-6 维护性），本次抽成单一 `start-services` composite action 供两 job 复用，消除漂移；Redis 侧同样有 warmup 竞态（`redis-cli ping` 成功即 break），一并加 retry 兜底。全仓 CI 启动路径仅此一处，无其他同类循环 break 后立即复用连接的竞态。
+- **验证**：PR #194 合并后 CI 5/5 全绿（backend/frontend/e2e/docker/monitoring-lint），e2e job 启动依赖步骤稳定通过；多次重跑无 flaky；本地 `bash scripts/local-dev-deploy.sh` 16/16 通过。
