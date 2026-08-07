@@ -840,6 +840,30 @@
 | G1.5 | PptFlowEditor/PptPageEditor | 修复 P1-C：渲染同步写 slide_ppt_pages（重渲染先清旧行）；四面板(内容/讲述稿/音频/跳转逻辑)全部可达+页面列表(1)+元数据+脚本保存(v1)正常 | ✅ |
 | G1.6 | HtmlBlockEditor | 课时级 HTML 上传→工作台 HTML 流程挂载→编辑保存→"已创建 unit id=2"→单元落库(chapter/section/slide 关联)→分段脚本 5 段编辑器渲染（修复前：tree 条件不可达+load 误判 R 包装走 update/undefined+chapter_id 非空 500） | ✅ |
 | G1.7 | InteractiveLessonProperties | 文件信息/页数/状态聚合(已上传/已渲染/讲述稿/音频/发布)在工作台展示 | ✅ |
+| G1.8 | CoursewareWorkbench 预览入口 | 2026-08-07 增量2：PPT/HTML 工作台顶部「预览」按钮→全屏学生视角播放器渲染（HTML srcdoc 1/1 页+音频控制+快捷键提示）；EMPTY 态不显示、渲染中禁用+tooltip「渲染中，完成后方可预览」（修复前 v2 无任何预览入口=用户反馈"课件管理页无预览"） | ✅ |
+| G1.9 | 工作台空态上传+sectionId 落库 | 2026-08-07 增量2：PPT 空态拖拽上传（.pptx/.html 大小/类型/MIME/魔数校验）→上传成功→渲染中显示「正在后台渲染处理」→完成自动切工作流；本地实测 course_slides/slide_pages.section_id 正确写入（修复前 uploadSlide 不传 sectionId → section_id=NULL → 树/页面列表查不到） | ✅ |
+| G1.10 | HtmlBlockEditor 预载+类型记忆 | 2026-08-07 增量2：无单元时自动预载已上传 HTML_DIRECT 内容（防上传后编辑器为空丢内容）；课件类型按 section 记忆 sessionStorage 刷新不丢；「保存」→ 单元创建(chapter 由 section 反查派生) → 分段脚本渲染 | ✅ |
+| G1.11 | createHtmlUnit 章节派生 | 2026-08-07 增量2：课时级 slide.chapter_id=NULL 时从 course_sections 反查 chapterId，修复 slide_html_units.chapter_id NOT NULL 导致的保存 500（本地实测创建单元 chapter_id=1/section_id=1；单测 createUnitDerivesChapterIdFromSection） | ✅ |
+| G1.12 | AI 讲述稿生成（MMX 优先） | 2026-08-07 增量3：v1/v2 统一走 LlmChatClient（MiniMax OpenAI 兼容端点 + MiniMax-M3，DeepSeek 兜底，剥 think 标签）；无 key 时明确提示「需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY」（实测 toast 透传）；单测 4 例 | ✅ |
+| G1.13 | PPT 音频生成守卫 | 2026-08-07 增量3：无讲述稿时「生成新音频」禁用 + tooltip「请先保存页面讲述稿，再生成音频」，消除 /ppt/scripts/null/audios 500（实测按钮禁用+后端无 500） | ✅ |
+| G1.14 | PPT/HTML 讲述稿保存 | 2026-08-07 增量3：created_by 服务端回退当前用户，PPT/HTML 脚本保存 500 消除（实测分段脚本 9999→200；单测 saveSegmentScriptFallsBackCreatedBy） | ✅ |
+| G1.15 | 学生播放器 PPT 图片显示 | 2026-08-07 增量3：修复 lazy+auto 死锁（移除 loading=lazy + 显式宽度），实测 3 页 PPT 图片全部解码（640×480）、1/3→2/3→3/3 翻页、0 console 错误 | ✅ |
+| G1.16 | 学生播放器 HTML 段链路 | 2026-08-07 增量3：iframe srcdoc 注入 data-segment="1" + active CSS + bridge；字幕跟随（"这是第一段的讲述稿内容"）；segment-active 消息经 iframe.contentWindow 投递处理无异常；0 console 错误 | ✅ |
+
+## 2026-08-07 增量4 · 设计裁定落地：无版本开关，PPT/HTML 独立模块（F-2026-08-07-13/14）
+
+> 结构变更：删除 coursewareV2 开关与 CoursewareWorkbench 类型切换；SlideManage 按数据分发；
+> PPT/HTML 各为独立工作区；空课时创建二选一；章节级路由与整节删除支持。
+
+| # | 功能点 | 验证动作与证据 | 状态 |
+|---|--------|--------------|------|
+| U1 | 无版本开关 | 管理页不再渲染"新版课件开关"，无旧版头部（ego-browser 实测 hasV2Toggle=false / hasOldHeader=false） | ✅ |
+| U2 | 空课时创建二选一 | sectionId=1（空）→ "该课时暂无课件" + 上传 PPT（.pptx）与上传 HTML（.html）两个入口 | ✅ |
+| U3 | PPT 创建链路 | 上传 original.pptx → 渲染提示 → 6s 完成（slide_ppt_pages=3, status=2）→ 自动进入 PPT 模块 | ✅ |
+| U4 | PPT 模块能力 | 四面板（内容/讲述稿/音频/跳转逻辑）+ 头部（预览/替换 PPT/下载 PPT/批量操作/删除课件）+ 批量勾选（已选 2 页）+ 预览播放器 1/3 页图片解码 | ✅ |
+| U5 | HTML 创建链路 | sectionId=6 上传 HTML → 自动进入 HTML 模块（后端 pending tree）→ 编辑器加载 + 分段脚本 tab + 预览/替换/删除 | ✅ |
+| U6 | 章节级路由 | /teacher/courses/1/chapters/1/manage-slides → PPT 模块 3 页，0 错误 | ✅ |
+| U7 | 渲染 chapter_id 派生 | 无 chapterId URL 上传 PPTX → 渲染成功（修复前 NOT NULL 必失败，slide status=3） | ✅ |
 
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
@@ -916,3 +940,20 @@
 > 已知外部依赖：H2 CAS 完整 ticket 校验需 CAS 服务器环境；D11.4/G1.3 TTS
 > 生成需配置 MiniMax key（降级路径已验证）。staging 容器 /uploads 未持久化，
 > 重建后历史上传文件丢失（部署镜像/卷需固化 uploads）。
+
+---
+
+## 2026-08-07 增量 2/3 部署后 · 四角色全页面回归 smoke（ego-browser 实测）
+
+> 证据：localhost:8088 本地隔离环境，SPA 逐页导航 + 会话级 error/unhandledrejection 钩子；
+> 判据 = URL 正确 + 内容渲染（表格/表单/空态均可）+ 0 ErrorBoundary + 0 error toast + 0 全局错误。
+
+| 角色 | 覆盖页面 | 结果 |
+|------|---------|------|
+| 管理端 | /admin/dashboard、/users、/departments、/majors、/classes、/courses、/course-categories、/tags、/chapters、/videos、/enrollments、/favorites、/questions、/exercises、/discussions、/reviews、/notifications、/courses/review、/bundles、/admin/users、/admin/logs、/admin/settings、/admin/platform-share-config、/admin/teacher-ratings、/admin/revenue、/admin/banners、/admin/teaching-classes、/admin/system-health、/admin/reports、/profile（29 页） | ✅ 29/29 渲染、0 错误 |
+| 教师端 | /teacher/dashboard、/teacher/courses、/teacher/videos、/teacher/exercises、/teacher/discussions、/teacher/questions、/teacher/students、/teacher/grades、/teacher/teaching-classes、/teacher/profile、/teacher/slides、/teacher/exams、/teacher/offline-list、/teacher/micro-specialties、/teacher/micro-specialties/invites、/teacher/micro-specialties/my-proposals（16 页） | ✅ 16/16 渲染、0 错误 |
+| 教务端 | /academic/dashboard、/academic/stats、/academic/enrollments、/academic/micro-specialties/{review,proposals,featured,cross-dept,class-import,gold,storage-review}（10 页） | ✅ 10/10 渲染、0 错误 |
+| 学生端 | /student/courses、/student/my-courses、/student/training、/student/learning、/student/learning-stats、/student/notifications、/student/exams、/student/profile、/student/report、/student/favorites、/student/orders、/student/my-micro-specialties、/student/discussions、/student/reviews、/student/settings、/student/achievements、/student/bundles（17 页） | ✅ 17/17 渲染（紧凑文本为空态属正常）、0 错误 |
+
+**合计：72/72 页面，0 console 错误 / 0 4xx-5xx toast / 0 ErrorBoundary。**
+功能点级交互证据见各节原有 ✅（474 项，含 D11/G1 课件链路、E 学生端、F 微专业等）。

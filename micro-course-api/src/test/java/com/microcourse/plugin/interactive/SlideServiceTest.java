@@ -11,8 +11,22 @@ import com.microcourse.plugin.interactive.dto.SlideUploadResponse;
 import com.microcourse.plugin.interactive.dto.SlideVO;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlidePage;
+import com.microcourse.plugin.interactive.entity.SlidePptPage;
+import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
+import com.microcourse.plugin.interactive.entity.SlidePptFlow;
+import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
+import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePptFlowMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
+import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.service.impl.SlideRenderService;
 import com.microcourse.plugin.interactive.service.impl.SlideServiceImpl;
 import com.microcourse.repository.CourseChapterRepository;
@@ -46,6 +60,13 @@ class SlideServiceTest {
     private CourseChapterRepository courseChapterRepository;
     private CourseSectionRepository courseSectionRepository;
     private SlideRenderService slideRenderService;
+    private SlidePptPageMapper pptPageMapper;
+    private SlidePptPageScriptMapper pptScriptMapper;
+    private SlidePptPageAudioMapper pptAudioMapper;
+    private SlidePptFlowMapper pptFlowMapper;
+    private SlideHtmlUnitMapper htmlUnitMapper;
+    private SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
+    private SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper;
     private SlideServiceImpl slideService;
 
     @BeforeEach
@@ -56,8 +77,18 @@ class SlideServiceTest {
         courseChapterRepository = mock(CourseChapterRepository.class);
         courseSectionRepository = mock(CourseSectionRepository.class);
         slideRenderService = mock(SlideRenderService.class);
+        pptPageMapper = mock(SlidePptPageMapper.class);
+        pptScriptMapper = mock(SlidePptPageScriptMapper.class);
+        pptAudioMapper = mock(SlidePptPageAudioMapper.class);
+        pptFlowMapper = mock(SlidePptFlowMapper.class);
+        htmlUnitMapper = mock(SlideHtmlUnitMapper.class);
+        htmlSegmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
+        htmlSegmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
         io.micrometer.core.instrument.MeterRegistry meterRegistry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
-        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository, courseChapterRepository, courseSectionRepository, slideRenderService, meterRegistry);
+        slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository,
+                courseChapterRepository, courseSectionRepository, slideRenderService,
+                pptPageMapper, pptScriptMapper, pptAudioMapper, pptFlowMapper,
+                htmlUnitMapper, htmlSegmentScriptMapper, htmlSegmentAudioMapper, meterRegistry);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
@@ -120,6 +151,87 @@ class SlideServiceTest {
         void getPages_NoSlide() {
             when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
             assertTrue(slideService.getPages(1L, null, null).isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("P0 v2 聚合")
+    class GetPagesV2 {
+        @Test
+        @DisplayName("section 有 v2 PPT 页时返回聚合 VO（audio + flows）")
+        void getPages_V2PptAggregates() {
+            SlidePptPage page = new SlidePptPage();
+            page.setId(10L); page.setCourseId(1L); page.setSectionId(5L);
+            page.setPageNumber(1); page.setSlideId(2L);
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of(page));
+            SlidePptPageScript script = new SlidePptPageScript();
+            script.setId(3L); script.setScriptText("讲述稿");
+            when(pptScriptMapper.findActiveByPage(10L)).thenReturn(script);
+            SlidePptPageAudio audio = new SlidePptPageAudio();
+            audio.setId(4L); audio.setScriptId(3L); audio.setStatus("READY");
+            audio.setAudioToken("tok123"); audio.setAudioDurationMs(30000);
+            when(pptAudioMapper.listByScript(3L)).thenReturn(List.of(audio));
+            SlidePptFlow flow = new SlidePptFlow();
+            flow.setFromPageId(10L); flow.setToPageId(11L); flow.setFlowType("NEXT");
+            when(pptFlowMapper.listBySection(5L)).thenReturn(List.of(flow));
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+            assertEquals(1, pages.size());
+            SlidePageVO vo = pages.get(0);
+            assertEquals("PPT_RENDERED", vo.getContentType());
+            assertNotNull(vo.getAudio());
+            assertEquals("/api/courses/1/courseware/audio/tok123", vo.getAudio().getUrl());
+            assertEquals("AUDIO_READY", vo.getNarrationStatus());
+            assertEquals(1, vo.getFlows().size());
+            assertEquals("NEXT", vo.getFlows().get(0).getFlowType());
+        }
+
+        @Test
+        @DisplayName("section 有 v2 HTML unit 时返回分段 VO")
+        void getPages_V2HtmlAggregates() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<h1>t</h1>"); unit.setDetectedSegments(1);
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1); seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            SlideHtmlSegmentAudio segAudio = new SlideHtmlSegmentAudio();
+            segAudio.setId(7L); segAudio.setSegmentScriptId(6L); segAudio.setStatus("READY");
+            segAudio.setAudioToken("tok-html"); segAudio.setAudioDurationMs(15000);
+            when(htmlSegmentAudioMapper.listByScript(6L)).thenReturn(List.of(segAudio));
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+            assertEquals(1, pages.size());
+            SlidePageVO vo = pages.get(0);
+            assertEquals("HTML_DIRECT", vo.getContentType());
+            assertNotNull(vo.getSegments());
+            assertEquals(1, vo.getSegments().size());
+            assertEquals("AUDIO_READY", vo.getNarrationStatus());
+        }
+
+        @Test
+        @DisplayName("P2: HTML 段注入 data-segment + bridge.js（读时增强）")
+        void getPages_V2HtmlInjectsSegmentBridge() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<html><body><h1 id=\"seg-1\">第一段</h1><p>内容A</p></body></html>");
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1); seg.setSegmentMarker("seg-1"); seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            SlideHtmlSegmentAudio segAudio = new SlideHtmlSegmentAudio();
+            segAudio.setId(7L); segAudio.setSegmentScriptId(6L); segAudio.setStatus("READY");
+            segAudio.setAudioToken("tok-html"); segAudio.setAudioDurationMs(15000);
+            when(htmlSegmentAudioMapper.listByScript(6L)).thenReturn(List.of(segAudio));
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+            String html = pages.get(0).getHtmlContent();
+            assertTrue(html.contains("data-segment=\"1\""));
+            assertTrue(html.contains("slide-audio-v2"));
+            assertTrue(html.contains("segment-activated"));
         }
     }
 

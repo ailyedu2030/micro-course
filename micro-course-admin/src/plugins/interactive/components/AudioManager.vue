@@ -26,9 +26,20 @@
         <el-tag v-else-if="hasGenerating" type="warning" size="small">生成中...</el-tag>
         <el-tag v-else type="info" size="small">暂无音频</el-tag>
       </h3>
-      <el-button :icon="Plus" size="small" type="primary" plain @click="showGenerate = true">
-        生成新音频
-      </el-button>
+      <el-tooltip :disabled="canGenerate" content="请先保存页面讲述稿，再生成音频" placement="top">
+        <span>
+          <el-button
+            :icon="Plus"
+            size="small"
+            type="primary"
+            plain
+            :disabled="!canGenerate"
+            @click="showGenerate = true"
+          >
+            生成新音频
+          </el-button>
+        </span>
+      </el-tooltip>
     </div>
 
     <!-- PPT 单段模式 / HTML 多段模式 -->
@@ -72,16 +83,22 @@
       <el-form label-position="top">
         <el-form-item label="音色">
           <el-select v-model="generateVoice" placeholder="选择音色" style="width:100%">
-            <el-option label="男声 (青年)" value="male-young" />
-            <el-option label="男声 (中年)" value="male-mid" />
-            <el-option label="女声 (青年)" value="female-young" />
-            <el-option label="女声 (中年)" value="female-mid" />
+            <el-option
+              v-for="v in voiceOptions"
+              :key="v.id"
+              :label="v.label"
+              :value="v.id"
+            />
           </el-select>
         </el-form-item>
         <el-form-item label="TTS 模型">
           <el-select v-model="generateModel" style="width:100%">
-            <el-option label="MiniMax speech-01 (推荐)" value="MiniMax-speech-01" />
-            <el-option label="MiniMax speech-02 (高清)" value="MiniMax-speech-02" />
+            <el-option
+              v-for="m in modelOptions"
+              :key="m"
+              :label="m === defaultTtsModel ? m + ' (推荐)' : m"
+              :value="m"
+            />
           </el-select>
         </el-form-item>
       </el-form>
@@ -94,12 +111,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Headset, Plus } from '@element-plus/icons-vue'
 import { listPptAudios, generatePptAudio } from '../api/pptCourseware'
 import { listHtmlSegmentAudios, generateHtmlSegmentAudio } from '../api/htmlCourseware'
-import { getAudioStreamUrl } from '../api/queryCourseware'
+import { getAudioStreamUrl, getTtsOptions } from '../api/queryCourseware'
 import AudioPanel from './AudioPanel.vue'
 
 const props = defineProps({
@@ -112,14 +129,55 @@ const props = defineProps({
 
 const showGenerate = ref(false)
 const generating = ref(false)
-const generateVoice = ref('female-young')
-const generateModel = ref('MiniMax-speech-01')
+const generateVoice = ref('female-shaonv')
+const generateModel = ref('speech-2.8-hd')
+const defaultTtsModel = ref('speech-2.8-hd')
+const ttsOptions = ref(null)
 const activeSegmentIdx = ref(props.segments?.[0]?.idx ?? null)
+
+const voiceOptions = computed(() => {
+  if (ttsOptions.value?.voices?.length) return ttsOptions.value.voices
+  return [
+    { id: 'female-shaonv', label: '女声·甜美少女' },
+    { id: 'female-qingxin', label: '女声·清新' },
+    { id: 'female-yujie', label: '女声·御姐' },
+    { id: 'female-warm', label: '女声·温暖' },
+    { id: 'male-shaonian', label: '男声·少年' },
+    { id: 'male-qingnian', label: '男声·青年' },
+    { id: 'male-dashu', label: '男声·大叔' },
+    { id: 'male-chengzhao', label: '男声·沉稳' }
+  ]
+})
+
+const modelOptions = computed(() => {
+  if (ttsOptions.value?.models?.length) return ttsOptions.value.models
+  return ['speech-2.8-hd', 'speech-2.6-hd', 'speech-01', 'speech-02']
+})
+
+async function loadTtsOptions() {
+  try {
+    const res = await getTtsOptions(props.courseId)
+    ttsOptions.value = res.data || res
+    if (ttsOptions.value?.defaultVoice) generateVoice.value = ttsOptions.value.defaultVoice
+    if (ttsOptions.value?.defaultModel) {
+      generateModel.value = ttsOptions.value.defaultModel
+      defaultTtsModel.value = ttsOptions.value.defaultModel
+    }
+  } catch {
+    // 后端不可用时使用内置官方枚举兜底
+  }
+}
 
 const effectiveScriptId = computed(() => {
   if (props.pageType === 'PPT') return props.scriptId
   if (props.segments && props.segments.length === 1) return props.segments[0].segmentScriptId
   return null
+})
+
+// F-2026-08-07-10：无脚本时禁止生成，避免 /ppt/scripts/null/audios 后端 500
+const canGenerate = computed(() => {
+  if (props.pageType === 'PPT') return !!effectiveScriptId.value
+  return (props.segments || []).some(s => !!s.segmentScriptId)
 })
 
 // Loaders passed to AudioPanel (encapsulated by page type)
@@ -183,10 +241,18 @@ async function loadAllAudios() {
     await Promise.all(promises)
   }
 }
-onMounted(loadAllAudios)
+onMounted(() => {
+  loadTtsOptions()
+  loadAllAudios()
+})
 
 // 生成新音频
 async function handleGenerate() {
+  if (generating.value) return // R-15：生成中禁用重复提交，防重复计费
+  if (!canGenerate.value) {
+    ElMessage.warning('请先保存讲述稿，再生成音频')
+    return
+  }
   generating.value = true
   try {
     let res
@@ -206,22 +272,56 @@ async function handleGenerate() {
     }
     ElMessage.success('音频生成任务已提交,稍后刷新查看')
     showGenerate.value = false
-    // 刷新当前列表
-    audiosBySegment.value[activeSegmentIdx.value || 0] = null
-    if (props.pageType === 'PPT') {
-      const r = await listPptAudios(props.courseId, effectiveScriptId.value)
-      audiosBySegment.value[0] = r.data || r
-    } else {
-      const seg = props.segments.find(s => s.idx === activeSegmentIdx.value)
-      const r = await listHtmlSegmentAudios(props.courseId, seg.segmentScriptId)
-      audiosBySegment.value[activeSegmentIdx.value] = r.data || r
-    }
+    await refreshActiveAudios()
+    pollUntilSettled() // R-10：3s 轮询直至 READY/FAILED
   } catch (e) {
-    ElMessage.error('生成失败: ' + (e.message || '未知错误'))
+    // F-2026-08-07-09：透传后端明确错误（如 TTS Key 未配置/超时），禁止吞成通用错误
+    ElMessage.error('生成失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
   } finally {
     generating.value = false
   }
 }
+
+async function refreshActiveAudios() {
+  if (props.pageType === 'PPT') {
+    if (!effectiveScriptId.value) return
+    const r = await listPptAudios(props.courseId, effectiveScriptId.value)
+    audiosBySegment.value[0] = r.data || r
+  } else {
+    const seg = props.segments.find(s => s.idx === activeSegmentIdx.value)
+    if (!seg) return
+    const r = await listHtmlSegmentAudios(props.courseId, seg.segmentScriptId)
+    audiosBySegment.value[activeSegmentIdx.value] = r.data || r
+  }
+}
+
+let pollTimer = null
+let pollTries = 0
+function pollUntilSettled() {
+  clearInterval(pollTimer)
+  pollTries = 0
+  pollTimer = setInterval(async () => {
+    pollTries++
+    try {
+      await refreshActiveAudios()
+      const list = audiosBySegment.value[activeSegmentIdx.value || 0] || []
+      const settled = list.length > 0 && list.every(a => a.status === 'READY' || a.status === 'FAILED')
+      if (settled) {
+        clearInterval(pollTimer)
+        const failed = list.filter(a => a.status === 'FAILED').length
+        if (failed > 0) ElMessage.error(`${failed} 个音频生成失败，请查看列表`)
+        else ElMessage.success('音频生成完成')
+      } else if (pollTries > 100) {
+        clearInterval(pollTimer)
+        ElMessage.warning('生成时间较长，请稍后在列表中查看状态')
+      }
+    } catch {
+      if (pollTries > 100) clearInterval(pollTimer)
+    }
+  }, 3000)
+}
+
+onUnmounted(() => clearInterval(pollTimer))
 </script>
 
 <style scoped>

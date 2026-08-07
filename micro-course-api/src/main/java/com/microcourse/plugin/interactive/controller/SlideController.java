@@ -219,6 +219,19 @@ public class SlideController {
         return R.ok();
     }
 
+    /**
+     * 整节/整章课件删除（v1 + v2 全量）：DELETE /api/courses/{courseId}/slides/courseware?sectionId=&chapterId=
+     */
+    @DeleteMapping("/courseware")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<Void> deleteCourseware(@PathVariable Long courseId,
+                                    @RequestParam(required = false) Long sectionId,
+                                    @RequestParam(required = false) Long chapterId) {
+        verifyAccess(courseId);
+        slideService.deleteCourseware(courseId, sectionId, chapterId);
+        return R.ok();
+    }
+
     @DeleteMapping("/pages/{pageNumber}")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> deletePage(@PathVariable Long courseId,

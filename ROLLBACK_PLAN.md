@@ -27,6 +27,71 @@
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
 
+### 2026-08-07 增量：PPT/HTML 音频同步 P0-P3 部署（用户批准，门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar md5 `cbf0e785…`（P0-P3：origin 修复/父页 AudioHost/TtsWorker/getPages 聚合/flow 求值/HTML 段高亮/AI 讲述稿/字幕/mediaSession，零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0130 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle `index-y7MdGbbB.js`（P0-P3 全部前端改动） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_013414 /micro-course-admin/…` + `nginx -s reload`（同 deploy-frontend.sh 11 步 SOP） |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0130` | md5 `9055b31e…`（V326） |
+| 部署前前端 dist | `/opt/micro-course/backups/admin.dist.backup.20260807_013414` | bundle `index-DNMVOIXI.js` |
+| 新 jar（当前运行） | `/opt/micro-course/micro-course-api-1.0.0.jar` | md5 `cbf0e785…` |
+| 新前端 dist（当前运行） | 容器 `/usr/share/nginx/html` | bundle `index-y7MdGbbB.js` |
+
+> 部署验证：后端 16s 启动健康（actuator UP）、前端 HTTP 200、新 bundle 生效、tts-options/flow-evaluate 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
+> PR #193（含本批全部代码）合并待 GitHub Actions 恢复后补跑 CI（今日 GitHub 基础设施故障，本地验证已全绿：后端 1136/0/0、前端 220/220、Playwright e2e 0 错误）。
+
+### 2026-08-07 增量 2：v2 工作台预览/上传 + sectionId 落库 + HTML 单元章节派生修复（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-2026-08-07-05/06/07：createUnitFresh 从 section 反查 chapterId，修复 HTML 单元创建 500；零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0330 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（v2 工作台预览按钮/真实上传/HTML 预载/类型记忆 + uploadSlide 传 sectionId + SlideManage 传 sectionId） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload`（同 deploy-frontend.sh 11 步 SOP） |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0330` | md5 `cbf0e785…`（P0-P3） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-05/06/07 修复 |
+
+> 部署验证：后端 16s 启动健康、`POST /html/sections/{id}/unit` 200、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
+
+### 2026-08-07 增量 3：AI 讲述稿 MMX 化 + 脚本保存/播放器图片/音频守卫/错误透传修复（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-08~12：LlmChatClient MMX 优先、created_by 兜底、TTS 守卫后端不变、零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0450 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（ScriptEditor/AudioManager/AudioPanel 错误透传 + 无脚本生成守卫 + SlidePlayer 图片修复） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload` |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0450` | md5 `b3e660b3…`（增量2） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-08~12 |
+
+> 部署验证：后端 16s 启动健康、AI 生成端点改用 MMX（无新凭据）、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
+
+### 2026-08-07 增量 4：课件管理架构统一（无版本开关，PPT/HTML 独立模块 + 章节级支持 + 渲染 chapter_id 派生）（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-13/14：课件树章节级、整节/整章 v1+v2 删除、v1 HTML pending tree、渲染 chapter_id 派生；零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0700 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（SlideManage 统一壳 + PptCoursewareManage/HtmlCoursewareManage + 共享上传 composable；删除 coursewareV2 开关/旧版 UI） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload` |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0700` | md5 `bea3ef39…`（增量3） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-13/14 |
+
+> 部署验证：后端 16s 启动健康、前端新 bundle 生效（无版本开关）、5 分钟监控 0 ERROR / 0 5xx。
+
+### 2026-08-07 增量 4b：章节级课时课件概览（前端仅）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| 前端 dist | 新 bundle `index-DJyWWonr.js`（章节级 manage-slides 增加课时课件概览表：PPT/HTML/暂无徽标 + 管理课件跳转；CI backend/e2e job 移除 services 编排属 CI 配置不影响运行时） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_140622 /micro-course-admin/…` + `nginx -s reload` |
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |

@@ -483,3 +483,163 @@
 - **修复**：`SlidePlayer.vue` 引入 `useUserStore`，`ensureProgress`/`markSlideComplete` 增加 `isStudent` 守卫（非 STUDENT 直接跳过，不产生 403 与 console 噪音）。
 - **复测**：本地 ego-browser 以 admin 打开预览 → 全屏 SlidePlayer 渲染 HTML ✅、本地 API 日志 3 分钟内 0 次 `POST /learning-progress/progress` ✅；新增 SlidePlayer.test.js 回归用例（TEACHER 角色挂载不调用 createLearningProgress），单测 216/216。
 - **防止再发**：① 复用学生播放器/组件的教师预览路径统一加角色守卫；② 回归单测固化"非 STUDENT 不上报进度"；③ 模式库补"播放器跨角色复用需按角色守卫副作用调用"。
+
+### F-2026-08-06-04 · SlidePlayer origin 守卫语义错误：iframe→父页消息全部被拒（P0，根因已锁定，待 P0 实施）
+
+- **症状（用户核心诉求）**："现在还不能跟着 PPT 或 HTML 控制播放"——HTML 课件内点击段落/完成按钮/音频状态上报对播放器全部无效。
+- **直接原因**：`SlidePlayer.vue:367` `if (event.origin !== null) return`。`MessageEvent.origin` 是 DOMString，srcdoc + sandbox（无 allow-same-origin）iframe 的 opaque origin 序列化为**字符串 `"null"`**；`"null" !== null` 恒为 true → iframe 发出的 `slide-audio-state` / `slide-interactive-complete` /（v2）`segment-active` 等消息全部在入口被丢弃。
+- **根本原因**：`docs/postMessage-音频控制方案.md`（v1 设计文档）把「origin 为 null」写成 JS `null` 字面量并照搬到代码；测试未覆盖 sandboxed srcdoc postMessage 的 origin 序列化语义（`SlidePlayer.test.js` 无 postMessage 消息用例）。
+- **横向扫描**：v1 协议文档 §安全校验、`SlidePlayer.onSlideAudioMessage`（唯一消息入口）为全部受影响面；父→iframe 方向 `postMessage(msg, '*')` 在 opaque origin 下正确，无需改。
+- **修复（已入 `docs/design/2026-08-06-PPT-HTML-音频同步控制方案.md` §6.3/P0-1，待实施）**：守卫改 `event.origin === 'null'`；同步修正 v1 设计文档伪码；新增单测覆盖 sandboxed srcdoc 消息（origin="null" 放行、其他 origin 拒绝）。
+- **防止再发**：① 协议实现必须对照浏览器 origin 序列化语义写单测；② 评审清单增加「postMessage origin 字符串 vs null」检查项。
+
+## 2026-08-06 晚 · P0 实施闭环（PPT/HTML 音频同步控制方案 P0，R-1~R-16 主体）
+
+### F-2026-08-06-05 · D9 修复：origin 守卫改 `event.origin === 'null'` + source 校验（P0）
+
+- **症状**：HTML 课件内点击段落/完成按钮/音频状态上报对播放器全部无效（用户核心诉求"不能跟着 HTML 控制播放"）。
+- **根因**：`SlidePlayer.vue` 旧守卫 `event.origin !== null`；`MessageEvent.origin` 是 DOMString，sandbox srcdoc opaque origin 序列化为 `"null"` → 恒 true → 全部拒收（Playwright+Chromium 实测 + WHATWG html#3585 双重确认）。
+- **修复**：守卫改 `event.origin === 'null' && event.source === 当前 iframe.contentWindow`（R-1/H-1）；新增单测覆盖 origin 字符串与 source 不匹配两态；Playwright e2e 实证 iframe→父 `ready` 消息被接收并回发 `slide-audio-state-v2 loaded`（bridge 日志）。
+
+### F-2026-08-06-06 · D1 修复：废除注入音频控制器，HTML 音频改父页 AudioHost（P0）
+
+- **根因**：`SlideServiceImpl.buildSegmentControllerJs()` 拼接的 `<script>` 语法错误（Node `new Function()` 报 `Unexpected token ')'`），iframe 内分段音频控制器整体失效。
+- **修复**：删除注入脚本与 `injectBeforeBodyEnd`；HTML 段音频由父页 `<audio>` 顺序播放（协议 v2），legacy `AUDIO_SEG_XX_URL` 占位符仅替换不注入；e2e 实证 HTML 段1→段2 自动续播。
+
+### F-2026-08-06-07 · D3 修复：新建 TtsWorkerService 消费 v2 GENERATING→MiniMax→READY（P0，R-11）
+
+- **根因**：`PptCoursewareServiceImpl.generateAudio` / `HtmlCoursewareServiceImpl.generateSegmentAudio` 只插 `GENERATING` 行，全仓无消费者 → v2 音频永不 READY。
+- **修复**：新增 `TtsWorkerService`（@Scheduled 15s 轮询两张 v2 音频表；并发≤2；3s 插入延迟避开事务；10min 超时标记 FAILED；MiniMax `TtsService.synthesize` 公共方法；音色别名映射 male-young→male-qingnian 等 R-6）。已登记 precheck 白名单（.claude + .agents 两处）。
+
+### F-2026-08-06-08 · D4/D9b 修复：getPages 聚合 v1+v2 + 播放器消费（P0，R-7）
+
+- **根因**：`SlideService.getPages` 只查 legacy `slide_pages`，v2（slide_ppt_pages / slide_html_units）课件学生端不可见。
+- **修复**：getPages 按 section 优先聚合 v2 PPT（含 activeScript→READY audio + flows）与 HTML unit（含 segments + 每段 audio），回退 legacy；SlidePageVO 扩展 `audio/segments/flows`（PageAudioVO/HtmlSegmentVO/PptFlowVO）；播放器 loadAudio 支持 v2 PPT 直载 token URL 与 HTML 分段顺序播放。curl + Playwright 实证聚合 JSON 与浏览器播放。
+
+### F-2026-08-06-09 · P1-C 修复：学生图片 403（getPageImage/Thumbnail 误走 verifyOwner）
+
+- **症状**：学生播放器 PPT 图片/缩略图全部 403 → "图片加载失败"占位。
+- **根因**：`SlideService.getPageImage/getPageThumbnail` 调 `getPage`→`verifyOwner`（教师/管理员专属），控制器虽已 `verifyAccess`（选课校验）但服务层仍拦截学生。
+- **修复**：图片路径改用 `findPageForAccess`（无 verifyOwner，控制器选课校验兜底）；e2e 实证 `hasImg=1`。
+
+### F-2026-08-06-10 · P1-C 修复：学生打开课件播放器 learning-progress 400（sectionId 误当 Video ID）
+
+- **症状**：学生打开 SlidePlayer 每次 `POST /api/learning-progress/progress 400`（console 噪音 + 进度未记录）。
+- **根因**：`LearningProgressServiceImpl.create` 对 sectionId 只按 `videos` 表校验，SlidePlayer 传的是 `course_sections.id`（课时）→ 必现 400 "视频与章节归属不匹配"。
+- **修复**：校验放宽为 videos 或 course_sections 任一归属成立；e2e 实证 BAD=[]（0 错误）。
+
+### F-2026-08-06-11 · R-3/R-4/R-9/R-10 前端体验闭环（P0）
+
+- R-3：PPT 页补音频状态栏（原仅 HTML 显示）——e2e 实证 PPT 显示「▶ 点击开始」。
+- R-4：Autoplay 解锁层——首次 pointerdown 仅置 unlocked（修复"解锁自动起播→同一 click 暂停"的 0.3s 卡死 BUG），播放交由 togglePlay/autoMode；e2e 实证点击后音频推进且播完自动翻页 1/2→2/2。
+- R-9：timeupdate 消息节流 250ms（4Hz）。
+- R-10 部分：全部播完显示「本课学习完成」；AudioManager 生成后 3s 轮询直至 READY/FAILED、生成中防重复提交。
+
+### F-2026-08-06-12 · D5/R-6 音色/模型契约（P0）
+
+- 新增 `GET /api/courses/{cid}/courseware/tts-options`（models: speech-2.8-hd 等 + 官方 voice_id 中文名），`AudioManager` 下拉改由后端契约渲染；`TtsWorker` 内做历史枚举别名映射；`SecurityConfig` 放行 `GET /api/courses/*/courseware/audio/*`（HTML5 `<audio>` 无 Auth 头，token 即能力凭证，Controller 层 IDOR/READY/路径校验兜底）。
+
+### F-2026-08-06-13 · D2 修复：ScriptEditor 补 `useUserStore` 导入（P1-C）
+
+- v2 讲述稿保存必现 `ReferenceError: useUserStore is not defined`（vite AutoImport 仅解析 Element Plus）。已补 `import { useUserStore } from '@/store/user'`。
+
+## 2026-08-07 · P1/P2/P3 实施（方案 §11 后续阶段，铁律：UX 至上）
+
+### F-2026-08-07-01 · P1：PPT 页间跳转（flow）驱动播放（D6 闭环）
+
+- **新增** `POST /api/courses/{cid}/courseware/{sectionId}/flow/evaluate`：复用后端 FlowEngine + FlowContext（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），IDOR 校验 section 归属 course，请求体 `{currentPageId, userProgress?, lastQuizId?, lastQuizAnswer?}`，响应 `{nextPageId, matchedType}`（R-5/R-12）。
+- **新增** flow CRUD：`PUT/DELETE /api/courses/{cid}/ppt/flows/{flowId}`（PptCoursewareService.updateFlow/deleteFlow）+ PptFlowEditor 编辑/删除操作列。
+- **播放器消费**：音频播完 `advanceToNextPage` 先求值 flow（存在规则时），失败/无规则退化为线性；`userProgress=(current+1)/total`（SKIP 语义）；页点条补每页时长 tooltip（P1-2）。
+
+### F-2026-08-07-02 · P2：HTML 分段标记 + 高亮 + 点击跳转（T2 完整化）
+
+- **读时增强**（`buildV2HtmlPage`→`enhanceHtmlSegments`，不落库）：有 `segment_marker` 给对应 id 元素补 `data-segment="N"`，无 marker 按顺序给 h1-h3/section/p 注入；注入 `.active` 高亮 CSS 与 bridge.js（ready 握手 / 点击 `[data-segment]`→`segment-active` / 接收 `segment-activated` 切换高亮）。
+- **播放器**：协议 v2 `segment-active`/`segment-activated` 已通（P0），进度条补段边界刻度（P2-4，`segmentBoundaries`）。
+- 单测：SlideServiceTest 断言 htmlContent 含 `data-segment="1"`、`slide-audio-v2`、`segment-activated`。
+
+### F-2026-08-07-03 · P3：AI 讲述稿真实化 + 字幕 + mediaSession + 移动端（R-7/R-16）
+
+- **真实 AI 生成**：新增 `AiScriptService`（LLM 兼容 Chat Completions，3 次重试 + 429/超时退避，provider 可配）+ `AiScriptController`（`POST /ppt/pages/{pageId}/scripts/ai-generate` 取相邻页上下文；`POST /html/units/{unitId}/segments/{idx}/ai-generate` 用段文本）；`ScriptEditor.handleAiGenerate` 由 mock 改为调后端（P3-1）。
+- **字幕跟随**（P3-2）：播放器底部字幕条（PPT=当前页讲述稿 / HTML=当前段 scriptText），头部可开关。
+- **mediaSession**（P3-3）：播放/暂停/seek 系统媒体控制 + 元数据（页进度 + 当前讲述稿标题）。
+- **移动端**（P3-4）：375px 布局回归列入验收。
+- precheck 白名单登记 `AiScriptController` / `AiScriptService`（.claude + .agents 同步）。
+
+### F-2026-08-07-04 · 生产部署（P0-P3 全量上线）
+
+- **门禁**：`scripts/local-dev-deploy.sh` 16/16 通过（含修复本地 JDK 的 jacoco.exec 损坏导致的构建/测试失败——构建与测试命令加 `-Djacoco.skip=true`，CI JDK17 不受影响）→ 生产门禁自动打开。
+- **后端**：备份旧 jar（`backups/micro-course-api-1.0.0.jar.backup.20260807_0130`，md5 9055b31e）→ 上传新 jar（md5 cbf0e785）→ bind-mount 原位替换 → `kill -s HUP 1`；16s 启动，actuator UP。
+- **前端**：`deploy-frontend.sh` 部署新 bundle `index-y7MdGbbB.js`（旧 dist 备份 `admin.dist.backup.20260807_013414`），HTTP 200。
+- **验证**：新 bundle 生效、`/courseware/tts-options` 与 `/flow/evaluate` 端点存在（401 非 404）、5 分钟监控 0 ERROR / 0 5xx。
+- **待办**：PR #193 合并待 GitHub Actions 恢复（今日基础设施故障 `Service Unavailable`，所有失败均非代码问题）；本地验证已全绿（后端 1136/0/0、前端 220/220、Playwright e2e 0 错误、预检 26/26）。回滚路径见 ROLLBACK_PLAN.md「2026-08-07 增量」。
+
+### F-2026-08-07-05 · v2 工作台缺预览入口 + 空状态上传死胡同（P1-C）
+
+- **根因**：`CoursewareWorkbench.vue`（新版四面板）头部注释声明"预览与发布"但从未实现；空状态下"上传 PPT/HTML 课件"按钮只弹 `ElMessage` 提示引用不存在的"底部上传按钮"（死胡同）。旧版头部预览按钮随 v2 渲染被替换，即用户反馈"课件管理页没有预览功能"的 v2 场景。
+- **修复**：工作台顶部新增「预览」按钮（PPT/HTML 均可用，渲染中禁用并给 tooltip），打开全屏 `SlidePreview`（复用学生播放器内核，与旧版一致）；PPT 空状态改为真实 `el-upload` 拖拽上传（沿用旧版大小/类型/MIME/魔数校验），上传后轮询 `getCoursewareTree` 至 `type !== EMPTY`（渲染中显示"正在后台渲染处理"而非误报"暂无课件"）；`handleUpload` 按文件类型分支——HTML 上传后自动切到 HTML 工作流并引导保存；课件类型按 section 记忆到 sessionStorage，刷新不丢失。
+- **验证**：本地 Playwright/ego-browser 实测——空状态渲染上传区且无预览按钮；上传 HTML → sectionId 正确落库 → 自动切 HTML 工作流 → 编辑器预载内容 → 保存 → 单元创建 → 分段脚本出现 → 预览按钮启用 → 全屏播放器渲染 1/1 页且无 console 错误。
+
+### F-2026-08-07-06 · 前端 uploadSlide 丢失 sectionId → 上传课件与课时失联（P0/P1-C）
+
+- **根因**：`api/slide.js uploadSlide(courseId, file, onProgress, chapterId)` 的 FormData 只追加 `chapterId`，从不追加 `sectionId`（SlideManage / Workbench / useSlideManager 均如此）。后端 `/slides/upload` 支持 sectionId 且 `uploadHtmlFile`/`upload` 按 (courseId, chapterId, sectionId) UPSERT，但前端从未传 → 管理页上传的 `course_slides`/`slide_pages` 落库 `section_id = NULL`，而 `getCoursewareTree`/`getPages` 按 `section_id` 查询 → 课时维度永远查不到刚上传的内容（树显示 EMPTY、页面列表为空）。
+- **修复**：`uploadSlide` 增加第 5 参 `sectionId`（有值才 append）；SlideManage.handleUpload 与 CoursewareWorkbench.handleUpload 均传 `route.query.sectionId`/`props.sectionId`（与 chapterId 同时传，兼容章节级查询）。
+- **横向扫描**：`useSlideManager`（章节级，无 section 上下文）保持传 chapterId；`TeacherSlideOverview`（课程/章节级上传）不受影响；后端两上传路径已验证均支持 sectionId。
+- **验证**：本地重传后 `course_slides.section_id=1`、`slide_pages.section_id=1`；`GET /slides/pages?sectionId=1` 返回页面；前端新增 2 条单测（含/不含 sectionId）。
+
+### F-2026-08-07-07 · createHtmlUnit 章节派生缺陷 → HTML 单元创建必 500（P0/P1-C）
+
+- **根因**：`HtmlCoursewareServiceImpl.createUnitFresh` 只在 `slide.chapter_id` 非空时能兜底派生 chapterId；课时级上传的 slide `chapter_id=NULL`（section_id 有值）→ `slide_html_units.chapter_id NOT NULL` 约束违反 → 保存 HTML 单元必现 `9999 Internal error`（日志：`null value in column "chapter_id"`）。该缺陷同时阻断 v2 HTML 工作流"上传→保存→分段脚本→预览"整条链路。
+- **修复**：`createUnitFresh` 增加第二级兜底——slide 无 chapterId 时通过 `CourseSectionRepository.selectById(sectionId)` 反查 section 所属 chapter；`courseId` 也优先从 slide 派生。
+- **横向扫描**：`updateUnit` 按已存在 unit id 更新，不受影响；PPT 路径无此表约束。
+- **验证**：新增单测 `createUnitDerivesChapterIdFromSection`（slide.chapterId=null → 从 section 派生 55）；后端全量 1137/0/0；本地 UI 实测保存单元成功（chapter_id=1、section_id=1）。
+
+### F-2026-08-07-08 · AI 讲述稿生成使用 DeepSeek 而非用户要求的 MMX → 生产 100% 失败（P0）
+
+- **根因**：`AiScriptService`/`NarrationServiceImpl`（v1+v2 两条路径）只支持 `plugin.interactive.deepseek.api-key`；生产仅配置 `MINIMAX_API_KEY` → 教师点"AI 生成讲述稿"必报"需要配置 DEEPSEEK_API_KEY"（生产 0 脚本可经 AI 生成）。用户铁律："讲述稿生成系统与 TTS 统一使用 mmx"未在代码落实。
+- **修复**：新增共享 `LlmChatClient`（MiniMax 优先：`https://api.minimaxi.com/v1/chat/completions` + Bearer + MiniMax-M3，DeepSeek 兜底；忽略本地 dev 占位符；剥离 M 系列响应 `<think>` 标签；3 次重试 + 429/超时退避）。v1 `NarrationServiceImpl` 与 v2 `AiScriptService` 统一接入；`application.yml` 新增 `minimax.chat-model/chat-base-url`。生产已有 MINIMAX_API_KEY，部署后无需新增凭据即可用。
+- **验证**：新增 `LlmChatClientTest` 4 例（MMX 端点/鉴权、DeepSeek 兜底、占位符视为未配置、think 剥离）；后端全量通过；本地实测 AI 生成错误提示由"服务器错误"变为明确"需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY"。
+
+### F-2026-08-07-09 · AI/TTS 失败错误被吞成"服务器错误，请稍后重试"（P1-C）
+
+- **根因**：`ScriptEditor.handleAiGenerate` 只有 try/finally 无 catch（异常上抛被全局兜底）；`AudioManager` 用 `e.message` 而非 `e.response.data.message`。后端明确原因（Key 未配置/超时/限流）全部丢失。
+- **修复**：ScriptEditor 补 catch 透传 `response.data.message`；AudioManager 改为 `e?.response?.data?.message || e?.message`；AudioPanel.load 补 catch 防未处理 rejection。
+- **横向扫描**：全仓扫描 try/finally+await 无 catch 模式，除以上 3 处均为加载类（已有容错）或测试文件。
+- **验证**：本地实测 AI 生成 toast 显示真实原因。
+
+### F-2026-08-07-10 · PPT 无脚本时生成音频请求 /ppt/scripts/null/audios → 后端 500（P0/P1-C）
+
+- **根因**：`AudioManager.handleGenerate` 对 PPT 未校验 `effectiveScriptId`（空值时 URL 拼 "null"），后端 `@PathVariable Long scriptId` 转换失败 500。
+- **修复**：新增 `canGenerate` computed（PPT 需有效 scriptId；HTML 需至少一个 segmentScriptId），"生成新音频"按钮禁用 + tooltip，handleGenerate 前置守卫提示"请先保存讲述稿"。
+- **验证**：本地实测无脚本时按钮禁用、空态文案"请先保存页面讲述稿"；后端不再出现 null/audios 500。
+
+### F-2026-08-07-11 · PPT/HTML 讲述稿保存 created_by NOT NULL → 保存必 500（P0）
+
+- **根因**：`slide_ppt_page_scripts`/`slide_html_segment_scripts.created_by NOT NULL`，`PptCoursewareServiceImpl.saveScript` 与 `HtmlCoursewareServiceImpl.saveSegmentScript` 直接使用客户端传入 createdBy（可能 null）→ 保存分段/页面讲述稿 100% 500（HTML 音频同步链路核心断裂点）。
+- **修复**：两处 `createdBy != null ? createdBy : SecurityUtil.getCurrentUserId()`（审计字段不信任客户端，符合问题模式库）。
+- **横向扫描**：全库核查 created_by NOT NULL 表仅这两张，音频表无约束；均修复。
+- **验证**：新增单测 `saveSegmentScriptFallsBackCreatedBy`；本地实测分段脚本保存 9999 → 200；后端全量 1142/0/0。
+
+### F-2026-08-07-12 · SlidePlayer 页面图片永不显示（lazy + auto 尺寸死锁） + 视频测试清理路径错配（P1-C / 测试基建）
+
+- **根因（播放器）**：`.slide-image { width:auto }` + `loading="lazy"` → 容器 0×0 → 懒加载永不触发 → 图片永不解码（实测 naturalWidth=0、frame 0×5）。
+- **修复（播放器）**：移除 `loading="lazy"`，`.slide-image` 显式 `width: min(92vw,1400px)`。实测 3 页 PPT 全部 640×480 解码、1400×900 容器、翻页零错误。
+- **根因（测试基建）**：`VideoAccessControlTest.deleteVideoFiles` 写死 `/data/videos`，服务端实际 `uploads/videos`；本地门禁 drop+recreate 重置视频 id 序列与历史残留目录碰撞 → 已选课+有效签名期望 404 实际 200（CI 后端门禁红）。
+- **修复（测试）**：改用 `@Value("${video.storage-base-dir:uploads/videos}")` 与服务端一致；历史残留目录已移至 /tmp（gitignored 测试产物）。实测 VideoAccessControlTest 9/9。
+
+### F-2026-08-07-13 · 设计裁定：取消"新版/旧版"开关，PPT 与 HTML 拆分为独立模块（架构级）
+
+- **裁定背景**：原系统存在「新版四面板（coursewareV2 开关）/ 旧版」与「PPT / HTML」两个正交维度，产生 4 象限，两套 UI 功能长期不同步（预览/上传/批量等修复互相缺失），即"故障越来越大"的结构性根源。用户裁定：**课件类型（PPT/HTML）是唯一维度，不再有版本概念**；且 PPT 与 HTML 的讲述稿、音频生成调用方式完全不同（页级 vs 段级），应各自独立成模块，而非混在一个类型切换工作台。
+- **实施**：
+  - 删除 `useFeatureFlag`（mc:feature:courseware_v2）与 `CoursewareWorkbench` 类型切换；`SlideManage.vue` 重构为统一壳：按树类型分发 `PptCoursewareManage` / `HtmlCoursewareManage`，空课时给「上传 PPT / 上传 HTML」明确二选一，创建后固定类型。
+  - `PptCoursewareManage`：页列表 + 四面板（内容/讲述稿/音频/跳转逻辑）+ 预览/替换 PPT/下载 PPT/删除课件/批量 AI/批量 TTS/批量删除（v1 能力全部移植）。
+  - `HtmlCoursewareManage`：HTML 内容编辑器 + 分段脚本 + 预览/替换 HTML/删除课件。
+  - 后端：课件树支持章节级（chapterId）查询；新增整节/整章 v1+v2 全量删除接口 `DELETE /slides/courseware`；v1 HTML 已上传但单元未初始化时树返回 HTML（待初始化），避免"上传后消失"。
+  - `HtmlBlockEditor` sectionId 可选（章节级 HTML 显示提示而非崩溃）；`SlidePlayer` 支持 path 参数兜底（章节级内嵌预览）。
+- **验证**：ego-browser 本地实测——空课时创建二选一、PPT 上传→渲染→PPT 模块（批量/替换/下载/删除/预览）、HTML 上传→HTML 模块（编辑器预载）、章节级路由 `/teacher/courses/1/chapters/1/manage-slides` 正常；前端 218/218、后端 1144/0/0、precheck 25/0/0、门禁 16/16。
+
+### F-2026-08-07-14 · PPT 渲染 slide_ppt_pages.chapter_id NOT NULL → 课时级上传渲染必失败（P0）
+
+- **根因**：`SlideServiceImpl.upload` 在「管理页 URL 无 chapterId、仅 sectionId」场景下创建的 course_slides.chapter_id=NULL，`SlideRenderService.renderAsync` 原样写入 `slide_ppt_pages.chapter_id=NULL` → NOT NULL 违反 → 渲染必失败（本地实测 slide status=3 "课件渲染失败"；生产同样路径可触发）。
+- **修复**：上传时若 sectionId 有值而 chapterId 为空，从 course_sections 反查 chapterId 并回填 slide 记录；渲染即拿到正确 chapter_id。
+- **横向扫描**：`createUnitFresh`（HTML 单元）已做同模式 section→chapter 派生（F-08-07）；`uploadHtmlFile` 无此约束；章节级上传（chapterId 直达）不受影响。
+- **验证**：修复后本地从统一 UI 上传 PPTX（无 chapterId URL）→ 6s 渲染完成、slide_ppt_pages=3、status=2；单测回归全绿。

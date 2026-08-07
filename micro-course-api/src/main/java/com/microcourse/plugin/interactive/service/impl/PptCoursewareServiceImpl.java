@@ -140,7 +140,9 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         next.setTtsModel(ttsModel);
         LocalDateTime now = LocalDateTime.now();
         next.setCreatedAt(now);
-        next.setCreatedBy(createdBy);
+        // F-2026-08-07-11：审计字段不信任客户端——createdBy 缺失时回退当前登录用户，
+        // 否则 slide_ppt_page_scripts.created_by NOT NULL 导致 PPT 脚本保存必 500
+        next.setCreatedBy(createdBy != null ? createdBy : com.microcourse.util.SecurityUtil.getCurrentUserId());
         next.setUpdatedAt(now);
         scriptMapper.insert(next);
         log.info("[PPT-Script] saved: id={}, pageId={}, version={}",
@@ -236,6 +238,36 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     public List<PptFlowDTO> listFlowsBySection(Long sectionId) {
         return flowMapper.listBySection(sectionId).stream()
                 .map(this::toFlowDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void updateFlow(Long flowId, PptFlowDTO dto) {
+        SlidePptFlow entity = flowMapper.selectById(flowId);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
+        }
+        if (dto.getFromPageId() != null) entity.setFromPageId(dto.getFromPageId());
+        if (dto.getToPageId() != null) entity.setToPageId(dto.getToPageId());
+        if (dto.getFlowType() != null) entity.setFlowType(dto.getFlowType());
+        if (dto.getPriority() != null) entity.setPriority(dto.getPriority());
+        if (dto.getDependsOnQuizId() != null) entity.setDependsOnQuizId(dto.getDependsOnQuizId());
+        if (dto.getConditionExpression() != null) entity.setConditionExpression(dto.getConditionExpression());
+        if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
+        entity.setUpdatedAt(LocalDateTime.now());
+        flowMapper.updateById(entity);
+        log.info("[PPT-Flow] updated: id={}, type={}, from={}, to={}",
+                flowId, entity.getFlowType(), entity.getFromPageId(), entity.getToPageId());
+    }
+
+    @Override
+    @Transactional
+    public void deleteFlow(Long flowId) {
+        int affected = flowMapper.deleteById(flowId);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
+        }
+        log.info("[PPT-Flow] deleted: id={}", flowId);
     }
 
     // ====== DTO converters ======

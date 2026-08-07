@@ -20,29 +20,6 @@ jobs:
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: micro_course
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -52,16 +29,33 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      - name: Wait for PostgreSQL & Redis
+      # 2026-08-07 F-15：移除 services 容器编排（outage 后带 services 的 job 在 runner 上
+      # 零日志卡死 4 次），改为显式 docker 步骤启动，宿主网桥 172.17.0.1 可达
+      - name: Start PostgreSQL 17
         run: |
+          docker run -d --name ci-pg \
+            -p 5432:5432 \
+            -e POSTGRES_DB=micro_course \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            postgres:17-alpine
           for i in $(seq 1 30); do
-            pg_isready -h localhost -p 5432 && echo "PG ready" && break
+            if docker exec ci-pg pg_isready -U postgres >/dev/null 2>&1; then echo "PG ready"; break; fi
             sleep 2
           done
+
+      - name: Start Redis 7
+        run: |
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
           for i in $(seq 1 15); do
-            redis-cli -h localhost -p 6379 ping && echo "Redis ready" && break
+            if docker exec ci-redis redis-cli ping >/dev/null 2>&1; then echo "Redis ready"; break; fi
             sleep 2
           done
+
+      - name: Verify services reachable
+        run: |
+          docker exec ci-pg pg_isready -U postgres
+          docker exec ci-redis redis-cli ping
 
       - name: Cache Maven
         uses: actions/cache@v4
@@ -80,9 +74,9 @@ jobs:
         run: mvn -B verify -Dspring-boot.repackage.skip=true
         working-directory: ./micro-course-api
         env:
-          TEST_DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          TEST_DB_URL: jdbc:postgresql://172.17.0.1:5432/micro_course
           TEST_DB_PASSWORD: postgres
-          TEST_REDIS_HOST: localhost
+          TEST_REDIS_HOST: 172.17.0.1
           TEST_REDIS_PORT: 6379
 
   # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
@@ -112,29 +106,6 @@ jobs:
     needs: [backend, frontend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_DB: micro_course
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
     steps:
       - uses: actions/checkout@v4
 
@@ -143,6 +114,28 @@ jobs:
         with:
           java-version: 17
           distribution: temurin
+
+      # F-15：同 backend——移除 services 编排，显式 docker 启动（宿主网桥 172.17.0.1 可达）
+      - name: Start PostgreSQL 17
+        run: |
+          docker run -d --name ci-pg \
+            -p 5432:5432 \
+            -e POSTGRES_DB=micro_course \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            postgres:17-alpine
+          for i in $(seq 1 30); do
+            if docker exec ci-pg pg_isready -U postgres >/dev/null 2>&1; then echo "PG ready"; break; fi
+            sleep 2
+          done
+
+      - name: Start Redis 7
+        run: |
+          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
+          for i in $(seq 1 15); do
+            if docker exec ci-redis redis-cli ping >/dev/null 2>&1; then echo "Redis ready"; break; fi
+            sleep 2
+          done
 
       - name: Cache Maven
         uses: actions/cache@v4
@@ -163,9 +156,9 @@ jobs:
         run: mvn -B package -DskipTests -q
         working-directory: ./micro-course-api
         env:
-          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_URL: jdbc:postgresql://172.17.0.1:5432/micro_course
           DB_PASSWORD: postgres
-          REDIS_HOST: localhost
+          REDIS_HOST: 172.17.0.1
           REDIS_PORT: 6379
           REDIS_PASSWORD: ""
 
@@ -184,9 +177,9 @@ jobs:
           done
         working-directory: ./micro-course-api
         env:
-          DB_URL: jdbc:postgresql://localhost:5432/micro_course
+          DB_URL: jdbc:postgresql://172.17.0.1:5432/micro_course
           DB_PASSWORD: postgres
-          REDIS_HOST: localhost
+          REDIS_HOST: 172.17.0.1
           REDIS_PORT: 6379
           REDIS_PASSWORD: ""
           JWT_SECRET: ci-test-jwt-secret-key-32-chars-for-testing-only
@@ -206,7 +199,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
 
       - name: Seed E2E Test Data
-        run: PGPASSWORD=postgres psql -h localhost -U postgres -d micro_course -f src/test/resources/sql/p0-seed.sql
+        run: PGPASSWORD=postgres psql -h 172.17.0.1 -U postgres -d micro_course -f src/test/resources/sql/p0-seed.sql
         working-directory: ./micro-course-api
 
       - name: API 冒烟测试

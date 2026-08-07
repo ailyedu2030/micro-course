@@ -362,7 +362,13 @@ public class TtsServiceImpl implements TtsService {
         // bodyMap.put("subtitle_enable", true);
         // bodyMap.put("subtitle_type", "word");
 
-        String requestBody = objectMapper.writeValueAsString(bodyMap);
+        final String requestBody;
+        try {
+            requestBody = objectMapper.writeValueAsString(bodyMap);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                    "MiniMax 请求序列化失败: " + e.getMessage(), e);
+        }
         log.debug("[TTS] MiniMax request: model={}, voice={}, textLen={}",
                 ttsModel, ttsVoice, script.length());
 
@@ -625,6 +631,14 @@ public class TtsServiceImpl implements TtsService {
     }
 
     private int callMmxCliWithVoice(String script, Path audioPath, String voiceId, String model, Double speed) throws Exception {
+        TtsService.SynthesizedAudio audio = synthesize(script, voiceId, model, speed);
+        Files.write(audioPath, audio.getBytes());
+        log.info("[TTS] MiniMax segment generated: {} bytes, ~{}s", audio.getBytes().length, audio.getEstimatedSec());
+        return audio.getEstimatedSec();
+    }
+
+    @Override
+    public TtsService.SynthesizedAudio synthesize(String script, String voiceId, String model, Double speed) {
         if (minimaxApiKey == null || minimaxApiKey.isBlank()) {
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax API key 未配置");
         }
@@ -648,7 +662,13 @@ public class TtsServiceImpl implements TtsService {
         bodyMap.put("audio_setting", audioSetting);
         bodyMap.put("output_format", "hex");
 
-        String requestBody = objectMapper.writeValueAsString(bodyMap);
+        final String requestBody;
+        try {
+            requestBody = objectMapper.writeValueAsString(bodyMap);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                    "MiniMax 请求序列化失败: " + e.getMessage(), e);
+        }
 
         var request = java.net.http.HttpRequest.newBuilder()
                 .uri(java.net.URI.create(MINIMAX_TTS_URL))
@@ -658,12 +678,25 @@ public class TtsServiceImpl implements TtsService {
                 .timeout(Duration.ofSeconds(ttsTimeoutSeconds))
                 .build();
 
-        var response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+        final java.net.http.HttpResponse<byte[]> response;
+        try {
+            response = httpClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+        } catch (java.io.IOException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                    "MiniMax 调用失败: " + e.getMessage(), e);
+        }
         byte[] respBody = response.body();
         String respStr = new String(respBody, StandardCharsets.UTF_8);
 
         if (respStr.contains("\"base_resp\"")) {
-            var parsed = objectMapper.readTree(respBody);
+            final com.fasterxml.jackson.databind.JsonNode parsed;
+            try {
+                parsed = objectMapper.readTree(respBody);
+            } catch (java.io.IOException e) {
+                throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                        "MiniMax 响应解析失败: " + e.getMessage(), e);
+            }
             int code = parsed.path("base_resp").path("status_code").asInt(0);
             if (code != 0) {
                 String msg = parsed.path("base_resp").path("status_msg").asText("unknown");
@@ -680,7 +713,13 @@ public class TtsServiceImpl implements TtsService {
             }
         }
 
-        var root = objectMapper.readTree(respBody);
+        final com.fasterxml.jackson.databind.JsonNode root;
+        try {
+            root = objectMapper.readTree(respBody);
+        } catch (java.io.IOException e) {
+            throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED,
+                    "MiniMax 响应解析失败: " + e.getMessage(), e);
+        }
         String audioHex = root.path("data").path("audio").asText(null);
         if (audioHex == null || audioHex.isEmpty()) {
             throw new BusinessException(ErrorCode.TTS_GENERATE_FAILED, "MiniMax 响应缺少音频数据");
@@ -702,10 +741,8 @@ public class TtsServiceImpl implements TtsService {
             audioBytes[i / 2] = (byte) ((hi << 4) | lo);
         }
 
-        Files.write(audioPath, audioBytes);
         int estimatedSec = Math.max(1, (int) (audioBytes.length / 16000));
-        log.info("[TTS] MiniMax segment generated: {} bytes, ~{}s", audioBytes.length, estimatedSec);
-        return estimatedSec;
+        return new TtsService.SynthesizedAudio(audioBytes, estimatedSec);
     }
 
     private synchronized void stateAppendSegment(String taskId, Long courseId, TtsStatusResponse.AudioSegment seg) {

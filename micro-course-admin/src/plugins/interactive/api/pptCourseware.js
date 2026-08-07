@@ -72,3 +72,11 @@ export function listPptFlows(courseId, sectionId) {
 export function createPptFlow(courseId, sectionId, dto) {
   return request({ method: 'POST', url: `/courses/${courseId}/ppt/sections/${sectionId}/flows`, data: dto })
 }
+
+export function updatePptFlow(courseId, flowId, dto) {
+  return request({ method: 'PUT', url: `/courses/${courseId}/ppt/flows/${flowId}`, data: dto })
+}
+
+export function deletePptFlow(courseId, flowId) {
+  return request({ method: 'DELETE', url: `/courses/${courseId}/ppt/flows/${flowId}` })
+}

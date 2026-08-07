@@ -1,20 +1,26 @@
 package com.microcourse.plugin.interactive.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateRequest;
+import com.microcourse.plugin.interactive.dto.FlowEvaluateResponse;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
+import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.entity.SlidePptFlow;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
@@ -23,6 +29,10 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
+import com.microcourse.plugin.interactive.flow.FlowEngine;
+import com.microcourse.plugin.interactive.flow.FlowContext;
+import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.entity.CourseSection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -62,7 +72,25 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final SlideHtmlUnitMapper unitMapper;
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
+    private final SlidePageMapper slidePageMapper;
     private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
+    private final FlowEngine flowEngine;
+    private final CourseSectionRepository courseSectionRepository;
+
+    /** MiniMax 官方模型（application.yml 契约，R-6） */
+    private static final List<String> TTS_MODELS = java.util.List.of(
+            "speech-2.8-hd", "speech-2.6-hd", "speech-01", "speech-02");
+
+    /** MiniMax 官方 voice_id（application.yml 注释预定义音色，R-6） */
+    private static final List<TtsOptionsVO.VoiceOption> TTS_VOICES = java.util.List.of(
+            new TtsOptionsVO.VoiceOption("female-shaonv", "女声·甜美少女"),
+            new TtsOptionsVO.VoiceOption("female-qingxin", "女声·清新"),
+            new TtsOptionsVO.VoiceOption("female-yujie", "女声·御姐"),
+            new TtsOptionsVO.VoiceOption("female-warm", "女声·温暖"),
+            new TtsOptionsVO.VoiceOption("male-shaonian", "男声·少年"),
+            new TtsOptionsVO.VoiceOption("male-qingnian", "男声·青年"),
+            new TtsOptionsVO.VoiceOption("male-dashu", "男声·大叔"),
+            new TtsOptionsVO.VoiceOption("male-chengzhao", "男声·沉稳"));
 
     public CoursewareQueryServiceImpl(SlidePptPageMapper pageMapper,
                                        SlidePptPageScriptMapper pageScriptMapper,
@@ -71,7 +99,10 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        SlideHtmlUnitMapper unitMapper,
                                        SlideHtmlSegmentScriptMapper segmentScriptMapper,
                                        SlideHtmlSegmentAudioMapper segmentAudioMapper,
-                                       com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache) {
+                                       SlidePageMapper slidePageMapper,
+                                       com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache,
+                                       FlowEngine flowEngine,
+                                       CourseSectionRepository courseSectionRepository) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -79,19 +110,26 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
+        this.slidePageMapper = slidePageMapper;
         this.audioStreamCache = audioStreamCache;
+        this.flowEngine = flowEngine;
+        this.courseSectionRepository = courseSectionRepository;
     }
 
     @Override
-    public CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId) {
-        if (courseId == null || sectionId == null) {
+    public CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId, Long chapterId) {
+        if (courseId == null || (sectionId == null && chapterId == null)) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "courseId 和 sectionId 必填");
+                    "courseId 与 sectionId/chapterId 必填（课时级或章节级二选一）");
         }
 
-        // 1. 一次性查 PPT pages (验证 + 数据复用, 避免 N+1)
-        List<SlidePptPage> pptPages = pageMapper.listBySection(sectionId);
-        SlideHtmlUnit htmlUnit = unitMapper.findBySection(sectionId);
+        // 1. 一次性查 PPT pages (验证 + 数据复用, 避免 N+1)；课时级优先，章节级兜底
+        List<SlidePptPage> pptPages = sectionId != null
+                ? pageMapper.listBySection(sectionId)
+                : pageMapper.listByChapter(chapterId);
+        SlideHtmlUnit htmlUnit = sectionId != null
+                ? unitMapper.findBySection(sectionId)
+                : unitMapper.findByChapter(chapterId);
 
         // 【审计修复 BUG #4 + #8】 复用已查询的 pptPages 校验 section 归属,
         // 消除 BUG #8 的重复 SQL (N+1 → 1 query)
@@ -102,8 +140,32 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         } else if (htmlUnit != null) {
             return buildHtmlTree(courseId, sectionId, htmlUnit);
         } else {
+            // v1 HTML 页面已上传（HTML_DIRECT）但单元未初始化 → 仍按 HTML 类型返回，
+            // 前端 HTML 模块编辑器预载内容，保存一次即创建单元（F-2026-08-07-13）
+            SlidePage v1Html = slidePageMapper.selectOne(
+                    new LambdaQueryWrapper<SlidePage>()
+                            .eq(SlidePage::getCourseId, courseId)
+                            .eq(sectionId != null, SlidePage::getSectionId, sectionId)
+                            .eq(sectionId == null, SlidePage::getChapterId, chapterId)
+                            .eq(SlidePage::getContentType, "HTML_DIRECT")
+                            .orderByAsc(SlidePage::getId)
+                            .last("LIMIT 1"));
+            if (v1Html != null) {
+                return pendingHtmlTree(courseId, sectionId);
+            }
             return emptyTree(courseId, sectionId);
         }
+    }
+
+    private CoursewareTreeDTO pendingHtmlTree(Long courseId, Long sectionId) {
+        CoursewareTreeDTO tree = new CoursewareTreeDTO();
+        tree.setType("HTML");
+        tree.setSectionId(sectionId);
+        tree.setCourseId(courseId);
+        tree.setHtmlUnit(null);
+        tree.setNarrationStatus("PENDING");
+        tree.setAudioReadyCount(0);
+        return tree;
     }
 
     /**
@@ -180,9 +242,13 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         }
         tree.setPages(nodes);
 
-        // 3. flow
-        List<SlidePptFlow> flows = flowMapper.listBySection(sectionId);
-        tree.setFlow(flows.stream().map(this::toPptFlowDTO).collect(Collectors.toList()));
+        // 3. flow（仅课时级课件支持页间跳转规则；章节级不适用）
+        if (sectionId != null) {
+            List<SlidePptFlow> flows = flowMapper.listBySection(sectionId);
+            tree.setFlow(flows.stream().map(this::toPptFlowDTO).collect(Collectors.toList()));
+        } else {
+            tree.setFlow(Collections.emptyList());
+        }
 
         tree.setAudioReadyCount(readyAudios);
         tree.setNarrationStatus(readyAudios > 0 ? "AUDIO_READY" : "AUDIO_GENERATING");
@@ -257,6 +323,47 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         log.warn("[Audio-Stream] token not found (masked): token.length={}", token.length());
         throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
                 "Audio token invalid: " + (token.length() > 8 ? token.substring(0, 8) + "..." : token));
+    }
+
+    @Override
+    public TtsOptionsVO getTtsOptions() {
+        TtsOptionsVO vo = new TtsOptionsVO();
+        vo.setModels(TTS_MODELS);
+        vo.setVoices(TTS_VOICES);
+        vo.setDefaultModel("speech-2.8-hd");
+        vo.setDefaultVoice("female-shaonv");
+        return vo;
+    }
+
+    @Override
+    public FlowEvaluateResponse evaluateFlow(Long courseId, Long sectionId, FlowEvaluateRequest request) {
+        if (courseId == null || sectionId == null || request == null || request.getCurrentPageId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "courseId / sectionId / currentPageId 必填");
+        }
+        // IDOR：校验 section 归属 course（复用 CoursewareTree 的防护语义）
+        CourseSection section = courseSectionRepository.selectById(sectionId);
+        if (section == null || !courseId.equals(section.getCourseId())) {
+            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
+        }
+        FlowContext context = new FlowContext(
+                request.getCurrentPageId(),
+                com.microcourse.util.SecurityUtil.getCurrentUserIdOpt(),
+                request.getUserProgress(),
+                request.getLastQuizId(),
+                request.getLastQuizAnswer());
+        Long next = flowEngine.decideNextPage(sectionId, context);
+        if (next == null) {
+            return new FlowEvaluateResponse(null, "LINEAR");
+        }
+        // 命中的规则类型（供前端展示/日志）
+        String matchedType = flowEngine.listFlows(sectionId).stream()
+                .filter(f -> f.getFromPageId().equals(request.getCurrentPageId()))
+                .filter(f -> f.getToPageId() != null && f.getToPageId().equals(next))
+                .map(f -> f.getFlowType())
+                .findFirst().orElse("NEXT");
+        return new FlowEvaluateResponse(next, matchedType);
     }
 
     // ====== Converters ======

@@ -80,6 +80,9 @@ async function load() {
   try {
     // 无脚本时静默置空，避免以 null 请求后端（此前必现 500）
     audios.value = props.scriptId ? await props.tokenLoader(props.scriptId) : []
+  } catch (e) {
+    // F-2026-08-07-09：加载失败给出明确提示，避免未处理 rejection
+    ElMessage.warning('音频列表加载失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
   } finally {
     loading.value = false
   }

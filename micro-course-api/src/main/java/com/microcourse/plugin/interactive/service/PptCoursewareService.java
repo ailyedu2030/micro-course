@@ -40,4 +40,6 @@ public interface PptCoursewareService {
     // === 页间跳转逻辑 ===
     Long createFlow(PptFlowDTO dto);
     List<PptFlowDTO> listFlowsBySection(Long sectionId);
+    void updateFlow(Long flowId, PptFlowDTO dto);
+    void deleteFlow(Long flowId);
 }

@@ -11,7 +11,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,7 +67,18 @@ public class CoursewareQueryController {
     @GetMapping("/{sectionId}")
     public R<CoursewareTreeDTO> getCoursewareTree(@PathVariable Long courseId,
                                                    @PathVariable Long sectionId) {
-        return R.ok(queryService.getCoursewareTree(courseId, sectionId));
+        return R.ok(queryService.getCoursewareTree(courseId, sectionId, null));
+    }
+
+    /**
+     * 课件树统一入口（课时级 / 章节级）：GET /api/courses/{courseId}/courseware/tree?sectionId=&chapterId=
+     * 兼容旧路径 /{sectionId}（仅课时级）。
+     */
+    @GetMapping("/tree")
+    public R<CoursewareTreeDTO> getCoursewareTreeByScope(@PathVariable Long courseId,
+                                                          @RequestParam(required = false) Long sectionId,
+                                                          @RequestParam(required = false) Long chapterId) {
+        return R.ok(queryService.getCoursewareTree(courseId, sectionId, chapterId));
     }
 
     /**
@@ -121,5 +135,30 @@ public class CoursewareQueryController {
         try (InputStream in = Files.newInputStream(filePath)) {
             in.transferTo(response.getOutputStream());
         }
+    }
+
+    /**
+     * TTS 音色/模型契约（P0-5 / R-6）：
+     * GET /api/courses/{courseId}/courseware/tts-options
+     * 教师端 AudioManager / ScriptEditor 据此渲染下拉，消除前端非法枚举。
+     */
+    @GetMapping("/tts-options")
+    public com.microcourse.dto.R<com.microcourse.plugin.interactive.dto.TtsOptionsVO> ttsOptions() {
+        return com.microcourse.dto.R.ok(queryService.getTtsOptions());
+    }
+
+    /**
+     * PPT 页间跳转求值（P1-1 / R-5）：
+     * POST /api/courses/{courseId}/courseware/{sectionId}/flow/evaluate
+     * 播放器传 {currentPageId, userProgress?, lastQuizId?, lastQuizAnswer?}，
+     * 后端复用 FlowEngine 求值（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），响应 {nextPageId, matchedType}。
+     */
+    @PostMapping("/{sectionId}/flow/evaluate")
+    @org.springframework.security.access.prepost.PreAuthorize("isAuthenticated()")
+    public com.microcourse.dto.R<com.microcourse.plugin.interactive.dto.FlowEvaluateResponse> evaluateFlow(
+            @PathVariable Long courseId,
+            @PathVariable Long sectionId,
+            @RequestBody com.microcourse.plugin.interactive.dto.FlowEvaluateRequest request) {
+        return com.microcourse.dto.R.ok(queryService.evaluateFlow(courseId, sectionId, request));
     }
 }

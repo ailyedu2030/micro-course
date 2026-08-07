@@ -8,6 +8,11 @@ vi.mock('@/plugins/interactive/api/slide', () => ({
   getSlidePages: vi.fn(() => Promise.resolve({ data: [] })),
 }))
 
+// P1：播放器新增 flow 求值依赖 —— 避免真实 request 链拉入 router
+vi.mock('@/plugins/interactive/api/queryCourseware', () => ({
+  evaluateFlow: vi.fn(() => Promise.resolve({ data: { nextPageId: null, matchedType: 'LINEAR' } })),
+}))
+
 // Mock auth image utility
 vi.mock('@/utils/authImage', () => ({
   loadAuthResource: vi.fn(() => Promise.resolve(null)),
@@ -276,5 +281,104 @@ describe('SlidePlayer.vue iframe branch', () => {
     await nextTick()
 
     expect(createLearningProgressMock).not.toHaveBeenCalled()
+  })
+
+  // ===== P0 (2026-08-06)：D9 origin/source 校验 + 协议 v2 + Autoplay 解锁 =====
+
+  it('D9: 只接受 origin === "null" 的 iframe 消息（字符串而非 JS null）', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    wrapper.vm.interactiveWaiting = true
+    // 非 "null" origin（如 https://evil.example）→ 拒绝
+    wrapper.vm.onSlideAudioMessage({ origin: 'https://evil.example', data: { type: 'slide-interactive-complete' }, source: null })
+    expect(wrapper.vm.interactiveWaiting).toBe(true)
+    // sandbox srcdoc iframe 的真实 origin 序列化为字符串 "null" → 放行
+    wrapper.vm.onSlideAudioMessage({ origin: 'null', data: { type: 'slide-interactive-complete' }, source: null })
+    expect(wrapper.vm.interactiveWaiting).toBe(false)
+  })
+
+  it('D9/H-1: source 不匹配当前 iframe 时拒绝（防同页多 iframe 伪消息）', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    wrapper.vm.pageLoading = false
+    wrapper.vm.pages = [{ pageNumber: 1, contentType: 'HTML_DIRECT', htmlContent: '<div>x</div>', segments: [] }]
+    wrapper.vm.current = 0
+    await wrapper.vm.$nextTick()
+    const iframe = wrapper.find('iframe')
+    wrapper.vm.interactiveWaiting = true
+    // source 为伪造对象 → 拒绝
+    wrapper.vm.onSlideAudioMessage({ origin: 'null', data: { type: 'slide-interactive-complete' }, source: {} })
+    expect(wrapper.vm.interactiveWaiting).toBe(true)
+    // source 为当前 iframe contentWindow → 放行
+    if (iframe.exists() && iframe.element.contentWindow) {
+      wrapper.vm.onSlideAudioMessage({
+        origin: 'null',
+        data: { type: 'slide-interactive-complete' },
+        source: iframe.element.contentWindow
+      })
+      expect(wrapper.vm.interactiveWaiting).toBe(false)
+    }
+  })
+
+  it('协议 v2: ready 握手后下发 loaded（含段元数据）', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    wrapper.vm.pageLoading = false
+    wrapper.vm.pages = [{
+      pageNumber: 1,
+      contentType: 'HTML_DIRECT',
+      htmlContent: '<div>x</div>',
+      segments: [{ index: 1, marker: 'seg-1', audio: { url: '/api/courses/100/courseware/audio/token1', durationMs: 30000, status: 'READY' } }]
+    }]
+    wrapper.vm.current = 0
+    await wrapper.vm.loadAudio(0)
+    const calls = []
+    wrapper.vm.htmlIframeRef = { contentWindow: { postMessage: (m) => calls.push(m) } }
+    wrapper.vm.sendLoadedV2()
+    const loaded = calls.find(m => m.type === 'slide-audio-state-v2' && m.state === 'loaded')
+    expect(loaded).toBeTruthy()
+    expect(loaded.version).toBe(2)
+    expect(loaded.segments[0].index).toBe(1)
+  })
+
+  it('R-4: 首次 pointerdown 解锁自动播放', async () => {
+    const wrapper = mount(SlidePlayer, {
+      global: {
+        stubs: {
+          ...elementPlusStubs,
+          'router-link': { template: '<a><slot /></a>' },
+          transition: { template: '<div><slot /></div>' },
+        },
+      },
+    })
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.unlocked).toBe(false)
+    wrapper.find('.slide-player').element.dispatchEvent(new Event('pointerdown'))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.vm.unlocked).toBe(true)
   })
 })

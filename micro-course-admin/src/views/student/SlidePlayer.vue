@@ -18,10 +18,18 @@
 v-for="(p, i) in pages" :key="i"
             class="thumb-dot" :class="{ active: i === current, 'has-audio': p.audioDuration }"
             @click="goTo(i)" :aria-label="'第' + (i + 1) + '页'"
+            :title="pageDurationText(p)"
 />
         </div>
       </div>
       <div class="header-right">
+        <button
+          class="btn-icon" :class="{ active: showSubtitle }"
+          @click="showSubtitle = !showSubtitle" :aria-label="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
+          :title="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
+        >
+          <el-icon :size="16"><Document /></el-icon>
+        </button>
         <button
 class="btn-icon btn-auto" :class="{ active: autoMode }"
           @click="autoMode = !autoMode" :aria-label="autoMode ? '关闭自动播放' : '开启自动播放'"
@@ -61,6 +69,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                 v-if="currentPage?.contentType === 'HTML_DIRECT' && currentPage?.htmlContent"
                 :srcdoc="currentPage.htmlContent"
                 sandbox="allow-scripts"
+                ref="htmlIframeRef"
                 :title="'第' + (current + 1) + '页课件内容'"
                 class="slide-iframe"
                 :key="'html-' + current"
@@ -78,7 +87,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
               <img
                 v-else-if="imageUrls[current] && !imageErrors[current]"
                 :src="imageUrls[current]" class="slide-image"
-                :alt="'第' + (current + 1) + '页'" loading="lazy"
+                :alt="'第' + (current + 1) + '页'"
                 @error="imageErrors[current] = true"
               />
               <!-- 图片加载失败：占位图 + 重试按钮 -->
@@ -129,8 +138,11 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         </div>
       </div>
 
-      <!-- Audio Status Indicator -->
-      <div class="audio-status-bar" v-if="currentPage?.contentType === 'HTML_DIRECT'">
+      <!-- Audio Status Indicator（P0 R-3：PPT 页同样显示，避免 PENDING/ERROR 零提示） -->
+      <div
+        class="audio-status-bar"
+        v-if="audioStatus !== 'none' || currentPage?.audio || currentPage?.segments?.length"
+      >
         <div class="audio-status" :class="audioStatus">
           <span v-if="audioStatus === 'loading'" class="status-loading">
             <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频加载中...
@@ -178,6 +190,15 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
             @click="seekAudioByClick"
             @keydown="seekAudioByKeydown"
           >
+            <!-- P2-4：HTML 分段边界刻度 -->
+            <div v-if="segmentMode && segmentBoundaries.length > 1" class="progress-segments">
+              <span
+                v-for="(b, i) in segmentBoundaries"
+                :key="i"
+                class="segment-tick"
+                :style="{ left: b + '%' }"
+              />
+            </div>
             <div class="progress-fill" :style="{ width: audioProgress + '%' }" />
             <div class="progress-thumb" :style="{ left: audioProgress + '%' }" />
           </div>
@@ -197,6 +218,14 @@ v-for="s in speeds" :key="s"
         </div>
       </div>
     </footer>
+
+    <!-- P3-2：讲述稿字幕跟随 -->
+    <transition name="hint-fade">
+      <div v-if="showSubtitle && subtitleText" class="subtitle-bar" aria-live="polite">
+        <span class="subtitle-label">讲述稿</span>
+        <span class="subtitle-text">{{ subtitleText }}</span>
+      </div>
+    </transition>
 
     <!-- Hidden Audio -->
     <audio ref="audioRef" @timeupdate="onTimeUpdate" @ended="onAudioEnded" @loadedmetadata="onAudioLoaded" />
@@ -229,15 +258,16 @@ import { ref, computed, onMounted, onUnmounted, nextTick, reactive, watch } from
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
+import { evaluateFlow } from '@/plugins/interactive/api/queryCourseware'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const userStore = useUserStore()
 const courseId = computed(() => route.params.courseId)
-const chapterId = computed(() => route.query.chapterId)
+const chapterId = computed(() => route.query.chapterId || route.params.chapterId || null)
 // 学习进度仅对 STUDENT 上报；教师/管理员在管理页"预览"打开播放器时不写入进度（后端 hasRole('STUDENT') 会 403）
 const isStudent = computed(() => userStore.role === 'STUDENT')
 
@@ -256,6 +286,7 @@ const audioProgress = ref(0)
 const autoCountdown = ref(0)
 const transitionName = ref('slide-next')
 const showKeyboardHint = ref(false)
+const showSubtitle = ref(true)
 const playerRef = ref(null)
 const audioRef = ref(null)
 const imageUrls = ref({})
@@ -275,7 +306,38 @@ const pendingTimeoutWarning = ref('')
 const interactiveWaiting = ref(false)  // 当前页是否等待用户点"完成"
 
 const currentPage = computed(() => pages.value[current.value] || null)
-const segmentAudioMode = ref(false)  // true = 当前页由 HTML iframe 控制音频，容器不加载
+const segmentAudioMode = ref(false)  // legacy 兼容标记（保留变量名，v1 HTML 消息处理用）
+// P0（方案 §8）：父页 AudioHost 顺序播放 HTML 段；iframe 仅渲染内容与转发事件
+const htmlIframeRef = ref(null)
+const segments = ref([])             // 当前页 v2 HTML 段 [{index, marker, audio:{url,durationMs}}]
+const activeSegmentIndex = ref(0)
+const segmentMode = ref(false)       // true = 父页按段顺序播放
+const unlocked = ref(false)          // autoplay 解锁（首次用户交互）
+let lastStatePush = 0                // 父→iframe 时间消息节流（~4Hz，R-9）
+let iframeReadyV2 = false            // v2 握手完成
+let courseCompleted = false          // 全部播完（完成态，R-10）
+
+// P3-2：讲述稿字幕（PPT=当前页讲述稿；HTML=当前段讲述稿）
+const subtitleText = computed(() => {
+  if (segmentMode.value) {
+    const seg = segments.value[activeSegmentIndex.value]
+    return seg?.scriptText || seg?.text || ''
+  }
+  return currentPage.value?.narrationScript || ''
+})
+
+// P2-4：HTML 段边界百分比刻度（基于各段 durationMs 累计）
+const segmentBoundaries = computed(() => {
+  const total = segments.value.reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
+  if (total <= 0) return []
+  const out = []
+  let acc = 0
+  for (let i = 0; i < segments.value.length - 1; i++) {
+    acc += (segments.value[i]?.audio?.durationMs || 0)
+    out.push(Math.min(99, Math.round((acc / total) * 1000) / 10))
+  }
+  return out
+})
 
 let pageNavLock = false
 
@@ -339,7 +401,11 @@ async function retryImage(pageIndex) {
 // HTML iframe 事件处理（修复 P0 iframe sandbox 安全配置后的辅助方法）
 // 注：sandbox="" 完全禁用 iframe 内 JS，srcdoc 加载失败率极低
 function onHtmlIframeLoad() {
-  // 加载完成：当前无后续操作（iframe 内脚本被禁用）
+  // 加载完成：重置 v2 握手；音频就绪时主动下发段元数据（协议 v2 loaded）
+  iframeReadyV2 = false
+  if (segmentMode.value && audioStatus.value === 'ready') {
+    sendLoadedV2()
+  }
 }
 
 function onHtmlIframeError() {
@@ -347,19 +413,120 @@ function onHtmlIframeError() {
   ElMessage.error('HTML 课件加载失败，请刷新重试')
 }
 
-// ==================== postMessage 音频控制（Hermes 协议 v1） ====================
-// HTML 课件内通过 postMessage 指挥平台播放器，详见 docs/postMessage-音频控制方案.md
-// 协议：{ type: 'slide-audio', action: 'play'|'pause'|'seek'|'speed'|'get-state' }
+// ==================== postMessage 音频控制（协议 v1 兼容 + v2，方案 §6） ====================
+// v1（docs/postMessage-音频控制方案.md）：HTML 内 postMessage 指挥平台播放器
+// v2（player.js 风格）：ready 握手 / 段级控制 / segment-activated 高亮 / blocked 提示
+// 安全校验（R-1/H-1）：sandbox srcdoc iframe 的 MessageEvent.origin 是字符串 "null"
+// （opaque origin 序列化，WHATWG html#3585）；同时校验 event.source === 当前 iframe，
+// 防同页多 sandbox iframe 伪消息（D9 修复）。
+
+function currentHtmlIframe() {
+  return htmlIframeRef.value
+}
 
 function sendMessageToHtmlIframe(msg) {
-  const iframe = document.querySelector('iframe.slide-iframe')
+  const iframe = currentHtmlIframe()
   if (!iframe?.contentWindow) return
   iframe.contentWindow.postMessage(msg, '*')
 }
 
+function sendStateV2(payload) {
+  sendMessageToHtmlIframe({ type: 'slide-audio-state-v2', version: 2, ...payload })
+}
+
+function sendSegmentActivated(index) {
+  // 协议统一使用 1 基段号（与 data-segment / segment.index 一致）
+  sendStateV2({ state: 'segment-activated', index: posToSegIndex(index) })
+}
+
+// 数组位置(0 基) ↔ 段号(1 基) 换算
+function segIndexToPos(segIndex) {
+  if (segIndex == null) return -1
+  return segments.value.findIndex(s => s.index === segIndex)
+}
+function posToSegIndex(pos) {
+  return segments.value[pos]?.index ?? pos
+}
+
+function sendLoadedV2() {
+  if (!segmentMode.value) {
+    sendStateV2({ state: 'loaded', segments: [], totalDurationMs: (audioDuration.value || 0) * 1000 })
+    return
+  }
+  sendStateV2({
+    state: 'loaded',
+    segments: segments.value.map(s => ({
+      index: s.index,
+      url: s.audio?.url || null,
+      durationMs: s.audio?.durationMs || 0
+    })),
+    totalDurationMs: segments.value.reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
+  })
+}
+
+function pageDurationText(p) {
+  const ms = p?.audio?.durationMs || (p?.audioDuration != null ? p.audioDuration * 1000 : 0)
+  if (!ms) return ''
+  return formatTime(ms / 1000)
+}
+
+// P1-1：flow 求值后翻页（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），失败退化为线性
+async function advanceToNextPage(expectedGen) {
+  const page = currentPage.value
+  if (page?.flows?.length && page.id != null && sectionId.value != null) {
+    try {
+      const res = await evaluateFlow(courseId.value, sectionId.value, {
+        currentPageId: page.id,
+        userProgress: Math.min(1, (current.value + 1) / Math.max(1, pages.value.length))
+      })
+      const nextId = res.data?.nextPageId
+      if (nextId != null) {
+        const idx = pages.value.findIndex(p => p.id === nextId)
+        if (idx >= 0 && idx !== current.value) {
+          goTo(idx)
+          return
+        }
+      }
+    } catch { /* 求值失败退化为线性 */ }
+  }
+  if (expectedGen !== currentAudioSrcGen.value) return
+  goTo(current.value + 1)
+}
+
+// P3-3：系统媒体会话（锁屏/系统媒体面板控制）
+function setupMediaSession() {
+  if (!('mediaSession' in navigator)) return
+  try {
+    navigator.mediaSession.setActionHandler('play', () => playAudio())
+    navigator.mediaSession.setActionHandler('pause', () => pauseAudio())
+    navigator.mediaSession.setActionHandler('seekto', (e) => {
+      if (audioRef.value && e.seekTime != null) audioRef.value.currentTime = e.seekTime
+    })
+    navigator.mediaSession.setActionHandler('seekbackward', () => {
+      if (audioRef.value) audioRef.value.currentTime = Math.max(0, audioRef.value.currentTime - 10)
+    })
+    navigator.mediaSession.setActionHandler('seekforward', () => {
+      if (audioRef.value) audioRef.value.currentTime = Math.min(audioDuration.value, audioRef.value.currentTime + 10)
+    })
+  } catch { /* 部分浏览器不支持个别 action，忽略 */ }
+}
+
+function updateMediaSession() {
+  if (!('mediaSession' in navigator) || !navigator.mediaSession) return
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: `${current.value + 1}/${pages.value.length} · ${(subtitleText.value || '课件播放').slice(0, 60)}`,
+      artist: '微课平台'
+    })
+    navigator.mediaSession.playbackState = playing.value ? 'playing' : 'paused'
+  } catch { /* 忽略 */ }
+}
+
 function onSlideAudioMessage(event) {
-  // 安全校验：srcdoc iframe 的 origin 为 null（唯一约制，非伪造消息不可达）
-  if (event.origin !== null) return
+  // D9（P0 修复）：origin 是字符串 "null" 而非 JS null；source 必须为当前 iframe
+  if (event.origin !== 'null') return
+  const iframe = currentHtmlIframe()
+  if (iframe && event.source !== iframe.contentWindow) return
   const msg = event.data
   if (!msg || typeof msg !== 'object') return
 
@@ -373,8 +540,55 @@ function onSlideAudioMessage(event) {
     return
   }
 
-  if (msg.type !== 'slide-audio') return
+  // ---- 协议 v2（方案 §6.1）----
+  if (msg.type === 'slide-audio-v2') {
+    if (msg.version !== 2) return
+    iframeReadyV2 = true
+    switch (msg.action) {
+      case 'ready':
+        sendLoadedV2()
+        break
+      case 'play':
+        playSegment(msg.index != null ? segIndexToPos(msg.index) : (activeSegmentIndex.value || 0))
+        break
+      case 'pause':
+        pauseAudio()
+        break
+      case 'seek':
+        playSegment(msg.index != null ? segIndexToPos(msg.index) : (activeSegmentIndex.value || 0), msg.time)
+        break
+      case 'set-speed':
+        if (msg.rate !== undefined) setSpeed(msg.rate)
+        break
+      case 'segment-active':
+        // P2-3：iframe 点击段 → 先高亮反馈（即使未解锁），再按解锁状态播放
+        {
+          const pos = segIndexToPos(msg.index)
+          if (segmentMode.value && pos >= 0) {
+            activeSegmentIndex.value = pos
+            sendSegmentActivated(pos)
+            if (unlocked.value) {
+              playSegment(pos)
+            } else {
+              audioStatus.value = 'ready'
+            }
+          }
+        }
+        break
+      case 'get-state':
+        sendStateV2({
+          state: playing.value ? 'playing' : 'paused',
+          segmentIndex: activeSegmentIndex.value,
+          time: audioTime.value,
+          duration: audioDuration.value
+        })
+        break
+    }
+    return
+  }
 
+  // ---- 协议 v1（兼容旧 HTML 课件；音频统一由父页宿主，不再依赖 iframe 内播放）----
+  if (msg.type !== 'slide-audio') return
   switch (msg.action) {
     case 'get-segments': {
       const page = currentPage.value
@@ -393,11 +607,9 @@ function onSlideAudioMessage(event) {
     }
     case 'container-control': {
       if (msg.command === 'pause') {
-        if (audioRef.value) audioRef.value.pause()
-        playing.value = false
-      } else if (msg.command === 'resume' && !segmentAudioMode.value) {
-        if (audioRef.value) audioRef.value.play().catch(() => {})
-        playing.value = true
+        pauseAudio()
+      } else if (msg.command === 'resume') {
+        playAudio()
       }
       break
     }
@@ -405,31 +617,114 @@ function onSlideAudioMessage(event) {
       playAudio()
       break
     case 'pause':
-      audioRef.value?.pause()
-      playing.value = false
-      sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'paused', time: audioTime.value, duration: audioDuration.value })
+      pauseAudio()
       break
     case 'seek':
-      if (audioRef.value && msg.time !== undefined) {
+      if (segmentMode.value && msg.page != null) {
+        playSegment(msg.page - 1, msg.time)
+      } else if (audioRef.value && msg.time !== undefined) {
         audioRef.value.currentTime = msg.time
       }
       break
     case 'speed':
-      if (msg.rate !== undefined) {
-        speed.value = msg.rate
-        if (audioRef.value) audioRef.value.playbackRate = msg.rate
-        sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'speed-changed', rate: msg.rate })
-      }
+      if (msg.rate !== undefined) setSpeed(msg.rate)
       break
     case 'get-state':
       sendMessageToHtmlIframe({
         type: 'slide-audio-state', state: playing.value ? 'playing' : 'paused',
         time: audioTime.value, duration: audioDuration.value
       })
+      sendStateV2({
+        state: playing.value ? 'playing' : 'paused',
+        segmentIndex: posToSegIndex(activeSegmentIndex.value),
+        time: audioTime.value,
+        duration: audioDuration.value
+      })
       break
   }
 }
 
+// ---- P0 AudioHost 段播放（方案 §8.1）----
+
+function playSegment(index, time) {
+  if (!segmentMode.value) {
+    playAudio()
+    return
+  }
+  const seg = segments.value[index]
+  if (!seg) return
+  if (!seg.audio?.url) {
+    audioStatus.value = seg.audio?.status === 'GENERATING' ? 'pending' : 'error'
+    if (audioStatus.value === 'error') ElMessage.warning('该段音频尚未生成，请教师先生成音频')
+    return
+  }
+  if (!unlocked.value) {
+    audioStatus.value = 'ready'
+    return
+  }
+  interactiveWaiting.value = false
+  activeSegmentIndex.value = index
+  const audioEl = audioRef.value
+  if (!audioEl) return
+  if (audioEl.src !== seg.audio.url) {
+    audioEl.src = seg.audio.url
+    audioEl.load()
+  }
+  if (time != null && !Number.isNaN(time)) audioEl.currentTime = time
+  audioStatus.value = 'loading'
+  audioEl.play().then(() => {
+    playing.value = true
+    audioStatus.value = 'ready'
+    updateMediaSession()
+    sendStateV2({
+      state: 'playing',
+      segmentIndex: posToSegIndex(index),
+      time: time || 0,
+      duration: seg.audio.durationMs ? seg.audio.durationMs / 1000 : 0
+    })
+    sendSegmentActivated(index)
+  }).catch(() => {
+    playing.value = false
+    audioStatus.value = 'ready'
+  })
+}
+
+function pauseAudio() {
+  if (audioRef.value) audioRef.value.pause()
+  playing.value = false
+  updateMediaSession()
+  sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'paused', time: audioTime.value, duration: audioDuration.value })
+  sendStateV2({
+    state: 'paused',
+    segmentIndex: posToSegIndex(activeSegmentIndex.value),
+    time: audioTime.value,
+    duration: audioDuration.value
+  })
+}
+
+function setSpeed(rate = speed.value) {
+  speed.value = rate
+  if (audioRef.value) audioRef.value.playbackRate = rate
+  sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'speed-changed', rate })
+  sendStateV2({ state: 'speed-changed', rate })
+}
+
+function computeActiveSegmentIndex() {
+  if (!segmentMode.value || audioTime.value <= 0) return activeSegmentIndex.value
+  let acc = 0
+  for (let i = 0; i < segments.value.length; i++) {
+    const dur = (segments.value[i]?.audio?.durationMs || 0) / 1000
+    if (dur > 0 && audioTime.value < acc + dur) return i
+    acc += dur
+  }
+  return segments.value.length - 1
+}
+
+function unlockAutoplay() {
+  // R-4：首次用户交互仅解锁标志。起播交给正常播放路径（togglePlay / autoMode 的 playAudio），
+  // 避免 pointerdown 自动起播后同一 click 的 togglePlay 立即暂停（0.3s 卡住 BUG）。
+  unlocked.value = true
+}
 function handleAudioStateUpdate(msg) {
   switch (msg.state) {
     case 'playing':
@@ -469,11 +764,17 @@ function handleInteractiveComplete() {
   if (!interactiveWaiting.value) return
   interactiveWaiting.value = false
   if (autoMode.value) {
-    if (current.value < pages.value.length - 1) {
+    if (segmentMode.value) {
+      // HTML 分段：互动完成后继续当前段（未播完）或进入下一段
+      if (playing.value) return
+      const next = activeSegmentIndex.value + 1
+      if (next < segments.value.length && audioTime.value > 0) {
+        playSegment(next)
+      } else {
+        playSegment(activeSegmentIndex.value)
+      }
+    } else if (current.value < pages.value.length - 1) {
       goTo(current.value + 1)
-    } else if (segmentAudioMode.value) {
-      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'play' })
-      playing.value = true
     } else {
       playAudio()
     }
@@ -530,19 +831,55 @@ async function loadAudio(index) {
   clearTimeout(autoAdvanceTimer)
   clearPendingTimer()
   interactiveWaiting.value = false
+  courseCompleted = false
+  iframeReadyV2 = false
 
   const gen = ++currentAudioSrcGen.value
 
   const isHtmlPage = page?.contentType === 'HTML_DIRECT'
-  const hasSegmentAudio = isHtmlPage && !!page?.segmentAudio?.url
-  segmentAudioMode.value = hasSegmentAudio
+  const hasSegments = isHtmlPage && Array.isArray(page?.segments) && page.segments.length > 0
+  segmentMode.value = hasSegments
+  segments.value = hasSegments ? page.segments : []
+  activeSegmentIndex.value = 0
+  segmentAudioMode.value = false // 父页宿主；legacy HTML 不再依赖 iframe 内音频（D1 已废除）
 
-  if (isHtmlPage && hasSegmentAudio) {
+  if (hasSegments) {
+    const hasReady = segments.value.some(s => s.audio?.url)
+    const hasPending = segments.value.some(s => s.audio?.status === 'GENERATING')
+    audioStatus.value = hasReady ? 'ready' : (hasPending ? 'pending' : 'none')
+    audioDuration.value = 0
+    audioTime.value = 0
+    audioProgress.value = 0
+    if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
+    playing.value = false
+    checkHtmlInteractive(page)
+    if (unlocked.value && autoMode.value && audioStatus.value === 'ready') playSegment(0)
+    return
+  }
+
+  // P0-4：v2 PPT 页直接加载 token 流式 URL（token 即能力凭证，无鉴权头可加载）
+  if (page?.audio?.url) {
+    clearPendingTimer()
+    clearTimeout(loadingTimer)
+    audioStatus.value = 'loading'
+    audioDuration.value = (page.audio.durationMs || 0) / 1000
+    audioRef.value.src = page.audio.url
+    audioRef.value.load()
+    loadingTimer = setTimeout(() => {
+      if (audioStatus.value === 'loading' && gen === currentAudioSrcGen.value) {
+        audioStatus.value = 'error'
+      }
+    }, 10000)
+    checkHtmlInteractive(page)
+    return
+  }
+
+  if (isHtmlPage && !!page?.segmentAudio?.url && !page?.narrationAudioUrl) {
+    // legacy HTML 仅有分段音频元数据：退化为整页单音频（R-7），由父页播放
     audioStatus.value = 'none'
     audioDuration.value = 0
     audioTime.value = 0
     audioProgress.value = 0
-    audioRef.value.src = ''
     if (audioRef.value) audioRef.value.pause()
     playing.value = false
     checkHtmlInteractive(page)
@@ -618,11 +955,7 @@ function checkHtmlInteractive(page) {
   const match = page.htmlContent.match(/data-interactive=["']true["']/)
   interactiveWaiting.value = !!match
   if (interactiveWaiting.value) {
-    if (segmentAudioMode.value) {
-      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'pause' })
-    } else if (audioRef.value) {
-      audioRef.value.pause()
-    }
+    if (segmentMode.value || audioRef.value) pauseAudio()
     playing.value = false
   }
 }
@@ -663,35 +996,27 @@ function cleanAudioBlobCache(currentIdx) {
 
 function playAudio() {
   if (!audioRef.value) return
-  if (segmentAudioMode.value) {
-    const page = currentPage.value
-    if (page) sendMessageToHtmlIframe({ type: 'slide-audio', action: 'seek', page: page.pageNumber })
-    playing.value = true
-    return
-  }
+  if (segmentMode.value) { playSegment(activeSegmentIndex.value); return }
   if (audioStatus.value === 'pending' || audioStatus.value === 'none') return
+  if (!unlocked.value) { audioStatus.value = 'ready'; return }
   audioRef.value.play().then(() => {
     playing.value = true
+    updateMediaSession()
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'playing', time: audioTime.value, duration: audioDuration.value })
+    sendStateV2({
+      state: 'playing',
+      segmentIndex: posToSegIndex(activeSegmentIndex.value),
+      time: audioTime.value,
+      duration: audioDuration.value
+    })
   }).catch(() => { playing.value = false })
 }
 function togglePlay() {
   if (playing.value) {
-    if (segmentAudioMode.value) {
-      sendMessageToHtmlIframe({ type: 'slide-audio', action: 'pause' })
-      playing.value = false
-      return
-    }
-    audioRef.value?.pause()
-    playing.value = false
-    sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'paused', time: audioTime.value, duration: audioDuration.value })
+    pauseAudio()
   } else {
     playAudio()
   }
-}
-function setSpeed() {
-  if (audioRef.value) audioRef.value.playbackRate = speed.value
-  sendMessageToHtmlIframe({ type: 'slide-audio', action: 'speed', rate: speed.value })
 }
 function handleStageClick() { if (autoMode.value) autoMode.value = false }
 
@@ -703,31 +1028,89 @@ function onTimeUpdate() {
     const remaining = Math.ceil(audioDuration.value - audioTime.value)
     autoCountdown.value = remaining <= 3 && remaining > 0 ? remaining : 0
   }
-  // 每秒推送时间更新（协议 v1: time-update）
+  // R-9：timeupdate 实际 4-66Hz，父→iframe 消息节流 ~4Hz（250ms）
+  const now = Date.now()
+  if (now - lastStatePush < 250) return
+  lastStatePush = now
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'time-update', time: audioTime.value, duration: audioDuration.value })
+  if (segmentMode.value) {
+    const idx = computeActiveSegmentIndex()
+    if (idx !== activeSegmentIndex.value) {
+      activeSegmentIndex.value = idx
+      sendSegmentActivated(idx)
+    }
+    sendStateV2({
+      state: 'time-update',
+      segmentIndex: posToSegIndex(activeSegmentIndex.value),
+      time: audioTime.value,
+      duration: audioDuration.value,
+      progress: audioProgress.value
+    })
+  }
 }
 function onAudioLoaded() {
   const expectedGen = currentAudioSrcGen.value
   clearTimeout(loadingTimer)
   if (audioRef.value) {
     if (expectedGen !== currentAudioSrcGen.value) return
-    audioDuration.value = audioRef.value.duration || audioDuration.value
+    if (!segmentMode.value) {
+      audioDuration.value = audioRef.value.duration || audioDuration.value
+    } else {
+      const seg = segments.value[activeSegmentIndex.value]
+      if (seg?.audio?.durationMs) audioDuration.value = seg.audio.durationMs / 1000
+      else audioDuration.value = audioRef.value.duration || audioDuration.value
+    }
     audioRef.value.playbackRate = speed.value
     audioStatus.value = 'ready'
     sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'loaded', duration: audioDuration.value })
+    sendLoadedV2()
+    updateMediaSession()
   }
 }
 function onAudioEnded() {
   const expectedGen = currentAudioSrcGen.value
   playing.value = false; autoCountdown.value = 0
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'ended' })
+
+  // P0 AudioHost：HTML 分段顺序播放（方案 §8.1）
+  if (segmentMode.value) {
+    const next = activeSegmentIndex.value + 1
+    if (next < segments.value.length) {
+      sendStateV2({ state: 'ended', segmentIndex: posToSegIndex(activeSegmentIndex.value), nextIndex: posToSegIndex(next) })
+      activeSegmentIndex.value = next
+      if (autoMode.value && unlocked.value) {
+        autoAdvanceTimer = setTimeout(() => {
+          if (expectedGen !== currentAudioSrcGen.value) return
+          playSegment(next)
+        }, 500)
+      }
+    } else {
+      sendStateV2({ state: 'ended', segmentIndex: posToSegIndex(activeSegmentIndex.value), nextIndex: null })
+      if (autoMode.value) {
+        if (current.value < pages.value.length - 1) {
+          autoAdvanceTimer = setTimeout(() => {
+            if (expectedGen !== currentAudioSrcGen.value) return
+            advanceToNextPage(expectedGen)
+          }, 1500)
+        } else if (!courseCompleted) {
+          courseCompleted = true
+          ElMessage.success('本课学习完成')
+        }
+      }
+    }
+    return
+  }
+
   if (interactiveWaiting.value) return
   if (expectedGen !== currentAudioSrcGen.value) return
   if (autoMode.value && current.value < pages.value.length - 1) {
     autoAdvanceTimer = setTimeout(() => {
       if (expectedGen !== currentAudioSrcGen.value) return
-      goTo(current.value + 1)
+      advanceToNextPage(expectedGen)
     }, 1500)
+  } else if (autoMode.value && !courseCompleted) {
+    courseCompleted = true
+    ElMessage.success('本课学习完成')
   }
 }
 
@@ -786,8 +1169,8 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
-// P1I-016: 在进度上报时增加 sectionId 参数（从 route.query 获取）
-const sectionId = computed(() => route.query.sectionId)
+// P1I-016: 在进度上报时增加 sectionId 参数（query 优先，path 兜底——支持章节级管理页内嵌预览）
+const sectionId = computed(() => route.query.sectionId || route.params.sectionId || null)
 
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {
@@ -829,10 +1212,15 @@ async function markSlideComplete() {
 // P0-2: 翻到最后一页时触发完成标记
 // P1C-019: 单页课件浏览后也应标记完成 — 移除 pages.length <= 1 的提前返回
 watch(current, (newVal) => {
+  updateMediaSession()
   if (newVal >= pages.value.length - 1) markSlideComplete()
 })
 
 onMounted(async () => {
+  // R-4：首次用户交互解锁自动播放（沙箱 iframe 内点击不构成父页激活，必须父页捕获）
+  playerRef.value?.addEventListener('pointerdown', unlockAutoplay, { once: true })
+  playerRef.value?.addEventListener('keydown', unlockAutoplay, { once: true })
+  setupMediaSession()
   await ensureProgress()
   await loadPages()
   if (pages.value.length > 0) loadAudio(0)
@@ -847,6 +1235,8 @@ onMounted(async () => {
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
   if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
+  playerRef.value?.removeEventListener('pointerdown', unlockAutoplay)
+  playerRef.value?.removeEventListener('keydown', unlockAutoplay)
   clearImageCache()
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   window.removeEventListener('message', onSlideAudioMessage)
@@ -910,7 +1300,7 @@ onUnmounted(() => {
 .slide-container { position: relative; display: flex; align-items: center; justify-content: center; }
 .slide-wrapper { line-height: 0; position: relative; }
 .slide-image {
-  max-width: min(92vw, 1400px); max-height: min(82vh, 900px); width: auto; height: auto;
+  width: min(92vw, 1400px); max-width: min(92vw, 1400px); max-height: min(82vh, 900px); height: auto;
   object-fit: contain; border-radius: 4px; box-shadow: 0 8px 40px rgba(0,0,0,.5);
 }
 .slide-iframe {
@@ -1036,6 +1426,24 @@ onUnmounted(() => {
   transform: translate(-50%, -50%) scale(.6); opacity: 0;
   transition: all 200ms ease;
 }
+.progress-segments { position: absolute; inset: 0; pointer-events: none; }
+.segment-tick {
+  position: absolute; top: 0; bottom: 0; width: 1px;
+  background: rgba(255,255,255,.5); transform: translateX(-.5px);
+}
+
+/* P3-2 讲述稿字幕 */
+.subtitle-bar {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin: 0 24px 8px; padding: 10px 16px; border-radius: 10px;
+  background: rgba(10,10,15,.88); border: 1px solid var(--player-border);
+  backdrop-filter: blur(12px); max-height: 120px; overflow-y: auto;
+}
+.subtitle-label {
+  flex-shrink: 0; font-size: 12px; color: var(--player-accent);
+  font-weight: 600; padding-top: 2px; user-select: none;
+}
+.subtitle-text { font-size: 13px; line-height: 1.7; color: var(--player-text); white-space: pre-wrap; }
 
 .speed-group { display: flex; gap: 2px; background: rgba(255,255,255,.05); border-radius: var(--radius-sm); padding: 2px; }
 .speed-chip {

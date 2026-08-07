@@ -13,6 +13,15 @@
 -->
 <template>
   <div class="html-block-editor">
+    <el-alert
+      v-if="!sectionId"
+      type="info"
+      :closable="false"
+      show-icon
+      title="章节级 HTML 课件暂不支持在线编辑"
+      description="请到课时层级（每个课时）管理 HTML 课件内容；章节级历史课件仅可预览与删除。"
+      class="hbe-chapter-notice"
+    />
     <div class="hbe-header">
       <h3 class="hbe-title">
         <el-icon><Document /></el-icon>
@@ -74,10 +83,11 @@ import { Document, Check, View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { getHtmlUnitBySection, createHtmlUnit, updateHtmlUnit } from '../api/htmlCourseware'
+import { getSlidePages } from '../api/slide'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
-  sectionId: { type: Number, required: true }
+  sectionId: { type: Number, default: null }
 })
 const emit = defineEmits(['unit-saved'])
 
@@ -108,6 +118,11 @@ const quillOptions = {
 }
 
 async function load() {
+  if (!props.sectionId) {
+    unit.value = null
+    htmlContent.value = ''
+    return
+  }
   const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
   // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
   // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
@@ -120,10 +135,27 @@ async function load() {
     htmlDirty.value = false
   } else {
     htmlContent.value = ''
+    // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
+    // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
+    try {
+      const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
+      const pages = pagesRes?.data || []
+      const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
+      if (htmlPage?.htmlContent) {
+        htmlContent.value = htmlPage.htmlContent
+        htmlDirty.value = true
+      }
+    } catch (e) {
+      // 预载失败不阻断编辑器，保持空内容
+    }
   }
 }
 
 async function handleSave() {
+  if (!props.sectionId) {
+    ElMessage.warning('章节级 HTML 课件暂不支持在线编辑，请到课时层级管理')
+    return
+  }
   saving.value = true
   try {
     if (unit.value) {
