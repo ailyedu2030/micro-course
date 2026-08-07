@@ -280,6 +280,12 @@ def main():
                    'applicantName', 'authorName', 'collegeName', 'chapterName',
                    'microSpecialtyTitle', 'specialtyCollege', 'studentName',
                    'teacherCollege', 'teacherName', 'userName',
+                   # DB 视图 v_ghost_chapter_audit 列（V328/V332，非实体字段）
+                   'row_id', 'current_chapter_id', 'actual_chapter_id',
+                   'chapter1_course_id', 'chapter1_cross_course',
+                   'section_title', 'source_type', 'section_id',
+                   # by_course 报告聚合计数 / 视图关联键（AuditGhostChapter.vue 渲染）
+                   'cnt', 'course_id',
                    # Frontend computed / UI fields
                    'replyCount', 'usageCount', 'analysis', 'module',
                    'row', 'contentHtml', 'inviteStatus', 'classIds', 'chapterIds',

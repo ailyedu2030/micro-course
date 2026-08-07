@@ -62,4 +62,17 @@ public interface CoursewareQueryService {
      * @return JSON 文本（audit_ghost_chapters() 的输出）
      */
     String auditGhostChapters();
+
+    /**
+     * 幽灵章节自动修复（D-1 闭环 · V332 幂等修复逻辑）。
+     * <p>
+     * 与 V332 migration 一致的幂等修复：对 chapter_id=1 且可通过 section_id 反查
+     * 到真实 chapter（cs.chapter_id ≠ 1）的 slide_ppt_pages / slide_html_units 记录
+     * UPDATE 修正 chapter_id；section 缺失 / 跨课程引用等无法自动判定的记录保持
+     * 原样并写入 operation_logs 待人工 review。允许运维在任意时刻重跑（幂等）。
+     * 仅 ADMIN 可调用（项目权限模型无 DBA 角色，等价于生产 DBA 人工执行约束）。
+     *
+     * @return JSON 文本（修复完成后 audit_ghost_chapters() 的报告，可对比修复前后 total_ghost_rows）
+     */
+    String runGhostChapterFix();
 }
