@@ -1,0 +1,115 @@
+name: Start PostgreSQL + Redis
+description: >-
+  启动 CI 依赖的 PostgreSQL 17 + Redis 7 容器并验证可达（Q-6 维护性 · 2026-08-07）。
+  2026-08-07 F-15 根治方案：显式 docker 步骤 + 宿主网桥 172.17.0.1 可达，
+  替代已废弃的 services 容器编排（outage 后 runner 卡死 4 次）。
+  backend / e2e 两 job 复用本 action，消除复制粘贴漂移（单一来源）。
+
+inputs:
+  db-url:
+    description: >-
+      应用侧 JDBC 连接串（如 jdbc:postgresql://172.17.0.1:5432/micro_course）。
+      仅用于日志/审计，不参与 docker 启动。
+    required: false
+    default: jdbc:postgresql://172.17.0.1:5432/micro_course
+  db-password:
+    description: PostgreSQL 密码（docker run POSTGRES_PASSWORD）
+    required: false
+    default: postgres
+  redis-host:
+    description: 应用侧 Redis 主机（宿主网桥 172.17.0.1）。仅用于日志/审计。
+    required: false
+    default: 172.17.0.1
+  redis-port:
+    description: Redis 端口（docker run 映射宿主端口）
+    required: false
+    default: "6379"
+  redis-password:
+    description: >-
+      Redis 密码。CI 镜像未设 requirepass 时传空字符串（P1-I-9 显式声明）；
+      非空时 Verify 步骤用 redis-cli -a 验证。
+    required: false
+    default: ""
+  service-name:
+    description: 容器名前缀（默认 ci → ci-pg / ci-redis；若同 runner 多 job 需区分可覆盖）
+    required: false
+    default: ci
+
+outputs:
+  service-ready:
+    description: PostgreSQL + Redis 已启动并验证可达
+    value: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Start PostgreSQL 17
+      shell: bash
+      run: |
+        docker run -d --name ${{ inputs.service-name }}-pg \
+          -p 5432:5432 \
+          -e POSTGRES_DB=micro_course \
+          -e POSTGRES_USER=postgres \
+          -e POSTGRES_PASSWORD=${{ inputs.db-password }} \
+          postgres:17-alpine
+        for i in $(seq 1 30); do
+          if docker exec ${{ inputs.service-name }}-pg pg_isready -U postgres >/dev/null 2>&1; then
+            echo "PostgreSQL ready"
+            break
+          fi
+          sleep 2
+        done
+        # F-15 兜底: 循环超时不静默, 立即暴露启动失败（避免后续步骤模糊失败）
+        # F-2026-08-07-E2E-1 修复: break 后立即调用 pg_isready 有 race condition
+        # （PostgreSQL 接受 TCP 但还没完成 initdb/连接握手），重试 10 次
+        for i in $(seq 1 10); do
+          if docker exec ${{ inputs.service-name }}-pg pg_isready -U postgres >/dev/null 2>&1; then
+            echo "PostgreSQL verified ready"
+            break
+          fi
+          sleep 1
+        done
+        docker exec ${{ inputs.service-name }}-pg pg_isready -U postgres >/dev/null 2>&1 || {
+          echo "::error::PostgreSQL failed to become ready within timeout"
+          exit 1
+        }
+
+    - name: Start Redis 7
+      shell: bash
+      run: |
+        docker run -d --name ${{ inputs.service-name }}-redis \
+          -p ${{ inputs.redis-port }}:6379 \
+          redis:7-alpine
+        for i in $(seq 1 15); do
+          if docker exec ${{ inputs.service-name }}-redis redis-cli ping >/dev/null 2>&1; then
+            echo "Redis ready"
+            break
+          fi
+          sleep 2
+        done
+        # F-2026-08-07-E2E-1 修复: 同上 race condition 兜底重试
+        for i in $(seq 1 10); do
+          if docker exec ${{ inputs.service-name }}-redis redis-cli ping >/dev/null 2>&1; then
+            echo "Redis verified ready"
+            break
+          fi
+          sleep 1
+        done
+        docker exec ${{ inputs.service-name }}-redis redis-cli ping >/dev/null 2>&1 || {
+          echo "::error::Redis failed to become ready within timeout"
+          exit 1
+        }
+
+    - name: Verify services reachable
+      shell: bash
+      run: |
+        echo "Application DB URL: ${{ inputs.db-url }}"
+        echo "Application Redis host:port: ${{ inputs.redis-host }}:${{ inputs.redis-port }}"
+        echo "Containers: ${{ inputs.service-name }}-pg / ${{ inputs.service-name }}-redis"
+        docker exec ${{ inputs.service-name }}-pg pg_isready -U postgres
+        if [ -n "${{ inputs.redis-password }}" ]; then
+          docker exec ${{ inputs.service-name }}-redis redis-cli -a "${{ inputs.redis-password }}" ping
+        else
+          docker exec ${{ inputs.service-name }}-redis redis-cli ping
+        fi
+        echo "service-ready=true"

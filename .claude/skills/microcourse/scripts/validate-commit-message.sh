@@ -97,6 +97,21 @@ if [ "$FAIL" -eq 0 ]; then
     PASS=$((PASS+1))
 fi
 
+# ─── 检查 5：Sign-off (DCO) 校验 ──────────────────────────────────────────────
+# 2026-08-07 L0 兜底 C-3：AGENTS.md Step 5 要求所有 commit 带 Signed-off-by。
+# feat/fix/refactor/docs/ci 类型必须（DCO）。推荐 git commit -s 自动添加。
+# 紧急场景可用 SKIP_SIGNOFF_CHECK=1 bypass（需在 PR 描述注明理由）。
+if [ "${SKIP_SIGNOFF_CHECK:-0}" = "1" ]; then
+    PASS=$((PASS+1))
+    echo -e "  ${YELLOW}∼${NC} SKIP_SIGNOFF_CHECK=1 — 跳过 Sign-off 校验（紧急场景，需 PR 注明理由）"
+elif echo "$MSG" | grep -qE "Signed-off-by:[[:space:]]+"; then
+    PASS=$((PASS+1))
+    echo -e "  ${GREEN}✓${NC} commit 含 Signed-off-by（DCO）"
+else
+    FAIL=$((FAIL+1))
+    FAILS+=("commit 缺少 Signed-off-by 行（DCO）。用 git commit -s 自动添加；紧急场景可 SKIP_SIGNOFF_CHECK=1")
+fi
+
 # ─── 汇总 ─────────────────────────────────────────────────────────────────────
 echo ""
 echo "────────────────────────────────────────────"

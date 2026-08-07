@@ -22,9 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     # 仅处理 owner (ailyedu2030) 自提的 PR
     if: github.event.pull_request.user.login == 'ailyedu2030'
-    # 45 分钟总超时 — 后端 JaCoCo 覆盖率测试 CI 耗时 ~31 分钟 + e2e ~15 分钟
-    # 防止 CI 假死后 Bot 长期挂起（即使 bash 内部 45 分钟超时，外层 job 也需兜底）
-    timeout-minutes: 45
+    # 55 分钟总超时 — 后端 JaCoCo 覆盖率测试 CI 耗时 ~31 分钟 + e2e ~15 分钟，
+    # backend job timeout 已调至 55min（Q-6，给 docker pull 留余量），此处同步
+    # 防止 CI 假死后 Bot 长期挂起（即使 bash 内部 55 分钟超时，外层 job 也需兜底）
+    timeout-minutes: 55
     steps:
       - name: Generate Bot Token
         id: bot-token
@@ -43,7 +44,7 @@ jobs:
           # secrets-check 和 references-sync 为 advisory (永不阻断)，
           # 但仍需等待它们出现（若 branch protection 列为 required check）
           EXPECTED_CHECKS="backend frontend e2e docker monitoring-lint secrets-check references-sync"
-          MAX_WAIT=2700  # 45 minute timeout (匹配外层 job timeout-minutes: 45)
+          MAX_WAIT=3300  # 55 minute timeout (匹配外层 job timeout-minutes: 55，与 backend job 对齐)
           INTERVAL=15
           ELAPSED=0
 
