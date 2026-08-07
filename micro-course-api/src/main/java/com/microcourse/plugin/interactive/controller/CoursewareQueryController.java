@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,7 +67,18 @@ public class CoursewareQueryController {
     @GetMapping("/{sectionId}")
     public R<CoursewareTreeDTO> getCoursewareTree(@PathVariable Long courseId,
                                                    @PathVariable Long sectionId) {
-        return R.ok(queryService.getCoursewareTree(courseId, sectionId));
+        return R.ok(queryService.getCoursewareTree(courseId, sectionId, null));
+    }
+
+    /**
+     * 课件树统一入口（课时级 / 章节级）：GET /api/courses/{courseId}/courseware/tree?sectionId=&chapterId=
+     * 兼容旧路径 /{sectionId}（仅课时级）。
+     */
+    @GetMapping("/tree")
+    public R<CoursewareTreeDTO> getCoursewareTreeByScope(@PathVariable Long courseId,
+                                                          @RequestParam(required = false) Long sectionId,
+                                                          @RequestParam(required = false) Long chapterId) {
+        return R.ok(queryService.getCoursewareTree(courseId, sectionId, chapterId));
     }
 
     /**

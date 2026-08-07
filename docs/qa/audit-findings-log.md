@@ -625,3 +625,21 @@
 - **修复（播放器）**：移除 `loading="lazy"`，`.slide-image` 显式 `width: min(92vw,1400px)`。实测 3 页 PPT 全部 640×480 解码、1400×900 容器、翻页零错误。
 - **根因（测试基建）**：`VideoAccessControlTest.deleteVideoFiles` 写死 `/data/videos`，服务端实际 `uploads/videos`；本地门禁 drop+recreate 重置视频 id 序列与历史残留目录碰撞 → 已选课+有效签名期望 404 实际 200（CI 后端门禁红）。
 - **修复（测试）**：改用 `@Value("${video.storage-base-dir:uploads/videos}")` 与服务端一致；历史残留目录已移至 /tmp（gitignored 测试产物）。实测 VideoAccessControlTest 9/9。
+
+### F-2026-08-07-13 · 设计裁定：取消"新版/旧版"开关，PPT 与 HTML 拆分为独立模块（架构级）
+
+- **裁定背景**：原系统存在「新版四面板（coursewareV2 开关）/ 旧版」与「PPT / HTML」两个正交维度，产生 4 象限，两套 UI 功能长期不同步（预览/上传/批量等修复互相缺失），即"故障越来越大"的结构性根源。用户裁定：**课件类型（PPT/HTML）是唯一维度，不再有版本概念**；且 PPT 与 HTML 的讲述稿、音频生成调用方式完全不同（页级 vs 段级），应各自独立成模块，而非混在一个类型切换工作台。
+- **实施**：
+  - 删除 `useFeatureFlag`（mc:feature:courseware_v2）与 `CoursewareWorkbench` 类型切换；`SlideManage.vue` 重构为统一壳：按树类型分发 `PptCoursewareManage` / `HtmlCoursewareManage`，空课时给「上传 PPT / 上传 HTML」明确二选一，创建后固定类型。
+  - `PptCoursewareManage`：页列表 + 四面板（内容/讲述稿/音频/跳转逻辑）+ 预览/替换 PPT/下载 PPT/删除课件/批量 AI/批量 TTS/批量删除（v1 能力全部移植）。
+  - `HtmlCoursewareManage`：HTML 内容编辑器 + 分段脚本 + 预览/替换 HTML/删除课件。
+  - 后端：课件树支持章节级（chapterId）查询；新增整节/整章 v1+v2 全量删除接口 `DELETE /slides/courseware`；v1 HTML 已上传但单元未初始化时树返回 HTML（待初始化），避免"上传后消失"。
+  - `HtmlBlockEditor` sectionId 可选（章节级 HTML 显示提示而非崩溃）；`SlidePlayer` 支持 path 参数兜底（章节级内嵌预览）。
+- **验证**：ego-browser 本地实测——空课时创建二选一、PPT 上传→渲染→PPT 模块（批量/替换/下载/删除/预览）、HTML 上传→HTML 模块（编辑器预载）、章节级路由 `/teacher/courses/1/chapters/1/manage-slides` 正常；前端 218/218、后端 1144/0/0、precheck 25/0/0、门禁 16/16。
+
+### F-2026-08-07-14 · PPT 渲染 slide_ppt_pages.chapter_id NOT NULL → 课时级上传渲染必失败（P0）
+
+- **根因**：`SlideServiceImpl.upload` 在「管理页 URL 无 chapterId、仅 sectionId」场景下创建的 course_slides.chapter_id=NULL，`SlideRenderService.renderAsync` 原样写入 `slide_ppt_pages.chapter_id=NULL` → NOT NULL 违反 → 渲染必失败（本地实测 slide status=3 "课件渲染失败"；生产同样路径可触发）。
+- **修复**：上传时若 sectionId 有值而 chapterId 为空，从 course_sections 反查 chapterId 并回填 slide 记录；渲染即拿到正确 chapter_id。
+- **横向扫描**：`createUnitFresh`（HTML 单元）已做同模式 section→chapter 派生（F-08-07）；`uploadHtmlFile` 无此约束；章节级上传（chapterId 直达）不受影响。
+- **验证**：修复后本地从统一 UI 上传 PPTX（无 chapterId URL）→ 6s 渲染完成、slide_ppt_pages=3、status=2；单测回归全绿。

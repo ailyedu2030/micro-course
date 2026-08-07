@@ -850,6 +850,21 @@
 | G1.15 | 学生播放器 PPT 图片显示 | 2026-08-07 增量3：修复 lazy+auto 死锁（移除 loading=lazy + 显式宽度），实测 3 页 PPT 图片全部解码（640×480）、1/3→2/3→3/3 翻页、0 console 错误 | ✅ |
 | G1.16 | 学生播放器 HTML 段链路 | 2026-08-07 增量3：iframe srcdoc 注入 data-segment="1" + active CSS + bridge；字幕跟随（"这是第一段的讲述稿内容"）；segment-active 消息经 iframe.contentWindow 投递处理无异常；0 console 错误 | ✅ |
 
+## 2026-08-07 增量4 · 设计裁定落地：无版本开关，PPT/HTML 独立模块（F-2026-08-07-13/14）
+
+> 结构变更：删除 coursewareV2 开关与 CoursewareWorkbench 类型切换；SlideManage 按数据分发；
+> PPT/HTML 各为独立工作区；空课时创建二选一；章节级路由与整节删除支持。
+
+| # | 功能点 | 验证动作与证据 | 状态 |
+|---|--------|--------------|------|
+| U1 | 无版本开关 | 管理页不再渲染"新版课件开关"，无旧版头部（ego-browser 实测 hasV2Toggle=false / hasOldHeader=false） | ✅ |
+| U2 | 空课时创建二选一 | sectionId=1（空）→ "该课时暂无课件" + 上传 PPT（.pptx）与上传 HTML（.html）两个入口 | ✅ |
+| U3 | PPT 创建链路 | 上传 original.pptx → 渲染提示 → 6s 完成（slide_ppt_pages=3, status=2）→ 自动进入 PPT 模块 | ✅ |
+| U4 | PPT 模块能力 | 四面板（内容/讲述稿/音频/跳转逻辑）+ 头部（预览/替换 PPT/下载 PPT/批量操作/删除课件）+ 批量勾选（已选 2 页）+ 预览播放器 1/3 页图片解码 | ✅ |
+| U5 | HTML 创建链路 | sectionId=6 上传 HTML → 自动进入 HTML 模块（后端 pending tree）→ 编辑器加载 + 分段脚本 tab + 预览/替换/删除 | ✅ |
+| U6 | 章节级路由 | /teacher/courses/1/chapters/1/manage-slides → PPT 模块 3 页，0 错误 | ✅ |
+| U7 | 渲染 chapter_id 派生 | 无 chapterId URL 上传 PPTX → 渲染成功（修复前 NOT NULL 必失败，slide status=3） | ✅ |
+
 ### G2 learning-view（学习视图组件）
 | # | 组件/功能点 | 验证动作与证据 | 状态 |
 |---|-----------|--------------|------|

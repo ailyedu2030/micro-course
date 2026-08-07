@@ -4,12 +4,14 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptFlowMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
@@ -49,6 +51,7 @@ class CoursewareQueryServiceTest {
     private SlideHtmlUnitMapper unitMapper;
     private SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private SlideHtmlSegmentAudioMapper segmentAudioMapper;
+    private SlidePageMapper slidePageMapper;
     private CoursewareQueryServiceImpl service;
 
     @BeforeEach
@@ -60,8 +63,10 @@ class CoursewareQueryServiceTest {
         unitMapper = mock(SlideHtmlUnitMapper.class);
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
+        slidePageMapper = mock(SlidePageMapper.class);
         service = new CoursewareQueryServiceImpl(pageMapper, pageScriptMapper,
                 pageAudioMapper, flowMapper, unitMapper, segmentScriptMapper, segmentAudioMapper,
+                slidePageMapper,
                 mock(com.microcourse.plugin.interactive.cache.AudioStreamCache.class),
                 mock(com.microcourse.plugin.interactive.flow.FlowEngine.class),
                 mock(com.microcourse.repository.CourseSectionRepository.class));
@@ -89,7 +94,7 @@ class CoursewareQueryServiceTest {
         when(pageAudioMapper.listByScript(101L)).thenReturn(Collections.emptyList());
 
         // When
-        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L);
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L, null);
 
         // Then
         assertEquals("PPT", tree.getType());
@@ -110,11 +115,46 @@ class CoursewareQueryServiceTest {
         when(pageMapper.listBySection(99L)).thenReturn(Collections.emptyList());
         when(unitMapper.findBySection(99L)).thenReturn(null);
 
-        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L);
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L, null);
 
         assertEquals("EMPTY", tree.getType());
         assertEquals(99L, tree.getSectionId());
         assertEquals(0, tree.getAudioReadyCount());
+        assertEquals("PENDING", tree.getNarrationStatus());
+    }
+
+    @Test
+    @DisplayName("getCoursewareTree: 章节级（chapterId）返回 PPT 树")
+    void getChapterPptTree() {
+        SlidePptPage p1 = newPptPage(11L, 1, "Chapter Page 1", null, 42L);
+        when(pageMapper.listByChapter(7L)).thenReturn(List.of(p1));
+        when(unitMapper.findByChapter(7L)).thenReturn(null);
+        when(flowMapper.listBySection(any())).thenReturn(Collections.emptyList());
+        when(pageScriptMapper.findActiveByPage(11L)).thenReturn(null);
+
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, null, 7L);
+
+        assertEquals("PPT", tree.getType());
+        assertEquals(1, tree.getPages().size());
+        assertNull(tree.getSectionId(), "章节级树不绑定 sectionId");
+    }
+
+    @Test
+    @DisplayName("getCoursewareTree: v1 HTML 已上传但单元未初始化 → 返回 HTML（待初始化）")
+    void getPendingHtmlTree() {
+        when(pageMapper.listBySection(99L)).thenReturn(Collections.emptyList());
+        when(unitMapper.findBySection(99L)).thenReturn(null);
+        SlidePage html = new SlidePage();
+        html.setId(1L);
+        html.setCourseId(42L);
+        html.setSectionId(99L);
+        html.setContentType("HTML_DIRECT");
+        when(slidePageMapper.selectOne(any())).thenReturn(html);
+
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L, null);
+
+        assertEquals("HTML", tree.getType());
+        assertNull(tree.getHtmlUnit(), "单元未初始化 → htmlUnit 为 null，前端编辑器预载后保存即创建");
         assertEquals("PENDING", tree.getNarrationStatus());
     }
 

@@ -30,6 +30,13 @@ public interface SlidePptPageMapper extends BaseMapper<SlidePptPage> {
     List<SlidePptPage> listBySection(@Param("sectionId") Long sectionId);
 
     /**
+     * 按 chapter 列出所有 PPT 页（章节级课件，section_id 为 NULL）。
+     */
+    @Select("SELECT * FROM slide_ppt_pages WHERE chapter_id = #{chapterId} "
+          + "ORDER BY page_number ASC")
+    List<SlidePptPage> listByChapter(@Param("chapterId") Long chapterId);
+
+    /**
      * 按 slide + page_number 查找 (唯一索引).
      */
     @Select("SELECT * FROM slide_ppt_pages WHERE slide_id = #{slideId} "

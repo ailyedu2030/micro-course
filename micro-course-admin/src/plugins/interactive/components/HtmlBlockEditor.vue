@@ -13,6 +13,15 @@
 -->
 <template>
   <div class="html-block-editor">
+    <el-alert
+      v-if="!sectionId"
+      type="info"
+      :closable="false"
+      show-icon
+      title="章节级 HTML 课件暂不支持在线编辑"
+      description="请到课时层级（每个课时）管理 HTML 课件内容；章节级历史课件仅可预览与删除。"
+      class="hbe-chapter-notice"
+    />
     <div class="hbe-header">
       <h3 class="hbe-title">
         <el-icon><Document /></el-icon>
@@ -78,7 +87,7 @@ import { getSlidePages } from '../api/slide'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
-  sectionId: { type: Number, required: true }
+  sectionId: { type: Number, default: null }
 })
 const emit = defineEmits(['unit-saved'])
 
@@ -109,6 +118,11 @@ const quillOptions = {
 }
 
 async function load() {
+  if (!props.sectionId) {
+    unit.value = null
+    htmlContent.value = ''
+    return
+  }
   const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
   // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
   // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
@@ -138,6 +152,10 @@ async function load() {
 }
 
 async function handleSave() {
+  if (!props.sectionId) {
+    ElMessage.warning('章节级 HTML 课件暂不支持在线编辑，请到课时层级管理')
+    return
+  }
   saving.value = true
   try {
     if (unit.value) {

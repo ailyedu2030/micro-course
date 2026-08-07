@@ -15,8 +15,9 @@ import request from '@/utils/request'
  * 返回 CoursewareTreeDTO: { type, sectionId, courseId, pages[], flow[], htmlUnit, narrationStatus, audioReadyCount }
  * type: "PPT" | "HTML" | "EMPTY"
  */
-export function getCoursewareTree(courseId, sectionId) {
-  return request({ method: 'GET', url: `/courses/${courseId}/courseware/${sectionId}` })
+export function getCoursewareTree(courseId, sectionId, chapterId) {
+  const params = sectionId ? { sectionId } : (chapterId ? { chapterId } : {})
+  return request({ method: 'GET', url: `/courses/${courseId}/courseware/tree`, params })
 }
 
 /**

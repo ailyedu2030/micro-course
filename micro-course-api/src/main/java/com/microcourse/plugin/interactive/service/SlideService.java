@@ -39,6 +39,11 @@ public interface SlideService {
      */
     void deleteSlideById(Long courseId, Long slideId);
 
+    /**
+     * 整节/整章课件删除（v1 + v2 全量清理，F-2026-08-07-13）。
+     */
+    void deleteCourseware(Long courseId, Long sectionId, Long chapterId);
+
     void deletePage(Long courseId, Integer pageNumber, Long sectionId);
 
     SlidePageVO updatePage(Long courseId, Integer pageNumber, java.util.Map<String, Object> body);

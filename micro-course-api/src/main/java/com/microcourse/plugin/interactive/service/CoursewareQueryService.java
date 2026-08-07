@@ -28,7 +28,7 @@ public interface CoursewareQueryService {
      * @param sectionId 课时 ID (来自 path)
      * @return CoursewareTreeDTO (type = PPT / HTML / EMPTY)
      */
-    CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId);
+    CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId, Long chapterId);
 
     /**
      * 按 audio_token 流式 GET (7-19 P1-C 兼容).

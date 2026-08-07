@@ -93,6 +93,13 @@ export function deleteSlideById(courseId, slideId) {
   return request({ method: 'DELETE', url: `/courses/${courseId}/slides/${slideId}` })
 }
 
+export function deleteCourseware(courseId, sectionId, chapterId) {
+  const params = {}
+  if (sectionId) params.sectionId = sectionId
+  if (chapterId) params.chapterId = chapterId
+  return request({ method: 'DELETE', url: `/courses/${courseId}/slides/courseware`, params })
+}
+
 export function updateSlideName(courseId, slideId, fileName) {
   return request({ method: 'PUT', url: `/courses/${courseId}/slides/${slideId}`, data: { fileName } })
 }

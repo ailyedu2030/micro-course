@@ -267,7 +267,7 @@ import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, Refr
 const route = useRoute()
 const userStore = useUserStore()
 const courseId = computed(() => route.params.courseId)
-const chapterId = computed(() => route.query.chapterId)
+const chapterId = computed(() => route.query.chapterId || route.params.chapterId || null)
 // 学习进度仅对 STUDENT 上报；教师/管理员在管理页"预览"打开播放器时不写入进度（后端 hasRole('STUDENT') 会 403）
 const isStudent = computed(() => userStore.role === 'STUDENT')
 
@@ -1169,8 +1169,8 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
-// P1I-016: 在进度上报时增加 sectionId 参数（从 route.query 获取）
-const sectionId = computed(() => route.query.sectionId)
+// P1I-016: 在进度上报时增加 sectionId 参数（query 优先，path 兜底——支持章节级管理页内嵌预览）
+const sectionId = computed(() => route.query.sectionId || route.params.sectionId || null)
 
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {

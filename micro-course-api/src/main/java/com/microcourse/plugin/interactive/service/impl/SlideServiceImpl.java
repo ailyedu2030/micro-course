@@ -215,6 +215,23 @@ public class SlideServiceImpl implements SlideService {
                     sid, courseId, chapterId, sectionId);
         }
 
+        // F-2026-08-07-14：课时级上传未带 chapterId 时从 section 派生并回填 slide，
+        // 否则 slide_ppt_pages.chapter_id NOT NULL 导致渲染必失败
+        if (chapterId == null && sectionId != null && sectionRepo != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec != null && sec.getChapterId() != null) {
+                chapterId = sec.getChapterId();
+                CourseSlide stored = courseSlideMapper.selectById(sid);
+                if (stored != null && stored.getChapterId() == null) {
+                    stored.setChapterId(chapterId);
+                    stored.setUpdatedAt(LocalDateTime.now());
+                    courseSlideMapper.updateById(stored);
+                    log.info("[SlideUpload] derived chapterId={} from section={} for slide={}",
+                            chapterId, sectionId, sid);
+                }
+            }
+        }
+
         Path courseDir = Paths.get(storagePath, String.valueOf(courseId));
         try {
             Files.createDirectories(courseDir);
@@ -1086,6 +1103,82 @@ public class SlideServiceImpl implements SlideService {
         registerSlideCleanup(courseId, slideId);
         if (slide.getSectionId() != null) {
             cleanupAudioFiles(courseId, slide.getSectionId());
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteCourseware(Long courseId, Long sectionId, Long chapterId) {
+        verifyOwner(courseId);
+        if (sectionId == null && chapterId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "sectionId 或 chapterId 必填");
+        }
+        log.info("[Slide] deleteCourseware courseId={} sectionId={} chapterId={}", courseId, sectionId, chapterId);
+
+        // 1. v1：course_slides + slide_pages
+        LambdaQueryWrapper<CourseSlide> slideQw = new LambdaQueryWrapper<CourseSlide>()
+                .eq(CourseSlide::getCourseId, courseId);
+        if (sectionId != null) {
+            slideQw.eq(CourseSlide::getSectionId, sectionId);
+        } else {
+            slideQw.eq(CourseSlide::getChapterId, chapterId).isNull(CourseSlide::getSectionId);
+        }
+        List<CourseSlide> slides = courseSlideMapper.selectList(slideQw);
+        for (CourseSlide s : slides) {
+            slidePageMapper.delete(new LambdaQueryWrapper<SlidePage>().eq(SlidePage::getSlideId, s.getId()));
+            courseSlideMapper.deleteById(s.getId());
+            registerSlideCleanup(courseId, s.getId());
+        }
+        if (sectionId != null) {
+            cleanupAudioFiles(courseId, sectionId);
+        }
+
+        // 2. v2 PPT：pages + scripts（含历史）+ audios + flow
+        List<SlidePptPage> pptPages = sectionId != null
+                ? pptPageMapper.listBySection(sectionId)
+                : pptPageMapper.listByChapter(chapterId);
+        if (!pptPages.isEmpty()) {
+            List<Long> pageIds = pptPages.stream().map(SlidePptPage::getId).toList();
+            List<SlidePptPageScript> scripts = pptScriptMapper.selectList(
+                    new LambdaQueryWrapper<SlidePptPageScript>().in(SlidePptPageScript::getPptPageId, pageIds));
+            List<Long> scriptIds = scripts.stream().map(SlidePptPageScript::getId).toList();
+            if (!scriptIds.isEmpty()) {
+                pptAudioMapper.delete(new LambdaQueryWrapper<SlidePptPageAudio>()
+                        .in(SlidePptPageAudio::getScriptId, scriptIds));
+                pptScriptMapper.deleteBatchIds(scriptIds);
+            }
+            pptPageMapper.deleteBatchIds(pageIds);
+        }
+        if (sectionId != null) {
+            pptFlowMapper.delete(new LambdaQueryWrapper<SlidePptFlow>()
+                    .eq(SlidePptFlow::getSectionId, sectionId));
+        }
+
+        // 3. v2 HTML：unit + segment scripts + audios
+        SlideHtmlUnit unit = sectionId != null
+                ? htmlUnitMapper.findBySection(sectionId)
+                : htmlUnitMapper.findByChapter(chapterId);
+        if (unit != null) {
+            List<SlideHtmlSegmentScript> segScripts = htmlSegmentScriptMapper.selectList(
+                    new LambdaQueryWrapper<SlideHtmlSegmentScript>()
+                            .eq(SlideHtmlSegmentScript::getHtmlUnitId, unit.getId()));
+            List<Long> segScriptIds = segScripts.stream().map(SlideHtmlSegmentScript::getId).toList();
+            if (!segScriptIds.isEmpty()) {
+                htmlSegmentAudioMapper.delete(new LambdaQueryWrapper<SlideHtmlSegmentAudio>()
+                        .in(SlideHtmlSegmentAudio::getSegmentScriptId, segScriptIds));
+                htmlSegmentScriptMapper.deleteBatchIds(segScriptIds);
+            }
+            htmlUnitMapper.deleteById(unit.getId());
+        }
+
+        // 4. 清理 section.content_url
+        if (sectionId != null) {
+            CourseSection sec = sectionRepo.selectById(sectionId);
+            if (sec != null && courseId.equals(sec.getCourseId())) {
+                sec.setContentUrl(null);
+                sec.setUpdatedAt(LocalDateTime.now());
+                sectionRepo.updateById(sec);
+            }
         }
     }
 
