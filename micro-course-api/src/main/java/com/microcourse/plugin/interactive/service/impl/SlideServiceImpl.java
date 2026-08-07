@@ -29,6 +29,7 @@ import com.microcourse.plugin.interactive.mapper.SlidePptFlowMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
+import com.microcourse.plugin.interactive.cache.CoursewarePagesCache;
 import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.entity.CourseChapter;
@@ -67,10 +68,14 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
 
@@ -95,6 +100,9 @@ public class SlideServiceImpl implements SlideService {
     private final SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper;
 
+    /** Q-2 (N+1 修复): 课件播放页 Redis 缓存（courseware:pages:{courseId}:... TTL 10min） */
+    private final CoursewarePagesCache pagesCache;
+
     // Micrometer 指标 (HTML 互动课件 - 灰度监控)
     private final io.micrometer.core.instrument.Counter htmlLoadCounter;
     private final io.micrometer.core.instrument.Counter htmlXssBlockedCounter;
@@ -118,6 +126,7 @@ public class SlideServiceImpl implements SlideService {
                             SlideHtmlUnitMapper htmlUnitMapper,
                             SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper,
                             SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper,
+                            CoursewarePagesCache pagesCache,
                             io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
@@ -132,6 +141,7 @@ public class SlideServiceImpl implements SlideService {
         this.htmlUnitMapper = htmlUnitMapper;
         this.htmlSegmentScriptMapper = htmlSegmentScriptMapper;
         this.htmlSegmentAudioMapper = htmlSegmentAudioMapper;
+        this.pagesCache = pagesCache;
         // HTML 互动课件监控指标 (灰度观察 6.4 用)
         this.htmlLoadCounter = io.micrometer.core.instrument.Counter.builder("interactive_html_load_total")
                 .description("HTML 课件成功加载次数（白名单教师上传后学生可访问）")
@@ -275,7 +285,11 @@ public class SlideServiceImpl implements SlideService {
         Long finalSid = sid;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
-            public void afterCommit() { slideRenderService.renderAsync(finalSid, fc, fs, fb); }
+            public void afterCommit() {
+                slideRenderService.renderAsync(finalSid, fc, fs, fb);
+                // Q-2: 课件内容变更 → 事务提交后失效播放页缓存（学生端立即看到新内容）
+                pagesCache.invalidateCourse(courseId);
+            }
         });
         SlideUploadResponse r = new SlideUploadResponse();
         r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0); r.setMessage("上传成功，正在后台渲染...");
@@ -307,7 +321,7 @@ public class SlideServiceImpl implements SlideService {
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.HTML_INVALID, "HTML 文件读取失败");
         }
-        String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml);
+        String safeHtml = HtmlSanitizer.sanitizeForCourseware(rawHtml, true);
         if (safeHtml.isEmpty() && !rawHtml.isEmpty()) {
             // XSS payload 全部被 sanitize 移除 → 计入拦截计数
             htmlXssBlockedCounter.increment();
@@ -319,6 +333,14 @@ public class SlideServiceImpl implements SlideService {
         String safeFilename = XssSanitizer.sanitizePlainText(
                 file.getOriginalFilename() != null ? file.getOriginalFilename() : "slide.html");
         if (safeFilename == null || safeFilename.isBlank()) { safeFilename = "slide.html"; }
+
+        // Q-4 审计: 教师（课程 owner，前面已校验）上传 HTML 课件 → 信任标记 + 审计日志。
+        // is_trusted 实际落库在 HtmlCoursewareService.createUnit/updateUnit（v2 单元），
+        // 此处记录 v1 路径审计（v1 HTML_DIRECT 页同样来自可信教师）。
+        log.info("[TrustAudit] F-2026-08-07-HTML: courseId={}, teacherId={}, uploaderId={}, filename={}, size={}",
+                courseId, course.getTeacherId(), SecurityUtil.getCurrentUserIdOpt(), safeFilename, file.getSize());
+        // Q-2: 课件内容变更 → 失效播放页缓存（学生端立即看到新内容）
+        pagesCache.invalidateCourse(courseId);
 
         // UPSERT：按 (courseId, chapterId, sectionId) 复用 slide_id
         LambdaQueryWrapper<CourseSlide> qw = new LambdaQueryWrapper<>();
@@ -573,14 +595,28 @@ public class SlideServiceImpl implements SlideService {
     @Override
     public List<SlidePageVO> getPages(Long courseId, Long sectionId, Long chapterId) {
         // P0-4: v2 优先聚合（slide_ppt_pages / slide_html_units），无 v2 则回退 legacy。
+        // P1-C-1: section 级与 chapter 级对称走 v2 聚合；v2 数据必须归属 courseId，
+        //         否则回退 legacy（legacy 查询带 course_id 过滤，天然防跨课程泄露）。
         if (sectionId != null) {
             List<SlidePptPage> v2PptPages = pptPageMapper.listBySection(sectionId);
-            if (!v2PptPages.isEmpty()) {
-                return buildV2PptPages(courseId, sectionId, v2PptPages);
+            if (!v2PptPages.isEmpty() && allBelongToCourse(v2PptPages, courseId)) {
+                return cachedOrBuildV2PptPages(courseId, sectionId, null, v2PptPages);
             }
             SlideHtmlUnit v2HtmlUnit = htmlUnitMapper.findBySection(sectionId);
-            if (v2HtmlUnit != null) {
-                return java.util.Collections.singletonList(buildV2HtmlPage(courseId, v2HtmlUnit));
+            if (v2HtmlUnit != null && courseId.equals(v2HtmlUnit.getCourseId())) {
+                return cachedOrBuildV2HtmlPage(courseId, sectionId, null, v2HtmlUnit);
+            }
+        }
+        if (chapterId != null) {
+            List<SlidePptPage> v2PptPages = pptPageMapper.listByChapter(chapterId);
+            if (!v2PptPages.isEmpty() && allBelongToCourse(v2PptPages, courseId)) {
+                // 章节级 flow 规则不适用（与 getCoursewareTree.buildPptTree 章节级语义一致），
+                // 传入 null sectionId → listBySection 恒空 → flows 为空列表。
+                return cachedOrBuildV2PptPages(courseId, null, chapterId, v2PptPages);
+            }
+            SlideHtmlUnit v2HtmlUnit = htmlUnitMapper.findByChapter(chapterId);
+            if (v2HtmlUnit != null && courseId.equals(v2HtmlUnit.getCourseId())) {
+                return cachedOrBuildV2HtmlPage(courseId, null, chapterId, v2HtmlUnit);
             }
         }
 
@@ -624,7 +660,75 @@ public class SlideServiceImpl implements SlideService {
 
     // ==================== P0-4: v2 播放数据聚合 ====================
 
+    /**
+     * P1-C-1: v2 页面数据必须全部归属 courseId（防跨课程章节枚举泄露）。
+     * 与 getCoursewareTree.validateSectionBelongsToCourse 的污染拒绝语义一致。
+     */
+    private boolean allBelongToCourse(List<SlidePptPage> pages, Long courseId) {
+        for (SlidePptPage p : pages) {
+            if (!courseId.equals(p.getCourseId())) {
+                log.warn("[getPages] v2 page 跨 course 污染被拦截: path={} actual={}, pageId={}",
+                        courseId, p.getCourseId(), p.getId());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Q-2 (N+1 修复): 播放页构建前先查 Redis 缓存（courseware:pages:{courseId}:{sectionId}:{chapterId}, TTL 10min）。
+     * PPT 路径无动态 nonce，可安全缓存。数据变更由 upload/delete/update 触发 invalidateCourse 失效。
+     */
+    private List<SlidePageVO> cachedOrBuildV2PptPages(Long courseId, Long sectionId, Long chapterId,
+                                                      List<SlidePptPage> pages) {
+        Optional<List<SlidePageVO>> cached = pagesCache.get(courseId, sectionId, chapterId);
+        if (cached.isPresent()) {
+            return cached.get();
+        }
+        List<SlidePageVO> built = buildV2PptPages(courseId, sectionId, pages);
+        pagesCache.put(courseId, sectionId, chapterId, built);
+        return built;
+    }
+
+    /**
+     * Q-2: HTML 播放页缓存 — 仅 is_trusted=true（宽松内容）可缓存；
+     * is_trusted=false 读时注入动态 CSP nonce（Q-4），nonce 必须每次请求不同 → 不缓存。
+     */
+    private List<SlidePageVO> cachedOrBuildV2HtmlPage(Long courseId, Long sectionId, Long chapterId,
+                                                      SlideHtmlUnit unit) {
+        boolean cacheable = Boolean.TRUE.equals(unit.getIsTrusted());
+        if (cacheable) {
+            Optional<List<SlidePageVO>> cached = pagesCache.get(courseId, sectionId, chapterId);
+            if (cached.isPresent()) {
+                return cached.get();
+            }
+        }
+        List<SlidePageVO> built = java.util.Collections.singletonList(buildV2HtmlPage(courseId, unit));
+        if (cacheable) {
+            pagesCache.put(courseId, sectionId, chapterId, built);
+        }
+        return built;
+    }
+
     private List<SlidePageVO> buildV2PptPages(Long courseId, Long sectionId, List<SlidePptPage> pages) {
+        // Q-2 (N+1 修复): 批量查询取代逐页查询（2 SQL 取代 2N SQL）
+        //   1) listActiveByPageIds → Map<pageId, activeScript>（1 SQL）
+        //   2) listByScriptIds     → Map<scriptId, List<Audio>>（1 SQL，is_default DESC, completed_at DESC 排序）
+        List<Long> pageIds = pages.stream().map(SlidePptPage::getId)
+                .filter(Objects::nonNull).toList();
+        List<SlidePptPageScript> activeScripts = pageIds.isEmpty()
+                ? List.of() : pptScriptMapper.listActiveByPageIds(pageIds);
+        Map<Long, SlidePptPageScript> scriptByPage = activeScripts.stream()
+                .filter(s -> s.getPptPageId() != null)
+                .collect(Collectors.toMap(SlidePptPageScript::getPptPageId, s -> s, (a, b) -> a));
+        List<Long> scriptIds = activeScripts.stream().map(SlidePptPageScript::getId)
+                .filter(Objects::nonNull).toList();
+        Map<Long, List<SlidePptPageAudio>> audiosByScript = scriptIds.isEmpty()
+                ? Map.of()
+                : pptAudioMapper.listByScriptIds(scriptIds).stream()
+                        .filter(a -> a.getScriptId() != null)
+                        .collect(Collectors.groupingBy(SlidePptPageAudio::getScriptId));
+
         List<SlidePageVO> vos = new java.util.ArrayList<>(pages.size());
         for (SlidePptPage p : pages) {
             SlidePageVO vo = new SlidePageVO();
@@ -645,13 +749,11 @@ public class SlideServiceImpl implements SlideService {
             vo.setCreatedAt(p.getCreatedAt());
             vo.setUpdatedAt(p.getUpdatedAt());
 
-            SlidePptPageScript active = pptScriptMapper.findActiveByPage(p.getId());
+            SlidePptPageScript active = scriptByPage.get(p.getId());
             if (active != null) {
                 vo.setNarrationScript(active.getScriptText());
-                List<SlidePptPageAudio> audios = pptAudioMapper.listByScript(active.getId());
-                SlidePptPageAudio ready = audios.stream()
-                        .filter(a -> "READY".equals(a.getStatus()))
-                        .findFirst().orElse(null);
+                // U-5: SQL 已按 is_default DESC, completed_at DESC 排序 → 取首个 READY 即"默认音色 → 最新完成"
+                SlidePptPageAudio ready = pickReadyAudio(audiosByScript.getOrDefault(active.getId(), List.of()));
                 if (ready != null) {
                     vo.setAudio(toPageAudioVO(courseId, ready));
                     vo.setNarrationAudioUrl(ready.getAudioUrl());
@@ -692,6 +794,14 @@ public class SlideServiceImpl implements SlideService {
         vo.setUpdatedAt(unit.getUpdatedAt());
 
         List<SlideHtmlSegmentScript> segs = htmlSegmentScriptMapper.listActiveByUnit(unit.getId());
+        // Q-2 (N+1 修复): 一次批量取所有段的音频（1 SQL 取代 N 次 listByScript）
+        List<Long> segScriptIds = segs.stream().map(SlideHtmlSegmentScript::getId)
+                .filter(Objects::nonNull).toList();
+        Map<Long, List<SlideHtmlSegmentAudio>> audiosByScript = segScriptIds.isEmpty()
+                ? Map.of()
+                : htmlSegmentAudioMapper.listByScriptIds(segScriptIds).stream()
+                        .filter(a -> a.getSegmentScriptId() != null)
+                        .collect(Collectors.groupingBy(SlideHtmlSegmentAudio::getSegmentScriptId));
         List<HtmlSegmentVO> segmentVos = new java.util.ArrayList<>();
         int readyCount = 0;
         boolean generating = false;
@@ -701,14 +811,14 @@ public class SlideServiceImpl implements SlideService {
             segVo.setMarker(s.getSegmentMarker());
             segVo.setText(s.getSegmentText());
             segVo.setScriptText(s.getScriptText());
-            List<SlideHtmlSegmentAudio> audios = htmlSegmentAudioMapper.listByScript(s.getId());
-            SlideHtmlSegmentAudio ready = audios.stream()
-                    .filter(a -> "READY".equals(a.getStatus()))
-                    .findFirst().orElse(null);
+            // U-5: SQL 已按 is_default DESC, completed_at DESC 排序 → 取首个 READY 即默认/最新音色
+            SlideHtmlSegmentAudio ready = pickReadyHtmlAudio(
+                    audiosByScript.getOrDefault(s.getId(), List.of()));
             if (ready != null) {
                 segVo.setAudio(toPageAudioVO(courseId, ready));
                 readyCount++;
-            } else if (audios.stream().anyMatch(a -> "GENERATING".equals(a.getStatus()))) {
+            } else if (audiosByScript.getOrDefault(s.getId(), List.of())
+                    .stream().anyMatch(a -> "GENERATING".equals(a.getStatus()))) {
                 generating = true;
             }
             segmentVos.add(segVo);
@@ -719,11 +829,35 @@ public class SlideServiceImpl implements SlideService {
                 : (readyCount > 0 || generating) ? "AUDIO_GENERATING" : "PENDING");
         vo.setNarrationStatusText(SlidePageVO.narrationStatusText(vo.getNarrationStatus()));
         // P2-2：读时增强 —— marker 注入 data-segment + 高亮 CSS + bridge.js（不落库）
+        // Q-4: is_trusted=false（未标记可信教师）→ 注入动态 CSP nonce（每次请求不同，故不缓存）
         String html = vo.getHtmlContent();
         if (html != null && !segmentVos.isEmpty()) {
-            vo.setHtmlContent(enhanceHtmlSegments(html, segmentVos));
+            String cspNonce = Boolean.TRUE.equals(unit.getIsTrusted())
+                    ? null : UUID.randomUUID().toString().replace("-", "");
+            vo.setHtmlContent(enhanceHtmlSegments(html, segmentVos, cspNonce));
         }
         return vo;
+    }
+
+    /**
+     * U-5: PPT 音色确定性选择。SQL 已按 is_default DESC, completed_at DESC 排序，
+     * 取首个 READY 即"教师默认音色 → 最新完成"（多 READY 时不随机、不取旧音色）。
+     */
+    private SlidePptPageAudio pickReadyAudio(List<SlidePptPageAudio> audios) {
+        if (audios == null || audios.isEmpty()) return null;
+        return audios.stream()
+                .filter(a -> "READY".equals(a.getStatus()))
+                .findFirst().orElse(null);
+    }
+
+    /**
+     * U-5: HTML 段音色确定性选择（同上）。
+     */
+    private SlideHtmlSegmentAudio pickReadyHtmlAudio(List<SlideHtmlSegmentAudio> audios) {
+        if (audios == null || audios.isEmpty()) return null;
+        return audios.stream()
+                .filter(a -> "READY".equals(a.getStatus()))
+                .findFirst().orElse(null);
     }
 
     /**
@@ -732,8 +866,14 @@ public class SlideServiceImpl implements SlideService {
      * - 无 marker：按顺序给前 N 个标题/段落元素补 data-segment
      * - 注入 .active 高亮 CSS 与 bridge.js（点击段→segment-active；接收 segment-activated 高亮）
      * 只读增强（入播放器时组装），不写库，不经过 sanitize 白名单（教师内容不被改）。
+     *
+     * Q-4: cspNonce 非空时（is_trusted=false 严格模式）：
+     * - bridge.js script 标签带 nonce="{cspNonce}"（CSP 仅放行该脚本）
+     * - <head> 注入 <meta http-equiv="Content-Security-Policy" content="script-src 'nonce-{cspNonce}'">
+     *   （纵深防御：即使内容被注入内联脚本也被 CSP 拦截）
+     * is_trusted=true（可信教师课件，含自有 script）→ cspNonce=null，不注入 CSP（保持现有功能）。
      */
-    private String enhanceHtmlSegments(String html, List<HtmlSegmentVO> segments) {
+    private String enhanceHtmlSegments(String html, List<HtmlSegmentVO> segments, String cspNonce) {
         String out = html;
         int autoCursor = 0;
         for (HtmlSegmentVO seg : segments) {
@@ -775,7 +915,8 @@ public class SlideServiceImpl implements SlideService {
                 + "[data-segment].active{box-shadow:0 0 0 3px #6366f1;background:rgba(99,102,241,.10)}"
                 + "</style>";
         StringBuilder js = new StringBuilder();
-        js.append("<script>(function(){")
+        String nonceAttr = cspNonce != null ? " nonce=\"" + cspNonce + "\"" : "";
+        js.append("<script").append(nonceAttr).append(">(function(){")
                 .append("var segs=").append(toJsonSegments(segments)).append(";")
                 .append("function post(m){parent.postMessage(m,'*')}")
                 .append("function ready(){post({type:'slide-audio-v2',version:2,action:'ready',segments:segs})}")
@@ -784,6 +925,17 @@ public class SlideServiceImpl implements SlideService {
                 .append("window.addEventListener('message',function(e){var m=e.data;if(!m||m.type!=='slide-audio-state-v2')return;if(m.state==='segment-activated'&&m.index!=null){document.querySelectorAll('[data-segment]').forEach(function(n){n.classList.toggle('active',Number(n.getAttribute('data-segment'))===m.index)})}});")
                 .append("onReady();})();</script>");
         String bridge = css + js;
+        // Q-4: CSP meta 必须位于 <head> 内且先于内容，才被浏览器采纳（script-src 'nonce-...'）
+        if (cspNonce != null) {
+            String cspMeta = "<meta http-equiv=\"Content-Security-Policy\" "
+                    + "content=\"script-src 'nonce-" + cspNonce + "'\">";
+            int headIdx = out.indexOf("<head>");
+            if (headIdx >= 0) {
+                out = out.substring(0, headIdx + 6) + cspMeta + out.substring(headIdx + 6);
+            } else {
+                out = cspMeta + out;
+            }
+        }
         int idx = out.lastIndexOf("</body>");
         if (idx < 0) return out + bridge;
         return out.substring(0, idx) + bridge + out.substring(idx);
@@ -801,8 +953,15 @@ public class SlideServiceImpl implements SlideService {
         return sb.append("]").toString();
     }
 
+    /**
+     * Q-3 (XSS 加固): JSON 字符串转义。除反斜杠与双引号外，补转义尖括号与 &（对齐 JSON 标准 unicode 转义）：
+     * - '&lt;' 转义为反斜杠u003c：segment_marker 含 "&lt;/script&gt;" 时无法提前闭合 bridge script（防注入桥破坏）
+     * - '&gt;' 转义为反斜杠u003e：对称性，避免 "]]&gt;" 提前结束 CDATA 类场景
+     * - '&amp;' 转义为反斜杠u0026：与 JSON 标准一致
+     */
     private String escapeJson(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+        return s.replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026");
     }
 
     private PageAudioVO toPageAudioVO(Long courseId, SlidePptPageAudio a) {
@@ -1088,6 +1247,8 @@ public class SlideServiceImpl implements SlideService {
             registerSlideCleanup(courseId, s.getId());
         }
         cleanupAudioFiles(courseId, lessonId);
+        // Q-2: 数据变更 → 失效播放页缓存
+        pagesCache.invalidateCourse(courseId);
     }
 
     @Override
@@ -1104,6 +1265,8 @@ public class SlideServiceImpl implements SlideService {
         if (slide.getSectionId() != null) {
             cleanupAudioFiles(courseId, slide.getSectionId());
         }
+        // Q-2: 数据变更 → 失效播放页缓存
+        pagesCache.invalidateCourse(courseId);
     }
 
     @Override
@@ -1137,12 +1300,19 @@ public class SlideServiceImpl implements SlideService {
         List<SlidePptPage> pptPages = sectionId != null
                 ? pptPageMapper.listBySection(sectionId)
                 : pptPageMapper.listByChapter(chapterId);
+        // P1-I-17: 收集 v2 音频 storage_path，DB 删除前快照，供文件清理
+        List<String> v2AudioStoragePaths = new ArrayList<>();
         if (!pptPages.isEmpty()) {
             List<Long> pageIds = pptPages.stream().map(SlidePptPage::getId).toList();
             List<SlidePptPageScript> scripts = pptScriptMapper.selectList(
                     new LambdaQueryWrapper<SlidePptPageScript>().in(SlidePptPageScript::getPptPageId, pageIds));
             List<Long> scriptIds = scripts.stream().map(SlidePptPageScript::getId).toList();
             if (!scriptIds.isEmpty()) {
+                pptAudioMapper.selectList(
+                                new LambdaQueryWrapper<SlidePptPageAudio>()
+                                        .in(SlidePptPageAudio::getScriptId, scriptIds))
+                        .stream().map(SlidePptPageAudio::getStoragePath)
+                        .filter(Objects::nonNull).forEach(v2AudioStoragePaths::add);
                 pptAudioMapper.delete(new LambdaQueryWrapper<SlidePptPageAudio>()
                         .in(SlidePptPageAudio::getScriptId, scriptIds));
                 pptScriptMapper.deleteBatchIds(scriptIds);
@@ -1164,6 +1334,12 @@ public class SlideServiceImpl implements SlideService {
                             .eq(SlideHtmlSegmentScript::getHtmlUnitId, unit.getId()));
             List<Long> segScriptIds = segScripts.stream().map(SlideHtmlSegmentScript::getId).toList();
             if (!segScriptIds.isEmpty()) {
+                // P1-I-17: 快照 HTML 段音频 storage_path 后再删行
+                htmlSegmentAudioMapper.selectList(
+                                new LambdaQueryWrapper<SlideHtmlSegmentAudio>()
+                                        .in(SlideHtmlSegmentAudio::getSegmentScriptId, segScriptIds))
+                        .stream().map(SlideHtmlSegmentAudio::getStoragePath)
+                        .filter(Objects::nonNull).forEach(v2AudioStoragePaths::add);
                 htmlSegmentAudioMapper.delete(new LambdaQueryWrapper<SlideHtmlSegmentAudio>()
                         .in(SlideHtmlSegmentAudio::getSegmentScriptId, segScriptIds));
                 htmlSegmentScriptMapper.deleteBatchIds(segScriptIds);
@@ -1178,6 +1354,43 @@ public class SlideServiceImpl implements SlideService {
                 sec.setContentUrl(null);
                 sec.setUpdatedAt(LocalDateTime.now());
                 sectionRepo.updateById(sec);
+            }
+        }
+
+        // 5. P1-I-17: 清理 v2 音频文件（{storage-root}/{courseId}/audio/{token}.mp3）
+        // Q-5 (事务时序修复): 文件清理必须等事务提交后执行（afterCommit）——
+        //   若在事务内、提交前删文件，事务回滚时文件已删而 DB 行保留 → 脏引用（学生端 404）。
+        //   删除失败仅 warn（best-effort，不阻塞 DB 删除）；遗留文件由定期清理脚本兜底
+        //   （建议 cron：扫描 {storage-root}/{courseId}/audio/ 下无 slide_ppt_page_audios /
+        //    slide_html_segment_audios 引用且 mtime > 24h 的 mp3 并删除）。
+        // Q-2: 课件删除 → 事务提交后失效播放页缓存（学生端立即感知删除）。
+        List<String> audioPaths = v2AudioStoragePaths;
+        Long finalCourseId = courseId;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    cleanupV2AudioFiles(audioPaths);
+                    pagesCache.invalidateCourse(finalCourseId);
+                }
+            });
+        } else {
+            cleanupV2AudioFiles(audioPaths);
+            pagesCache.invalidateCourse(finalCourseId);
+        }
+    }
+
+    /**
+     * P1-I-17: 按 DB 记录的 storage_path 精确删除 v2 音频文件（TtsWorker 写入的
+     * {audio-storage-root}/{courseId}/audio/{token}.mp3）。删除失败仅 warn，不阻塞 DB 删除。
+     */
+    private void cleanupV2AudioFiles(List<String> storagePaths) {
+        for (String path : storagePaths) {
+            try {
+                Files.deleteIfExists(Paths.get(path));
+                log.info("[Slide] 已清理 v2 音频文件: {}", path);
+            } catch (Exception e) {
+                log.warn("[Slide] 清理 v2 音频文件失败 path={}: {}", path, e.getMessage());
             }
         }
     }
@@ -1209,6 +1422,8 @@ public class SlideServiceImpl implements SlideService {
             cleanupPageAudioFile(courseId, p.getSectionId(), p.getPageNumber());
         }
         slidePageMapper.deleteById(p.getId());
+        // Q-2: 数据变更 → 失效播放页缓存
+        pagesCache.invalidateCourse(courseId);
     }
 
     @Override
@@ -1242,6 +1457,8 @@ public class SlideServiceImpl implements SlideService {
         if (affected == 0) {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "页面已被其他人修改，请刷新后重试");
         }
+        // Q-2: 数据变更 → 失效播放页缓存
+        pagesCache.invalidateCourse(courseId);
         return toPageVO(p);
     }
 
@@ -1264,6 +1481,8 @@ public class SlideServiceImpl implements SlideService {
                     .eq(SlidePage::getCourseId, courseId).eq(SlidePage::getPageNumber, TEMP_OFFSET + old));
             if (!list.isEmpty()) { SlidePage p = list.get(0); p.setPageNumber(nw); slidePageMapper.updateById(p); }
         }
+        // Q-2: 数据变更 → 失效播放页缓存
+        pagesCache.invalidateCourse(courseId);
     }
 
     private void verifyOwner(Long courseId) {

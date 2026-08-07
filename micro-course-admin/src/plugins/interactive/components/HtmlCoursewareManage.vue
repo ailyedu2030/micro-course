@@ -47,11 +47,23 @@ title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="�
             description="请在「HTML 内容」中编辑并保存一次，系统将自动创建课件单元，之后即可为各分段配置脚本与音频。"
             class="hcm-segment-empty"
           />
+          <!-- L0 U-4：无任何分段的真实空状态（替代原 Math.max(...,5) 渲染 5 个空编辑块的误导） -->
+          <div v-if="hasNoSegments" class="hcm-segment-empty-card">
+            <el-icon :size="40" class="hcm-empty-icon"><Files /></el-icon>
+            <p class="hcm-empty-title">本课件暂无分段</p>
+            <p class="hcm-empty-desc">点击下方「开始检测」或「手动添加段」按钮开始配置</p>
+            <div class="hcm-empty-actions">
+              <el-button type="primary" :icon="MagicStick" :loading="detecting" @click="runSegmentDetection">
+                开始检测
+              </el-button>
+              <el-button :icon="Plus" @click="addSegmentManually">手动添加段</el-button>
+            </div>
+          </div>
+          <div v-else-if="tree?.htmlUnit && segmentsLoading" class="hcm-segment-loading">
+            <el-icon class="is-loading" :size="16"><Loading /></el-icon> 加载分段中...
+          </div>
           <div
-            v-for="(seg, idx) in tree?.htmlUnit ? Array.from(
-              { length: Math.max((tree.htmlUnit.detectedSegments || 0), 5) },
-              (_, i) => ({ idx: i + 1 })
-            ) : []"
+            v-for="(seg, idx) in segmentSlots"
             :key="idx"
             class="hcm-segment-block"
           >
@@ -61,7 +73,19 @@ title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="�
               page-type="HTML"
               :unit-id="tree.htmlUnit.id"
               :segment-index="seg.idx"
-              :current-script-id="null"
+              :current-script-id="scriptIdOf(seg.idx)"
+              @save-success="loadSegments"
+            />
+          </div>
+          <!-- P0-2 修复: unit 级 AudioManager 多段模式 (与 PPT 每页一个 AudioManager 对称,
+               HTML 按 unit 聚合各段音频, 内部 tabs 切换, 段有脚本才出现在列表) -->
+          <div v-if="tree?.htmlUnit" class="hcm-segment-audio">
+            <h5 class="hcm-segment-audio-title">段级音频</h5>
+            <AudioManager
+              :course-id="courseId"
+              page-type="HTML"
+              :owner-id="tree.htmlUnit.id"
+              :segments="audioSegments"
             />
           </div>
         </el-tab-pane>
@@ -76,14 +100,16 @@ title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="�
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { View, UploadFilled, Delete } from '@element-plus/icons-vue'
+import { View, UploadFilled, Delete, Files, MagicStick, Plus, Loading } from '@element-plus/icons-vue'
 import HtmlBlockEditor from './HtmlBlockEditor.vue'
 import ScriptEditor from './ScriptEditor.vue'
+import AudioManager from './AudioManager.vue'
 import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
 import { deleteCourseware } from '../api/slide'
+import { listActiveHtmlSegments } from '../api/htmlCourseware'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -95,6 +121,96 @@ const emit = defineEmits(['changed'])
 
 const activePanel = ref('content')
 const showPreview = ref(false)
+
+// P0-2 修复: HTML 段级"讲述稿→音频"管线
+// tree.htmlUnit 不含段级 scriptId, 需按 unit 拉取 active segments (含 scriptId)
+// 每段 ScriptEditor 传真实 current-script-id; unit 级 AudioManager 多段模式
+const segments = ref([])
+const segmentsLoading = ref(false)
+
+async function loadSegments() {
+  const unitId = props.tree?.htmlUnit?.id
+  if (!unitId) {
+    segments.value = []
+    return
+  }
+  segmentsLoading.value = true
+  try {
+    const res = await listActiveHtmlSegments(props.courseId, unitId)
+    segments.value = (res.data || res || []).map((s) => ({
+      segmentIndex: s.segmentIndex,
+      scriptId: s.id
+    }))
+  } catch (e) {
+    segments.value = []
+  } finally {
+    segmentsLoading.value = false
+  }
+}
+
+function scriptIdOf(idx) {
+  return segments.value.find((s) => s.segmentIndex === idx)?.scriptId || null
+}
+
+// 传给 AudioManager 的多段 segments 数组 (有脚本的段才出现在音频列表)
+const audioSegments = computed(() =>
+  segments.value
+    .filter((s) => s.scriptId)
+    .map((s) => ({ idx: s.segmentIndex, segmentScriptId: s.scriptId }))
+)
+
+// L0 U-4（原 U9 魔法数修复）：去掉 Math.max(detectedSegments, 5)。
+// - 槽位数量 = max(后端 detectedSegments, 数据库已存在段的最高序号, 本次会话手动添加数)；
+//   这样：detectedSegments=0 且无任何段 → 0 槽位（渲染空状态卡）；
+//   已保存段（如手动添加 1..3 后刷新）仍按真实段渲染，不破坏"已有 N 个段"逻辑。
+// - manualSlots 为会话级（刷新重置），已保存段由 existingMaxIndex 兜底，刷新不丢。
+const manualSlots = ref(0)
+
+const existingMaxIndex = computed(() => {
+  if (!segments.value.length) return 0
+  return Math.max(...segments.value.map((s) => s.segmentIndex || 0))
+})
+
+const segmentSlots = computed(() => {
+  if (!props.tree?.htmlUnit) return []
+  const detected = props.tree.htmlUnit.detectedSegments || 0
+  const total = Math.max(detected, existingMaxIndex.value, manualSlots.value)
+  return Array.from({ length: total }, (_, i) => ({ idx: i + 1 }))
+})
+
+// 无任何段的真实空状态（加载中不算空，避免闪烁）
+const hasNoSegments = computed(() =>
+  !!props.tree?.htmlUnit && segmentSlots.value.length === 0 && !segmentsLoading.value
+)
+
+// 「手动添加段」：追加一个空槽位（后续保存讲述稿即落库为真实段）
+function addSegmentManually() {
+  manualSlots.value += 1
+  activePanel.value = 'segment'
+}
+
+// 「开始检测」：后端暂未提供独立分段检测接口（detected_segments 由上传分析写入），
+// 此按钮重读服务器最新单元/分段状态并通知父级刷新课件树；后端补检测接口后即为入口。
+const detecting = ref(false)
+async function runSegmentDetection() {
+  if (!props.tree?.htmlUnit || detecting.value) return
+  detecting.value = true
+  try {
+    await loadSegments()
+    emit('changed')
+    ElMessage.success('已重新检测课件分段')
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || '检测失败，请稍后重试')
+  } finally {
+    detecting.value = false
+  }
+}
+
+watch(
+  () => props.tree?.htmlUnit?.id,
+  () => loadSegments(),
+  { immediate: true }
+)
 
 const upload = useCoursewareUpload({
   courseId: computed(() => props.courseId),
@@ -131,6 +247,23 @@ onUnmounted(() => upload.stopRenderPolling())
 .hcm-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hcm-panels { background: var(--el-fill-color-blank); border-radius: 8px; }
 .hcm-segment-empty { margin-bottom: 12px; }
+/* L0 U-4：空状态卡（无分段时的明确引导，替代 5 个空编辑块） */
+.hcm-segment-empty-card {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 48px 24px; margin-bottom: 16px;
+  background: var(--el-fill-color-light); border: 1px dashed var(--el-border-color);
+  border-radius: 8px; text-align: center;
+}
+.hcm-empty-icon { color: var(--el-text-color-placeholder); }
+.hcm-empty-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--el-text-color-primary); }
+.hcm-empty-desc { margin: 0; font-size: 13px; color: var(--el-text-color-secondary); }
+.hcm-empty-actions { display: flex; gap: 10px; margin-top: 4px; }
+.hcm-segment-loading {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 32px; color: var(--el-text-color-secondary); font-size: 13px;
+}
 .hcm-segment-block { margin-bottom: 16px; padding: 12px; background: var(--el-fill-color-light); border-radius: 6px; }
 .hcm-segment-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+.hcm-segment-audio { margin-top: 4px; }
+.hcm-segment-audio-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
 </style>

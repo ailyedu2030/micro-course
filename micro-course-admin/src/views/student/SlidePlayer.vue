@@ -67,7 +67,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                    注：srcdoc 与父页面 postMessage 不受 sandbox 限制 -->
               <iframe
                 v-if="currentPage?.contentType === 'HTML_DIRECT' && currentPage?.htmlContent"
-                :srcdoc="currentPage.htmlContent"
+                :srcdoc="htmlSrcDoc"
                 sandbox="allow-scripts"
                 ref="htmlIframeRef"
                 :title="'第' + (current + 1) + '页课件内容'"
@@ -138,11 +138,10 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         </div>
       </div>
 
-      <!-- Audio Status Indicator（P0 R-3：PPT 页同样显示，避免 PENDING/ERROR 零提示） -->
-      <div
-        class="audio-status-bar"
-        v-if="audioStatus !== 'none' || currentPage?.audio || currentPage?.segments?.length"
-      >
+      <!-- Audio Status Indicator（P0 R-3：PPT/HTML 页统一显示，避免 PENDING/ERROR/无音频零提示。
+           L0 U-1：v-if 恒真 —— 完全无音频的页也显示「该页无讲解音频」灰色提示，
+           学生明白当前页为什么播放按钮不可用，而非无声置灰） -->
+      <div class="audio-status-bar" aria-live="polite">
         <div class="audio-status" :class="audioStatus">
           <span v-if="audioStatus === 'loading'" class="status-loading">
             <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频加载中...
@@ -161,6 +160,10 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           </span>
           <span v-else-if="audioStatus === 'error'" class="status-error">
             <el-icon :size="14"><Warning /></el-icon> 音频加载失败
+          </span>
+          <!-- 加载/失败期间不显示"无音频"（避免初始 loading 闪一下误导） -->
+          <span v-else-if="!pageLoading && !pageError" class="status-no-audio">
+            <el-icon :size="14"><Mute /></el-icon> 该页无讲解音频
           </span>
         </div>
       </div>
@@ -262,7 +265,8 @@ import { evaluateFlow } from '@/plugins/interactive/api/queryCourseware'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
 import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
-import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning, Document } from '@element-plus/icons-vue'
+import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning, Document, Mute } from '@element-plus/icons-vue'
+import { enhanceHtmlContentForA11y } from '@/plugins/interactive/composables/useHtmlSegmentBridge'
 
 const route = useRoute()
 const userStore = useUserStore()
@@ -313,9 +317,22 @@ const segments = ref([])             // 当前页 v2 HTML 段 [{index, marker, a
 const activeSegmentIndex = ref(0)
 const segmentMode = ref(false)       // true = 父页按段顺序播放
 const unlocked = ref(false)          // autoplay 解锁（首次用户交互）
+// U-2（R-4 渐进增强）：getAutoplayPolicy 为实验性 API（MDN limited compatibility），
+// 安全 try/catch —— 探测失败不影响主路径。'disallowed' 表示浏览器明确要求用户激活后才可播放。
+const autoplayDisallowed = ref(false)
 let lastStatePush = 0                // 父→iframe 时间消息节流（~4Hz，R-9）
 let iframeReadyV2 = false            // v2 握手完成
 let courseCompleted = false          // 全部播完（完成态，R-10）
+
+// U-3（a11y）：srcdoc 在播放器侧再做一次"段元素键盘可达 + aria-current"增强
+// （后端 enhanceHtmlSegments 已注入 data-segment / 高亮 CSS / 点击桥；此处补
+//  tabindex/role/aria-label + Enter/Space keydown 桥 + aria-current 同步，见
+//  composables/useHtmlSegmentBridge.js）。
+const htmlSrcDoc = computed(() => {
+  const page = currentPage.value
+  if (page?.contentType !== 'HTML_DIRECT' || !page?.htmlContent) return ''
+  return enhanceHtmlContentForA11y(page.htmlContent, page.segments || [])
+})
 
 // P3-2：讲述稿字幕（PPT=当前页讲述稿；HTML=当前段讲述稿）
 const subtitleText = computed(() => {
@@ -470,6 +487,30 @@ function pageDurationText(p) {
   return formatTime(ms / 1000)
 }
 
+// U-6（清单 4-7）：evaluateFlow 用真实播放进度替代页序号估计。
+// 原实现 userProgress=(current+1)/total 在 SKIP_IF_KNOWN（user_progress>=0.8）下几乎不命中：
+// 例如第 5/10 页播完时序号进度仅 0.5，而实际"已听完该页"应为 1.0。
+// 新实现按 已播时长/总时长 计算（后端已下发 audio.durationMs / segments[].durationMs）；
+// 0% 起步（刚进入未播放）时返回 0 → 不会误触发 SKIP（需 userProgress > 0.5 才算"已听完"）。
+function currentPlaybackProgress() {
+  const page = currentPage.value
+  if (!page) return 0
+  // HTML 段模式：累计已播段时长 + 当前段已播时长 ÷ 总时长
+  if (segmentMode.value) {
+    const totalMs = segments.value.reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
+    if (totalMs <= 0) return 0
+    const playedBeforeMs = segments.value
+      .slice(0, activeSegmentIndex.value)
+      .reduce((sum, s) => sum + (s.audio?.durationMs || 0), 0)
+    const playedMs = playedBeforeMs + (audioTime.value * 1000)
+    return Math.min(1, playedMs / totalMs)
+  }
+  // PPT / 整页单音频：已播 / 总时长
+  if (audioDuration.value > 0) return Math.min(1, audioTime.value / audioDuration.value)
+  // 无时长信息（异常兜底）：退化为页序号估计，保证请求体始终有值
+  return Math.min(1, (current.value + 1) / Math.max(1, pages.value.length))
+}
+
 // P1-1：flow 求值后翻页（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），失败退化为线性
 async function advanceToNextPage(expectedGen) {
   const page = currentPage.value
@@ -477,7 +518,7 @@ async function advanceToNextPage(expectedGen) {
     try {
       const res = await evaluateFlow(courseId.value, sectionId.value, {
         currentPageId: page.id,
-        userProgress: Math.min(1, (current.value + 1) / Math.max(1, pages.value.length))
+        userProgress: currentPlaybackProgress()
       })
       const nextId = res.data?.nextPageId
       if (nextId != null) {
@@ -725,6 +766,24 @@ function unlockAutoplay() {
   // 避免 pointerdown 自动起播后同一 click 的 togglePlay 立即暂停（0.3s 卡住 BUG）。
   unlocked.value = true
 }
+
+// U-2（R-4 渐进增强）：探测浏览器自动播放策略。
+// - 'disallowed' → iOS/Safari 等严格策略：用户激活前一切 play() 都会被拒 →
+//   解锁前不发起自动播放，直接展示「▶ 点击开始」（不等首次交互）；
+// - 'allowed' / undefined / 抛异常 → 保持现有"首次交互解锁"逻辑
+//   （play().catch(NotAllowedError) 已在 playAudio/playSegment 兜底）。
+function probeAutoplayPolicy() {
+  try {
+    if (typeof navigator.getAutoplayPolicy === 'function') {
+      autoplayDisallowed.value = navigator.getAutoplayPolicy('media') === 'disallowed'
+    }
+  } catch { /* 实验性 API 失败不影响主路径 */ }
+}
+
+// 自动起播前置判断：策略明确 disallowed 时，用户激活前一律不自动起播。
+function canAttemptAutoplay() {
+  return !autoplayDisallowed.value || unlocked.value
+}
 function handleAudioStateUpdate(msg) {
   switch (msg.state) {
     case 'playing':
@@ -813,7 +872,8 @@ function goTo(index) {
   nextTick(async () => {
     await loadAudio(index)
     preloadAdjacentImages(index)
-    if (autoMode.value) playAudio()
+    // U-2：策略明确 disallowed 且用户未激活时不自动起播（立即显示「▶ 点击开始」）
+    if (autoMode.value && canAttemptAutoplay()) playAudio()
     pageNavLock = false
   })
 }
@@ -853,7 +913,7 @@ async function loadAudio(index) {
     if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
     playing.value = false
     checkHtmlInteractive(page)
-    if (unlocked.value && autoMode.value && audioStatus.value === 'ready') playSegment(0)
+    if (unlocked.value && autoMode.value && audioStatus.value === 'ready' && canAttemptAutoplay()) playSegment(0)
     return
   }
 
@@ -875,13 +935,35 @@ async function loadAudio(index) {
   }
 
   if (isHtmlPage && !!page?.segmentAudio?.url && !page?.narrationAudioUrl) {
-    // legacy HTML 仅有分段音频元数据：退化为整页单音频（R-7），由父页播放
-    audioStatus.value = 'none'
-    audioDuration.value = 0
+    // R-7：legacy HTML 仅有分段音频元数据 → 退化为整页单音频（父页宿主真正加载播放，
+    // 不再置 none+pause 导致"分段为空但不播"）
+    clearPendingTimer()
+    clearTimeout(loadingTimer)
+    audioStatus.value = 'loading'
+    audioDuration.value = page.segmentAudio.duration || 0
     audioTime.value = 0
     audioProgress.value = 0
-    if (audioRef.value) audioRef.value.pause()
-    playing.value = false
+    const segUrl = page.segmentAudio.url
+    if (segUrl.includes('token=') || segUrl.startsWith('/api/courses/')) {
+      // token URL（能力凭证，如 /api/courses/{cid}/slides/pages/N/audio?token=...）可无鉴权头直载
+      audioRef.value.src = segUrl
+      audioRef.value.load()
+    } else {
+      // 旧式鉴权 URL → 走带 Authorization 的 blob 加载（同 narrationAudioUrl 路径）
+      const blobUrl = await loadAuthResource(segUrl.replace(/^\/api/, ''))
+      if (gen !== currentAudioSrcGen.value) return
+      if (blobUrl) {
+        audioRef.value.src = blobUrl
+        audioRef.value.load()
+      } else {
+        audioStatus.value = 'error'
+      }
+    }
+    loadingTimer = setTimeout(() => {
+      if (audioStatus.value === 'loading' && gen === currentAudioSrcGen.value) {
+        audioStatus.value = 'error'
+      }
+    }, 10000)
     checkHtmlInteractive(page)
     return
   }
@@ -1220,6 +1302,8 @@ onMounted(async () => {
   // R-4：首次用户交互解锁自动播放（沙箱 iframe 内点击不构成父页激活，必须父页捕获）
   playerRef.value?.addEventListener('pointerdown', unlockAutoplay, { once: true })
   playerRef.value?.addEventListener('keydown', unlockAutoplay, { once: true })
+  // U-2：渐进增强 —— 探测自动播放策略（实验性 API，安全兜底）
+  probeAutoplayPolicy()
   setupMediaSession()
   await ensureProgress()
   await loadPages()
@@ -1464,7 +1548,10 @@ onUnmounted(() => {
 .audio-status.ready { color: var(--player-accent); }
 .audio-status.pending { color: #f59e0b; }
 .audio-status.error { color: var(--player-danger); }
-.audio-status.none { display: none; }
+/* L0 U-1：无音频页状态栏恒显 —— 灰色中性提示（区别于 error 红色），
+   让学生明白"该页无讲解音频"是内容属性而非故障 */
+.audio-status.none { color: #909399; }
+.status-no-audio { display: inline-flex; align-items: center; gap: 4px; }
 .audio-status-btn {
   border: none;
   background: transparent;

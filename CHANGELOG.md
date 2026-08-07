@@ -7,7 +7,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## Sign-off 规范（DCO）
+
+> 2026-08-07 起强制执行（L0 兜底 C-3，AGENTS.md Step 5 纪律落地）。
+
+本项目遵循 **DCO（Developer Certificate of Origin）**。以下类型 commit **必须**包含 `Signed-off-by` 行：
+
+- `feat` / `fix` / `refactor` / `docs` / `ci`（全部代码与流程变更）
+
+**推荐用法**（自动添加 Sign-off）：
+
+```bash
+git commit -s -m "fix(courseware): 幽灵章节审计视图与 admin 入口（V328）"
+```
+
+提交后校验：
+
+```bash
+git log -1 --format="%B" | grep "Signed-off-by:"
+# 或
+bash .claude/skills/microcourse/scripts/validate-commit-message.sh --check-last
+```
+
+**强制校验**：`.claude/skills/microcourse/scripts/validate-commit-message.sh`（commit-msg hook + CI 均可调用）
+缺失 `Signed-off-by` 的 commit 会被拒绝（非零退出码）。
+
+**紧急 bypass**（仅紧急场景，需在 PR 描述注明理由）：
+
+```bash
+SKIP_SIGNOFF_CHECK=1 git commit ...
+```
+
+**2026-08-07 L0 兜底修复批次元信息**：本批次 4 个 commit（D-1 / D-3 / Q-6 / C-3）全部带
+`Signed-off-by: jackie`（DCO），**不重写历史 commit**；后续提交严格遵循本规范。
+
+---
+
 ## [Unreleased]
+
+### L0 兜底修复批次（2026-08-07 · D-1 / D-3 / Q-6 / C-3）
+
+> L0 宪法铁律（用户体验至上）兜底：存量数据 + CI 维护性 + 流程规范修到 0 遗留。
+> 本批次 4 个 commit 全部带 `Signed-off-by: jackie`（DCO，见上方 Sign-off 规范章节），不重写历史。
+
+#### D-1 幽灵章节兜底审计（数据完整性 = 体验保障）
+- 新增 `V328__audit_chapter_backfill.sql`：纯审计视图 `v_ghost_chapter_backfill` + 函数 `audit_ghost_chapters()`（JSONB 报告：总数 / 按 course 分布 / 明细样例），暴露 V310 `COALESCE(s.chapter_id, 1)` 硬编码兜底产生的"幽灵章节 1"数据，**不改数据**（修复由人工 review 后 V329+ 后置 UPDATE）
+- `CoursewareQueryService.auditGhostChapters()`：仅 ADMIN 可调用的审计入口（构造器注入 JdbcTemplate）
+- 事故复盘：`docs/incidents/2026-08-07-V310-chapter-backfill-ghost-chapters.md`（症状/根因/影响/短期缓解/长期修复 + 审计 SQL + UPDATE 模板）
+- 数据字典登记 V328（§2.28）
+
+#### D-3 测试隔离强化（测试可靠性）
+- `V182SectionMigrationTest`：加 `@DirtiesContext(methodMode=BEFORE_METHOD)`（每方法前重置 context）+ `@TestMethodOrder(OrderAnnotation)` 显式顺序（@Order(1-7)，由 migration 业务语义驱动而非文件系统/方法名顺序，消除 macOS/Linux CI 差异耦合）
+
+#### Q-6 CI 维护性（流程可靠性）
+- 新增 composite action `.github/actions/start-services`：PostgreSQL + Redis 启动 + 可达验证，backend/e2e 两 job 复用（消除复制粘贴漂移）
+- `ci.yml`：backend/e2e 改用 composite action；backend timeout 45→55min（docker pull 余量）
+- `auto-approve.yml`：timeout 45→55min、MAX_WAIT 2700→3300 同步
+
+#### C-3 Commit Sign-off 流程强化（流程合规）
+- CHANGELOG 新增「Sign-off 规范（DCO）」章节（见上）
+- `validate-commit-message.sh`：新增 Sign-off 强校验（缺 `Signed-off-by:` 拒绝；紧急场景 `SKIP_SIGNOFF_CHECK=1` bypass）
+
+#### 验证
+- `mvn -o compile` 通过；CI yaml `yaml.safe_load` 解析通过；V328 migration 头部审计通过
+
+### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
+
+> 2026-08-07 Phase 10 代码审查（R1 前端 / R2 后端 / R3 配置+CI+DB / R4 业务契约+UX，52 项）
+> 修复汇总：2 P0 + 4 P1-C + 13 P1-I + 多 P2。本条目覆盖已合入/待合入的音频同步与审查修复批次。
+
+#### P0 修复
+- `HtmlCoursewareManage.vue`：HTML 段级"讲述稿→音频"管线补全（ScriptEditor 传真实 current-script-id + 引入 AudioManager 段级音频面板），T2/T3 链路 HTML 侧教师端可达
+- `ci.yml` e2e 冒烟测试脚本路径修复（`scripts/e2e-test.sh` 在仓库根，删除错误的 working-directory）
+
+#### P1-C 修复
+- 章节级 v2 聚合：`SlideServiceImpl.getPages` 章节级分支改调 `listByChapter`/`findByChapter` + v2 构建
+- `evaluateFlow` 加用户级 IDOR 校验（学生需选课 APPROVED/COMPLETED；教师需 owner）+ BRANCH quiz 答案改服务端读取（不信任客户端 lastQuizAnswer）
+- `SlidePlayer.vue` legacy HTML 段音频退化分支修复（加载 segmentAudio.url 而非空播）
+- `AiScriptController` HTML ai-generate 补 unitId→courseId 归属校验（与 PPT 分支对称）
+
+#### F-05~14 系列（课件管理架构统一）
+- F-05/06/07：createUnitFresh 从 section 反查 chapterId；v2 工作台预览/上传 + sectionId 落库
+- F-08~12：LlmChatClient MMX 优先、created_by 兜底、脚本保存/播放器图片/音频守卫/错误透传
+- F-13/14：课件树章节级、整节/整章 v1+v2 删除、v1 HTML pending tree、渲染 chapter_id 派生
+- 增量 4b：章节级课时课件概览（PPT/HTML/暂无徽标 + 管理课件跳转）
+
+#### P1-I 修复（契约/文档/CI/测试）
+- 数据字典/API 契约/权限矩阵/状态机设计补登 V300-V310 七表 + flow/evaluate + ai-generate + flow CRUD + DELETE /slides/courseware + §10 课件状态机
+- references/（data-contract.md / api-contract.md）同步 v1.9 / v2.4 真文档版本
+- CI：backend job 显式 `TEST_REDIS_PASSWORD: ""`；e2e job 补 Verify services reachable 兜底
+- V182 迁移测试退化的恒真断言（`COUNT(*) >= 0`）改用关系不变量
+- `CoursewareQueryServiceTest` 补 evaluateFlow（NEXT/BRANCH/SKIP 三态 + 权限校验）+ getTtsOptions 单测
+- ROLLBACK_PLAN.md 修 V174 表名拼写（hermmes→hermes_course_mapping）
+
+#### 验证
+- 本地门禁：后端 1136/0/0、前端 220/220、Playwright e2e 0 错误（CI GitHub 故障恢复后补跑 5/5）
 
 ### Fixed (教师预览 SlidePlayer 不再触发学习进度 403 控制台噪音)
 

@@ -17,6 +17,7 @@ public class PptAudioDTO {
     private String status;
     private Long fileSizeBytes;
     private String storagePath;
+    private String errorMessage;
     private LocalDateTime createdAt;
 
     public Long getId() { return id; }
@@ -47,6 +48,8 @@ public class PptAudioDTO {
     public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
     public String getStoragePath() { return storagePath; }
     public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

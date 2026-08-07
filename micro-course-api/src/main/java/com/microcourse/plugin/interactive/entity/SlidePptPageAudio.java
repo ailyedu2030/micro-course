@@ -55,6 +55,17 @@ public class SlidePptPageAudio {
     @TableField("storage_path")
     private String storagePath;
 
+    @TableField("error_message")
+    private String errorMessage;
+
+    /** U-5 (V330): 是否教师选定的默认音色（ORDER BY is_default DESC, completed_at DESC 决定播放音色） */
+    @TableField("is_default")
+    private Boolean isDefault;
+
+    /** Q-1 (V330): TTS 合成 worker 抢占标识（UUID）—— 幂等消费 */
+    @TableField("worker_id")
+    private String workerId;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -88,6 +99,12 @@ public class SlidePptPageAudio {
     public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
     public String getStoragePath() { return storagePath; }
     public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+    public Boolean getIsDefault() { return isDefault; }
+    public void setIsDefault(Boolean isDefault) { this.isDefault = isDefault; }
+    public String getWorkerId() { return workerId; }
+    public void setWorkerId(String workerId) { this.workerId = workerId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

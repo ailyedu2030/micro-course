@@ -1,6 +1,6 @@
 # 微课管理平台 · API 契约文档 · Phase 1
 
-> 版本：v2.3（2026-07-30 Batch D 修复：讨论区 API 路径同步）
+> 版本：v2.4（2026-08-07 Phase 10 补登：flow/evaluate、ai-generate、flow CRUD、DELETE /slides/courseware）
 > 日期：2026-06-11  
 > 状态：正式发布  
 > 范围：用户认证、院系管理、专业管理、班级管理、用户管理（共 27 个 API）
@@ -24,6 +24,7 @@
 | v2.0 | 2026-06-11 | Phase 14 新增微专业 51 个 API |
 | v2.1 | 2026-07-07 | 增加跨域引用 (课程管理域/微专业域/权限矩阵) |
 | v2.2 | 2026-07-07 | 用户管理域 P1-C 修复同步：ACADEMIC 越权收窄、2 个缺失端点补全、错误码 1007/4002/1011 修正、UpdateProfileRequest 加 avatar 字段、分页 size 最大 100 统一、R.java timestamp 已删除响应示例同步 |
+| v2.4 | 2026-08-07 | Phase 10 课件播放聚合契约补登（P1-I-5）：flow/evaluate（R-5/R-12）、ppt/html ai-generate（P3-1）、ppt/flows PUT+DELETE（F-08）、DELETE /slides/courseware（v1+v2 全量）|
 
 ---
 
@@ -2361,3 +2362,66 @@ LEAD 继任转移。ACADEMIC 权限。
 ### GET /api/courses/{courseId}/courseware/tts-options
 
 - 返回 `{models:["speech-2.8-hd","speech-2.6-hd","speech-01","speech-02"], voices:[{id,label}], defaultModel:"speech-2.8-hd", defaultVoice:"female-shaonv"}`。教师端 AudioManager/ScriptEditor 音色/模型下拉的唯一真相（R-6）。
+- 权限：`isAuthenticated()`（任何登录用户可读；无 @PreAuthorize，走 SecurityConfig 默认认证）。
+
+### POST /api/courses/{courseId}/courseware/{sectionId}/flow/evaluate（R-5/R-12）
+
+PPT 页间跳转求值（播放器 → 后端 FlowEngine）。
+
+- 权限：`@PreAuthorize("isAuthenticated()")` + Service 层 `verifyAccess`（IDOR 防护）：
+  - ADMIN / ACADEMIC：通行
+  - TEACHER：必须是该课程 owner（否则 10003 NO_PERMISSION）
+  - STUDENT：必须有 APPROVED/COMPLETED 的选课记录（否则 10003 NO_PERMISSION）
+  - 附加校验：`sectionId` 必须属于 `courseId`（否则 9006 RESOURCE_NOT_FOUND）
+- 请求体（FlowEvaluateRequest）：
+  | 字段 | 类型 | 必填 | 说明 |
+  |------|------|------|------|
+  | currentPageId | Long | 是 | 当前页 ID（来自 tree 的 pptPageId） |
+  | userProgress | Double | 否 | 0.0~1.0（SKIP_IF_KNOWN 用） |
+  | lastQuizId | Long | 否 | 仅供 hint：必须属于本 section 的 quiz，否则忽略 |
+  | lastQuizAnswer | Boolean | 否 | **不信任**：BRANCH 通过状态由服务端从 exercise_records 读取（设计决策 3） |
+- 响应（FlowEvaluateResponse，R<T> 包装）：
+  | 字段 | 类型 | 说明 |
+  |------|------|------|
+  | nextPageId | Long | 下一个 pageId；null 表示结束/退化为线性 page+1 |
+  | matchedType | String | NEXT / BRANCH_DEPENDS / SKIP_IF_KNOWN / LINEAR（无规则匹配时） |
+- 错误码：9005（courseId/sectionId/currentPageId 缺参）、9006（section 不属于 course）、10003（无权访问）、6001（课程不存在）。
+
+### POST /api/courses/{courseId}/ppt/pages/{pageId}/scripts/ai-generate（P3-1）
+
+PPT 页 AI 讲述稿生成（替代 ScriptEditor 前端 mock）。
+
+- 权限：`@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")` + `checkOwner(courseId)`（SecurityUtil.isOwnerOrAdmin，非 owner 教师 10003）。
+- 请求体：可选 `Map<String,String>`（预留参数）。
+- 响应：`R<Map<String,String>>` → `{"scriptText":"..."}`（纯文本讲述稿，无 Markdown）。
+- 校验：`pageId` 必须属于 `courseId`（否则 16004 SLIDE_PAGE_NOT_FOUND）。
+- 错误码：6001（课程不存在）、16004（page 不存在或不属于该课程）、10003（无权限）。
+
+### POST /api/courses/{courseId}/html/units/{unitId}/segments/{idx}/ai-generate（P3-1）
+
+HTML 段 AI 讲述稿生成（段级，约 30-60 秒语速）。
+
+- 权限：`@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")` + `checkOwner(courseId)`。
+- 请求体：可选 `Map<String,String>`（预留参数）。
+- 响应：`R<Map<String,String>>` → `{"scriptText":"..."}`。
+- 校验：`unitId` 必须属于 `courseId`（P1-C-4 修复，与 PPT 分支对称；否则 16004 / 10003 NO_PERMISSION）。
+- 错误码：6001、16004（单元/分段不存在）、10003（单元不属于该课程）。
+
+### PUT /api/courses/{courseId}/ppt/flows/{flowId} + DELETE /api/courses/{courseId}/ppt/flows/{flowId}（F-08）
+
+PPT 页间跳转规则更新 / 删除。
+
+- 权限：`@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")`。
+- PUT 请求体（PptFlowDTO）：`fromPageId`、`toPageId`（null=结束）、`flowType`（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN）、`priority`、`dependsOnQuizId`、`conditionExpression`、`description`（均可部分更新，null 字段跳过）。
+- 响应：`R<Void>`（code 200）。
+- DELETE：按 flowId 删除，`flowMapper.deleteById`，幂等校验 affected==0 → 9005 BAD_REQUEST_PARAM（"Flow rule not found"）。
+- 错误码：9005（flowId 不存在）。
+
+### DELETE /api/courses/{courseId}/slides/courseware（v1 + v2 全量删除）
+
+整节/整章课件删除（PPT pages + scripts + audios + flow / HTML units + segments / legacy slide_pages 全量清理）。
+
+- 权限：`@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")` + `verifyAccess(courseId)`（课程 owner 校验）。
+- 查询参数：`sectionId`（课时级）或 `chapterId`（章节级），二选一。
+- 响应：`R<Void>`（code 200）。
+- 错误码：6001（课程不存在）、10003（非 owner）、9005（缺参）。

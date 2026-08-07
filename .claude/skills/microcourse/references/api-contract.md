@@ -1,6 +1,6 @@
 # API 契约引用视图
 
-> **源文档**：[`docs/API契约-Phase1.md`](../../API契约-Phase1.md) v1.2
+> **源文档**：[`docs/API契约-Phase1.md`](../../API契约-Phase1.md) v2.4
 > **视图性质**：引用视图（不复制全文，仅抓取 AI 编码时最常查的关键接口）
 > **同步规则**：真文档更新后，本视图必须 24 小时内同步
 > **冲突裁决**：以冲突评审决议为准
@@ -228,8 +228,8 @@ Content-Type: application/json
 
 ---
 
-*视图版本：v1.0 · 与源文档 v1.2 对齐*
-*最后更新：2026-06-11*
+*视图版本：v1.3 · 与源文档 v2.4 对齐*
+*最后更新：2026-08-07*
 
 ---
 
@@ -280,3 +280,52 @@ Content-Type: application/json
 - 教师本人操作（accept/decline/leave）必须校验 `userId == teacher_id`
 - 学生本人操作（reapply/drop）必须校验 `userId == enrollment.user_id`
 - ACADEMIC 拥有全部审批/金标/导入/归档/继任权限
+
+---
+
+## 8. Phase 10 课件播放聚合契约（V300-V310）
+
+> **源文档**：[`docs/API契约-Phase1.md` §Phase 10 课件播放聚合契约](../../../docs/API契约-Phase1.md)
+> **统一响应**：`R<T>` 包装（code=200/message="ok"/timestamp）；错误码 9005 参数 / 9006 资源 / 10003 无权限 / 6001 课程不存在 / 16004 幻灯片页面不存在。
+
+### 8.1 读侧聚合
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/api/courses/{cid}/slides/pages` | isAuthenticated() + verifyAccess | v2 优先聚合（section 有 v2 课件时扩展 audio/segments/flows；无 v2 回退 legacy） |
+| GET | `/api/courses/{cid}/courseware/audio/{token}` | **无需登录**（permitAll；token 即能力凭证） | 音频流式 GET；Controller 校验 token 归属 course（IDOR）+ status=READY（非 READY 返 202）+ storage_path 白名单 |
+| GET | `/api/courses/{cid}/courseware/tree` | isAuthenticated() | 课件树统一入口（?sectionId= / ?chapterId= 二选一） |
+| GET | `/api/courses/{cid}/courseware/tts-options` | isAuthenticated() | 返回 `{models, voices:[{id,label}], defaultModel, defaultVoice}`（R-6 唯一真相） |
+
+### 8.2 PPT 页间跳转求值（R-5/R-12）
+
+`POST /api/courses/{cid}/courseware/{sectionId}/flow/evaluate`
+
+- 权限：`@PreAuthorize("isAuthenticated()")` + Service 层 `verifyAccess`（ADMIN/ACADEMIC 通行；TEACHER 需课程 owner；STUDENT 需 APPROVED/COMPLETED 选课）；`sectionId` 必须属于 `courseId`（IDOR）。
+- 请求体：`{currentPageId(必填), userProgress?, lastQuizId?, lastQuizAnswer?}`。**BRANCH quiz 通过状态由服务端从 exercise_records 读取，不信任客户端 lastQuizAnswer**（设计决策 3）。
+- 响应：`{nextPageId, matchedType}`；matchedType ∈ NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN/LINEAR。
+- 错误码：9005 / 9006 / 10003 / 6001。
+
+### 8.3 AI 讲述稿生成（P3-1）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| POST | `/api/courses/{cid}/ppt/pages/{pageId}/scripts/ai-generate` | TEACHER/ADMIN + checkOwner | 响应 `{"scriptText":"..."}`；pageId 必须属于 courseId（16004） |
+| POST | `/api/courses/{cid}/html/units/{unitId}/segments/{idx}/ai-generate` | TEACHER/ADMIN + checkOwner | 响应 `{"scriptText":"..."}`；unitId 必须属于 courseId（P1-C-4，10003） |
+
+### 8.4 PPT Flow CRUD（F-08）
+
+| 方法 | 路径 | 权限 | 说明 |
+|------|------|------|------|
+| GET | `/api/courses/{cid}/ppt/sections/{sectionId}/flows` | TEACHER/ADMIN/ACADEMIC | 列表 |
+| POST | `/api/courses/{cid}/ppt/sections/{sectionId}/flows` | TEACHER/ADMIN | 创建，返回 flowId |
+| PUT | `/api/courses/{cid}/ppt/flows/{flowId}` | TEACHER/ADMIN | 更新（PptFlowDTO 部分字段） |
+| DELETE | `/api/courses/{cid}/ppt/flows/{flowId}` | TEACHER/ADMIN | 删除（affected==0 → 9005） |
+
+### 8.5 课件全量删除
+
+`DELETE /api/courses/{cid}/slides/courseware?sectionId=&chapterId=`
+
+- 权限：TEACHER/ADMIN + verifyAccess（课程 owner）。
+- 语义：整节/整章课件删除，v1（course_slides/slide_pages）+ v2（ppt_pages/scripts/audios/html_units/segment_scripts/segment_audios/flow）全量清理；幂等返回 200。
+- 错误码：6001 / 10003 / 9005（缺参）。

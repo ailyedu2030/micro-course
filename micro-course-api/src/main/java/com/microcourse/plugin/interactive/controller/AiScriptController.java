@@ -5,6 +5,7 @@ import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
+import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.service.AiScriptService;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
@@ -96,6 +97,15 @@ public class AiScriptController {
                                                             @PathVariable Integer idx,
                                                             @RequestBody(required = false) Map<String, String> body) {
         checkOwner(courseId);
+        // P1-C-4：HTML 分支与 PPT 分支对称 — 校验 unitId 归属 courseId，
+        // 防 TEACHER 持自己课程 courseId 枚举/猜测其他课程 unitId（LLM 上下文泄露）。
+        SlideHtmlUnitDTO unit = htmlService.getUnit(unitId);
+        if (unit == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "HTML 单元不存在");
+        }
+        if (!courseId.equals(unit.getCourseId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问该 HTML 课件");
+        }
         HtmlSegmentScriptDTO seg = htmlService.getActiveSegmentScript(unitId, idx);
         if (seg == null) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "HTML 分段不存在");

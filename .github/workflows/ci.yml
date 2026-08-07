@@ -19,7 +19,8 @@ jobs:
   # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # 45→55 (Q-6)：给 docker pull postgres/redis 镜像 + 首次 Maven 依赖下载留余量，避免偶发超时
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
 
@@ -29,33 +30,18 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      # 2026-08-07 F-15：移除 services 容器编排（outage 后带 services 的 job 在 runner 上
-      # 零日志卡死 4 次），改为显式 docker 步骤启动，宿主网桥 172.17.0.1 可达
-      - name: Start PostgreSQL 17
-        run: |
-          docker run -d --name ci-pg \
-            -p 5432:5432 \
-            -e POSTGRES_DB=micro_course \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            postgres:17-alpine
-          for i in $(seq 1 30); do
-            if docker exec ci-pg pg_isready -U postgres >/dev/null 2>&1; then echo "PG ready"; break; fi
-            sleep 2
-          done
-
-      - name: Start Redis 7
-        run: |
-          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
-          for i in $(seq 1 15); do
-            if docker exec ci-redis redis-cli ping >/dev/null 2>&1; then echo "Redis ready"; break; fi
-            sleep 2
-          done
-
-      - name: Verify services reachable
-        run: |
-          docker exec ci-pg pg_isready -U postgres
-          docker exec ci-redis redis-cli ping
+      # F-15 + Q-6：移除 services 容器编排（outage 后带 services 的 job 在 runner 上
+      # 零日志卡死 4 次），改为 composite action 显式 docker 启动 + 可达验证
+      # （宿主网桥 172.17.0.1 可达；backend/e2e 单一来源，消除复制粘贴漂移）
+      - name: Start PostgreSQL + Redis
+        uses: ./.github/actions/start-services
+        with:
+          db-url: jdbc:postgresql://172.17.0.1:5432/micro_course
+          db-password: postgres
+          redis-host: 172.17.0.1
+          redis-port: "6379"
+          redis-password: ""
+          service-name: ci
 
       - name: Cache Maven
         uses: actions/cache@v4
@@ -78,6 +64,8 @@ jobs:
           TEST_DB_PASSWORD: postgres
           TEST_REDIS_HOST: 172.17.0.1
           TEST_REDIS_PORT: 6379
+          # P1-I-9: Redis 无密码（ci-redis 未设 requirepass），显式声明避免隐式依赖
+          TEST_REDIS_PASSWORD: ""
 
   # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
@@ -115,27 +103,16 @@ jobs:
           java-version: 17
           distribution: temurin
 
-      # F-15：同 backend——移除 services 编排，显式 docker 启动（宿主网桥 172.17.0.1 可达）
-      - name: Start PostgreSQL 17
-        run: |
-          docker run -d --name ci-pg \
-            -p 5432:5432 \
-            -e POSTGRES_DB=micro_course \
-            -e POSTGRES_USER=postgres \
-            -e POSTGRES_PASSWORD=postgres \
-            postgres:17-alpine
-          for i in $(seq 1 30); do
-            if docker exec ci-pg pg_isready -U postgres >/dev/null 2>&1; then echo "PG ready"; break; fi
-            sleep 2
-          done
-
-      - name: Start Redis 7
-        run: |
-          docker run -d --name ci-redis -p 6379:6379 redis:7-alpine
-          for i in $(seq 1 15); do
-            if docker exec ci-redis redis-cli ping >/dev/null 2>&1; then echo "Redis ready"; break; fi
-            sleep 2
-          done
+      # F-15 + Q-6：同 backend——移除 services 编排，复用 composite action 显式 docker 启动
+      - name: Start PostgreSQL + Redis
+        uses: ./.github/actions/start-services
+        with:
+          db-url: jdbc:postgresql://172.17.0.1:5432/micro_course
+          db-password: postgres
+          redis-host: 172.17.0.1
+          redis-port: "6379"
+          redis-password: ""
+          service-name: ci
 
       - name: Cache Maven
         uses: actions/cache@v4

@@ -211,7 +211,7 @@ class PptCoursewareServiceTest {
                     "audio_token must be 32-char hex (7-19 P1-C UK validation requirement)");
             assertTrue(saved.getAudioToken().matches("[0-9a-f]{32}"),
                     "audio_token must be lowercase hex only");
-            assertEquals("/api/courses/42/audio/" + saved.getAudioToken(), saved.getAudioUrl(),
+            assertEquals("/api/courses/42/courseware/audio/" + saved.getAudioToken(), saved.getAudioUrl(),
                     "audio_url pattern: /api/courses/{cid}/audio/{token}");
             assertEquals("GENERATING", saved.getStatus(), "initial status=GENERATING");
         }

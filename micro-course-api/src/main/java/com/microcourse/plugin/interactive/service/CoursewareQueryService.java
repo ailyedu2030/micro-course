@@ -50,4 +50,16 @@ public interface CoursewareQueryService {
      * 播放器只传上下文，不做任意表达式求值。
      */
     FlowEvaluateResponse evaluateFlow(Long courseId, Long sectionId, FlowEvaluateRequest request);
+
+    /**
+     * 幽灵章节审计（D-1 · V328 audit_ghost_chapters()）。
+     * <p>
+     * V310 回填段 COALESCE(s.chapter_id, 1) 硬编码兜底把无 chapter 归属的存量
+     * slide 归入"幽灵章节 1"（L0 兜底：数据完整性 = 体验保障）。本方法为纯只读
+     * 审计入口，仅 ADMIN 可调用，返回 JSON 文本报告（总数 + 按 course 分布 +
+     * 明细样例）。修复数据由人工 review 后执行 V329+ 后置 UPDATE，禁止在方法内改数据。
+     *
+     * @return JSON 文本（audit_ghost_chapters() 的输出）
+     */
+    String auditGhostChapters();
 }
