@@ -50,7 +50,14 @@
             <el-icon class="is-loading"><Loading /></el-icon>
             生成中
           </span>
-          <span v-else class="ap-failed">失败</span>
+          <span v-else class="ap-failed">
+            失败<el-tooltip
+              v-if="audio.errorMessage"
+              :content="audio.errorMessage"
+              placement="top"
+              :show-after="300"
+            ><span class="ap-failed-reason">{{ audio.errorMessage }}</span></el-tooltip>
+          </span>
         </div>
       </div>
     </div>
@@ -157,5 +164,10 @@ onUnmounted(() => {
 .ap-duration, .ap-size { font-size: 12px; color: var(--el-text-color-secondary); }
 .ap-controls { display: flex; gap: 8px; align-items: center; }
 .ap-pending { display: inline-flex; gap: 4px; align-items: center; color: var(--el-color-warning); font-size: 13px; }
-.ap-failed { color: var(--el-color-danger); font-size: 13px; }
+.ap-failed { display: inline-flex; gap: 4px; align-items: center; color: var(--el-color-danger); font-size: 13px; }
+.ap-failed-reason {
+  max-width: 260px; display: inline-block;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  vertical-align: bottom; cursor: help; font-size: 12px;
+}
 </style>

@@ -115,7 +115,7 @@ title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { View, UploadFilled, Download, Select, Delete, MagicStick, Headset, Loading } from '@element-plus/icons-vue'
 import PptPageEditor from './PptPageEditor.vue'
@@ -124,7 +124,7 @@ import AudioManager from './AudioManager.vue'
 import PptFlowEditor from './PptFlowEditor.vue'
 import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
-import { generatePptScriptAi } from '../api/queryCourseware'
+import { generatePptScriptAi, getTtsOptions } from '../api/queryCourseware'
 import { deletePptPage, generatePptAudio } from '../api/pptCourseware'
 import { downloadOriginalSlide, deleteCourseware } from '../api/slide'
 
@@ -143,6 +143,19 @@ const batchMode = ref(false)
 const selectedBatch = ref(new Set())
 const batchAiLoading = ref(false)
 const batchTtsLoading = ref(false)
+// R-6: 批量 TTS 默认音色/模型来自 tts-options 契约（AudioManager 同源），禁止硬编码
+const ttsOptions = ref(null)
+
+// 与 AudioManager.loadTtsOptions 同源：一次 GET 拉取官方 voice/model 枚举
+async function loadTtsOptions() {
+  try {
+    const res = await getTtsOptions(props.courseId)
+    ttsOptions.value = res.data || res
+  } catch {
+    // 后端不可用时使用内置官方枚举兜底（与 AudioManager 一致）
+  }
+}
+onMounted(loadTtsOptions)
 
 const upload = useCoursewareUpload({
   courseId: computed(() => props.courseId),
@@ -214,6 +227,11 @@ async function handleBatchTTS() {
   batchTtsLoading.value = true
   const failed = []
   let ok = 0
+  // R-6: 批量生成前确保 tts-options 已加载（mounted 预加载可能尚未返回），
+  // 用服务端默认 voice/model，而非硬编码 female-shaonv / speech-2.8-hd
+  if (!ttsOptions.value) await loadTtsOptions()
+  const voice = ttsOptions.value?.defaultVoice || 'female-shaonv'
+  const model = ttsOptions.value?.defaultModel || 'speech-2.8-hd'
   for (const page of props.tree.pages || []) {
     if (!selectedBatch.value.has(page.pageId)) continue
     const scriptId = page.activeScript?.id
@@ -223,8 +241,8 @@ async function handleBatchTTS() {
     }
     try {
       await generatePptAudio(props.courseId, scriptId, {
-        voice: 'female-shaonv',
-        model: 'speech-2.8-hd',
+        voice,
+        model,
         ttsParams: '{}'
       })
       ok++

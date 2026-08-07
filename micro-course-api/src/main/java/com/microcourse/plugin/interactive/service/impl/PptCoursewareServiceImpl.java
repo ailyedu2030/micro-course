@@ -184,7 +184,7 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         // 7-19 P1-C 兼容: audio_token 是 UK, 流式 GET 不依赖 pageNumber
         audio.setAudioToken(UUID.randomUUID().toString().replace("-", ""));
         audio.setAudioUrl("/api/courses/" + courseId
-                + "/audio/" + audio.getAudioToken());
+                + "/courseware/audio/" + audio.getAudioToken());
         audio.setCreatedAt(LocalDateTime.now());
         audioMapper.insert(audio);
         log.info("[PPT-Audio] queued: id={}, scriptId={}, voice={}, token={}",

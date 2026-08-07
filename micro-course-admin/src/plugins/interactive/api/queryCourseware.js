@@ -1,5 +1,9 @@
 import request from '@/utils/request'
 
+// 与 @/utils/request 的 baseURL 约定保持一致（VITE_API_BASE_URL || '/api'），
+// 避免部署时自定义 baseURL 导致 <audio src> 404（P1-I-6）
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
 /**
  * 课件 CQRS Query API 客户端.
  *
@@ -26,7 +30,7 @@ export function getCoursewareTree(courseId, sectionId, chapterId) {
  * 返回音频字节流 (浏览器直接 <audio src=...>)
  */
 export function getAudioStreamUrl(courseId, token) {
-  return `/api/courses/${courseId}/courseware/audio/${token}`
+  return `${API_BASE_URL}/courses/${courseId}/courseware/audio/${token}`
 }
 
 /**
