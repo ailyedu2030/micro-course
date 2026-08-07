@@ -48,8 +48,8 @@
         v-if="effectiveScriptId"
         :course-id="courseId"
         :script-id="effectiveScriptId"
-        :token-loader="loadPptAudios"
-        :audio-url-factory="pptAudioUrl"
+        :token-loader="pageType === 'PPT' ? loadPptAudios : loadHtmlAudios"
+        :audio-url-factory="pageType === 'PPT' ? pptAudioUrl : htmlAudioUrl"
         :audio-status="statusLabel"
       />
       <el-empty
@@ -76,6 +76,11 @@
           />
         </el-tab-pane>
       </el-tabs>
+      <el-empty
+        v-if="!(segments && segments.length)"
+        description="暂无已保存讲述稿的段落，请先在「分段脚本」中保存任一讲述稿"
+        :image-size="60"
+      />
     </div>
 
     <!-- 生成新音频对话框 -->

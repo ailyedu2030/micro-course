@@ -51,14 +51,14 @@
       type="textarea"
       :rows="8"
       placeholder="输入讲述稿内容...保存将创建新版本,旧版本永久保留。"
-      :disabled="!currentScriptId"
+      :disabled="pageType === 'PPT' && !currentScriptId"
     />
 
     <div class="se-toolbar">
       <el-button :icon="MagicStick" plain size="small" @click="handleAiGenerate" :loading="aiLoading">
         AI 生成讲述稿
       </el-button>
-      <el-button type="primary" size="small" :icon="Check" @click="handleSave" :loading="saving" :disabled="!scriptText.trim() || !currentScriptId">
+      <el-button type="primary" size="small" :icon="Check" @click="handleSave" :loading="saving" :disabled="!scriptText.trim() || (pageType === 'PPT' && !currentScriptId)">
         保存 (创建 v{{ history.length + 1 }})
       </el-button>
     </div>
@@ -103,7 +103,10 @@ const aiPreview = ref(null)
 const activeVersion = ref(0)
 
 async function loadActive() {
-  if (!props.currentScriptId) {
+  // P0-2 修复: 仅 PPT 模式依赖 currentScriptId (PPT 需 pageId 对应 active script id)
+  // HTML 模式不依赖 currentScriptId —— getActiveHtmlSegment 按 unitId+segmentIndex 自取,
+  // 段无脚本时返回 null 即空稿, 用户可首次输入并保存 (后端自建 v1)
+  if (props.pageType === 'PPT' && !props.currentScriptId) {
     scriptText.value = ''
     return
   }
@@ -148,18 +151,21 @@ async function handleSave() {
   saving.value = true
   try {
     let res
+    // R-6: 不再兜底非法枚举 (female-young / MiniMax-speech-01)。
+    // voice/ttsModel 为空时透传 null —— TtsWorkerService 服务端解析为
+    // 官方默认 (female-shaonv / speech-2.8-hd)，音色选择统一由 AudioManager 的 tts-options 契约负责。
     if (props.pageType === 'PPT') {
       res = await savePptScript(props.courseId, props.pageId, {
         scriptText: scriptText.value,
-        voice: currentScript.value?.voice || 'female-young',
-        ttsModel: currentScript.value?.ttsModel || 'MiniMax-speech-01',
+        voice: currentScript.value?.voice || null,
+        ttsModel: currentScript.value?.ttsModel || null,
         createdBy
       })
     } else {
       res = await saveHtmlSegmentScript(props.courseId, props.unitId, props.segmentIndex, {
         scriptText: scriptText.value,
-        voice: currentScript.value?.voice || 'female-young',
-        ttsModel: currentScript.value?.ttsModel || 'MiniMax-speech-01',
+        voice: currentScript.value?.voice || null,
+        ttsModel: currentScript.value?.ttsModel || null,
         segmentMarker: currentScript.value?.segmentMarker || null,
         createdBy
       })
