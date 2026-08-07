@@ -1,6 +1,9 @@
 package com.microcourse.plugin.interactive.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.Enrollment;
+import com.microcourse.entity.ExerciseRecord;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
@@ -12,6 +15,7 @@ import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
+import com.microcourse.plugin.interactive.entity.SectionQuiz;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
@@ -20,6 +24,7 @@ import com.microcourse.plugin.interactive.entity.SlidePptFlow;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.mapper.SectionQuizMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
@@ -31,11 +36,18 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import com.microcourse.plugin.interactive.flow.FlowEngine;
 import com.microcourse.plugin.interactive.flow.FlowContext;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.repository.EnrollmentRepository;
+import com.microcourse.repository.ExerciseRecordRepository;
+import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.entity.CourseSection;
+import com.microcourse.entity.LearningProgress;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -76,6 +88,15 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
     private final FlowEngine flowEngine;
     private final CourseSectionRepository courseSectionRepository;
+    // P1-C-2 (IDOR + BRANCH 服务端读取)：课程归属 / 选课 / 测验完成状态
+    private final CourseRepository courseRepository;
+    private final EnrollmentRepository enrollmentRepository;
+    private final SectionQuizMapper sectionQuizMapper;
+    private final ExerciseRecordRepository exerciseRecordRepository;
+    // S-1 (设计决策 3)：SKIP_IF_KNOWN userProgress 服务端读取（learning_progress）
+    private final LearningProgressRepository learningProgressRepository;
+    // D-1 (V328)：幽灵章节审计函数调用（audit_ghost_chapters()）
+    private final JdbcTemplate jdbcTemplate;
 
     /** MiniMax 官方模型（application.yml 契约，R-6） */
     private static final List<String> TTS_MODELS = java.util.List.of(
@@ -102,7 +123,13 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        SlidePageMapper slidePageMapper,
                                        com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache,
                                        FlowEngine flowEngine,
-                                       CourseSectionRepository courseSectionRepository) {
+                                       CourseSectionRepository courseSectionRepository,
+                                       CourseRepository courseRepository,
+                                       EnrollmentRepository enrollmentRepository,
+                                       SectionQuizMapper sectionQuizMapper,
+                                       ExerciseRecordRepository exerciseRecordRepository,
+                                       LearningProgressRepository learningProgressRepository,
+                                       JdbcTemplate jdbcTemplate) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -114,6 +141,12 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.audioStreamCache = audioStreamCache;
         this.flowEngine = flowEngine;
         this.courseSectionRepository = courseSectionRepository;
+        this.courseRepository = courseRepository;
+        this.enrollmentRepository = enrollmentRepository;
+        this.sectionQuizMapper = sectionQuizMapper;
+        this.exerciseRecordRepository = exerciseRecordRepository;
+        this.learningProgressRepository = learningProgressRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -122,6 +155,11 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                     "courseId 与 sectionId/chapterId 必填（课时级或章节级二选一）");
         }
+
+        // D-2 (IDOR 修复): 对象级 verifyAccess —— 此前仅校验 section→course 归属，
+        // 未校验调用者对 course 的访问权，学生可访问未选课课件树（含 HTML 完整内容）。
+        // 与 evaluateFlow 同构：ADMIN/ACADEMIC 通行；TEACHER 必须课程 owner；STUDENT 必须有选课记录。
+        verifyCourseAccess(courseId);
 
         // 1. 一次性查 PPT pages (验证 + 数据复用, 避免 N+1)；课时级优先，章节级兜底
         List<SlidePptPage> pptPages = sectionId != null
@@ -341,18 +379,65 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                     "courseId / sectionId / currentPageId 必填");
         }
+        // P1-C-2 IDOR：校验调用者对 course 的访问权（ADMIN/ACADEMIC 通行；
+        // TEACHER 必须课程 owner；STUDENT 必须有 APPROVED/COMPLETED 选课记录）
+        verifyCourseAccess(courseId);
         // IDOR：校验 section 归属 course（复用 CoursewareTree 的防护语义）
         CourseSection section = courseSectionRepository.selectById(sectionId);
         if (section == null || !courseId.equals(section.getCourseId())) {
             throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND,
                     "section 不属于该 course: courseId=" + courseId + " sectionId=" + sectionId);
         }
+        // P1-C-2（设计决策 3）：BRANCH quiz 答案服务端读取，不信任客户端 lastQuizAnswer。
+        // 客户端 lastQuizId 仅作 hint：必须属于本 section 的 quiz（section_quizzes），否则忽略；
+        // 通过状态从 exercise_records 服务端读取（同 ExerciseRecordController.getAttemptSummary 数据源）。
+        Long quizId = request.getLastQuizId();
+        Boolean quizPassed = null;
+        if (quizId != null) {
+            SectionQuiz quiz = sectionQuizMapper.selectOne(
+                    new LambdaQueryWrapper<SectionQuiz>()
+                            .eq(SectionQuiz::getId, quizId)
+                            .eq(SectionQuiz::getSectionId, sectionId));
+            if (quiz == null) {
+                log.warn("[FlowEvaluate] 忽略跨 section/伪造的 lastQuizId={} (sectionId={})", quizId, sectionId);
+                quizId = null;
+            } else {
+                Long uid = SecurityUtil.getCurrentUserIdOpt();
+                quizPassed = uid != null && exerciseRecordRepository.selectList(
+                                new LambdaQueryWrapper<ExerciseRecord>()
+                                        .eq(ExerciseRecord::getUserId, uid)
+                                        .eq(ExerciseRecord::getExerciseId, quizId))
+                        .stream().anyMatch(r -> Boolean.TRUE.equals(r.getPassed()));
+                if (quizPassed == null) quizPassed = false;
+            }
+        }
+        // S-1（设计决策 3 完整性）：SKIP_IF_KNOWN 的 userProgress 也必须服务端读取，
+        // 不信任客户端 request.getUserProgress()（可伪造进度绕过教师配置的 SKIP 规则）。
+        // 数据源：learning_progress（user_id + course_id + lesson_id 最新记录），
+        // video_progress 0-100 → 0.0-1.0；无记录 → null（SKIP 不命中，退化为线性）。
+        Long userId = SecurityUtil.getCurrentUserIdOpt();
+        Double userProgress = null;
+        if (userId != null && learningProgressRepository != null) {
+            try {
+                LearningProgress lp = learningProgressRepository.findLatestByUserAndLesson(
+                        userId, courseId, sectionId);
+                if (lp != null && lp.getVideoProgress() != null) {
+                    userProgress = lp.getVideoProgress() / 100.0;
+                    log.debug("[FlowEvaluate] SKIP userProgress 服务端读取: userId={}, section={}, progress={}",
+                            userId, sectionId, userProgress);
+                }
+            } catch (Exception e) {
+                // 服务端读取失败 → 不命中 SKIP（安全侧退化：宁可不跳，不伪造进度）
+                log.warn("[FlowEvaluate] learning_progress 读取失败（SKIP 不命中）: {}", e.getMessage());
+                userProgress = null;
+            }
+        }
         FlowContext context = new FlowContext(
                 request.getCurrentPageId(),
-                com.microcourse.util.SecurityUtil.getCurrentUserIdOpt(),
-                request.getUserProgress(),
-                request.getLastQuizId(),
-                request.getLastQuizAnswer());
+                userId,
+                userProgress,
+                quizId,
+                quizPassed);
         Long next = flowEngine.decideNextPage(sectionId, context);
         if (next == null) {
             return new FlowEvaluateResponse(null, "LINEAR");
@@ -364,6 +449,65 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                 .map(f -> f.getFlowType())
                 .findFirst().orElse("NEXT");
         return new FlowEvaluateResponse(next, matchedType);
+    }
+
+    @Override
+    public String auditGhostChapters() {
+        // D-1 (V328)：幽灵章节审计是运维级只读操作，仅 ADMIN 可调用。
+        // 审计本身不改数据；修复由人工 review 后执行 V329+ 后置 UPDATE。
+        if (!SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "仅 ADMIN 可执行幽灵章节审计");
+        }
+        try {
+            String report = jdbcTemplate.queryForObject(
+                    "SELECT audit_ghost_chapters()::text", String.class);
+            if (report == null) {
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                        "幽灵章节审计返回空报告（V328 audit_ghost_chapters() 未生效？）");
+            }
+            log.info("[GhostChapter-Audit] 审计完成，报告长度={} 字符", report.length());
+            return report;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[GhostChapter-Audit] audit_ghost_chapters() 执行失败", e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "幽灵章节审计执行失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * D-2 / P1-C-2 IDOR 防护：验证当前用户有权限访问此课程的课件（与 SlideController.verifyAccess 同构，
+     * 双向防御；getCoursewareTree / evaluateFlow 统一走本方法）。
+     * - ADMIN / ACADEMIC: 通行
+     * - TEACHER: 必须是课程的所有者
+     * - STUDENT: 必须已选此课（有 APPROVED/COMPLETED 的 enrollment 记录）
+     */
+    public void verifyCourseAccess(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (SecurityUtil.isAdmin() || SecurityUtil.isAcademic()) {
+            return;
+        }
+        Long currentUserId = SecurityUtil.getCurrentUserId();
+        if (SecurityUtil.hasRole("TEACHER")) {
+            if (!currentUserId.equals(course.getTeacherId())) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该课程");
+            }
+            return;
+        }
+        if (SecurityUtil.hasRole("STUDENT")) {
+            LambdaQueryWrapper<Enrollment> check = new LambdaQueryWrapper<>();
+            check.eq(Enrollment::getUserId, currentUserId)
+                    .eq(Enrollment::getCourseId, courseId)
+                    .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
+                    .isNull(Enrollment::getDeletedAt);
+            if (enrollmentRepository.selectCount(check) == 0) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION, "请先选课再查看课件");
+            }
+        }
     }
 
     // ====== Converters ======
