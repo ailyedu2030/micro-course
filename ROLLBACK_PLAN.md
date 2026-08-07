@@ -86,6 +86,12 @@
 
 > 部署验证：后端 16s 启动健康、前端新 bundle 生效（无版本开关）、5 分钟监控 0 ERROR / 0 5xx。
 
+### 2026-08-07 增量 4b：章节级课时课件概览（前端仅）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| 前端 dist | 新 bundle `index-DJyWWonr.js`（章节级 manage-slides 增加课时课件概览表：PPT/HTML/暂无徽标 + 管理课件跳转；CI backend/e2e job 移除 services 编排属 CI 配置不影响运行时） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_140622 /micro-course-admin/…` + `nginx -s reload` |
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |
