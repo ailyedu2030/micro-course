@@ -6,9 +6,15 @@
   2. A/B 对比 (同时显示多个 audio,可切换播放源)
   3. 状态显示 (GENERATING/READY/FAILED)
   4. 时长显示
+  5. FAILED 状态可操作化 (L0): 分类错误原因 → 行动按钮 (重试/切换音色/联系充值)
 
   Props:
     courseId, scriptId, tokenLoader(fn), audioUrlFactory(fn), audioStatus(fn)
+    retryingId (Number|null): 当前正在重试的 audio id (由 AudioManager 管理)
+
+  Emits:
+    retry({ audio, scriptId }): 一键重试 (复用失败音频的 voice/model)
+    voice-settings(audio): 打开音色设置 (切换到默认音色重新生成)
 -->
 <template>
   <div class="audio-panel">
@@ -16,49 +22,102 @@
       <el-icon class="is-loading"><Loading /></el-icon>
       加载音频列表...
     </div>
-    <el-empty v-else-if="audios.length === 0" description="暂无音频,点击右上角'生成新音频'" :image-size="80" />
+    <!-- L0 U-音频空: 从未生成过音频 → 明确引导如何开始 -->
+    <el-empty
+      v-else-if="audios.length === 0"
+      description="尚未生成音频，点击右上角「生成新音频」按钮开始"
+      :image-size="80"
+    />
     <div v-else class="ap-list">
       <div
         v-for="audio in audios"
         :key="audio.id"
         class="ap-item"
-        :class="{ 'ap-active': playingId === audio.id }"
+        :class="{ 'ap-active': playingId === audio.id, 'ap-failed-item': audio.status === 'FAILED' }"
       >
-        <div class="ap-meta">
-          <el-tag :type="statusType(audio.status)" size="small">{{ statusLabel(audio) }}</el-tag>
-          <span class="ap-voice">{{ audio.voiceUsed }}</span>
-          <span class="ap-model">{{ audio.modelUsed }}</span>
-          <span v-if="audio.audioDurationMs" class="ap-duration">
-            {{ formatDuration(audio.audioDurationMs) }}
-          </span>
-          <span v-if="audio.fileSizeBytes" class="ap-size">
-            {{ formatSize(audio.fileSizeBytes) }}
-          </span>
+        <div class="ap-row">
+          <div class="ap-meta">
+            <el-tag :type="statusType(audio.status)" size="small">{{ statusLabel(audio) }}</el-tag>
+            <span class="ap-voice">{{ audio.voiceUsed }}</span>
+            <span class="ap-model">{{ audio.modelUsed }}</span>
+            <span v-if="audio.audioDurationMs" class="ap-duration">
+              {{ formatDuration(audio.audioDurationMs) }}
+            </span>
+            <span v-if="audio.fileSizeBytes" class="ap-size">
+              {{ formatSize(audio.fileSizeBytes) }}
+            </span>
+          </div>
+          <div class="ap-controls">
+            <el-button
+              v-if="audio.status === 'READY'"
+              :icon="playingId === audio.id ? VideoPause : VideoPlay"
+              size="small"
+              type="primary"
+              plain
+              @click="togglePlay(audio)"
+            >
+              {{ playingId === audio.id ? '暂停' : '试听' }}
+            </el-button>
+            <span v-else-if="audio.status === 'GENERATING'" class="ap-pending">
+              <el-icon class="is-loading"><Loading /></el-icon>
+              生成中
+            </span>
+            <span v-else class="ap-failed-badge">失败</span>
+          </div>
         </div>
-        <div class="ap-controls">
-          <el-button
-            v-if="audio.status === 'READY'"
-            :icon="playingId === audio.id ? VideoPause : VideoPlay"
-            size="small"
-            type="primary"
-            plain
-            @click="togglePlay(audio)"
+
+        <!-- L0 铁律: FAILED 状态 = 错误原因 + 该怎么办 + 行动按钮 -->
+        <template v-if="audio.status === 'FAILED'">
+          <el-alert
+            :type="errorInfo(audio).alertType"
+            :closable="false"
+            show-icon
+            class="ap-failed-alert"
           >
-            {{ playingId === audio.id ? '暂停' : '试听' }}
-          </el-button>
-          <span v-else-if="audio.status === 'GENERATING'" class="ap-pending">
-            <el-icon class="is-loading"><Loading /></el-icon>
-            生成中
-          </span>
-          <span v-else class="ap-failed">
-            失败<el-tooltip
-              v-if="audio.errorMessage"
-              :content="audio.errorMessage"
-              placement="top"
-              :show-after="300"
-            ><span class="ap-failed-reason">{{ audio.errorMessage }}</span></el-tooltip>
-          </span>
-        </div>
+            <template #title>
+              <span class="ap-failed-advice">{{ errorInfo(audio).advice }}</span>
+            </template>
+          </el-alert>
+          <div class="ap-failed-actions">
+            <el-button
+              v-if="errorInfo(audio).action === 'recharge'"
+              size="small"
+              plain
+              :disabled="retryingId !== null"
+              @click="openRechargeTip"
+            >
+              联系管理员充值
+            </el-button>
+            <el-button
+              v-if="errorInfo(audio).action === 'voice'"
+              size="small"
+              plain
+              :disabled="retryingId !== null"
+              @click="emit('voice-settings', audio)"
+            >
+              切换默认音色
+            </el-button>
+            <el-button
+              v-if="errorInfo(audio).action === 'config'"
+              size="small"
+              plain
+              :disabled="retryingId !== null"
+              @click="openSupportTip"
+            >
+              联系技术支持
+            </el-button>
+            <el-button
+              size="small"
+              type="primary"
+              plain
+              :loading="retryingId === audio.id"
+              :disabled="retryingId !== null"
+              @click="emit('retry', { audio, scriptId: props.scriptId })"
+            >
+              {{ errorInfo(audio).actionLabel }}
+            </el-button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
@@ -66,16 +125,21 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, VideoPlay, VideoPause } from '@element-plus/icons-vue'
+import { classifyAudioError } from '../composables/useAudioError'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
   scriptId: { type: Number, default: null },
   tokenLoader: { type: Function, required: true },
   audioUrlFactory: { type: Function, required: true },
-  audioStatus: { type: Function, default: (a) => a.status }
+  audioStatus: { type: Function, default: (a) => a.status },
+  // 当前正在一键重试的 audio id (由 AudioManager 统一管理, 保证 loading 状态准确)
+  retryingId: { type: Number, default: null }
 })
+
+const emit = defineEmits(['retry', 'voice-settings'])
 
 const audios = ref([])
 const loading = ref(true)
@@ -120,6 +184,29 @@ function togglePlay(audio) {
   audioEl.value.onended = () => { playingId.value = null }
 }
 
+// L0 铁律: 错误分类 → "该怎么办" + 行动按钮 (classifyAudioError 返回 advice + action)
+function errorInfo(audio) {
+  return classifyAudioError(audio.errorMessage)
+}
+
+// 余额不足: 平台 TTS 由管理员统一充值, 给出明确指引
+function openRechargeTip() {
+  ElMessageBox.alert(
+    '音频合成服务账户余额不足，需要由平台管理员为 TTS 服务充值后方可继续生成。请通过管理后台或联系管理员完成充值，充值后点击「重新生成」即可。',
+    '账户余额不足',
+    { confirmButtonText: '知道了', type: 'warning' }
+  )
+}
+
+// 配置/服务端异常: 引导联系技术支持
+function openSupportTip() {
+  ElMessageBox.alert(
+    '音频合成服务配置异常（如 API Key 无效）。请将课件信息与错误原因反馈给平台技术支持排查，修复后点击「重新生成」即可。',
+    '需要技术支持',
+    { confirmButtonText: '知道了', type: 'error' }
+  )
+}
+
 function statusType(status) {
   return { GENERATING: 'warning', READY: 'success', FAILED: 'danger' }[status] || 'info'
 }
@@ -150,7 +237,6 @@ onUnmounted(() => {
 .ap-loading { display: flex; gap: 8px; padding: 20px; align-items: center; color: var(--el-text-color-secondary); }
 .ap-list { display: flex; flex-direction: column; gap: 8px; }
 .ap-item {
-  display: flex; justify-content: space-between; align-items: center;
   padding: 10px 14px; border-radius: 6px;
   background: var(--el-fill-color-light);
   border: 1px solid var(--el-border-color-lighter);
@@ -158,16 +244,17 @@ onUnmounted(() => {
 }
 .ap-item:hover { border-color: var(--el-color-primary); }
 .ap-item.ap-active { border-color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
+.ap-item.ap-failed-item { border-color: var(--el-color-danger); }
+.ap-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .ap-meta { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ap-voice { font-weight: 500; }
 .ap-model { font-size: 12px; color: var(--el-text-color-secondary); }
 .ap-duration, .ap-size { font-size: 12px; color: var(--el-text-color-secondary); }
-.ap-controls { display: flex; gap: 8px; align-items: center; }
+.ap-controls { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 .ap-pending { display: inline-flex; gap: 4px; align-items: center; color: var(--el-color-warning); font-size: 13px; }
-.ap-failed { display: inline-flex; gap: 4px; align-items: center; color: var(--el-color-danger); font-size: 13px; }
-.ap-failed-reason {
-  max-width: 260px; display: inline-block;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  vertical-align: bottom; cursor: help; font-size: 12px;
-}
+.ap-failed-badge { display: inline-flex; gap: 4px; align-items: center; color: var(--el-color-danger); font-size: 13px; }
+/* L0: FAILED 状态可操作化 — 错误提示 + 行动按钮 */
+.ap-failed-alert { margin-top: 10px; }
+.ap-failed-advice { font-size: 13px; }
+.ap-failed-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 </style>

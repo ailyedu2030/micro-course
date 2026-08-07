@@ -13,6 +13,7 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.TtsService;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -83,6 +84,16 @@ public class TtsWorkerService {
     @Value("${plugin.interactive.minimax.tts-voice:female-shaonv}")
     private String defaultVoice;
 
+    /**
+     * N-5 增强（2026-08-08）: Spring 全局 TaskScheduler 线程池大小（spring.task.scheduling.pool.size）。
+     * 本 worker 的 {@code @Scheduled poll()} 依赖单线程 scheduler 保证同一时刻只有一个 poll 执行；
+     * 若配置多线程（>1），并发 poll 可能重复合成同一行（重复扣 MiniMax API 费用）。
+     * Q-1（V330 worker_id + 原子抢占 claimPending）已提供 DB 层幂等兜底，此处再显式 fail-fast
+     * 阻止错误配置启动，避免"配置看似无害、行为静默异常"。默认 1（单线程，Spring Boot 默认值）。
+     */
+    @Value("${spring.task.scheduling.pool.size:1}")
+    private int schedulerPoolSize;
+
     private final AtomicInteger inFlight = new AtomicInteger(0);
 
     /** 历史前端枚举 → MiniMax 官方 voice_id（R-6 别名映射） */
@@ -109,6 +120,28 @@ public class TtsWorkerService {
         this.htmlUnitMapper = htmlUnitMapper;
         this.ttsService = ttsService;
         this.transactionTemplate = transactionTemplate;
+    }
+
+    /**
+     * N-5 增强: 启动时校验 {@code spring.task.scheduling.pool.size}。
+     * <p>
+     * 本 worker 的 {@code @Scheduled poll()} 依赖单线程 scheduler —— 同一时刻只有一个 poll 执行，
+     * 配合 Q-1 原子抢占（claimPending 置 PROCESSING + worker_id）保证不重复合成。
+     * 若配置 pool.size &gt; 1（多线程 scheduler），并发 poll 可能重复合成同一行（重复扣 MiniMax 费用）；
+     * 此处 fail-fast 阻止启动，把错误暴露在部署时而非运行中。
+     * </p>
+     *
+     * @throws IllegalStateException 当 pool.size &gt; 1（多线程 scheduler 与本 worker 单线程设计不兼容）
+     */
+    @PostConstruct
+    public void verifySingleThreadedScheduler() {
+        if (schedulerPoolSize > 1) {
+            throw new IllegalStateException(
+                    "[TtsWorker] spring.task.scheduling.pool.size=" + schedulerPoolSize
+                            + " 与本 worker 的单线程设计不兼容：多线程 scheduler 下并发 poll 可能重复合成"
+                            + "（重复扣 MiniMax 费用）。请保持单线程（设为 1 或移除该配置项）。");
+        }
+        log.info("[TtsWorker] scheduler 配置校验通过: pool.size={}（单线程，符合设计）", schedulerPoolSize);
     }
 
     @Scheduled(fixedDelayString = "${plugin.interactive.tts.worker-poll-ms:15000}")

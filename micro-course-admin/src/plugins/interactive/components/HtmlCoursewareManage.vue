@@ -23,10 +23,11 @@
           <el-button :icon="UploadFilled" :loading="upload.uploading.value">替换 HTML</el-button>
         </el-upload>
         <el-popconfirm
-title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
-                       @confirm="handleDeleteCourseware">
+ title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
+                        confirm-button-type="danger"
+                        @confirm="deleteAction.run">
           <template #reference>
-            <el-button :icon="Delete" type="danger" plain>删除课件</el-button>
+            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">删除课件</el-button>
           </template>
         </el-popconfirm>
       </div>
@@ -108,6 +109,7 @@ import ScriptEditor from './ScriptEditor.vue'
 import AudioManager from './AudioManager.vue'
 import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
+import { useAsyncAction } from '../composables/useAsyncAction'
 import { deleteCourseware } from '../api/slide'
 import { listActiveHtmlSegments } from '../api/htmlCourseware'
 
@@ -238,6 +240,9 @@ async function handleDeleteCourseware() {
   }
 }
 
+// L0 Task 2: 删除操作用 useAsyncAction 统一防重复触发 (loading + 双击保护)
+const deleteAction = useAsyncAction(handleDeleteCourseware)
+
 onUnmounted(() => upload.stopRenderPolling())
 </script>
 
@@ -266,4 +271,11 @@ onUnmounted(() => upload.stopRenderPolling())
 .hcm-segment-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
 .hcm-segment-audio { margin-top: 4px; }
 .hcm-segment-audio-title { margin: 0 0 8px; font-size: 14px; font-weight: 600; }
+/* L0 Task 4: Tab 焦点环可见 (键盘用户 / 读屏用户) */
+:deep(.el-button:focus-visible),
+:deep(.el-upload:focus-visible),
+:deep(.el-upload input:focus-visible) {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
 </style>

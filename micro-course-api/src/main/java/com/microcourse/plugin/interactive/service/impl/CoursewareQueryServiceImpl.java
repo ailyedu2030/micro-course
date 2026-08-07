@@ -476,6 +476,90 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         }
     }
 
+    @Override
+    public String runGhostChapterFix() {
+        // D-1 闭环 (V332)：与 V332 migration 一致的幂等自动修复。仅 ADMIN 可调用
+        // （项目权限模型无 DBA 角色，等价生产 DBA 人工执行约束）。允许运维任意时刻
+        // 重跑：先 SELECT 计数、确认非空才 UPDATE；修复事件写入 operation_logs。
+        if (!SecurityUtil.isAdmin()) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION,
+                    "仅 ADMIN 可执行幽灵章节自动修复（V332 幂等逻辑）");
+        }
+        try {
+            jdbcTemplate.execute("""
+                    DO $$
+                    DECLARE
+                        v_ppt_fixable  INT;
+                        v_html_fixable INT;
+                        v_ppt_fixed    INT;
+                        v_html_fixed   INT;
+                        v_review_left  INT;
+                    BEGIN
+                        SELECT COUNT(*) INTO v_ppt_fixable
+                        FROM slide_ppt_pages p
+                        JOIN course_sections cs ON cs.id = p.section_id
+                        WHERE p.chapter_id = 1 AND cs.chapter_id IS DISTINCT FROM 1;
+
+                        SELECT COUNT(*) INTO v_html_fixable
+                        FROM slide_html_units u
+                        JOIN course_sections cs ON cs.id = u.section_id
+                        WHERE u.chapter_id = 1 AND cs.chapter_id IS DISTINCT FROM 1;
+
+                        IF v_ppt_fixable > 0 THEN
+                            UPDATE slide_ppt_pages p
+                            SET chapter_id = cs.chapter_id, updated_at = NOW()
+                            FROM course_sections cs
+                            WHERE cs.id = p.section_id
+                              AND p.chapter_id = 1
+                              AND cs.chapter_id IS DISTINCT FROM 1;
+                            GET DIAGNOSTICS v_ppt_fixed = ROW_COUNT;
+                        ELSE
+                            v_ppt_fixed := 0;
+                        END IF;
+
+                        IF v_html_fixable > 0 THEN
+                            UPDATE slide_html_units u
+                            SET chapter_id = cs.chapter_id, updated_at = NOW()
+                            FROM course_sections cs
+                            WHERE cs.id = u.section_id
+                              AND u.chapter_id = 1
+                              AND cs.chapter_id IS DISTINCT FROM 1;
+                            GET DIAGNOSTICS v_html_fixed = ROW_COUNT;
+                        ELSE
+                            v_html_fixed := 0;
+                        END IF;
+
+                        SELECT COUNT(*) INTO v_review_left FROM v_ghost_chapter_audit;
+
+                        IF v_ppt_fixed > 0 OR v_html_fixed > 0 OR v_review_left > 0 THEN
+                            INSERT INTO operation_logs (user_id, action, target_type, target_id, detail, ip, success, created_at)
+                            VALUES (NULL, 'GHOST_CHAPTER_FIX', 'SYSTEM', NULL,
+                                jsonb_build_object('migration', 'V332', 'ppt_fixed', v_ppt_fixed,
+                                    'html_fixed', v_html_fixed, 'review_left', v_review_left,
+                                    'audited_at', NOW())::text,
+                                NULL, TRUE, NOW());
+                        END IF;
+                    END;
+                    $$""");
+            // 修复完成后返回审计报告（对比 total_ghost_rows 变化）
+            String report = jdbcTemplate.queryForObject(
+                    "SELECT audit_ghost_chapters()::text", String.class);
+            if (report == null) {
+                throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                        "幽灵章节修复后审计返回空报告（audit_ghost_chapters() 未生效？）");
+            }
+            log.info("[GhostChapter-Fix] V332 幂等修复完成，修复后报告长度={} 字符", report.length());
+            return report;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("[GhostChapter-Fix] V332 幂等修复执行失败", e);
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "幽灵章节自动修复执行失败: " + e.getMessage()
+                            + "。请确认 V328 诊断对象已应用（v_ghost_chapter_audit 视图存在）");
+        }
+    }
+
     /**
      * D-2 / P1-C-2 IDOR 防护：验证当前用户有权限访问此课程的课件（与 SlideController.verifyAccess 同构，
      * 双向防御；getCoursewareTree / evaluateFlow 统一走本方法）。

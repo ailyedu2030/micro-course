@@ -7,6 +7,7 @@
   2. 试听对比 (A/B 切换)
   3. 一键生成新音色
   4. 显示状态 (GENERATING / READY / FAILED) + 时长
+  5. L0: FAILED 一键重试 (复用失败音色/模型) + 重试历史防死循环 + 失败率告警
 
   Props:
     courseId, pageType ("PPT" | "HTML"), ownerId (pptPageId 或 htmlUnitId),
@@ -42,6 +43,21 @@
       </el-tooltip>
     </div>
 
+    <!-- L0: 失败率 > 50% → 联系技术支持 (防止用户无限重试) -->
+    <el-alert
+      v-if="showSupportAlert"
+      type="error"
+      :closable="false"
+      show-icon
+      class="am-support-alert"
+      title="音频生成失败率较高"
+      description="连续多次生成失败，建议联系技术支持协助排查，避免反复消耗额度。"
+    >
+      <template #default>
+        <el-button size="small" type="danger" plain @click="openSupportTip">联系技术支持</el-button>
+      </template>
+    </el-alert>
+
     <!-- PPT 单段模式 / HTML 多段模式 -->
     <div v-if="pageType === 'PPT' || (segments && segments.length === 1)" class="am-single">
       <AudioPanel
@@ -51,6 +67,9 @@
         :token-loader="pageType === 'PPT' ? loadPptAudios : loadHtmlAudios"
         :audio-url-factory="pageType === 'PPT' ? pptAudioUrl : htmlAudioUrl"
         :audio-status="statusLabel"
+        :retrying-id="retryingId"
+        @retry="handleRetry"
+        @voice-settings="openVoiceSettings"
       />
       <el-empty
         v-else
@@ -73,6 +92,9 @@
             :token-loader="loadHtmlAudios"
             :audio-url-factory="htmlAudioUrl"
             :audio-status="statusLabel"
+            :retrying-id="retryingId"
+            @retry="handleRetry"
+            @voice-settings="openVoiceSettings"
           />
         </el-tab-pane>
       </el-tabs>
@@ -109,7 +131,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showGenerate = false">取消</el-button>
-        <el-button type="primary" :loading="generating" @click="handleGenerate">生成</el-button>
+        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">生成</el-button>
       </template>
     </el-dialog>
   </div>
@@ -117,7 +139,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Headset, Plus } from '@element-plus/icons-vue'
 import { listPptAudios, generatePptAudio } from '../api/pptCourseware'
 import { listHtmlSegmentAudios, generateHtmlSegmentAudio } from '../api/htmlCourseware'
@@ -139,6 +161,11 @@ const generateModel = ref('speech-2.8-hd')
 const defaultTtsModel = ref('speech-2.8-hd')
 const ttsOptions = ref(null)
 const activeSegmentIdx = ref(props.segments?.[0]?.idx ?? null)
+
+// L0 Task 5: 一键重试状态 + 重试历史 (最近 3 次防死循环)
+const retryingId = ref(null)
+const retryHistory = ref([])  // [{ scriptId, voice, model, at }] — 会话级最近 3 次
+const MAX_RETRY = 3
 
 const voiceOptions = computed(() => {
   if (ttsOptions.value?.voices?.length) return ttsOptions.value.voices
@@ -212,15 +239,20 @@ function statusLabel(audio) {
 // 统计 (顶部 tag 显示)
 const audiosBySegment = ref({})  // { segmentIdx: AudioDTO[] }
 
-const totalReady = computed(() => {
-  const all = Object.values(audiosBySegment.value).flat()
-  return all.filter(a => a.status === 'READY').length
-})
+const allAudios = computed(() => Object.values(audiosBySegment.value).flat())
 
-const hasGenerating = computed(() => {
-  const all = Object.values(audiosBySegment.value).flat()
-  return all.some(a => a.status === 'GENERATING')
+const totalReady = computed(() => allAudios.value.filter(a => a.status === 'READY').length)
+
+const hasGenerating = computed(() => allAudios.value.some(a => a.status === 'GENERATING'))
+
+// L0 Task 5: 失败率 > 50% → 显示"联系技术支持"
+const failureRate = computed(() => {
+  const total = allAudios.value.length
+  if (!total) return 0
+  const failed = allAudios.value.filter(a => a.status === 'FAILED').length
+  return failed / total
 })
+const showSupportAlert = computed(() => failureRate.value > 0.5)
 
 // 当切换 segment 时刷新列表
 watch(activeSegmentIdx, async (idx) => {
@@ -287,6 +319,53 @@ async function handleGenerate() {
   }
 }
 
+// L0 Task 5: 一键重试 — 自动复用失败音频的 voice/model/script
+async function handleRetry({ audio, scriptId }) {
+  if (!scriptId || retryingId.value !== null) return
+  // 防死循环: 同一 script 会话级最多重试 MAX_RETRY 次
+  const recent = retryHistory.value.filter(h => h.scriptId === scriptId)
+  if (recent.length >= MAX_RETRY) {
+    ElMessage.warning(`该音频已重试 ${MAX_RETRY} 次仍失败，建议联系技术支持排查，避免反复消耗额度`)
+    return
+  }
+  retryingId.value = audio.id
+  const voice = audio.voiceUsed || generateVoice.value
+  const model = audio.modelUsed || generateModel.value
+  try {
+    if (props.pageType === 'PPT') {
+      await generatePptAudio(props.courseId, scriptId, { voice, model, ttsParams: '{}' })
+    } else {
+      await generateHtmlSegmentAudio(props.courseId, scriptId, { voice, model, ttsParams: '{}' })
+    }
+    retryHistory.value.push({ scriptId, voice, model, at: Date.now() })
+    // 只保留最近 3 条（会话级）
+    if (retryHistory.value.length > MAX_RETRY) retryHistory.value.shift()
+    ElMessage.success('已重新提交生成,稍后自动刷新')
+    await refreshActiveAudios()
+    pollUntilSettled()
+  } catch (e) {
+    ElMessage.error('重试提交失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+  } finally {
+    retryingId.value = null
+  }
+}
+
+// L0 Task 1: 音色不可用 → 打开音色设置并预选默认音色
+function openVoiceSettings() {
+  if (ttsOptions.value?.defaultVoice) generateVoice.value = ttsOptions.value.defaultVoice
+  showGenerate.value = true
+  ElMessage.info('已切换为默认音色，可直接点击「生成」重新生成')
+}
+
+// L0 Task 5: 失败率告警 → 联系技术支持指引
+function openSupportTip() {
+  ElMessageBox.alert(
+    '音频连续生成失败（失败率超过 50%）。常见原因：TTS 服务账户余额不足 / API Key 失效 / 网络异常。请将课件信息与错误原因反馈给技术支持排查。',
+    '联系技术支持',
+    { confirmButtonText: '知道了', type: 'error' }
+  )
+}
+
 async function refreshActiveAudios() {
   if (props.pageType === 'PPT') {
     if (!effectiveScriptId.value) return
@@ -334,4 +413,13 @@ onUnmounted(() => clearInterval(pollTimer))
 .am-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 .am-title { margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
 .am-single, .am-multi { margin-top: 12px; }
+.am-support-alert { margin-bottom: 12px; }
+/* L0 Task 4: Tab 焦点环可见 (键盘用户 / 读屏用户) */
+:deep(.el-button:focus-visible),
+:deep(.el-select:focus-visible),
+:deep(.el-radio-button:focus-visible),
+:deep(.el-checkbox:focus-visible) {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
 </style>

@@ -24,7 +24,31 @@
     <!-- 章节级：课时课件概览（每个课时一种课件，跳转课时级管理） -->
     <div v-if="chapterId && !sectionId" class="sm-chapter-overview">
       <h3 class="sm-co-title">章节课时课件概览</h3>
-      <el-table v-loading="sectionsLoading" :data="sectionStatus" size="small" border class="sm-co-table">
+      <!-- L0 Task 3: 章节尚无课时的真实空状态 → 告诉用户该怎么办 -->
+      <div
+        v-if="!sectionsLoading && sectionStatus.length === 0"
+        class="sm-co-empty"
+      >
+        <el-icon :size="36" class="sm-co-empty-icon"><Files /></el-icon>
+        <p class="sm-co-empty-title">该章节还没有课时</p>
+        <p class="sm-co-empty-desc">请先在「课程管理」中为该章节添加课时，之后即可为每个课时配置 PPT 或 HTML 课件。</p>
+        <el-button
+          type="primary"
+          plain
+          size="small"
+          @click="router.push(`/courses/${courseId.value}`)"
+        >
+          前往课程管理添加课时
+        </el-button>
+      </div>
+      <el-table
+        v-else
+        v-loading="sectionsLoading"
+        :data="sectionStatus"
+        size="small"
+        border
+        class="sm-co-table"
+      >
         <el-table-column prop="title" label="课时" min-width="220" />
         <el-table-column label="课件类型" width="140">
           <template #default="{ row }">
@@ -128,7 +152,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Picture, Document, UploadFilled, Loading } from '@element-plus/icons-vue'
+import { Picture, Document, UploadFilled, Loading, Files } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getChapterById } from '@/api/chapter'
 import { listSections } from '@/api/section'
@@ -239,6 +263,16 @@ onUnmounted(() => upload.stopRenderPolling())
 .sm-co-title { margin: 0 0 10px; font-size: 15px; }
 .sm-co-table { max-width: 720px; }
 .sm-co-tip { margin-top: 10px; max-width: 720px; }
+/* L0 Task 3: 章节无课时空状态 → 明确引导 */
+.sm-co-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; padding: 40px 24px; max-width: 720px; margin-bottom: 12px;
+  background: var(--el-fill-color-light); border: 1px dashed var(--el-border-color);
+  border-radius: 8px; text-align: center;
+}
+.sm-co-empty-icon { color: var(--el-text-color-placeholder); }
+.sm-co-empty-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--el-text-color-primary); }
+.sm-co-empty-desc { margin: 0; font-size: 13px; color: var(--el-text-color-secondary); }
 .sm-body { min-height: 320px; }
 .sm-render { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 80px 0; color: var(--el-text-color-secondary); font-size: 15px; }
 .sm-create-card { max-width: 1000px; margin: 0 auto; }
