@@ -22,25 +22,26 @@
         >
           <el-button :icon="UploadFilled" :loading="upload.uploading.value">替换 PPT</el-button>
         </el-upload>
-        <el-button :icon="Download" @click="handleDownload">下载 PPT</el-button>
-        <el-button :icon="Select" @click="toggleBatchMode">{{ batchMode ? '退出批量' : '批量操作' }}</el-button>
+        <el-button :icon="Download" :loading="downloadAction.loading.value" :disabled="downloadAction.loading.value" @click="downloadAction.run">下载 PPT</el-button>
+        <el-button :icon="Select" :disabled="downloadAction.loading.value" @click="toggleBatchMode">{{ batchMode ? '退出批量' : '批量操作' }}</el-button>
         <el-popconfirm
-title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
-                       @confirm="handleDeleteCourseware">
+ title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
+                        confirm-button-type="danger"
+                        @confirm="deleteAction.run">
           <template #reference>
-            <el-button :icon="Delete" type="danger" plain>删除课件</el-button>
+            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">删除课件</el-button>
           </template>
         </el-popconfirm>
       </div>
     </div>
 
     <!-- 批量操作条 -->
-    <div v-if="batchMode" class="pcm-batch-bar">
-      <span>已选 {{ selectedBatch.size }} 页</span>
-      <el-button size="small" :loading="batchAiLoading" @click="handleBatchAI" :icon="MagicStick">批量 AI 生成</el-button>
-      <el-button size="small" type="success" :loading="batchTtsLoading" @click="handleBatchTTS" :icon="Headset">批量生成音频</el-button>
-      <el-button size="small" type="danger" plain @click="handleBatchDelete" :icon="Delete">批量删除</el-button>
-      <el-button size="small" @click="selectedBatch.clear(); batchMode = false">取消选择</el-button>
+    <div v-if="batchMode" class="pcm-batch-bar" role="group" aria-label="批量操作">
+      <span>已选 <span aria-live="polite">{{ selectedBatch.size }}</span> 页</span>
+      <el-button size="small" :loading="batchAiLoading" :disabled="batchAiLoading || selectedBatch.size === 0" @click="handleBatchAI" :icon="MagicStick">批量 AI 生成</el-button>
+      <el-button size="small" type="success" :loading="batchTtsLoading" :disabled="batchTtsLoading || selectedBatch.size === 0" @click="handleBatchTTS" :icon="Headset">批量生成音频</el-button>
+      <el-button size="small" type="danger" plain :loading="batchDeleting" :disabled="batchDeleting || selectedBatch.size === 0" @click="handleBatchDelete" :icon="Delete">批量删除</el-button>
+      <el-button size="small" :disabled="batchAiLoading || batchTtsLoading || batchDeleting" @click="cancelBatch">取消选择</el-button>
     </div>
 
     <div class="pcm-render-tip" v-if="upload.renderPending.value">
@@ -51,7 +52,23 @@ title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删
     <!-- 页列表 + 四面板 -->
     <div class="pcm-page-list">
       <h4 class="pcm-section-title">页面列表 ({{ tree?.pages?.length || 0 }})</h4>
-      <el-radio-group v-model="activePageIdx" class="pcm-page-radios">
+      <!-- L0 Task 3: 0 页空状态 → 明确"该怎么办" -->
+      <div v-if="!tree?.pages?.length" class="pcm-pages-empty">
+        <template v-if="upload.renderPending.value">
+          <el-icon class="is-loading" :size="20"><Loading /></el-icon>
+          <span>PPT 正在渲染中…完成后页面将自动出现，请稍候</span>
+        </template>
+        <el-empty
+          v-else
+          description="PPT 页面尚未生成"
+          :image-size="60"
+        >
+          <div class="pcm-pages-empty-tip">
+            若上传后长时间无页面，请重新上传 .pptx 文件
+          </div>
+        </el-empty>
+      </div>
+      <el-radio-group v-else v-model="activePageIdx" class="pcm-page-radios">
         <el-radio-button
           v-for="page in tree?.pages || []"
           :key="page.pageId"
@@ -63,6 +80,7 @@ title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删
             <el-checkbox
               v-if="batchMode"
               :model-value="selectedBatch.has(page.pageId)"
+              :aria-label="`选择第 ${page.pageNumber} 页`"
               @click.stop.prevent="toggleBatchSelect(page)"
             />
             <span>第 {{ page.pageNumber }} 页</span>
@@ -124,6 +142,7 @@ import AudioManager from './AudioManager.vue'
 import PptFlowEditor from './PptFlowEditor.vue'
 import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
+import { useAsyncAction } from '../composables/useAsyncAction'
 import { generatePptScriptAi, getTtsOptions } from '../api/queryCourseware'
 import { deletePptPage, generatePptAudio } from '../api/pptCourseware'
 import { downloadOriginalSlide, deleteCourseware } from '../api/slide'
@@ -143,6 +162,8 @@ const batchMode = ref(false)
 const selectedBatch = ref(new Set())
 const batchAiLoading = ref(false)
 const batchTtsLoading = ref(false)
+// L0 Task 2: 批量删除 loading 守卫（防重复触发）
+const batchDeleting = ref(false)
 // R-6: 批量 TTS 默认音色/模型来自 tts-options 契约（AudioManager 同源），禁止硬编码
 const ttsOptions = ref(null)
 
@@ -188,6 +209,12 @@ function toggleBatchMode() {
   if (!batchMode.value) selectedBatch.value = new Set()
 }
 
+// L0 Task 4: 取消选择（批量操作进行中禁用，避免误触）
+function cancelBatch() {
+  selectedBatch.value = new Set()
+  batchMode.value = false
+}
+
 function toggleBatchSelect(page) {
   const next = new Set(selectedBatch.value)
   if (next.has(page.pageId)) next.delete(page.pageId)
@@ -200,23 +227,27 @@ async function handleBatchAI() {
     ElMessage.warning('请先选择页面')
     return
   }
+  if (batchAiLoading.value) return // L0 Task 2: 防重复触发
   batchAiLoading.value = true
   const failed = []
   let ok = 0
-  for (const page of props.tree.pages || []) {
-    if (!selectedBatch.value.has(page.pageId)) continue
-    try {
-      await generatePptScriptAi(props.courseId, page.pageId)
-      ok++
-    } catch (e) {
-      failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
+  try {
+    for (const page of props.tree.pages || []) {
+      if (!selectedBatch.value.has(page.pageId)) continue
+      try {
+        await generatePptScriptAi(props.courseId, page.pageId)
+        ok++
+      } catch (e) {
+        failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
+      }
     }
+    ElMessage[failed.length ? 'warning' : 'success'](
+      `批量 AI 生成完成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
+    )
+    emit('changed')
+  } finally {
+    batchAiLoading.value = false
   }
-  ElMessage[failed.length ? 'warning' : 'success'](
-    `批量 AI 生成完成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
-  )
-  batchAiLoading.value = false
-  emit('changed')
 }
 
 async function handleBatchTTS() {
@@ -224,36 +255,40 @@ async function handleBatchTTS() {
     ElMessage.warning('请先选择页面')
     return
   }
+  if (batchTtsLoading.value) return // L0 Task 2: 防重复触发
   batchTtsLoading.value = true
   const failed = []
   let ok = 0
-  // R-6: 批量生成前确保 tts-options 已加载（mounted 预加载可能尚未返回），
-  // 用服务端默认 voice/model，而非硬编码 female-shaonv / speech-2.8-hd
-  if (!ttsOptions.value) await loadTtsOptions()
-  const voice = ttsOptions.value?.defaultVoice || 'female-shaonv'
-  const model = ttsOptions.value?.defaultModel || 'speech-2.8-hd'
-  for (const page of props.tree.pages || []) {
-    if (!selectedBatch.value.has(page.pageId)) continue
-    const scriptId = page.activeScript?.id
-    if (!scriptId) {
-      failed.push({ page: page.pageNumber, err: '尚未保存讲述稿' })
-      continue
+  try {
+    // R-6: 批量生成前确保 tts-options 已加载（mounted 预加载可能尚未返回），
+    // 用服务端默认 voice/model，而非硬编码 female-shaonv / speech-2.8-hd
+    if (!ttsOptions.value) await loadTtsOptions()
+    const voice = ttsOptions.value?.defaultVoice || 'female-shaonv'
+    const model = ttsOptions.value?.defaultModel || 'speech-2.8-hd'
+    for (const page of props.tree.pages || []) {
+      if (!selectedBatch.value.has(page.pageId)) continue
+      const scriptId = page.activeScript?.id
+      if (!scriptId) {
+        failed.push({ page: page.pageNumber, err: '尚未保存讲述稿' })
+        continue
+      }
+      try {
+        await generatePptAudio(props.courseId, scriptId, {
+          voice,
+          model,
+          ttsParams: '{}'
+        })
+        ok++
+      } catch (e) {
+        failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
+      }
     }
-    try {
-      await generatePptAudio(props.courseId, scriptId, {
-        voice,
-        model,
-        ttsParams: '{}'
-      })
-      ok++
-    } catch (e) {
-      failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
-    }
+    ElMessage[failed.length ? 'warning' : 'success'](
+      `批量音频生成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
+    )
+  } finally {
+    batchTtsLoading.value = false
   }
-  ElMessage[failed.length ? 'warning' : 'success'](
-    `批量音频生成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
-  )
-  batchTtsLoading.value = false
 }
 
 async function handleBatchDelete() {
@@ -262,6 +297,7 @@ async function handleBatchDelete() {
     ElMessage.warning('请先选择页面')
     return
   }
+  if (batchDeleting.value) return // L0 Task 2: 防重复触发
   try {
     await ElMessageBox.confirm(`确定删除选中的 ${ids.length} 页吗？`, '批量删除', {
       confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
@@ -269,35 +305,37 @@ async function handleBatchDelete() {
   } catch {
     return
   }
-  for (const pageId of ids) {
-    try { await deletePptPage(props.courseId, pageId) } catch (e) { /* 逐页失败不阻断 */ }
+  batchDeleting.value = true
+  try {
+    for (const pageId of ids) {
+      try { await deletePptPage(props.courseId, pageId) } catch (e) { /* 逐页失败不阻断 */ }
+    }
+    ElMessage.success('批量删除完成')
+    selectedBatch.value = new Set()
+    batchMode.value = false
+    emit('changed')
+  } finally {
+    batchDeleting.value = false
   }
-  ElMessage.success('批量删除完成')
-  selectedBatch.value = new Set()
-  batchMode.value = false
-  emit('changed')
 }
 
-async function handleDownload() {
-  try {
-    const res = await downloadOriginalSlide(props.courseId)
-    const blob = res?.data
-    if (!blob || !(blob instanceof Blob) || blob.size === 0) {
-      ElMessage.info('暂无原始文件可下载')
-      return
-    }
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `courseware-${props.courseId}.pptx`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-  } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '下载失败')
+// L0 Task 2: 下载 / 删除操作用 useAsyncAction 统一防重复触发 (loading + 双击保护)
+const downloadAction = useAsyncAction(async () => {
+  const res = await downloadOriginalSlide(props.courseId)
+  const blob = res?.data
+  if (!blob || !(blob instanceof Blob) || blob.size === 0) {
+    ElMessage.info('暂无原始文件可下载')
+    return
   }
-}
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `courseware-${props.courseId}.pptx`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  URL.revokeObjectURL(url)
+})
 
 async function handleDeleteCourseware() {
   try {
@@ -308,6 +346,8 @@ async function handleDeleteCourseware() {
     ElMessage.error(e?.response?.data?.message || '删除失败')
   }
 }
+
+const deleteAction = useAsyncAction(handleDeleteCourseware)
 
 onUnmounted(() => upload.stopRenderPolling())
 </script>
@@ -324,4 +364,18 @@ onUnmounted(() => upload.stopRenderPolling())
 .pcm-page-radio { margin-right: 0 !important; }
 .pcm-page-radio-content { display: flex; align-items: center; gap: 6px; }
 .pcm-panels { background: var(--el-fill-color-blank); border-radius: 8px; }
+.pcm-pages-empty {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 32px 16px; color: var(--el-text-color-secondary); font-size: 13px;
+}
+.pcm-pages-empty-tip { font-size: 12px; color: var(--el-text-color-secondary); }
+/* L0 Task 4: Tab 焦点环可见 (键盘用户 / 读屏用户) */
+:deep(.el-button:focus-visible),
+:deep(.el-radio-button:focus-visible),
+:deep(.el-checkbox:focus-visible),
+:deep(.el-upload:focus-visible),
+:deep(.el-upload input:focus-visible) {
+  outline: 2px solid var(--el-color-primary);
+  outline-offset: 2px;
+}
 </style>
