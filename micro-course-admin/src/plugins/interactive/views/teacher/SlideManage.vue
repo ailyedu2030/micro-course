@@ -21,6 +21,33 @@
       </div>
     </div>
 
+    <!-- 章节级：课时课件概览（每个课时一种课件，跳转课时级管理） -->
+    <div v-if="chapterId && !sectionId" class="sm-chapter-overview">
+      <h3 class="sm-co-title">章节课时课件概览</h3>
+      <el-table v-loading="sectionsLoading" :data="sectionStatus" size="small" border class="sm-co-table">
+        <el-table-column prop="title" label="课时" min-width="220" />
+        <el-table-column label="课件类型" width="140">
+          <template #default="{ row }">
+            <el-tag v-if="row.type === 'PPT'" type="primary" size="small">PPT 课件</el-tag>
+            <el-tag v-else-if="row.type === 'HTML'" type="success" size="small">HTML 课件</el-tag>
+            <el-tag v-else type="info" size="small">暂无课件</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140">
+          <template #default="{ row }">
+            <el-button size="small" type="primary" plain @click="goManageSection(row.id)">管理课件</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="课件按课时（课时）管理：每个课时独立维护 PPT 或 HTML 课件"
+        class="sm-co-tip"
+      />
+    </div>
+
     <div v-loading="typeLoading" class="sm-body">
       <template v-if="!typeLoading">
         <!-- PPT 课件模块 -->
@@ -99,11 +126,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Picture, Document, UploadFilled, Loading } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
 import { getChapterById } from '@/api/chapter'
+import { listSections } from '@/api/section'
 import { useUserStore } from '@/store/user'
 import { getCoursewareTree } from '../../api/queryCourseware'
 import { useCoursewareUpload } from '../../composables/useCoursewareUpload'
@@ -111,6 +139,7 @@ import PptCoursewareManage from '../../components/PptCoursewareManage.vue'
 import HtmlCoursewareManage from '../../components/HtmlCoursewareManage.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 const courseId = computed(() => route.params.courseId)
@@ -121,6 +150,8 @@ const courseTitle = ref('')
 const chapterTitle = ref('')
 const tree = ref(null)
 const typeLoading = ref(true)
+const sectionsLoading = ref(false)
+const sectionStatus = ref([])
 
 const upload = useCoursewareUpload({
   courseId,
@@ -148,6 +179,34 @@ async function loadTree() {
   }
 }
 
+async function loadSectionOverview() {
+  if (!chapterId.value || sectionId.value) return
+  sectionsLoading.value = true
+  try {
+    const res = await listSections(courseId.value, chapterId.value, { page: 0, size: 100 })
+    const items = res?.data?.items || res?.data?.records || res?.data || []
+    const rows = Array.isArray(items) ? items : []
+    // 并行取各课时课件类型（章节课时数有限，避免逐个串行等待）
+    const statuses = await Promise.all(rows.map(async (s) => {
+      let type = null
+      try {
+        const t = await getCoursewareTree(courseId.value, s.id, null)
+        type = t?.data?.type === 'EMPTY' ? null : t?.data?.type
+      } catch { /* 单课时加载失败按无课件处理 */ }
+      return { id: s.id, title: s.title || `课时 ${s.id}`, type }
+    }))
+    sectionStatus.value = statuses
+  } catch (e) {
+    ElMessage.warning('章节课时列表加载失败')
+  } finally {
+    sectionsLoading.value = false
+  }
+}
+
+function goManageSection(id) {
+  router.push({ path: `/teacher/courses/${courseId.value}/slides/manage`, query: { sectionId: id } })
+}
+
 async function handleCreateUpload(file, type) {
   const ok = await upload.handleUpload(file, type)
   return ok
@@ -167,6 +226,7 @@ onMounted(async () => {
     } catch { /* 标题加载失败不阻断 */ }
   }
   await loadTree()
+  await loadSectionOverview()
 })
 onUnmounted(() => upload.stopRenderPolling())
 </script>
@@ -175,6 +235,10 @@ onUnmounted(() => upload.stopRenderPolling())
 .slide-manage { padding: 20px; max-width: 1440px; margin: 0 auto; }
 .breadcrumb-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
 .context-tags { display: flex; gap: 8px; }
+.sm-chapter-overview { margin-bottom: 20px; }
+.sm-co-title { margin: 0 0 10px; font-size: 15px; }
+.sm-co-table { max-width: 720px; }
+.sm-co-tip { margin-top: 10px; max-width: 720px; }
 .sm-body { min-height: 320px; }
 .sm-render { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 80px 0; color: var(--el-text-color-secondary); font-size: 15px; }
 .sm-create-card { max-width: 1000px; margin: 0 auto; }
