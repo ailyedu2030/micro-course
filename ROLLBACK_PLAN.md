@@ -72,6 +72,20 @@
 
 > 部署验证：后端 16s 启动健康、AI 生成端点改用 MMX（无新凭据）、前端新 bundle 生效、5 分钟监控 0 ERROR / 0 5xx。
 
+### 2026-08-07 增量 4：课件管理架构统一（无版本开关，PPT/HTML 独立模块 + 章节级支持 + 渲染 chapter_id 派生）（门禁 16/16 已开）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（F-13/14：课件树章节级、整节/整章 v1+v2 删除、v1 HTML pending tree、渲染 chapter_id 派生；零 DB 迁移） | `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0700 /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（SlideManage 统一壳 + PptCoursewareManage/HtmlCoursewareManage + 共享上传 composable；删除 coursewareV2 开关/旧版 UI） | `docker cp /opt/micro-course/backups/admin.dist.backup.20260807_* /micro-course-admin/…` + `nginx -s reload` |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（bind 源备份） | `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0700` | md5 `bea3ef39…`（增量3） |
+| 新 jar（部署后） | `/opt/micro-course/micro-course-api-1.0.0.jar` | 含 F-2026-08-07-13/14 |
+
+> 部署验证：后端 16s 启动健康、前端新 bundle 生效（无版本开关）、5 分钟监控 0 ERROR / 0 5xx。
+
 ### 2026-08-06 增量：镜像固化 + Redis 加固（用户已批准）
 
 | 项 | 变更 | 回滚 |
