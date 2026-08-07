@@ -86,6 +86,7 @@ const routes = [
   { path: '/admin/teaching-classes', name: 'TeachingClassList', component: () => import('../views/admin/TeachingClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/system-health', name: 'SystemHealth', component: () => import('../views/admin/SystemHealth.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '系统状态' } },
   { path: '/admin/reports', name: 'ReportsManagement', component: () => import('../views/admin/ReportsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
+  { path: '/admin/audit/ghost-chapters', name: 'AuditGhostChapter', component: () => import('../views/admin/AuditGhostChapter.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], title: '幽灵章节审计' } },
 
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
