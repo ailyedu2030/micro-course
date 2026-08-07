@@ -643,3 +643,11 @@
 - **修复**：上传时若 sectionId 有值而 chapterId 为空，从 course_sections 反查 chapterId 并回填 slide 记录；渲染即拿到正确 chapter_id。
 - **横向扫描**：`createUnitFresh`（HTML 单元）已做同模式 section→chapter 派生（F-08-07）；`uploadHtmlFile` 无此约束；章节级上传（chapterId 直达）不受影响。
 - **验证**：修复后本地从统一 UI 上传 PPTX（无 chapterId URL）→ 6s 渲染完成、slide_ppt_pages=3、status=2；单测回归全绿。
+
+### F-2026-08-07-15 · V182SectionMigrationTest 空库假阴性（测试顺序耦合，P1-I）
+
+- **症状**：CI Linux 文件系统 surefire 用例执行顺序与 macOS 不同 → 全新空库下 `sections >= 2` 断言假失败（本地 macOS 绿、CI Linux 红，同一代码两环境结果不一致）。
+- **根因**：`should_migrate_chapters_to_sections` 原断言使用 `migratedSections >= 2` 数量下界——该下界依赖**其他测试用例先写入种子章节**，即测试顺序耦合；全新空库（0 章节 / 0 section）时必然不满足，与 V183/V184/V185 迁移语义无关。
+- **修复**：去掉数量下界，改为**关系不变量**（空库 0/0 亦成立）：① 每条有 `section_id` 的 `course_slides` 必须命中存在的 section（无孤儿）；② 该 section 必须属于同一 course（防跨课程串课时）；③ legacy 迁移 section（`sort_order>=10000`）不得挂载不存在的 chapter；④ 迁移 section 数量不得超过 section 总数。
+- **横向扫描**：逐一核查 `V182SectionMigrationTest` 其余用例（建表 / 删表 / 删列 / 必填列）均为存在性与列结构断言，无顺序/数量下界耦合；`should_migrate_lessons_to_sections` 原 `>= 2` 同类下界一并改为关系不变量。其他 migration 测试未发现同型"依赖他人种子数据"断言。
+- **验证**：CI Linux 22/22 通过（此前空库假阴性消失）；本地 macOS 后端全量回归全绿；断言新增中文 `.as()` 描述便于失败定位。

@@ -1,6 +1,6 @@
 # 数据契约引用视图
 
-> **源文档**：[`docs/数据字典.md`](../../数据字典.md) v0.5
+> **源文档**：[`docs/数据字典.md`](../../数据字典.md) v1.10
 > **视图性质**：引用视图（不复制全文，仅抓取 AI 编码时最常查的关键字段）
 > **同步规则**：真文档更新后，本视图必须 24 小时内同步
 > **冲突裁决**：以冲突评审决议为准
@@ -170,8 +170,8 @@ departments (1) → majors (N) → classes (N) → users (N)
 
 ---
 
-*视图版本：v1.2 · 与源文档 v0.5 对齐*
-*最后更新：2026-07-04*
+*视图版本：v1.3 · 与源文档 v1.9 对齐*
+*最后更新：2026-08-07*
 
 ---
 
@@ -195,3 +195,123 @@ departments (1) → majors (N) → classes (N) → users (N)
 - `uk_ms_code`：微专业代码全局唯一
 - DB 触发器 `trg_ms_one_lead`：确保每微专业恰好 1 条 ACTIVE LEAD
 - `certificates` 表扩展 `cert_type` + `micro_specialty_id`，异或约束 `chk_cert_xor`
+
+---
+
+## 5. 交互式课件 V2（V300-V310，P0 聚合契约）
+
+> **源文档**：[`docs/数据字典.md` §2.19-2.27](../../../docs/数据字典.md) v1.9
+> **迁移来源**：`micro-course-api/src/main/resources/db/migration/V300~V310`。**本组表为课件播放器的 v2 数据源**（P0 聚合：`SlideService.getPages` v2 优先，回退 legacy `slide_pages`）。字段冲突以源文档 §2.19-2.27 + migration 为唯一真相（R-14 登记）。
+
+### 5.1 slide_ppt_pages（V300）— PPT 课件页面表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 页 ID |
+| courseId | course_id | BIGINT | NOT NULL | 课程 ID |
+| chapterId / sectionId / slideId | - | BIGINT | NOT NULL；sectionId FK→course_sections | 归属 |
+| pageNumber | page_number | INT | NOT NULL（UK: slide_id+page_number） | 页号 |
+| pageTitle | page_title | VARCHAR(200) | - | 页标题 |
+| imageUrl / thumbnailUrl | - | VARCHAR(500) | - | CDN 签名 URL |
+| fileUuid | file_uuid | VARCHAR(64) | - | 渲染文件 UUID |
+| extractedText | extracted_text | TEXT | - | POI 抽取文本 |
+| version | version | INT | NOT NULL DEFAULT 1, @Version | 乐观锁（V309） |
+
+索引：`uk_ppt_pages_slide_page`(slide_id,page_number)、`idx_ppt_pages_section`、`idx_ppt_pages_course`。
+
+### 5.2 slide_ppt_page_scripts（V301）— PPT 讲述稿历史版本表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 脚本 ID |
+| pptPageId | ppt_page_id | BIGINT | NOT NULL, FK→slide_ppt_pages CASCADE | 页 ID |
+| scriptText | script_text | TEXT | NOT NULL | 讲述稿 |
+| scriptVersion | script_version | INT | DEFAULT 1 | 版本号 |
+| isActive | is_active | BOOLEAN | DEFAULT TRUE | 部分唯一（每页一个 active） |
+| voice / ttsModel | - | VARCHAR(64) | - | 音色/模型 |
+| ttsParams | tts_params | JSONB | - | speed/pitch/emotion |
+| version | version | INT | @Version（V309） | 乐观锁 |
+
+索引：`uk_ppt_scripts_active`(ppt_page_id WHERE is_active)、`idx_ppt_scripts_page_history`。
+
+### 5.3 slide_ppt_page_audios（V302）— PPT 音频版本表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 音频 ID |
+| scriptId | script_id | BIGINT | NOT NULL, FK CASCADE | 所属脚本 |
+| pptPageId | ppt_page_id | BIGINT | NOT NULL | 冗余页 ID |
+| audioUrl | audio_url | VARCHAR(500) | NOT NULL | P0 修复为 `/courseware/audio/{token}` |
+| audioToken | audio_token | VARCHAR(64) | UK（P0 起用于流式 GET） | 能力凭证 |
+| audioDurationMs | audio_duration_ms | INT | - | 时长 ms |
+| voiceUsed / modelUsed | - | VARCHAR(64) | NOT NULL | 实际音色/模型 |
+| status | status | VARCHAR(20) | CHECK(GENERATING/PROCESSING/READY/FAILED) | 生成状态（P0 TtsWorker 消费）；状态枚举：GENERATING/PROCESSING/READY/FAILED（**V331 新增 PROCESSING**，TtsWorker 原子抢占中间态） |
+| errorMessage | error_message | TEXT | NULL | 最近一次失败原因（余额不足/限流/超时等）；**V327 新增**（R-15，与 legacy course_slides.error_message 对齐） |
+| fileSizeBytes / storagePath | - | BIGINT / VARCHAR(500) | - | P0 worker 写入 |
+
+索引：`idx_ppt_audios_script`、`idx_ppt_audios_page_status`、`idx_ppt_audios_token`。
+
+### 5.4 slide_html_units（V303）— HTML 课件单元表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 单元 ID |
+| courseId / chapterId / sectionId / slideId | - | BIGINT | NOT NULL；section UK（每课时一个单元） | 归属 |
+| fileUuid | file_uuid | VARCHAR(64) | NOT NULL | 文件 UUID |
+| htmlSanitized | html_sanitized | TEXT | NOT NULL | 消毒后（入播放器） |
+| detectedSegments | detected_segments | INT | - | 自动分段数 |
+| version | version | INT | @Version（V309） | 乐观锁 |
+
+索引：`uk_html_units_section`(section_id)、`idx_html_units_course`。
+
+### 5.5 slide_html_segment_scripts（V304）— HTML 分段讲述稿表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 段脚本 ID |
+| htmlUnitId | html_unit_id | BIGINT | NOT NULL, FK CASCADE | 单元 ID |
+| segmentIndex | segment_index | INT | NOT NULL（UK 含 active） | 段序号 1..N |
+| segmentMarker | segment_marker | VARCHAR(64) | - | HTML DOM id，如 seg-3 |
+| segmentText | segment_text | TEXT | - | 抽取文本（TTS 上下文） |
+| scriptText | script_text | TEXT | NOT NULL | 讲述稿 |
+| version | version | INT | @Version（V309） | 乐观锁 |
+
+索引：`uk_html_seg_scripts_active`(html_unit_id,segment_index WHERE is_active)、`idx_html_seg_scripts_unit_history`。
+
+### 5.6 slide_html_segment_audios（V305）— HTML 分段音频表
+
+列与 5.3 同构：`segment_script_id`(FK CASCADE)、`html_unit_id`、`segment_index`、`audio_url`、`audio_token`(UK)、`audio_duration_ms`、`voice_used`、`model_used`、`status`(CHECK GENERATING/PROCESSING/READY/FAILED，**V331 新增 PROCESSING**——TtsWorker 原子抢占中间态)、`error_message`(TEXT NULL，**V327 新增**——标记最近一次失败原因：余额不足/限流/超时等，R-15)、`generation_started_at`、`completed_at`、`file_size_bytes`、`storage_path`。
+
+索引：`idx_html_seg_audios_script`、`idx_html_seg_audios_unit_status`、`idx_html_seg_audios_token`。
+
+### 5.7 slide_ppt_flow（V306）— PPT 页间跳转规则表
+
+| 字段名 | DB 列 | 类型 | 约束 | 说明 |
+|--------|-------|------|------|------|
+| id | id | BIGSERIAL | PK | 规则 ID |
+| sectionId | section_id | BIGINT | NOT NULL, FK CASCADE | 课时 ID |
+| fromPageId | from_page_id | BIGINT | NOT NULL, FK CASCADE | 起点页 |
+| toPageId | to_page_id | BIGINT | FK SET NULL（NULL=结束） | 目标页 |
+| flowType | flow_type | VARCHAR(20) | CHECK(NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN) | 类型 |
+| priority | priority | INT | DEFAULT 0 | 优先级（小优先） |
+| dependsOnQuizId | depends_on_quiz_id | BIGINT | FK→section_quizzes SET NULL | BRANCH 依赖 |
+| conditionExpression | condition_expression | TEXT | - | SKIP 条件表达式 |
+
+索引：`idx_ppt_flow_section_from`(section_id,from_page_id,priority)。
+
+### 5.8 状态聚合视图（V308，只读）
+
+- `v_slide_ppt_page_status`：每页 narration_status（PENDING/AUDIO_GENERATING/AUDIO_READY）+ audio_ready_count，由 active script + READY audio 聚合。
+- `v_slide_html_unit_status`：每单元 narration_status，由 active segment scripts + READY audios 聚合。
+
+### 5.9 播放器聚合契约（SlidePageVO 扩展，P0）
+
+`GET /api/courses/{cid}/slides/pages`（v2 优先）新增字段：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| audio | `PageAudioVO{url,token,durationMs,status,voiceUsed,modelUsed,scriptId}` | PPT 页可播放音频（token 流式 URL） |
+| segments | `List<HtmlSegmentVO{index,marker,selector,text,scriptText,interactive,audio}>` | HTML 段（含每段 audio） |
+| flows | `List<PptFlowVO{fromPageId,toPageId,flowType,priority,dependsOnQuizId,conditionExpression,description}>` | section 级跳转规则 |
+
+新增只读接口：`GET /api/courses/{cid}/courseware/tts-options` → `{models:[speech-2.8-hd,...], voices:[{id,label}], defaultModel, defaultVoice}`（R-6 音色契约唯一真相）。

@@ -2,7 +2,7 @@
 
 > 部署失败或重大故障时执行。优先 5 分钟应用层回滚，如数据库结构变更导致问题则执行 30 分钟回滚。
 >
-> **最后更新**: 2026-08-05 (全页面审查 E/F/G/D7.5/H 系列 + 全量自动化回归)
+> **最后更新**: 2026-08-07 (Phase 10 音频同步 P0-P3 + F-05~14 系列 + 增量 4b + 交叉审查 batch fix)
 
 ---
 
@@ -10,6 +10,8 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| **2026-08-07 增量 4b（最近）** | 2026-08-07 | 章节级课时课件概览（前端仅，bundle `index-DJyWWonr.js`）；CI backend/e2e job 移除 services 编排（**纯前端 + CI 配置，零后端 + 零 DB schema 变更，仅前端 dist 回滚 5 分钟即可**） |
+| **Phase 10 音频同步 P0-P3 系列** | 2026-08-07 | PPT/HTML 音频同步（origin 修复/父页 AudioHost/TtsWorker/getPages 聚合/flow 求值/HTML 段高亮/AI 讲述稿/字幕/mediaSession）+ F-05~14 课件管理架构统一（章节级支持/整节整章删除/渲染 chapter_id 派生/MMX 化）+ 交叉审查 batch fix（**零 DB 迁移**，前后端回滚见下方增量 1-4b 节） |
 | **全页面审查修复批次（E/F/G/D7.5/H + 回归）** | 2026-08-05 | 学生端 13 项 P1-C（评价姓名/进度比例/收藏409/训练入口/考试完成/讨论tab/错题定位/通知筛选/评价筛选删除/免费下单/订单筛选）、教务审批 5 项（跨院驳回约束/班级导入 jsonb+rollback-only+去重/批量审批UI）、组件系统 5 项（PPT四面板slide_ppt_pages/工作台onMounted/音频null scriptId/created_by/jsonb双实体/试卷编辑入口）、管理端 2 项（建课 teacher_id/建课表单教师选择器）、a11y 8 项（锁定徽章opacity/学生主色/互动徽章/未读标题/封面alt×5/轮播label×2）、i18n 1 项（playbackSpeed）、e2e 基建（夹具种子/认证/浏览器/超时/管理教务端a11y 12页）<br>**⚠️ 含 1 个 DB 迁移 V326：DROP CONSTRAINT chk_mst_invite_status（跨院驳回修复，原约束缺 REJECTED）**。回滚顺序：① 前端 dist 回滚 5 分钟；② 后端 jar 回滚 5 分钟（API 容器 bind-mount target jar，替换即生效）；③ 如回滚到 V326 之前版本，须手动 `ALTER TABLE micro_specialty_teachers ADD CONSTRAINT chk_mst_invite_status CHECK (invite_status IN ('INVITED','ACTIVE','PENDING_ACADEMIC','DECLINED','REMOVED'))` 恢复旧约束（**否则新代码仍依赖新约束，旧代码不受影响**）。**部署镜像需固化 ffmpeg + 中文字体（font-noto-cjk/wqy-zenhei）+ uploads 卷持久化**（LibreOffice 非必需：渲染走 Apache POI，生产实证 111 个课件无 LibreOffice 渲染成功 status=2；已在本轮 Dockerfile 固化字体） |
 | **HLS 播放签名通道修复** | 2026-08-03 | 前端（VideoPlayer/CourseDetail/useVideoSourceLifecycle/useVideoLoadOrchestrator）+ 后端（VideoStreamService 支持 `X-Video-Sign` 头 / WebMvcConfig 存储目录配置化）修复 3 个仍在线播放缺陷（hls.js 缺签名 403、播放器未初始化、流请求 401）；新增 CI 播放回归 E2E + ffmpeg 安装（**纯应用层，零 DB schema 变更，前端 dist + 后端 jar 回滚 5 分钟即可；CI 环境无 `/data` 时需 `MULTIPART_LOCATION`/`UPLOAD_BASE_DIR`/`VIDEO_STORAGE_BASE_DIR` 指向可写目录**） |
 | **Bug K 增量修复** | 2026-08-02 | 1 个 commit (`762b9a1a` PR #173):<br>• **Bug K.1** nginx source cache 策略 (删除 `expires 1y` + `add_header Cache-Control "no-cache, must-revalidate"`). 修复后 bundle hash 变化立即生效 (之前 1y immutable 缓存导致老 bundle 永远 415)<br>• **Bug K.2** `utils/errorReport.js` 全局 handler 静默 401/403 unhandledrejection/onerror (401 是设计预期, 不需 console 噪音). 5xx/网络错误仍正常 report<br>(**1 nginx + 1 js, 零后端 + 零 DB 变更, 仅前端 dist + image rebuild 回滚 5 分钟即可**) |
@@ -23,7 +25,7 @@
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |
 | **R11 audit+monitor** | 2026-07-30 | 12 轮全栈多专家审查+修复：auth fail-closed、文件越权、API Key 明文清空、OrderService 811→78 拆分、22 个 Controller size=10000→200 收敛、QuestionController size=100000→200 修 DoS、UserRetentionCleanupJob 加 orders 级联、ProfileController 拆分 alias 路由、Profile.vue i18n 化、vue-i18n vitest setup 全局 install 修 6 个月 pre-existing 15 个测试失败、verify-secrets.sh / check-references-sync.py / generate-missing-tables.py / add-viewonly-tables.py 部署工具、contract-audit 0/0 完全清零、JaCoCo 真实 45.29% 覆盖率、admin nginx SPA fallback 修复、alertmanager CHANGE_ME 命名优化。**V324 迁移清空 api_key 明文列（DB 必跑），V325 清理 V135 冗余唯一索引（DB 必跑）**（**部分回滚必须包含迁移**）|
 
-## 当前生产状态（2026-08-05 PR #184 部署后）
+## 当前生产状态（2026-08-07 增量 4b 部署后 · Phase 10 音频同步系列）
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
 
@@ -196,7 +198,7 @@ ssh ubuntu@100.74.122.13 "docker exec micro-course-postgres-1 pg_dump -U microco
 psql -h 100.74.122.13 -U microcourse_user -d micro_course
 
 -- 删除 hermes_course_mapping 表（幂等操作）
-DROP TABLE IF EXISTS hermmes_course_mapping;
+DROP TABLE IF EXISTS hermes_course_mapping;
 
 -- 从 flyway_schema_history 中移除记录
 DELETE FROM flyway_schema_history WHERE version = 'V174';
