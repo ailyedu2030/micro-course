@@ -207,4 +207,109 @@ class HtmlSanitizerTest {
             assertEquals("", HtmlSanitizer.sanitizeForCourseware(""));
         }
     }
+
+    @Nested
+    @DisplayName("sanitizeForCourseware(rawHtml, trusted) — Q-4 双模式分流 (COURSEWARE_STRICT_SAFELIST)")
+    class CoursewareTrustMode {
+
+        @Test
+        @DisplayName("1. trusted=true: 保留 script/style/iframe/onclick（宽松模式，sandbox 兜底）")
+        void trustedTrueKeepsExecutableContent() {
+            String raw = "<script>console.log(1)</script><style>p{color:red}</style>"
+                    + "<iframe src=\"https://example.com\"></iframe><button onclick=\"alert(1)\">x</button>";
+            String safe = HtmlSanitizer.sanitizeForCourseware(raw, true);
+            assertTrue(safe.contains("script"), "trusted=true 应保留 <script>");
+            assertTrue(safe.contains("style"), "trusted=true 应保留 <style>");
+            assertTrue(safe.contains("iframe"), "trusted=true 应保留 <iframe>");
+            assertTrue(safe.contains("onclick"), "trusted=true 应保留 onclick 事件处理器");
+        }
+
+        @Test
+        @DisplayName("2. trusted=false: script/style/iframe/onclick 全部剥离（严格 Safelist）")
+        void trustedFalseStripsExecutableContent() {
+            String raw = "<script>alert(1)</script><style>p{color:red}</style>"
+                    + "<iframe src=\"https://example.com\"></iframe><button onclick=\"alert(1)\">x</button>";
+            String safe = HtmlSanitizer.sanitizeForCourseware(raw, false);
+            assertFalse(safe.toLowerCase().contains("<script"), "trusted=false 应剥离 <script>");
+            assertFalse(safe.toLowerCase().contains("<style"), "trusted=false 应剥离 <style>");
+            assertFalse(safe.toLowerCase().contains("<iframe"), "trusted=false 应剥离 <iframe>");
+            assertFalse(safe.contains("onclick"), "trusted=false 应剥离 onclick 事件处理器");
+            assertFalse(safe.toLowerCase().contains("<button"), "trusted=false 应剥离 <button>（不在严格白名单）");
+        }
+
+        @Test
+        @DisplayName("3. 单参 sanitizeForCourseware(html) 默认 trusted=true（与历史一致）")
+        void singleArgDefaultsToTrusted() {
+            String raw = "<script>console.log('hi')</script>";
+            String oneArg = HtmlSanitizer.sanitizeForCourseware(raw);
+            String twoArg = HtmlSanitizer.sanitizeForCourseware(raw, true);
+            assertEquals(twoArg, oneArg, "单参默认行为应等于 trusted=true");
+            assertTrue(oneArg.contains("script"), "历史行为保留 <script>（安全由 sandbox 兜底）");
+        }
+
+        @Test
+        @DisplayName("4. trusted=false: <script>alert(1)</script> XSS payload 被剥离")
+        void trustedFalseStripsScriptPayload() {
+            String safe = HtmlSanitizer.sanitizeForCourseware("<script>alert(1)</script>", false);
+            assertFalse(safe.toLowerCase().contains("<script"), "<script> 应被剥离");
+        }
+
+        @Test
+        @DisplayName("5. trusted=false: <img onerror> 事件被剥离，合法 src 保留")
+        void trustedFalseStripsImgOnerror() {
+            String safe = HtmlSanitizer.sanitizeForCourseware(
+                    "<img src=\"https://example.com/x.png\" onerror=\"alert(1)\">", false);
+            assertFalse(safe.contains("onerror"), "onerror 事件处理器应被剥离");
+            assertTrue(safe.contains("https://example.com/x.png"), "合法 https img src 应保留");
+        }
+
+        @Test
+        @DisplayName("6. trusted=false: javascript: 协议链接被剥离")
+        void trustedFalseStripsJavascriptUrl() {
+            String safe = HtmlSanitizer.sanitizeForCourseware(
+                    "<a href=\"javascript:alert(1)\">link</a>", false);
+            assertFalse(safe.contains("javascript:"), "javascript: href 应被剥离");
+        }
+
+        @Test
+        @DisplayName("7. trusted=false: <svg onload> 被剥离（svg 不在严格白名单）")
+        void trustedFalseStripsSvgOnload() {
+            String safe = HtmlSanitizer.sanitizeForCourseware("<svg onload=\"alert(1)\"></svg>", false);
+            assertFalse(safe.toLowerCase().contains("<svg"), "<svg> 标签应被剥离");
+            assertFalse(safe.contains("onload"), "onload 事件应被剥离");
+        }
+
+        @Test
+        @DisplayName("8. trusted=false: 保留合法文本格式（p/b/em 等基础标签）")
+        void trustedFalseKeepsTextFormatting() {
+            String raw = "<p>Hello <b>world</b>, <em>emphasis</em></p>";
+            String safe = HtmlSanitizer.sanitizeForCourseware(raw, false);
+            assertEquals(raw, safe, "基础文本格式应原样保留");
+        }
+
+        @Test
+        @DisplayName("9. trusted=false: 保留 http/https 链接")
+        void trustedFalseKeepsHttpLinks() {
+            String safe = HtmlSanitizer.sanitizeForCourseware(
+                    "<a href=\"https://example.com/docs\">文档</a>", false);
+            assertTrue(safe.contains("https://example.com/docs"), "https 链接 href 应保留");
+        }
+
+        @Test
+        @DisplayName("10. trusted=false: 保留 https 图片")
+        void trustedFalseKeepsHttpsImage() {
+            String safe = HtmlSanitizer.sanitizeForCourseware(
+                    "<img src=\"https://example.com/a.png\" alt=\"图\">", false);
+            assertTrue(safe.contains("https://example.com/a.png"), "https 图片 src 应保留");
+        }
+
+        @Test
+        @DisplayName("11. null/空字符串在两种模式均返回空")
+        void nullAndEmptyBothModes() {
+            assertEquals("", HtmlSanitizer.sanitizeForCourseware(null, true));
+            assertEquals("", HtmlSanitizer.sanitizeForCourseware("", true));
+            assertEquals("", HtmlSanitizer.sanitizeForCourseware(null, false));
+            assertEquals("", HtmlSanitizer.sanitizeForCourseware("", false));
+        }
+    }
 }

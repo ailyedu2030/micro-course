@@ -217,4 +217,23 @@ class TtsWorkerServiceTest {
         verify(htmlAudioMapper, atLeastOnce()).updateById(argThat(r ->
                 "READY".equals(r.getStatus()) && r.getStoragePath() != null));
     }
+
+    @Test
+    @DisplayName("N-5: spring.task.scheduling.pool.size=1（单线程，默认）→ 启动校验通过")
+    void schedulerPoolSizeDefaultAllowed() {
+        ReflectionTestUtils.setField(worker, "schedulerPoolSize", 1);
+        // @PostConstruct 逻辑直接调用（单元测试不经 Spring 容器，需手动触发）
+        assertDoesNotThrow(() -> ReflectionTestUtils.invokeMethod(worker, "verifySingleThreadedScheduler"),
+                "pool.size=1 单线程 scheduler 不应阻止启动");
+    }
+
+    @Test
+    @DisplayName("N-5: spring.task.scheduling.pool.size>1（多线程 scheduler）→ fail-fast 抛 IllegalStateException")
+    void schedulerPoolSizeAboveOneFailsFast() {
+        ReflectionTestUtils.setField(worker, "schedulerPoolSize", 2);
+        // 多线程 scheduler 并发 poll 可能重复合成同一行（重复扣费）→ 启动必须被阻止
+        assertThrows(IllegalStateException.class,
+                () -> ReflectionTestUtils.invokeMethod(worker, "verifySingleThreadedScheduler"),
+                "pool.size>1 多线程 scheduler 与本 worker 单线程设计不兼容，必须 fail-fast");
+    }
 }
