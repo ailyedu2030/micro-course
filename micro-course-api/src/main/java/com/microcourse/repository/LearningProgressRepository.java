@@ -25,6 +25,18 @@ public interface LearningProgressRepository extends BaseMapper<LearningProgress>
     int insertIfAbsent(LearningProgress progress);
 
     /**
+     * S-1（设计决策 3）：evaluateFlow 的 SKIP_IF_KNOWN 规则服务端读取用户课时级学习进度。
+     * 不信任客户端 userProgress（可伪造进度绕过 SKIP 规则）；userId 来自 SecurityContext。
+     * video_progress 为 0-100 百分比，调用方换算 0.0-1.0。
+     */
+    @Select("SELECT * FROM learning_progress WHERE user_id = #{userId} AND course_id = #{courseId} "
+            + "AND lesson_id = #{sectionId} AND deleted_at IS NULL "
+            + "ORDER BY updated_at DESC LIMIT 1")
+    LearningProgress findLatestByUserAndLesson(@org.apache.ibatis.annotations.Param("userId") Long userId,
+                                               @org.apache.ibatis.annotations.Param("courseId") Long courseId,
+                                               @org.apache.ibatis.annotations.Param("sectionId") Long sectionId);
+
+    /**
      * SQL聚合查询总观看时长，避免全表加载到内存（OOM修复）
      */
     @Select("SELECT COALESCE(SUM(total_watch_time), 0) FROM learning_progress WHERE deleted_at IS NULL")

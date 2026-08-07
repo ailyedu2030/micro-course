@@ -282,6 +282,9 @@ public class SlideController {
      * - ACADEMIC: 全部通行
      * - TEACHER: 必须是课程的所有者
      * - STUDENT: 必须已选此课（有 APPROVED/COMPLETED 的 enrollment 记录）
+     *
+     * D-2：与 CoursewareQueryServiceImpl.verifyCourseAccess 同构（逻辑同源，双向防御）——
+     * 读侧课件树（getCoursewareTree）由 service 层 verifyCourseAccess 保护，本方法保护写侧/媒体端点。
      */
     private void verifyAccess(Long courseId) {
         Course course = courseRepository.selectById(courseId);

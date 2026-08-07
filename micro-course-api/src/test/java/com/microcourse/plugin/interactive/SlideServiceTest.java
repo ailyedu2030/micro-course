@@ -88,7 +88,8 @@ class SlideServiceTest {
         slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository,
                 courseChapterRepository, courseSectionRepository, slideRenderService,
                 pptPageMapper, pptScriptMapper, pptAudioMapper, pptFlowMapper,
-                htmlUnitMapper, htmlSegmentScriptMapper, htmlSegmentAudioMapper, meterRegistry);
+                htmlUnitMapper, htmlSegmentScriptMapper, htmlSegmentAudioMapper,
+                mock(com.microcourse.plugin.interactive.cache.CoursewarePagesCache.class), meterRegistry);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
@@ -165,12 +166,14 @@ class SlideServiceTest {
             page.setPageNumber(1); page.setSlideId(2L);
             when(pptPageMapper.listBySection(5L)).thenReturn(List.of(page));
             SlidePptPageScript script = new SlidePptPageScript();
-            script.setId(3L); script.setScriptText("讲述稿");
-            when(pptScriptMapper.findActiveByPage(10L)).thenReturn(script);
+            script.setId(3L); script.setPptPageId(10L); script.setScriptText("讲述稿");
+            // Q-2: 批量查询（N+1 修复）——1 SQL 取全部 active scripts
+            when(pptScriptMapper.listActiveByPageIds(List.of(10L))).thenReturn(List.of(script));
             SlidePptPageAudio audio = new SlidePptPageAudio();
             audio.setId(4L); audio.setScriptId(3L); audio.setStatus("READY");
             audio.setAudioToken("tok123"); audio.setAudioDurationMs(30000);
-            when(pptAudioMapper.listByScript(3L)).thenReturn(List.of(audio));
+            // Q-2: 批量查询——1 SQL 取全部 audios
+            when(pptAudioMapper.listByScriptIds(List.of(3L))).thenReturn(List.of(audio));
             SlidePptFlow flow = new SlidePptFlow();
             flow.setFromPageId(10L); flow.setToPageId(11L); flow.setFlowType("NEXT");
             when(pptFlowMapper.listBySection(5L)).thenReturn(List.of(flow));
@@ -200,7 +203,8 @@ class SlideServiceTest {
             SlideHtmlSegmentAudio segAudio = new SlideHtmlSegmentAudio();
             segAudio.setId(7L); segAudio.setSegmentScriptId(6L); segAudio.setStatus("READY");
             segAudio.setAudioToken("tok-html"); segAudio.setAudioDurationMs(15000);
-            when(htmlSegmentAudioMapper.listByScript(6L)).thenReturn(List.of(segAudio));
+            // Q-2: 批量查询——1 SQL 取全部段 audios
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L))).thenReturn(List.of(segAudio));
 
             List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
             assertEquals(1, pages.size());
@@ -225,13 +229,180 @@ class SlideServiceTest {
             SlideHtmlSegmentAudio segAudio = new SlideHtmlSegmentAudio();
             segAudio.setId(7L); segAudio.setSegmentScriptId(6L); segAudio.setStatus("READY");
             segAudio.setAudioToken("tok-html"); segAudio.setAudioDurationMs(15000);
-            when(htmlSegmentAudioMapper.listByScript(6L)).thenReturn(List.of(segAudio));
+            // Q-2: 批量查询——1 SQL 取全部段 audios
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L))).thenReturn(List.of(segAudio));
 
             List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
             String html = pages.get(0).getHtmlContent();
             assertTrue(html.contains("data-segment=\"1\""));
             assertTrue(html.contains("slide-audio-v2"));
             assertTrue(html.contains("segment-activated"));
+        }
+
+        @Test
+        @DisplayName("Q-2: v2 PPT 聚合批量查询（1 次 listActiveByPageIds + 1 次 listByScriptIds，无 N+1）")
+        void getPages_V2PptNoNplus1() {
+            SlidePptPage p1 = new SlidePptPage();
+            p1.setId(10L); p1.setCourseId(1L); p1.setSectionId(5L);
+            p1.setPageNumber(1); p1.setSlideId(2L);
+            SlidePptPage p2 = new SlidePptPage();
+            p2.setId(11L); p2.setCourseId(1L); p2.setSectionId(5L);
+            p2.setPageNumber(2); p2.setSlideId(2L);
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of(p1, p2));
+            SlidePptPageScript s1 = new SlidePptPageScript();
+            s1.setId(3L); s1.setPptPageId(10L); s1.setScriptText("脚本1");
+            SlidePptPageScript s2 = new SlidePptPageScript();
+            s2.setId(4L); s2.setPptPageId(11L); s2.setScriptText("脚本2");
+            when(pptScriptMapper.listActiveByPageIds(List.of(10L, 11L))).thenReturn(List.of(s1, s2));
+            SlidePptPageAudio a1 = new SlidePptPageAudio();
+            a1.setId(1L); a1.setScriptId(3L); a1.setStatus("READY");
+            a1.setAudioToken("tok1"); a1.setAudioDurationMs(10000);
+            SlidePptPageAudio a2 = new SlidePptPageAudio();
+            a2.setId(2L); a2.setScriptId(4L); a2.setStatus("READY");
+            a2.setAudioToken("tok2"); a2.setAudioDurationMs(20000);
+            when(pptAudioMapper.listByScriptIds(List.of(3L, 4L))).thenReturn(List.of(a1, a2));
+            when(pptFlowMapper.listBySection(5L)).thenReturn(List.of());
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+
+            assertEquals(2, pages.size());
+            assertEquals("AUDIO_READY", pages.get(0).getNarrationStatus());
+            // N+1 断言：批量方法各只调用 1 次；逐页查询方法绝不调用
+            verify(pptScriptMapper).listActiveByPageIds(anyList());
+            verify(pptAudioMapper).listByScriptIds(anyList());
+            verify(pptScriptMapper, never()).findActiveByPage(anyLong());
+            verify(pptAudioMapper, never()).listByScript(anyLong());
+            verify(htmlSegmentAudioMapper, never()).listByScript(anyLong());
+        }
+
+        @Test
+        @DisplayName("Q-2: v2 HTML 段音频批量查询（1 次 listByScriptIds，无 N+1）")
+        void getPages_V2HtmlNoNplus1() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<p>hello</p>"); unit.setIsTrusted(Boolean.TRUE);
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg1 = new SlideHtmlSegmentScript();
+            seg1.setId(6L); seg1.setSegmentIndex(1); seg1.setScriptText("段1");
+            SlideHtmlSegmentScript seg2 = new SlideHtmlSegmentScript();
+            seg2.setId(7L); seg2.setSegmentIndex(2); seg2.setScriptText("段2");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg1, seg2));
+            SlideHtmlSegmentAudio sa1 = new SlideHtmlSegmentAudio();
+            sa1.setId(1L); sa1.setSegmentScriptId(6L); sa1.setStatus("READY");
+            sa1.setAudioToken("tok-h1"); sa1.setAudioDurationMs(10000);
+            SlideHtmlSegmentAudio sa2 = new SlideHtmlSegmentAudio();
+            sa2.setId(2L); sa2.setSegmentScriptId(7L); sa2.setStatus("READY");
+            sa2.setAudioToken("tok-h2"); sa2.setAudioDurationMs(20000);
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L, 7L))).thenReturn(List.of(sa1, sa2));
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+
+            assertEquals(2, pages.get(0).getSegments().size());
+            assertEquals("AUDIO_READY", pages.get(0).getNarrationStatus());
+            verify(htmlSegmentAudioMapper).listByScriptIds(anyList());
+            verify(htmlSegmentAudioMapper, never()).listByScript(anyLong());
+        }
+
+        @Test
+        @DisplayName("Q-3: segment_marker 含 </script> 被 escapeJson 转义（防 bridge 提前闭合）")
+        void getPages_EscapeJsonBlocksScriptClosure() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<html><body><h1 id=\"seg-1\">标题</h1></body></html>");
+            unit.setIsTrusted(Boolean.TRUE);
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1);
+            // 恶意 marker：提前闭合 <script> 再注入 img onerror
+            seg.setSegmentMarker("</script><img src=x onerror=alert(1)>");
+            seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L))).thenReturn(List.of());
+
+            String html = slideService.getPages(1L, 5L, null).get(0).getHtmlContent();
+
+            // 只检查 bridge JSON 部分（var segs=[...];）—— 不含 bridge 自身的 </script> 关闭标签
+            int jsonStart = html.indexOf("var segs=") + "var segs=".length();
+            int jsonEnd = html.indexOf(";function", jsonStart);
+            String segJson = html.substring(jsonStart, jsonEnd);
+            assertFalse(segJson.contains("</script>"),
+                    "bridge JSON 中出现裸 </script> 可提前闭合注入（Q-3 未生效）");
+            assertTrue(segJson.contains("\\u003c/script\\u003e"),
+                    "期望 </script> 被转义为反斜杠u003c...反斜杠u003e");
+        }
+
+        @Test
+        @DisplayName("Q-4: is_trusted=false 注入 CSP nonce + bridge script nonce（严格模式防御）")
+        void getPages_CspNonceForUntrusted() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<html><head></head><body><h1 id=\"seg-1\">标题</h1></body></html>");
+            unit.setIsTrusted(Boolean.FALSE);   // 未标记可信 → 严格模式
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1); seg.setSegmentMarker("seg-1"); seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L))).thenReturn(List.of());
+
+            String html = slideService.getPages(1L, 5L, null).get(0).getHtmlContent();
+
+            assertTrue(html.contains("Content-Security-Policy"), "严格模式应注入 CSP meta");
+            assertTrue(html.contains("script-src 'nonce-"), "CSP 应使用 nonce 机制");
+            assertTrue(html.matches("(?s).*<script nonce=\"[0-9a-f]{32}\">.*"),
+                    "bridge script 应带 nonce=\"{32 hex}\"");
+        }
+
+        @Test
+        @DisplayName("Q-4: is_trusted=true 不注入 CSP（保留教师课件自有 script 功能）")
+        void getPages_NoCspForTrusted() {
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of());
+            SlideHtmlUnit unit = new SlideHtmlUnit();
+            unit.setId(20L); unit.setCourseId(1L); unit.setSectionId(5L); unit.setSlideId(2L);
+            unit.setHtmlSanitized("<html><body><h1 id=\"seg-1\">标题</h1><script>alert('课件脚本')</script></body></html>");
+            unit.setIsTrusted(Boolean.TRUE);   // 可信教师课件 → 宽松保留 script
+            when(htmlUnitMapper.findBySection(5L)).thenReturn(unit);
+            SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
+            seg.setId(6L); seg.setSegmentIndex(1); seg.setSegmentMarker("seg-1"); seg.setScriptText("段1");
+            when(htmlSegmentScriptMapper.listActiveByUnit(20L)).thenReturn(List.of(seg));
+            when(htmlSegmentAudioMapper.listByScriptIds(List.of(6L))).thenReturn(List.of());
+
+            String html = slideService.getPages(1L, 5L, null).get(0).getHtmlContent();
+
+            assertFalse(html.contains("Content-Security-Policy"),
+                    "is_trusted=true 不应注入 CSP（会阻止教师课件自有脚本）");
+            // 教师自有脚本保留（宽松 sanitize 未破坏）
+            assertTrue(html.contains("alert('课件脚本')"));
+        }
+
+        @Test
+        @DisplayName("U-5: 多 READY 音色确定性 —— 取 SQL 排序后首个（最新完成/默认音色）")
+        void getPages_PptDeterministicReadyAudio() {
+            SlidePptPage page = new SlidePptPage();
+            page.setId(10L); page.setCourseId(1L); page.setSectionId(5L);
+            page.setPageNumber(1); page.setSlideId(2L);
+            when(pptPageMapper.listBySection(5L)).thenReturn(List.of(page));
+            SlidePptPageScript script = new SlidePptPageScript();
+            script.setId(3L); script.setPptPageId(10L); script.setScriptText("讲述稿");
+            when(pptScriptMapper.listActiveByPageIds(List.of(10L))).thenReturn(List.of(script));
+            // SQL 已按 is_default DESC, completed_at DESC 排序：旧的在前会被 ORDER BY 排后；
+            // Java 侧仅取 findFirst → 结果必须是列表第一个（确定性，非随机）
+            SlidePptPageAudio oldVoice = new SlidePptPageAudio();
+            oldVoice.setId(41L); oldVoice.setScriptId(3L); oldVoice.setStatus("READY");
+            oldVoice.setAudioToken("tok-old"); oldVoice.setAudioDurationMs(10000);
+            SlidePptPageAudio newVoice = new SlidePptPageAudio();
+            newVoice.setId(42L); newVoice.setScriptId(3L); newVoice.setStatus("READY");
+            newVoice.setAudioToken("tok-new"); newVoice.setAudioDurationMs(20000);
+            // 模拟 Mapper 已按 is_default DESC, completed_at DESC 排序返回：最新(42) 在前
+            when(pptAudioMapper.listByScriptIds(List.of(3L))).thenReturn(List.of(newVoice, oldVoice));
+            when(pptFlowMapper.listBySection(5L)).thenReturn(List.of());
+
+            List<SlidePageVO> pages = slideService.getPages(1L, 5L, null);
+
+            assertEquals("tok-new", pages.get(0).getAudio().getToken(),
+                    "应确定性选择列表首个 READY（=最新完成/默认音色），而非随机 findFirst");
         }
     }
 

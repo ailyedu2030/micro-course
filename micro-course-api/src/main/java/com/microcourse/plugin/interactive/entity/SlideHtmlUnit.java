@@ -54,6 +54,10 @@ public class SlideHtmlUnit {
     @TableField("interaction_types")
     private String interactionTypes;  // JSONB
 
+    /** Q-4 (V329): 教师信任标记 — TRUE=课程 owner 教师上传（宽松 sanitize + 审计）；FALSE=严格 sanitize + CSP nonce。 */
+    @TableField("is_trusted")
+    private Boolean isTrusted;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 
@@ -91,6 +95,8 @@ public class SlideHtmlUnit {
     public void setHasInteractions(Boolean hasInteractions) { this.hasInteractions = hasInteractions; }
     public String getInteractionTypes() { return interactionTypes; }
     public void setInteractionTypes(String interactionTypes) { this.interactionTypes = interactionTypes; }
+    public Boolean getIsTrusted() { return isTrusted; }
+    public void setIsTrusted(Boolean isTrusted) { this.isTrusted = isTrusted; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }

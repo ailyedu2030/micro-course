@@ -1,7 +1,5 @@
 package com.microcourse.plugin.interactive.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.microcourse.exception.BusinessException;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
@@ -28,6 +26,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -44,6 +43,15 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>历史非法音色枚举（male-young 等）→ MiniMax 官方 voice_id 别名映射（R-6）</li>
  *   <li>幂等：仅消费 status=GENERATING 行，成功后置 READY 不再轮询</li>
  * </ul>
+ * Q-1（多线程/多节点幂等，V330 worker_id 列）：
+ * <ul>
+ *   <li>启动时生成唯一 workerId（UUID）</li>
+ *   <li>claimPending 原子抢占：UPDATE ... SET status='PROCESSING', worker_id=? WHERE status='GENERATING' ...
+ *       PostgreSQL 行锁 + WHERE 重评估 → 双 worker 并发 claim 同一行只一个成功（不重复扣 MiniMax API）</li>
+ *   <li>处理失败 → releaseClaim 回滚 status='GENERATING' 下轮重试</li>
+ *   <li>崩溃遗留（PROCESSING 超 10 分钟）→ reclaimOrphans 恢复 GENERATING</li>
+ *   <li>长期未消费（GENERATING 超 10 分钟）→ markTimedOut 置 FAILED</li>
+ * </ul>
  */
 @Service
 public class TtsWorkerService {
@@ -53,6 +61,9 @@ public class TtsWorkerService {
     private static final int MAX_CONCURRENCY = 2;
     private static final long GENERATION_TIMEOUT_MINUTES = 10;
     private static final long MIN_AGE_BEFORE_PROCESS_MS = 3_000; // 队列插入后 3s 再消费，避开事务未提交
+
+    /** Q-1: 本 worker 实例唯一标识（启动时生成），用于 claim/释放抢占归属 */
+    private final String workerId = UUID.randomUUID().toString();
 
     private final SlidePptPageAudioMapper pptAudioMapper;
     private final SlidePptPageScriptMapper pptScriptMapper;
@@ -105,14 +116,29 @@ public class TtsWorkerService {
         int free = MAX_CONCURRENCY - inFlight.get();
         if (free <= 0) return;
 
-        List<SlidePptPageAudio> pptPendings = pptAudioMapper.selectList(
-                new LambdaQueryWrapper<SlidePptPageAudio>()
-                        .eq(SlidePptPageAudio::getStatus, "GENERATING")
-                        .orderByAsc(SlidePptPageAudio::getId));
-        List<SlideHtmlSegmentAudio> htmlPendings = htmlAudioMapper.selectList(
-                new LambdaQueryWrapper<SlideHtmlSegmentAudio>()
-                        .eq(SlideHtmlSegmentAudio::getStatus, "GENERATING")
-                        .orderByAsc(SlideHtmlSegmentAudio::getId));
+        LocalDateTime now = LocalDateTime.now();
+        // Q-1 幂等三阶段：
+        // 1) 回收崩溃 worker 遗留的 PROCESSING 行（超 10 分钟）→ GENERATING
+        // 2) 长期未消费的 GENERATING 行（超 10 分钟）→ FAILED（不再无限重试）
+        // 3) 原子抢占剩余 GENERATING 行（插入超 3s，避开事务未提交）→ PROCESSING + worker_id
+        reclaimOrphanClaims(now.minusMinutes(GENERATION_TIMEOUT_MINUTES));
+        markTimedOutRows(now.minusMinutes(GENERATION_TIMEOUT_MINUTES));
+        LocalDateTime claimBefore = now.minus(MIN_AGE_BEFORE_PROCESS_MS, java.time.temporal.ChronoUnit.MILLIS);
+        int claimLimit = Math.max(1, Math.min(MAX_CONCURRENCY, free));
+
+        int pptClaimed = 0;
+        int htmlClaimed = 0;
+        try {
+            pptClaimed = pptAudioMapper.claimPending(workerId, claimBefore, claimLimit);
+            htmlClaimed = htmlAudioMapper.claimPending(workerId, claimBefore, claimLimit);
+        } catch (Exception e) {
+            // claim 失败（如 V330 未迁移导致 worker_id 列缺失）→ 降级日志，下一轮重试
+            log.warn("[TtsWorker] claim 抢占失败（下轮重试）: {}", e.getMessage());
+        }
+        if (pptClaimed + htmlClaimed <= 0) return;
+
+        List<SlidePptPageAudio> pptPendings = pptAudioMapper.selectClaimed(workerId);
+        List<SlideHtmlSegmentAudio> htmlPendings = htmlAudioMapper.selectClaimed(workerId);
 
         int processed = 0;
         for (SlidePptPageAudio row : pptPendings) {
@@ -120,7 +146,10 @@ public class TtsWorkerService {
                 markFailed(row.getId(), "生成超时（>10 分钟）");
                 continue;
             }
-            if (processed >= MAX_CONCURRENCY) break;
+            if (processed >= MAX_CONCURRENCY) {
+                releaseClaim(row.getId(), true);
+                continue;
+            }
             if (handlePpt(row)) processed++;
         }
         for (SlideHtmlSegmentAudio row : htmlPendings) {
@@ -128,13 +157,15 @@ public class TtsWorkerService {
                 markFailedHtml(row.getId(), "生成超时（>10 分钟）");
                 continue;
             }
-            if (processed >= MAX_CONCURRENCY) break;
+            if (processed >= MAX_CONCURRENCY) {
+                releaseClaim(row.getId(), false);
+                continue;
+            }
             if (handleHtml(row)) processed++;
         }
     }
 
     private boolean handlePpt(SlidePptPageAudio row) {
-        if (!claimAndTimeoutCheck(row.getGenerationStartedAt())) return false;
         inFlight.incrementAndGet();
         try {
             SlidePptPageScript script = pptScriptMapper.selectById(row.getScriptId());
@@ -156,7 +187,6 @@ public class TtsWorkerService {
     }
 
     private boolean handleHtml(SlideHtmlSegmentAudio row) {
-        if (!claimAndTimeoutCheck(row.getGenerationStartedAt())) return false;
         inFlight.incrementAndGet();
         try {
             SlideHtmlSegmentScript script = htmlSegmentScriptMapper.selectById(row.getSegmentScriptId());
@@ -178,12 +208,50 @@ public class TtsWorkerService {
     }
 
     /**
-     * 3s 内刚插入的行跳过本周期（等待事务提交）；超 10 分钟未消费的孤儿行标记 FAILED。
+     * Q-1: 回收崩溃 worker 遗留的 PROCESSING 行（超过 10 分钟未完成）→ 恢复 GENERATING 供下轮重试。
      */
-    private boolean claimAndTimeoutCheck(LocalDateTime startedAt) {
-        if (startedAt == null) return false;
-        LocalDateTime now = LocalDateTime.now();
-        return java.time.Duration.between(startedAt, now).toMillis() >= MIN_AGE_BEFORE_PROCESS_MS;
+    private void reclaimOrphanClaims(LocalDateTime timeoutBefore) {
+        try {
+            int p = pptAudioMapper.reclaimOrphans(timeoutBefore);
+            int h = htmlAudioMapper.reclaimOrphans(timeoutBefore);
+            if (p + h > 0) {
+                log.warn("[TtsWorker] 回收 {} 个崩溃遗留 PROCESSING 行（孤儿）", p + h);
+            }
+        } catch (Exception e) {
+            log.warn("[TtsWorker] 回收孤儿行失败（下轮重试）: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Q-1: 长期未消费的 GENERATING 行（超过 10 分钟）→ FAILED（保留更具体的 error_message）。
+     */
+    private void markTimedOutRows(LocalDateTime timeoutBefore) {
+        try {
+            int p = pptAudioMapper.markTimedOut(timeoutBefore);
+            int h = htmlAudioMapper.markTimedOut(timeoutBefore);
+            if (p + h > 0) {
+                log.warn("[TtsWorker] 标记 {} 个 GENERATING 超时 → FAILED", p + h);
+            }
+        } catch (Exception e) {
+            log.warn("[TtsWorker] 标记超时失败（下轮重试）: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Q-1: 处理失败 → 回滚 status='GENERATING'（worker_id 清空）让下轮重试。
+     * 仅限本 worker 抢占的行（worker_id 匹配），防误释放他人抢占。
+     */
+    private void releaseClaim(Long audioRowId, boolean ppt) {
+        try {
+            int affected = ppt
+                    ? pptAudioMapper.releaseClaim(audioRowId, workerId)
+                    : htmlAudioMapper.releaseClaim(audioRowId, workerId);
+            if (affected > 0) {
+                log.info("[TtsWorker] 释放抢占回滚 GENERATING audioRowId={} type={}", audioRowId, ppt ? "PPT" : "HTML");
+            }
+        } catch (Exception e) {
+            log.warn("[TtsWorker] 释放抢占失败 audioRowId={}: {}", audioRowId, e.getMessage());
+        }
     }
 
     private boolean isTimedOut(LocalDateTime startedAt) {
@@ -229,8 +297,42 @@ public class TtsWorkerService {
         } catch (Exception e) {
             log.error("[TtsWorker] 生成失败 audioRowId={} type={}: {}", audioRowId, ppt ? "PPT" : "HTML",
                     e.getMessage(), e);
-            // 保留 GENERATING，下个周期重试；超时由清理路径标记 FAILED
+            // 记录失败原因（R-15）——保留 GENERATING 下个周期重试，
+            // error_message 让用户在等待期可见真实原因（余额不足/限流/超时）；
+            // Q-1: 释放抢占回滚 status='GENERATING'（worker_id 清空），下轮重新抢占重试。
+            persistFailureMessage(audioRowId, ppt, e.getMessage());
+            releaseClaim(audioRowId, ppt);
         }
+    }
+
+    /**
+     * R-15：将最近一次生成失败原因写入 error_message（不改变 status，供重试期间用户可见）。
+     */
+    private void persistFailureMessage(Long audioRowId, boolean ppt, String message) {
+        try {
+            String reason = truncate(message != null && !message.isBlank() ? message : "未知 TTS 错误", 500);
+            transactionTemplate.executeWithoutResult(tx -> {
+                if (ppt) {
+                    SlidePptPageAudio row = pptAudioMapper.selectById(audioRowId);
+                    if (row == null) return;
+                    row.setErrorMessage(reason);
+                    pptAudioMapper.updateById(row);
+                } else {
+                    SlideHtmlSegmentAudio row = htmlAudioMapper.selectById(audioRowId);
+                    if (row == null) return;
+                    row.setErrorMessage(reason);
+                    htmlAudioMapper.updateById(row);
+                }
+            });
+        } catch (Exception e) {
+            log.warn("[TtsWorker] 写入 error_message 失败 audioRowId={}", audioRowId, e);
+        }
+    }
+
+    /** 截断过长错误信息（DB TEXT 无长度限制，但保持 UI 可读）。 */
+    private String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max) + "...";
     }
 
     private void synthesizeAndFinalizeHtml(Long audioRowId, Long courseId, String script,
@@ -244,7 +346,14 @@ public class TtsWorkerService {
                 SlidePptPageAudio row = pptAudioMapper.selectById(audioRowId);
                 if (row == null) return;
                 row.setStatus("FAILED");
+                // R-15: 超时兜底不覆盖更具体的失败原因（如余额不足/限流），保留用户可见真实原因
+                if (row.getErrorMessage() == null || row.getErrorMessage().isBlank()
+                        || !reason.contains("超时")) {
+                    row.setErrorMessage(truncate(reason, 500));
+                }
                 row.setCompletedAt(LocalDateTime.now());
+                // Q-1: FAILED 行不再参与抢占（worker_id 清空）
+                row.setWorkerId(null);
                 pptAudioMapper.updateById(row);
             });
             log.warn("[TtsWorker] PPT FAILED audioRowId={} reason={}", audioRowId, reason);
@@ -259,7 +368,14 @@ public class TtsWorkerService {
                 SlideHtmlSegmentAudio row = htmlAudioMapper.selectById(audioRowId);
                 if (row == null) return;
                 row.setStatus("FAILED");
+                // R-15: 超时兜底不覆盖更具体的失败原因（如余额不足/限流），保留用户可见真实原因
+                if (row.getErrorMessage() == null || row.getErrorMessage().isBlank()
+                        || !reason.contains("超时")) {
+                    row.setErrorMessage(truncate(reason, 500));
+                }
                 row.setCompletedAt(LocalDateTime.now());
+                // Q-1: FAILED 行不再参与抢占（worker_id 清空）
+                row.setWorkerId(null);
                 htmlAudioMapper.updateById(row);
             });
             log.warn("[TtsWorker] HTML FAILED audioRowId={} reason={}", audioRowId, reason);

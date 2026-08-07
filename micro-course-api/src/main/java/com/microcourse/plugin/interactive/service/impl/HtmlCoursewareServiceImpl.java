@@ -16,6 +16,7 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.util.SecurityUtil;
@@ -50,17 +51,41 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
     private final SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
     private final CourseSectionRepository sectionRepo;
+    private final CourseRepository courseRepository;  // Q-4: is_trusted 判定（课程 owner）
 
     public HtmlCoursewareServiceImpl(CourseSlideMapper courseSlideMapper,
                                       SlideHtmlUnitMapper unitMapper,
                                       SlideHtmlSegmentScriptMapper segmentScriptMapper,
                                       SlideHtmlSegmentAudioMapper segmentAudioMapper,
-                                      CourseSectionRepository sectionRepo) {
+                                      CourseSectionRepository sectionRepo,
+                                      CourseRepository courseRepository) {
         this.courseSlideMapper = courseSlideMapper;
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
         this.sectionRepo = sectionRepo;
+        this.courseRepository = courseRepository;
+    }
+
+    /**
+     * Q-4: 判定 HTML 课件内容是否"可信教师上传"（当前用户是课程 owner 或 ADMIN）。
+     * is_trusted=true → 宽松 sanitize（保留 script/style/onclick/iframe，安全依赖前端 sandbox）；
+     * false → 严格 sanitize（移除所有 inline event handlers + 可执行标签）+ 读时 CSP nonce 防御。
+     */
+    private boolean computeIsTrusted(Long courseId) {
+        if (courseId == null) {
+            return false;
+        }
+        try {
+            com.microcourse.entity.Course course = courseRepository.selectById(courseId);
+            if (course == null) {
+                return false;
+            }
+            return SecurityUtil.isOwnerOrAdmin(course.getTeacherId());
+        } catch (Exception e) {
+            log.warn("[HTML-Unit] is_trusted 判定失败 courseId={}（降级为不可信）: {}", courseId, e.getMessage());
+            return false;
+        }
     }
 
     // ====== Unit CRUD ======
@@ -109,11 +134,14 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
             }
         }
         // 7-19 P0 防御: HtmlSanitizer 必须 100% 调用
-        String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
+        // Q-4: 按 is_trusted 分流 sanitize（owner 教师 → 宽松；否则 → 严格移除 inline handlers/script）
+        boolean isTrusted = computeIsTrusted(dto.getCourseId());
+        String sanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent(), isTrusted);
         SlideHtmlUnit entity = new SlideHtmlUnit();
         // 【BUG #15 修复】 排除 id/createdAt/fileUuid, 避免前端伪造 fileUuid
         BeanUtils.copyProperties(dto, entity, "id", "createdAt", "fileUuid");
         entity.setHtmlSanitized(sanitized);
+        entity.setIsTrusted(isTrusted);
         // 后端强制生成 fileUuid (不允许前端指定)
         entity.setFileUuid(UUID.randomUUID().toString().replace("-", ""));
         if (entity.getHasInteractions() == null) entity.setHasInteractions(false);
@@ -121,6 +149,10 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         unitMapper.insert(entity);
+        // Q-4 审计: 信任教师上传记录（含 is_trusted 标记，便于追溯谁上传了可执行 HTML）
+        log.info("[TrustAudit] F-2026-08-07-HTML: courseId={}, section={}, isTrusted={}, uploaderId={}, unitId={}",
+                dto.getCourseId(), dto.getSectionId(), isTrusted,
+                SecurityUtil.getCurrentUserIdOpt(), entity.getId());
         log.info("[HTML-Unit] created: id={}, section={}, slideId={}, fileSize={} bytes, sanitized",
                 entity.getId(), entity.getSectionId(), entity.getSlideId(), entity.getFileSizeBytes());
         return entity.getId();
@@ -168,18 +200,24 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "HTML unit not found: " + unitId);
         }
         // 7-19 P0 防御: 即便 update, 也要 sanitize 新的 htmlContent
+        // Q-4: 按 is_trusted 分流（owner 教师 → 宽松；否则 → 严格移除 inline handlers/script）
+        boolean isTrusted = computeIsTrusted(entity.getCourseId());
         String newSanitized = entity.getHtmlSanitized();
         if (dto.getHtmlContent() != null && !dto.getHtmlContent().equals(entity.getHtmlContent())) {
-            newSanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent());
+            newSanitized = HtmlSanitizer.sanitizeForCourseware(dto.getHtmlContent(), isTrusted);
         }
         BeanUtils.copyProperties(dto, entity, "id", "createdAt", "sectionId", "fileUuid");
         entity.setHtmlSanitized(newSanitized);
+        entity.setIsTrusted(isTrusted);
         entity.setUpdatedAt(LocalDateTime.now());
         int affected = unitMapper.updateById(entity);
         if (affected == 0) {
             throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
                     "HTML unit updated concurrently, refresh and retry");
         }
+        log.info("[TrustAudit] F-2026-08-07-HTML: courseId={}, section={}, isTrusted={}, uploaderId={}, unitId={}",
+                entity.getCourseId(), entity.getSectionId(), isTrusted,
+                SecurityUtil.getCurrentUserIdOpt(), unitId);
         log.info("[HTML-Unit] updated: id={}", unitId);
     }
 
@@ -270,7 +308,7 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         // 7-19 P1-C 兼容: audio_token UK, 流式 GET 不依赖 pageNumber
         audio.setAudioToken(UUID.randomUUID().toString().replace("-", ""));
         audio.setAudioUrl("/api/courses/" + courseId
-                + "/audio/" + audio.getAudioToken());
+                + "/courseware/audio/" + audio.getAudioToken());
         audio.setCreatedAt(LocalDateTime.now());
         segmentAudioMapper.insert(audio);
         log.info("[HTML-Segment-Audio] queued: id={}, segment={}, voice={}, token={}",

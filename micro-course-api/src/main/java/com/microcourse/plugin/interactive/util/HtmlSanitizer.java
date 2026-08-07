@@ -104,6 +104,34 @@ public final class HtmlSanitizer {
             .addProtocols("audio", "src", "http", "https")
             .addProtocols("source", "src", "http", "https");
 
+    /**
+     * 严格 Safelist（Q-4，is_trusted=false 兜底）：
+     * 基于严格 SAFELIST 增加教学布局/表格标签，但<b>禁止</b> script/style/iframe/form/input/button/svg
+     * 及所有 inline event handlers（onclick/onerror 等）。
+     * 用于"未标记可信教师"的 HTML 内容 —— 读时/上传时强制移除可执行内容。
+     */
+    private static final Safelist COURSEWARE_STRICT_SAFELIST = Safelist.relaxed()
+            .addTags("caption", "colgroup", "col", "table", "tbody", "td", "tfoot", "th", "thead", "tr",
+                     "div", "span", "section", "article", "header", "footer", "nav", "main", "aside",
+                     "figure", "figcaption", "details", "summary", "mark", "time", "kbd", "samp", "var",
+                     "sub", "sup", "ins", "del", "s", "u",
+                     "pre", "code", "tt", "samp", "kbd",
+                     "dl", "dt", "dd", "hr", "bdo", "bdi",
+                     "canvas", "audio", "video", "source", "track", "progress", "meter")
+            .addAttributes(":all", "title", "lang", "dir", "class", "id", "data-*", "aria-*", "role")
+            .addAttributes("a", "href", "target")
+            .addAttributes("img", "src", "alt", "width", "height")
+            .addAttributes("td", "colspan", "rowspan")
+            .addAttributes("th", "colspan", "rowspan")
+            .addAttributes("video", "src", "controls", "width", "height", "poster")
+            .addAttributes("audio", "src", "controls")
+            .addAttributes("source", "src", "type")
+            .addProtocols("img", "src", "http", "https")
+            .addProtocols("a", "href", "http", "https", "mailto")
+            .addProtocols("video", "src", "http", "https")
+            .addProtocols("audio", "src", "http", "https")
+            .addProtocols("source", "src", "http", "https");
+
 
     private HtmlSanitizer() {
         // 工具类禁止实例化
@@ -113,15 +141,30 @@ public final class HtmlSanitizer {
      * 宽松消毒：用于教师上传的 HTML 课件。
      * 保留所有教学所需标签和属性（包括 iframe/form/input/script/style 等）。
      * 安全由 sandbox="allow-scripts" 兜底（无 same-origin，无网络请求）。
+     * 等价于 {@link #sanitizeForCourseware(String, boolean)} 的 trusted=true 分支（兼容旧调用）。
      */
     public static String sanitizeForCourseware(String rawHtml) {
+        return sanitizeForCourseware(rawHtml, true);
+    }
+
+    /**
+     * Q-4：课件 HTML 消毒（按教师信任标记分流）。
+     *
+     * @param rawHtml 原始 HTML
+     * @param trusted TRUE = 课程 owner 教师上传内容（宽松 Safelist，保留 script/style/onclick/iframe，
+     *                安全依赖前端 sandbox 隔离）；FALSE = 未标记可信内容（严格 Safelist：
+     *                移除所有 inline event handlers、script/style/iframe/form/input/button/svg）。
+     * @return 消毒后 HTML
+     */
+    public static String sanitizeForCourseware(String rawHtml, boolean trusted) {
         if (rawHtml == null || rawHtml.isEmpty()) {
             return "";
         }
-        String safeHtml = Jsoup.clean(rawHtml, COURSEWARE_SAFELIST);
+        Safelist safelist = trusted ? COURSEWARE_SAFELIST : COURSEWARE_STRICT_SAFELIST;
+        String safeHtml = Jsoup.clean(rawHtml, safelist);
         if (!safeHtml.equals(rawHtml)) {
-            log.info("[HtmlSanitizer] 课件消毒移除了部分内容: rawLength={}, safeLength={}",
-                    rawHtml.length(), safeHtml.length());
+            log.info("[HtmlSanitizer] 课件消毒移除了部分内容: trusted={}, rawLength={}, safeLength={}",
+                    trusted, rawHtml.length(), safeHtml.length());
         }
         return safeHtml;
     }

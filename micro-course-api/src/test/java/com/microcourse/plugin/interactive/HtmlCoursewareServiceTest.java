@@ -14,6 +14,7 @@ import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.plugin.interactive.service.impl.HtmlCoursewareServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +58,8 @@ class HtmlCoursewareServiceTest {
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
         sectionRepo = mock(CourseSectionRepository.class);
-        service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper, segmentAudioMapper, sectionRepo);
+        service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper,
+                segmentAudioMapper, sectionRepo, mock(CourseRepository.class));
     }
 
     @Nested
@@ -337,7 +339,7 @@ class HtmlCoursewareServiceTest {
             assertEquals(32, saved.getAudioToken().length(),
                     "audio_token must be 32-char hex (7-19 P1-C UK validation)");
             assertTrue(saved.getAudioToken().matches("[0-9a-f]{32}"));
-            assertEquals("/api/courses/42/audio/" + saved.getAudioToken(), saved.getAudioUrl());
+            assertEquals("/api/courses/42/courseware/audio/" + saved.getAudioToken(), saved.getAudioUrl());
             assertEquals(Integer.valueOf(3), saved.getSegmentIndex(), "segmentIndex denormalized for query");
             assertEquals("GENERATING", saved.getStatus());
         }
