@@ -31,7 +31,9 @@ const tagType = computed(() => {
   switch (props.status) {
     case 'AUDIO_READY': return 'success'
     case 'AUDIO_GENERATING': return 'warning'
+    case 'AUDIO_FAILED': return 'danger'
     case 'PENDING': return 'info'
+    case 'AUDIO_PENDING': return 'info'
     case 'EMPTY': return 'info'
     default: return 'default'
   }
@@ -41,7 +43,9 @@ const label = computed(() => {
   switch (props.status) {
     case 'AUDIO_READY': return '音频就绪'
     case 'AUDIO_GENERATING': return '生成中'
+    case 'AUDIO_FAILED': return '失败'
     case 'PENDING': return '待生成'
+    case 'AUDIO_PENDING': return '待生成'
     case 'EMPTY': return '空'
     default: return props.status
   }

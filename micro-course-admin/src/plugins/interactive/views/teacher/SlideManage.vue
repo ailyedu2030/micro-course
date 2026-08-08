@@ -57,12 +57,23 @@
             <el-tag v-else type="info" size="small">暂无课件</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140">
+        <el-table-column label="操作" width="220">
           <template #default="{ row }">
             <el-button size="small" type="primary" plain @click="goManageSection(row.id)">管理课件</el-button>
+            <!-- P2-5：章节概览直接预览该课时课件（无课件时禁用），复用 SlidePreview 学生视角 -->
+            <el-button size="small" :disabled="!row.type" @click="openSectionPreview(row.id)">预览</el-button>
           </template>
         </el-table-column>
       </el-table>
+      <!-- P2-5：章节级预览 dialog（课时 = row.id 即 sectionId） -->
+      <el-dialog v-model="showSectionPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
+        <SlidePreview
+          v-if="showSectionPreview && previewSectionId !== null"
+          :course-id="courseId"
+          :section-id="previewSectionId"
+          @close="showSectionPreview = false"
+        />
+      </el-dialog>
       <el-alert
         type="info"
         :closable="false"
@@ -161,6 +172,7 @@ import { getCoursewareTree } from '../../api/queryCourseware'
 import { useCoursewareUpload } from '../../composables/useCoursewareUpload'
 import PptCoursewareManage from '../../components/PptCoursewareManage.vue'
 import HtmlCoursewareManage from '../../components/HtmlCoursewareManage.vue'
+import SlidePreview from '../../components/SlidePreview.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -176,6 +188,9 @@ const tree = ref(null)
 const typeLoading = ref(true)
 const sectionsLoading = ref(false)
 const sectionStatus = ref([])
+// P2-5：章节级预览 dialog 状态（previewSectionId = 课时 id = sectionId）
+const showSectionPreview = ref(false)
+const previewSectionId = ref(null)
 
 const upload = useCoursewareUpload({
   courseId,
@@ -229,6 +244,12 @@ async function loadSectionOverview() {
 
 function goManageSection(id) {
   router.push({ path: `/teacher/courses/${courseId.value}/slides/manage`, query: { sectionId: id } })
+}
+
+// P2-5：打开章节级课时预览（row.id = sectionId）
+function openSectionPreview(id) {
+  previewSectionId.value = id
+  showSectionPreview.value = true
 }
 
 async function handleCreateUpload(file, type) {

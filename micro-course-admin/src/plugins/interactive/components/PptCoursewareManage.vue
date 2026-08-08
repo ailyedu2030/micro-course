@@ -197,11 +197,25 @@ const canPreview = computed(() =>
   props.tree?.type === 'PPT' && (props.tree.pages?.length || 0) > 0 && !upload.renderPending.value
 )
 
+// P1-C-4：AUDIO_PENDING（0 音频=待生成）与 P1-C-3：AUDIO_FAILED（生成失败）
+// 均为 G3 后端聚合枚举；前端映射保证树级/页级状态文案与聚合视图一致
 function statusLabel(s) {
-  return { PENDING: '待生成', AUDIO_GENERATING: '生成中', AUDIO_READY: '就绪' }[s] || s
+  return {
+    PENDING: '待生成',
+    AUDIO_PENDING: '待生成',
+    AUDIO_GENERATING: '生成中',
+    AUDIO_READY: '就绪',
+    AUDIO_FAILED: '失败'
+  }[s] || s
 }
 function statusTagType(s) {
-  return { PENDING: 'info', AUDIO_GENERATING: 'warning', AUDIO_READY: 'success' }[s] || 'info'
+  return {
+    PENDING: 'info',
+    AUDIO_PENDING: 'info',
+    AUDIO_GENERATING: 'warning',
+    AUDIO_READY: 'success',
+    AUDIO_FAILED: 'danger'
+  }[s] || 'info'
 }
 
 function toggleBatchMode() {

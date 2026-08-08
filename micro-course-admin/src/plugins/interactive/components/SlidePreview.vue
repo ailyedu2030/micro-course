@@ -3,7 +3,8 @@
     <el-button class="close-btn" @click="$emit('close')" circle aria-label="关闭预览">
       <el-icon><Close /></el-icon>
     </el-button>
-    <SlidePlayerCore :course-id="courseId" :section-id="sectionId" />
+    <!-- P1-C-7/P1-C-8：in-preview 标记教师预览态（播放器显示预览 banner + 退出语义 emit close） -->
+    <SlidePlayerCore :course-id="courseId" :section-id="sectionId" in-preview @close="$emit('close')" />
   </div>
 </template>
 
