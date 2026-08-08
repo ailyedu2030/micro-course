@@ -30,14 +30,14 @@
       <!-- ====== Hero Card ====== -->
       <div class="hero-card">
         <div class="hero-left">
-          <!-- 互动课程: 幻灯片预览 → 播放器 -->
+          <!-- 课件课程（HTML 课件 / PPT 课件）: 幻灯片预览 → 播放器 -->
           <button
-            v-if="course.courseType === 'INTERACTIVE'"
+            v-if="isInteractive"
             type="button"
             role="button"
             tabindex="0"
             class="hero-img-box hero-preview-trigger"
-            aria-label="开始学习互动课程"
+            aria-label="开始学习互动课件课程"
             @click="handlePlayPreview"
             @keydown.enter="handlePlayPreview"
             @keydown.space.prevent="handlePlayPreview"
@@ -77,7 +77,7 @@
           <h1 class="hero-title">{{ course.title }}</h1>
           <p v-if="course.subtitle" class="hero-subtitle">{{ course.subtitle }}</p>
           <div class="hero-tags">
-            <el-tag v-if="course.courseType === 'INTERACTIVE'" size="small" effect="plain" type="success">互动课程</el-tag>
+            <el-tag v-if="getCourseTypeConfig(course.courseType)" size="small" effect="plain" :type="getCourseTypeConfig(course.courseType).tagType">{{ getCourseTypeConfig(course.courseType).label }}</el-tag>
             <el-tag v-if="course.difficulty" size="small" effect="plain">{{ difficultyText }}</el-tag>
             <el-tag v-if="course.categoryName" size="small" effect="plain" type="info">{{ course.categoryName }}</el-tag>
           </div>
@@ -303,7 +303,7 @@
           <div class="side-card">
             <h3 class="side-card-title">课程信息</h3>
             <div class="info-list">
-              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ isInteractive ? '互动课程' : '视频课程' }}</span></div>
+              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ getCourseTypeConfig(course.courseType)?.label || '视频课程' }}</span></div>
               <div class="info-item" v-if="pricingInfo">
                 <span class="info-label">价格</span>
                 <span class="info-value price">
@@ -433,6 +433,7 @@ import { getLearningProgress } from '@/api/learning-progress'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { useUserStore } from '@/store/user'
 import { getToken } from '@/utils/auth'
+import { getCourseTypeConfig, isCoursewareCourseType } from '@/config/courseTypeConfig'
 import Hls from 'hls.js'
 
 const router = useRouter()
@@ -449,7 +450,8 @@ const isPaidForMe = computed(() => {
   return !!(course.value.price && !course.value.isFree)
 })
 const courseChapters = computed(() => course.value.chapters || [])
-const isInteractive = computed(() => course.value.courseType === 'INTERACTIVE')
+// 【V333】课件类课程（HTML 课件 / PPT 课件）→ 幻灯片播放器；视频课 → 视频播放器
+const isInteractive = computed(() => isCoursewareCourseType(course.value.courseType))
 const slides = ref([])
 const slidesLoading = ref(false)
 const teacher = ref({})
@@ -651,8 +653,8 @@ const handleEnroll = async () => {
     const finalPrice = pricingInfo.value?.finalPrice ?? course.value.price ?? 0
 
     const enrollTarget = () => {
-      const isInteractive = course.value?.courseType === 'INTERACTIVE'
-      return isInteractive
+      const isCourseware = isCoursewareCourseType(course.value?.courseType)
+      return isCourseware
         ? `/student/courses/${courseId.value}/slides/player`
         : `/student/learning?courseId=${courseId.value}`
     }

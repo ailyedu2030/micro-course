@@ -85,9 +85,24 @@
 
     <div v-loading="typeLoading" class="sm-body">
       <template v-if="!typeLoading">
-        <!-- PPT 课件模块 -->
+        <!-- 【V333】类型限定模式：?type=HTML / ?type=PPT（从 HTML 课件 / PPT 课件独立管理页进入） -->
+        <!-- 当限定类型与该课时实际类型不一致时，给出明确提示，避免错误渲染 -->
+        <el-alert
+          v-if="restrictedType && tree?.type && tree.type !== 'EMPTY' && tree.type !== restrictedType"
+          type="warning"
+          :closable="false"
+          show-icon
+          class="sm-type-mismatch"
+          :title="`该课时课件类型为「${tree.type === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」，与当前「${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」管理入口不一致`"
+        >
+          <template #default>
+            <el-button size="small" type="primary" plain @click="clearRestrictedType">查看全部课件类型</el-button>
+          </template>
+        </el-alert>
+
+        <!-- PPT 课件模块（限定模式 ?type=PPT 时仅渲染 PPT） -->
         <PptCoursewareManage
-          v-if="tree?.type === 'PPT'"
+          v-if="tree?.type === 'PPT' || (restrictedType === 'PPT' && tree?.type === 'EMPTY')"
           :course-id="Number(courseId)"
           :chapter-id="chapterId ? Number(chapterId) : null"
           :section-id="sectionId ? Number(sectionId) : null"
@@ -95,9 +110,9 @@
           @changed="loadTree"
         />
 
-        <!-- HTML 课件模块 -->
+        <!-- HTML 课件模块（限定模式 ?type=HTML 时仅渲染 HTML） -->
         <HtmlCoursewareManage
-          v-else-if="tree?.type === 'HTML'"
+          v-else-if="tree?.type === 'HTML' || (restrictedType === 'HTML' && tree?.type === 'EMPTY')"
           :course-id="Number(courseId)"
           :chapter-id="chapterId ? Number(chapterId) : null"
           :section-id="sectionId ? Number(sectionId) : null"
@@ -105,7 +120,7 @@
           @changed="loadTree"
         />
 
-        <!-- 空状态：创建二选一 -->
+        <!-- 空状态：创建二选一（限定模式只显示对应类型） -->
         <div v-else class="sm-empty">
           <div v-if="upload.renderPending.value" class="sm-render">
             <el-icon class="is-loading"><Loading /></el-icon>
@@ -114,10 +129,14 @@
           <el-card v-else class="sm-create-card">
             <template #header>
               <h2 class="sm-create-title">{{ sectionId ? '该课时' : '该章节' }}暂无课件</h2>
-              <p class="sm-create-sub">请选择要创建的课件类型。创建后该{{ sectionId ? '课时' : '章节' }}将固定为该类型，如需切换请先删除现有课件。</p>
+              <p class="sm-create-sub">
+{{ restrictedType
+                ? `当前处于「${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」管理入口，仅可创建${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}。`
+                : '请选择要创建的课件类型。创建后该' + (sectionId ? '课时' : '章节') + '将固定为该类型，如需切换请先删除现有课件。' }}
+</p>
             </template>
-            <div class="sm-create-options">
-              <div class="sm-option">
+            <div class="sm-create-options" :class="{ 'sm-create-options-single': restrictedType }">
+              <div v-if="!restrictedType || restrictedType === 'PPT'" class="sm-option">
                 <el-icon :size="36" class="sm-option-icon"><Picture /></el-icon>
                 <h3>PPT 课件</h3>
                 <p class="sm-option-desc">上传 .pptx，系统自动逐页渲染高清图片，支持页级讲述稿、音频与页间跳转。</p>
@@ -134,7 +153,7 @@
                   <template #tip><div class="el-upload__tip">支持 .pptx（最大 50MB），上传后自动渲染</div></template>
                 </el-upload>
               </div>
-              <div class="sm-option">
+              <div v-if="!restrictedType || restrictedType === 'HTML'" class="sm-option">
                 <el-icon :size="36" class="sm-option-icon"><Document /></el-icon>
                 <h3>HTML 课件</h3>
                 <p class="sm-option-desc">上传 .html 或在线编辑，支持分段讲述稿、段级音频与播放时段落高亮。</p>
@@ -181,6 +200,16 @@ const userRole = computed(() => userStore.role)
 const courseId = computed(() => route.params.courseId)
 const chapterId = computed(() => route.params.chapterId || route.query.chapterId || null)
 const sectionId = computed(() => route.query.sectionId || null)
+// 【V333】类型限定模式：?type=HTML / ?type=PPT（从独立管理页进入时只允许该类型）
+const restrictedType = computed(() => {
+  const t = route.query.type
+  return t === 'HTML' || t === 'PPT' ? t : null
+})
+function clearRestrictedType() {
+  const q = { ...route.query }
+  delete q.type
+  router.replace({ path: route.path, query: q })
+}
 
 const courseTitle = ref('')
 const chapterTitle = ref('')
@@ -295,11 +324,14 @@ onUnmounted(() => upload.stopRenderPolling())
 .sm-co-empty-title { margin: 0; font-size: 15px; font-weight: 600; color: var(--el-text-color-primary); }
 .sm-co-empty-desc { margin: 0; font-size: 13px; color: var(--el-text-color-secondary); }
 .sm-body { min-height: 320px; }
+.sm-type-mismatch { max-width: 1000px; margin: 0 auto 14px; }
+.sm-type-mismatch :deep(.el-alert__content) { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .sm-render { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 80px 0; color: var(--el-text-color-secondary); font-size: 15px; }
 .sm-create-card { max-width: 1000px; margin: 0 auto; }
 .sm-create-title { margin: 0 0 6px; font-size: 18px; }
 .sm-create-sub { margin: 0; color: var(--el-text-color-secondary); font-size: 13px; }
 .sm-create-options { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.sm-create-options-single { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; }
 .sm-option { border: 1px solid var(--el-border-color-light); border-radius: 10px; padding: 24px; text-align: center; }
 .sm-option-icon { color: var(--el-color-primary); margin-bottom: 8px; }
 .sm-option h3 { margin: 0 0 8px; font-size: 16px; }

@@ -18,6 +18,7 @@ import com.microcourse.entity.DiscussionPost;
 import com.microcourse.entity.VideoBookmark;
 import com.microcourse.entity.Exercise;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.CourseType;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -152,9 +153,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private void checkPluginGrant(Long teacherId, String courseType) {
         /* ---- 【C-1 修复】OFFLINE 不要求互动课件插件授权 ---- */
         /* 【根因】条件 `"VIDEO".equals(courseType)` 只排除 VIDEO，导致 OFFLINE 也被要求 interactive 插件授权 */
-        /* 【修复】改为只对 INTERACTIVE 类型检查，其他类型自动跳过 */
-        /* 【防止再发】条件翻转 `!"INTERACTIVE".equals` 确保未来新增类型也不会误触发 */
-        if (courseType == null || !"INTERACTIVE".equals(courseType)) return;
+        /* 【修复】改为只对课件类类型（HTML_COURSEWARE / PPT_COURSEWARE）检查，其他类型自动跳过 */
+        /* 【防止再发】条件翻转 `!CourseType.isCoursewareType` 确保未来新增类型也不会误触发 */
+        if (courseType == null || !CourseType.isCoursewareType(courseType)) return;
         if (SecurityUtil.isAdmin()) return;
         LambdaQueryWrapper<com.microcourse.entity.PluginGrant> q = new LambdaQueryWrapper<>();
         q.eq(com.microcourse.entity.PluginGrant::getPluginId, "interactive")
@@ -225,8 +226,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getTeacherId() != null && userRepository.selectById(request.getTeacherId()) == null) {
             throw new BusinessException(ErrorCode.COURSE_TEACHER_NOT_FOUND);
         }
-        checkPluginGrant(request.getTeacherId(), request.getCourseType());
-
+        // 【P0】teacherId 解析必须先于 checkPluginGrant（教师场景 teacherId==null → .eq(granteeId,null) 恒无匹配 → 16002）
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             request.setTeacherId(SecurityUtil.getCurrentUserId());
         } else if (request.getTeacherId() == null) {
@@ -235,6 +235,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                     "管理员/教务创建课程必须指定授课教师");
         }
+        checkPluginGrant(request.getTeacherId(), request.getCourseType());
 
         Course course = new Course();
         course.setTitle(request.getTitle());

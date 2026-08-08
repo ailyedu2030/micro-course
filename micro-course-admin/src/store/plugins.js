@@ -34,7 +34,11 @@ export const usePluginStore = defineStore('plugins', {
     },
 
     getCourseCardConfig(type) {
-      const plugin = this.plugins.find(p => p.id.toUpperCase() === (type || '').toUpperCase())
+      const key = (type || '').toUpperCase()
+      // 【V333 简化方案】HTML 课件 / PPT 课件 复用 interactive 插件的卡片徽标配置
+      const isCoursewareKey = key === 'HTML_COURSEWARE' || key === 'PPT_COURSEWARE'
+      const plugin = this.plugins.find(p =>
+        p.id.toUpperCase() === key || (isCoursewareKey && p.id === 'interactive'))
       return plugin?.courseCardConfig || null
     },
 

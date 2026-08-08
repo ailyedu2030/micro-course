@@ -310,8 +310,16 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                 node.setAudios(audioDTOs);
                 long ready = audios.stream()
                         .filter(a -> "READY".equals(a.getStatus())).count();
-                node.setNarrationStatus(ready > 0 ? "AUDIO_READY" : "AUDIO_GENERATING");
-                if (ready > 0) readyAudios += ready;
+                // P1-C(2026-08-09): FAILED 音频 → AUDIO_FAILED（诚实提示"生成失败"），
+                // 而非一律 AUDIO_GENERATING；仅无 FAILED 且无 READY 时才为 AUDIO_GENERATING。
+                if (ready > 0) {
+                    node.setNarrationStatus("AUDIO_READY");
+                    readyAudios += ready;
+                } else if (audios.stream().anyMatch(a -> "FAILED".equals(a.getStatus()))) {
+                    node.setNarrationStatus("AUDIO_FAILED");
+                } else {
+                    node.setNarrationStatus("AUDIO_GENERATING");
+                }
             } else {
                 node.setNarrationStatus("PENDING");
             }
@@ -331,7 +339,12 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         }
 
         tree.setAudioReadyCount(readyAudios);
-        tree.setNarrationStatus(readyAudios > 0 ? "AUDIO_READY" : "AUDIO_GENERATING");
+        // P1-C(2026-08-09): 树级状态同样诚实 —— 全部页含 FAILED 且无 READY → AUDIO_FAILED，
+        // 而非一律 AUDIO_GENERATING（防止教师/学生端误判"正在生成"）。
+        boolean anyFailed = tree.getPages().stream()
+                .anyMatch(n -> "AUDIO_FAILED".equals(n.getNarrationStatus()));
+        tree.setNarrationStatus(readyAudios > 0 ? "AUDIO_READY"
+                : (anyFailed ? "AUDIO_FAILED" : "AUDIO_GENERATING"));
         if (lastUpdate != null) tree.setLastUpdatedAt(lastUpdate);
         return tree;
     }
@@ -349,13 +362,20 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         // segment scripts + audios
         List<SlideHtmlSegmentScript> activeSegments = segmentScriptMapper.listActiveByUnit(unit.getId());
         int readyAudios = 0;
+        boolean anyFailed = false;
         for (SlideHtmlSegmentScript seg : activeSegments) {
             List<SlideHtmlSegmentAudio> audios = segmentAudioMapper.listByScript(seg.getId());
             readyAudios += audios.stream()
                     .filter(a -> "READY".equals(a.getStatus())).count();
+            // P1-C(2026-08-09): 段级音频诚实 —— 存在 FAILED 段且无 READY → AUDIO_FAILED，
+            // 而非一律 AUDIO_GENERATING（与 PPT 树一致）。
+            if (audios.stream().anyMatch(a -> "FAILED".equals(a.getStatus()))) {
+                anyFailed = true;
+            }
         }
         tree.setAudioReadyCount(readyAudios);
-        tree.setNarrationStatus(readyAudios > 0 ? "AUDIO_READY" : "AUDIO_GENERATING");
+        tree.setNarrationStatus(readyAudios > 0 ? "AUDIO_READY"
+                : (anyFailed ? "AUDIO_FAILED" : "AUDIO_GENERATING"));
         return tree;
     }
 

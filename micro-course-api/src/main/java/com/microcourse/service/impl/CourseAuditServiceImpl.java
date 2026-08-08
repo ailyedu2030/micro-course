@@ -9,6 +9,7 @@ import com.microcourse.entity.PluginGrant;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseSlideStatus;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.CourseType;
 import com.microcourse.enums.EnrollmentStatus;
 import com.microcourse.enums.NotificationType;
 import com.microcourse.exception.BusinessException;
@@ -123,13 +124,14 @@ public class CourseAuditServiceImpl implements CourseAuditService {
 
         checkPluginGrant(course.getTeacherId(), course.getCourseType());
 
-        if ("INTERACTIVE".equals(course.getCourseType())) {
+        // 【V333 简化方案】HTML 课件 / PPT 课件 2 种类型发布前都必须有就绪课件
+        if (CourseType.isCoursewareType(course.getCourseType())) {
             LambdaQueryWrapper<CourseSlide> slideQuery = new LambdaQueryWrapper<>();
             slideQuery.eq(CourseSlide::getCourseId, id)
                       .eq(CourseSlide::getStatus, CourseSlideStatus.COMPLETED.getCode());
             long slideCount = courseSlideMapper.selectCount(slideQuery);
             if (slideCount == 0) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "互动课件尚未就绪，请先上传并等待课件渲染完成");
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课件尚未就绪，请先上传课件并等待渲染完成");
             }
         }
         // 【状态机重构】所有状态变更守卫 (含 CLOSED→PUBLISHED 历史校验, 自审批阻断, 乐观锁) 下沉到 CourseStateMachine
@@ -233,9 +235,9 @@ public class CourseAuditServiceImpl implements CourseAuditService {
     private void checkPluginGrant(Long teacherId, String courseType) {
         /* ---- 【C-1 修复】OFFLINE 不要求互动课件插件授权 ---- */
         /* 【根因】条件 `"VIDEO".equals(courseType)` 只排除 VIDEO，导致 OFFLINE 也被要求 interactive 插件授权 */
-        /* 【修复】改为只对 INTERACTIVE 类型检查，其他类型自动跳过 */
-        /* 【防止再发】条件翻转 `!"INTERACTIVE".equals` 确保未来新增类型也不会误触发 */
-        if (courseType == null || !"INTERACTIVE".equals(courseType)) return;
+        /* 【修复】改为只对课件类类型（HTML_COURSEWARE / PPT_COURSEWARE）检查，其他类型自动跳过 */
+        /* 【防止再发】条件翻转 `!CourseType.isCoursewareType` 确保未来新增类型也不会误触发 */
+        if (courseType == null || !CourseType.isCoursewareType(courseType)) return;
         if (SecurityUtil.isAdmin()) return;
         LambdaQueryWrapper<PluginGrant> q = new LambdaQueryWrapper<>();
         q.eq(PluginGrant::getPluginId, "interactive")

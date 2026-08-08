@@ -44,6 +44,9 @@ public class CourseCreateRequest {
     private String tags;
 
     // ===== 全部课程类型通用（courseType 决定定价模式） =====
+    // 【V333 简化方案】4 值：HTML_COURSEWARE / PPT_COURSEWARE / VIDEO / OFFLINE（旧值 INTERACTIVE 已被 V333 迁移消除）
+    @Pattern(regexp = "HTML_COURSEWARE|PPT_COURSEWARE|VIDEO|OFFLINE",
+            message = "courseType 必须是 HTML_COURSEWARE / PPT_COURSEWARE / VIDEO / OFFLINE")
     private String courseType;
 
     private java.math.BigDecimal price;

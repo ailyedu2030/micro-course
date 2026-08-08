@@ -87,6 +87,9 @@ const routes = [
   { path: '/admin/system-health', name: 'SystemHealth', component: () => import('../views/admin/SystemHealth.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '系统状态' } },
   { path: '/admin/reports', name: 'ReportsManagement', component: () => import('../views/admin/ReportsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/audit/ghost-chapters', name: 'AuditGhostChapter', component: () => import('../views/admin/AuditGhostChapter.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], title: '幽灵章节审计' } },
+  // 【V333 简化方案】HTML 课件 + PPT 课件 2 种类型独立管理（复用 CourseList.vue 固定类型模式）
+  { path: '/admin/courseware/html', name: 'CoursewareHtmlList', component: () => import('../views/courseware/CoursewareHtmlList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'HTML 课件管理' } },
+  { path: '/admin/courseware/ppt', name: 'CoursewarePptList', component: () => import('../views/courseware/CoursewarePptList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'PPT 课件管理' } },
 
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
