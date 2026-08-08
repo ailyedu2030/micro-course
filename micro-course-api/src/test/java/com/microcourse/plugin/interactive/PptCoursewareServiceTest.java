@@ -52,8 +52,10 @@ class PptCoursewareServiceTest {
         flowMapper = mock(SlidePptFlowMapper.class);
         courseRepository = mock(com.microcourse.repository.CourseRepository.class);
         sectionRepository = mock(com.microcourse.repository.CourseSectionRepository.class);
+        com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache =
+                mock(com.microcourse.plugin.interactive.cache.CoursewarePagesCache.class);
         service = new PptCoursewareServiceImpl(pageMapper, scriptMapper, audioMapper, flowMapper,
-                courseRepository, sectionRepository);
+                courseRepository, sectionRepository, pagesCache);
     }
 
     @Nested
@@ -270,10 +272,12 @@ class PptCoursewareServiceTest {
         @Test
         @DisplayName("deleteFlow 删除成功 / 不存在抛异常")
         void deleteFlowWorks() {
+            when(flowMapper.selectById(1L)).thenReturn(new com.microcourse.plugin.interactive.entity.SlidePptFlow());
             when(flowMapper.deleteById(1L)).thenReturn(1);
             service.deleteFlow(1L);
             verify(flowMapper).deleteById(1L);
 
+            when(flowMapper.selectById(2L)).thenReturn(null);
             when(flowMapper.deleteById(2L)).thenReturn(0);
             assertThrows(BusinessException.class, () -> service.deleteFlow(2L));
         }

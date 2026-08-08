@@ -6,7 +6,6 @@ import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,7 +23,6 @@ public class PptCoursewareController {
 
     private final PptCoursewareService pptService;
 
-    @Autowired
     public PptCoursewareController(PptCoursewareService pptService) {
         this.pptService = pptService;
     }

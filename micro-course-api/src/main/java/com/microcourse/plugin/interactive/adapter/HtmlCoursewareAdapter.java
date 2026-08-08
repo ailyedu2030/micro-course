@@ -7,7 +7,6 @@ import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ public class HtmlCoursewareAdapter implements CoursewareAdapter {
     private final HtmlCoursewareService htmlService;
     private final CoursewareQueryService queryService;
 
-    @Autowired
     public HtmlCoursewareAdapter(HtmlCoursewareService htmlService,
                                   CoursewareQueryService queryService) {
         this.htmlService = htmlService;

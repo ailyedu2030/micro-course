@@ -8,7 +8,6 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -31,7 +30,6 @@ public class AudioQueryService {
     private final AudioStreamCache cache;
     private final AudioTokenService tokenService;
 
-    @Autowired
     public AudioQueryService(SlidePptPageAudioMapper pptAudioMapper,
                               SlideHtmlSegmentAudioMapper htmlAudioMapper,
                               AudioStreamCache cache,
