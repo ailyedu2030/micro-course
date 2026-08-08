@@ -20,13 +20,26 @@
       </button>
       <div class="header-center">
         <span class="page-counter">{{ pages.length === 0 ? 0 : current + 1 }}<span class="counter-divider">/</span>{{ pages.length }}</span>
-        <div class="page-thumb-strip">
+        <div class="page-thumb-strip" ref="thumbStripRef">
+          <!-- F8（P2，设计 §7.1）：页点条缩略图 —— PPT 页拉真实缩略图 / HTML 页 SVG 占位，
+               懒加载 + 缓存 + 失败回退色块；loading 中显示占位色块（aria 无"已加载"后缀） -->
           <button
-v-for="(p, i) in pages" :key="i"
-            class="thumb-dot" :class="{ active: i === current, 'has-audio': p.audioDuration }"
-            @click="goTo(i)" :aria-label="'第' + (i + 1) + '页'"
+            v-for="(p, i) in pages" :key="i"
+            class="thumb" :class="{ active: i === current, 'has-audio': p.audioDuration }"
+            :data-thumb-index="i"
+            @click="goTo(i)"
+            :aria-label="thumbAriaLabel(p, i)"
             :title="pageDurationText(p)"
-/>
+          >
+            <img v-if="thumbUrls[i]" :src="thumbUrls[i]" :alt="'第' + (i + 1) + '页缩略图'" class="thumb-img" @error="thumbLoadError(i)" />
+            <!-- HTML 页无原生缩略图 → 第一段文字 + 图标占位（设计 §7.1 兜底方案） -->
+            <span v-else-if="isHtmlPage(p)" class="thumb-html" aria-hidden="true">
+              <el-icon :size="10"><Document /></el-icon>
+              <span class="thumb-html-text">{{ htmlThumbText(p) }}</span>
+            </span>
+            <!-- loading 中 / 加载失败 → 色块兜底 -->
+            <span v-else class="thumb-block" :class="{ 'thumb-block--error': thumbFailed[i] }" aria-hidden="true"></span>
+          </button>
         </div>
       </div>
       <div class="header-right">
@@ -98,9 +111,10 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                 @error="onHtmlIframeError"
                 @load="onHtmlIframeLoad"
               />
-              <!-- P2-7: HTML 课时下载按钮（sandbox 禁用右键保存，用临时 Blob 下载源码） -->
+              <!-- P2-7: HTML 课时下载按钮（sandbox 禁用右键保存，用临时 Blob 下载源码）
+                   F9：@click.stop 防止下载点击冒泡到 slide-stage 误触发 autoMode 切换 -->
               <div v-if="currentPage?.contentType === 'HTML_DIRECT'" class="html-toolbar">
-                <el-button size="small" text @click="downloadHtmlPage">
+                <el-button size="small" text @click.stop="downloadHtmlPage">
                   <el-icon><Download /></el-icon> 下载 HTML
                 </el-button>
               </div>
@@ -341,6 +355,14 @@ const imageUrls = ref({})
 const audioBlobUrls = ref({})
 const imageErrors = reactive({})       // { [pageIndex]: true } 标记哪些图片加载失败
 const imageRetrying = reactive({})     // { [pageIndex]: true } 正在重试中
+// F8（P2）：页点条缩略图 —— PPT 页复用 /pages/{n}/image 拉真实缩略图，HTML 页用
+// SVG 占位（第一段文字 + 图标）；IntersectionObserver 懒加载 + 缓存，失败回退色块。
+// thumbUrls/thumbLoading/thumbFailed 均以 pageIndex 为键（与 pages 数组对齐）
+const thumbStripRef = ref(null)
+const thumbUrls = reactive({})         // { [pageIndex]: blobUrl } —— 已加载缩略图
+const thumbLoading = reactive({})      // { [pageIndex]: true } —— 加载中（占位色块）
+const thumbFailed = reactive({})       // { [pageIndex]: true } —— 加载失败（回退色块）
+let thumbObserver = null
 const lastDirection = ref(1)
 let countdownTimer = null
 let pendingTimer = null
@@ -409,6 +431,8 @@ async function loadPages() {
   try {
     const res = await getSlidePages(courseId.value, chapterId.value, sectionId.value)
     pages.value = res.data || []
+    // F8（P2）：页点条缩略图懒加载 —— pages 就绪后观察缩略图条（IO 懒加载，非视野内不请求）
+    observeThumbs()
     // P1I-015: 仅预加载前 3 页和相邻页，其余按需触发（preloadAdjacentImages 懒加载）
     const initialIndices = [0, 1, 2].filter(i => i < pages.value.length)
     await Promise.allSettled(initialIndices.map(idx => loadPageImage(idx)))
@@ -458,6 +482,78 @@ async function retryImage(pageIndex) {
   } finally {
     delete imageRetrying[pageIndex]
   }
+}
+
+// ===== F8（P2）：页点条缩略图 =====
+function isHtmlPage(p) { return p?.contentType === 'HTML_DIRECT' }
+
+// a11y：缩略图 aria-label 携带加载状态（设计 §7.1：aria-label="第 N 页[已加载]"）
+function thumbAriaLabel(p, i) {
+  const loaded = Boolean(thumbUrls[i] || isHtmlPage(p))
+  return loaded ? `第${i + 1}页已加载` : `第${i + 1}页`
+}
+
+// HTML 缩略图占位文本：取正文前 8 字（剥脚本/样式/标签），无正文回退 'HTML'
+function htmlThumbText(p) {
+  const raw = (p?.htmlContent || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return raw.slice(0, 8) || 'HTML'
+}
+
+// 加载第 i 页缩略图（懒加载触发后调用；缓存避免重复请求；HTML 页直接走占位不发无效请求）
+async function loadThumb(i) {
+  const page = pages.value[i]
+  if (!page || thumbUrls[i] || thumbLoading[i] || thumbFailed[i]) return
+  if (isHtmlPage(page)) return
+  thumbLoading[i] = true
+  const relUrl = `/courses/${courseId.value}/slides/pages/${page.pageNumber}/image`
+  try {
+    const blobUrl = await loadAuthResource(relUrl)
+    if (blobUrl) {
+      thumbUrls[i] = blobUrl
+      delete thumbFailed[i]
+    } else {
+      thumbFailed[i] = true
+    }
+  } catch {
+    thumbFailed[i] = true
+  } finally {
+    thumbLoading[i] = false
+  }
+}
+
+// 缩略图 blob 解码失败（如后端 404 返回非图片内容）→ 回退色块
+function thumbLoadError(i) {
+  delete thumbUrls[i]
+  thumbFailed[i] = true
+  thumbLoading[i] = false
+}
+
+// 页点条缩略图懒加载：仅视野内（条内横向滚动可见）的缩略图发起加载；
+// 不支持 IntersectionObserver 的浏览器退化为全部加载（页数有限，数量可接受）
+async function observeThumbs() {
+  if (thumbObserver) { thumbObserver.disconnect(); thumbObserver = null }
+  await nextTick() // 等待 v-for 渲染出缩略图按钮
+  if (typeof IntersectionObserver === 'undefined' || !thumbStripRef.value) {
+    pages.value.forEach((_, i) => loadThumb(i))
+    return
+  }
+  thumbObserver = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) {
+        const idx = Number(entry.target.getAttribute('data-thumb-index'))
+        if (!Number.isNaN(idx)) loadThumb(idx)
+      }
+    }
+  }, { root: playerRef.value, rootMargin: '120px 40px' })
+  requestAnimationFrame(() => {
+    const els = thumbStripRef.value?.querySelectorAll('[data-thumb-index]') || []
+    els.forEach((el) => thumbObserver.observe(el))
+  })
 }
 
 // HTML iframe 事件处理（修复 P0 iframe sandbox 安全配置后的辅助方法）
@@ -1179,7 +1275,18 @@ function togglePlay() {
     playAudio()
   }
 }
-function handleStageClick() { if (autoMode.value) autoMode.value = false }
+// F9（L0 铁律）：舞台点击 = 自动播放 toggle，不再静默单向关闭 —— 行为变化必须告知用户。
+// 学生误触舞台即静默关闭 autoMode 且无恢复路径 = 体验断裂（后续页不再自动翻却无提示）。
+// 单击页面区域仅切换 autoMode；导航箭头 / HTML 下载按钮等已 @click.stop 隔离，互不影响；
+// toast 1.5s 明确告知当前状态，再点一次可恢复 autoMode（双态可逆，L0：不允许不可逆的静默行为变更）。
+function handleStageClick() {
+  autoMode.value = !autoMode.value
+  if (autoMode.value) {
+    ElMessage.success({ message: '已开启自动播放', duration: 1500 })
+  } else {
+    ElMessage.info({ message: '已关闭自动播放', duration: 1500 })
+  }
+}
 
 function onTimeUpdate() {
   if (!audioRef.value) return
@@ -1465,6 +1572,8 @@ onMounted(async () => {
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
   if (audioRef.value) { audioRef.value.pause(); audioRef.value.src = '' }
+  // F8（P2）：断开缩略图懒加载观察器，避免组件卸载后 IO 回调泄漏
+  if (thumbObserver) { thumbObserver.disconnect(); thumbObserver = null }
   playerRef.value?.removeEventListener('pointerdown', unlockAutoplay)
   playerRef.value?.removeEventListener('keydown', unlockAutoplay)
   clearImageCache()
@@ -1521,14 +1630,41 @@ onUnmounted(() => {
 .header-center { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .page-counter { font-size: 13px; font-weight: var(--weight-semibold); color: var(--player-text); letter-spacing: 0.5px; }
 .counter-divider { color: var(--player-text-secondary); margin: 0 1px; }
-.page-thumb-strip { display: flex; gap: 5px; align-items: center; }
-.thumb-dot {
-  width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.15);
-  border: none; cursor: pointer; transition: all var(--duration-base) ease; padding: 0;
+/* F8（P2，设计 §7.1）：页点条缩略图 —— 由纯色圆块升级为真实缩略图
+   （PPT 图片 / HTML SVG 占位）；条内横向滚动，非视野内缩略图不加载（IO 懒加载） */
+.page-thumb-strip {
+  display: flex; gap: 6px; align-items: center;
+  max-width: 420px; overflow-x: auto; scrollbar-width: none;
+  padding: 2px 0;
 }
-.thumb-dot.active { background: var(--player-accent); box-shadow: 0 0 6px var(--player-accent-glow); width: 18px; border-radius: 10px; }
-.thumb-dot.has-audio { background: rgba(99,102,241,.35); }
-.thumb-dot:hover { background: rgba(255,255,255,.35); }
+.page-thumb-strip::-webkit-scrollbar { display: none; }
+.thumb {
+  position: relative; flex-shrink: 0; width: 44px; height: 28px;
+  border-radius: 6px; overflow: hidden; padding: 0; cursor: pointer;
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+  transition: all var(--duration-base) ease;
+}
+.thumb.active {
+  border-color: var(--player-accent);
+  box-shadow: 0 0 8px var(--player-accent-glow);
+  transform: scale(1.08);
+}
+.thumb.has-audio::after {
+  content: ''; position: absolute; bottom: 2px; right: 2px;
+  width: 5px; height: 5px; border-radius: 50%; background: #22c55e;
+}
+.thumb:hover { border-color: rgba(255,255,255,.45); }
+.thumb-img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.thumb-block { display: block; width: 100%; height: 100%; background: rgba(255,255,255,.12); }
+.thumb-block--error { background: rgba(239,68,68,.28); }
+.thumb-html {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; width: 100%; height: 100%; color: rgba(148,163,184,.95);
+}
+.thumb-html-text {
+  max-width: 92%; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; font-size: 8px; line-height: 1.2;
+}
 .header-right { display: flex; gap: 4px; }
 
 .btn-icon {
@@ -1792,7 +1928,7 @@ kbd {
 .ctrl-btn:focus-visible,
 .speed-chip:focus-visible,
 .btn-icon:focus-visible,
-.thumb-dot:focus-visible {
+.thumb:focus-visible {
   outline: 3px solid #facc15;
   outline-offset: 2px;
 }
@@ -1811,8 +1947,33 @@ kbd {
   .nav-arrow { width: 36px; height: 36px; opacity: 1; }
 }
 
+/* F10（P2 移动端）：480px 专项断点 —— 页点缩略图条过挤隐藏、header-center 收窄、
+   speed-group 兜底隐藏（768 断点已隐藏，此处自文档化） */
 @media (max-width: 480px) {
   .narration-panel { position: absolute; right: 0; top: 48px; bottom: 60px; z-index: 50; width: 260px; }
   .narration-panel.collapsed { width: 24px; }
+  .page-thumb-strip { display: none; }
+  .header-center { gap: 2px; }
+  .page-counter { font-size: 12px; }
+  .speed-group { display: none; }
+}
+
+/* F10（P2 移动端，L0：移动端必须可用）：375px 专项断点 —— 触屏友好 + 防水平滚动。
+   进度条可点击区域扩大（触屏手指精度）、control-bar 紧凑、音频状态条文字缩小 */
+@media (max-width: 375px) {
+  .control-bar { gap: 4px; }
+  .ctrl-btn { width: 32px; height: 32px; }
+  .ctrl-btn-play { width: 38px; height: 38px; }
+  .progress-area { gap: 4px; }
+  .progress-track { height: 10px; margin: 3px 0; }
+  .progress-track:hover,
+  .progress-track:focus-visible { height: 10px; }
+  .time-label { font-size: 11px; min-width: 30px; }
+  .audio-status { font-size: 11px; padding: 2px 8px; }
+  .slide-stage { padding: 8px 0; }
+  .nav-arrow { width: 32px; height: 32px; }
+  .player-footer { padding: 8px 10px; }
+  .subtitle-bar { margin: 0 10px 6px; padding: 8px 12px; }
+  .keyboard-hint .hint-card { padding: 20px; max-width: 86vw; }
 }
 </style>
