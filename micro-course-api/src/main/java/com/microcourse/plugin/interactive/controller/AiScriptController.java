@@ -97,7 +97,8 @@ public class AiScriptController {
      * 对每个 pageId：取该页 page_text → LLM 生成 → 保存到 slide_ppt_page_scripts
      * （无 active 脚本创建 v1，有则创建新版本），逐页隔离失败。
      * </p>
-     * <p>返回：{@code {results: [{pageId, success, scriptId, error}]}}。</p>
+     * <p>返回：{@code R<List<BatchPptScriptResult>>}（顶层 data 字段即为结果数组
+     * [{pageId, success, scriptId, error}]，非包装对象）。</p>
      * 安全：课程级 owner 校验（checkOwner，未越权不触发任何 LLM 调用）；
      * service 内逐页 verifyPageOwner 防跨课程 pageId 枚举。
      */
