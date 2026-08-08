@@ -49,6 +49,8 @@ const ADMIN = [
     children: [
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/videos', icon: 'VideoPlay' },
+      { label: 'HTML 课件', path: '/admin/courseware/html', icon: 'Document' },
+      { label: 'PPT 课件', path: '/admin/courseware/ppt', icon: 'Picture' },
       { label: '题库管理', path: '/questions', icon: 'Document' },
       { label: '练习管理', path: '/exercises', icon: 'Edit' },
     ],
@@ -163,7 +165,9 @@ const TEACHER = [
       { label: '我的课程', path: '/teacher/courses', icon: 'VideoCamera' },
       { label: '章节管理', path: '/chapters', icon: 'List' },
       { label: '视频管理', path: '/teacher/videos', icon: 'VideoPlay' },
-      { label: '互动课件', path: '/teacher/slides', icon: 'Present' },
+      // 【V333 简化方案】互动课件 → HTML 课件 + PPT 课件 2 个独立菜单
+      { label: 'HTML 课件', path: '/admin/courseware/html', icon: 'Document' },
+      { label: 'PPT 课件', path: '/admin/courseware/ppt', icon: 'Picture' },
       { label: '线下课堂', path: '/teacher/offline-list', icon: 'Calendar' },
       { label: '练习管理', path: '/teacher/exercises', icon: 'Edit' },
       { label: '课程套餐', path: '/bundles', icon: 'Tickets' },

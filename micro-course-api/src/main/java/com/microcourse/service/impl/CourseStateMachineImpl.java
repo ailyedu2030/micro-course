@@ -9,6 +9,7 @@ import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.ExerciseRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.CourseType;
 import com.microcourse.enums.UserRole;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
@@ -87,7 +88,8 @@ public class CourseStateMachineImpl implements CourseStateMachine {
                 if (chapterCount == 0) errors.add("至少添加一个章节");
             }
             // 【审查修复】OFFLINE 课程没有视频/练习/课件, 跳过内容检查
-            if (!"OFFLINE".equals(course.getCourseType())) {
+            // 【V333】HTML_COURSEWARE / PPT_COURSEWARE 计入 slideCount，与旧 INTERACTIVE 行为一致
+            if (CourseType.normalize(course.getCourseType()) != CourseType.OFFLINE) {
                 long videoCount = videoRepository != null ? videoRepository.selectCount(
                         new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.microcourse.entity.Video>()
                                 .eq(com.microcourse.entity.Video::getCourseId, course.getId())

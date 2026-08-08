@@ -149,6 +149,12 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         BeanUtils.copyProperties(dto, entity, "id", "createdAt", "fileUuid");
         entity.setHtmlSanitized(sanitized);
         entity.setIsTrusted(isTrusted);
+        // 【P0 修复 2026-08-09】slide_html_units.file_size_bytes NOT NULL，
+        // 但"编辑器新建单元"路径（非文件上传）前端不传 fileSizeBytes → 直插必然 500。
+        // 按 HTML 原始内容 UTF-8 字节数兜底派生，保证新建单元 100% 可用。
+        if (entity.getFileSizeBytes() == null) {
+            entity.setFileSizeBytes((long) dto.getHtmlContent().getBytes(java.nio.charset.StandardCharsets.UTF_8).length);
+        }
         // 后端强制生成 fileUuid (不允许前端指定)
         entity.setFileUuid(UUID.randomUUID().toString().replace("-", ""));
         if (entity.getHasInteractions() == null) entity.setHasInteractions(false);

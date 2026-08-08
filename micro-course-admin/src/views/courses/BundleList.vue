@@ -86,9 +86,10 @@
       <el-table :data="bundleItems" border stripe>
         <el-table-column prop="sortOrder" label="顺序" width="60" />
         <el-table-column prop="courseTitle" label="课程名称" min-width="200" show-overflow-tooltip />
-        <el-table-column label="类型" width="100">
+        <el-table-column label="类型" width="110">
           <template #default="{ row }">
-            <el-tag v-if="row.courseType === 'INTERACTIVE'" type="success" size="small">互动</el-tag>
+            <el-tag v-if="isCoursewareCourseType(row.courseType)" type="success" size="small">{{ row.courseType === 'HTML_COURSEWARE' ? 'HTML 课件' : 'PPT 课件' }}</el-tag>
+            <el-tag v-else-if="row.courseType === 'OFFLINE'" type="info" size="small">线下</el-tag>
             <el-tag v-else type="primary" size="small">视频</el-tag>
           </template>
         </el-table-column>
@@ -122,6 +123,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getBundles, getBundleById, createBundle, updateBundle, publishBundle, unpublishBundle, addBundleCourse, removeBundleCourse, deleteBundle } from '@/api/bundle'
 import { getCourses } from '@/api/course'
 

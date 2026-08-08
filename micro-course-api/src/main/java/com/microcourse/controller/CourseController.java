@@ -113,7 +113,7 @@ public class CourseController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ACADEMIC','TEACHER','ADMIN')")
     @AuditedLog("创建课程")
-        @Operation(summary = "创建课程 (TEACHER 创建者自动绑定, OFFLINE 不需要插件授权, INTERACTIVE 需要)")
+        @Operation(summary = "创建课程 (TEACHER 创建者自动绑定, OFFLINE 不需要插件授权, HTML_COURSEWARE/PPT_COURSEWARE 需要)")
     public R<CourseVO> create(@Valid @RequestBody CourseCreateRequest request) {
         CourseVO vo = courseService.create(request);
         return R.ok(vo);

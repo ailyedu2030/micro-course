@@ -19,7 +19,8 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
               <div class="course-info">
                 <span class="course-title">{{ item.courseTitle }}</span>
                 <span class="course-meta">{{ item.teacherName }} · 
-                  <el-tag v-if="item.courseType === 'INTERACTIVE'" type="success" size="small">互动</el-tag>
+                  <el-tag v-if="isCoursewareCourseType(item.courseType)" type="success" size="small">{{ item.courseType === 'HTML_COURSEWARE' ? 'HTML 课件' : 'PPT 课件' }}</el-tag>
+                  <el-tag v-else-if="item.courseType === 'OFFLINE'" type="info" size="small">线下</el-tag>
                   <el-tag v-else type="primary" size="small">视频</el-tag>
                 </span>
               </div>
@@ -77,6 +78,7 @@ import { getBundleById, getBundleEnrollmentStatus } from '@/api/bundle'
 import { createOrder, payOrder } from '@/api/order'
 import { batchGetLearningProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
+import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getMyEnrollments } from '@/api/enrollment'
 import { filterCourseCollectionEnrollments } from '@/utils/enrollmentFilters'
 

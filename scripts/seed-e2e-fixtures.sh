@@ -3,7 +3,7 @@
 # 隔离 e2e 环境课程夹具种子
 # 供 local-dev-deploy.sh 在 Playwright 前调用：
 #   - 课程 1 (VIDEO, 归属 p0_teacher) → XSS PartA/B/C 上传与播放器
-#   - 课程 133 (INTERACTIVE) → phase11 互动课程用例（spec 硬编码 /courses/133）
+#   - 课程 133 (HTML_COURSEWARE, V333 简化方案替代 INTERACTIVE) → phase11 互动课程用例（spec 硬编码 /courses/133）
 #   - 章节 + HTML 课件 + student(7) 选课
 # 注意：本脚本面向本地隔离测试库，绝不面向生产。
 # =============================================================================
@@ -36,9 +36,9 @@ CID1=$(curl -s -X POST "$API_BASE/api/courses" -H "Authorization: Bearer $P0" -H
   -d "{\"title\":\"E2E测试课程1\",\"courseType\":\"VIDEO\",\"categoryId\":$CAT,\"offerDepartmentId\":1,\"difficulty\":1,\"description\":\"e2e fixture\",\"price\":0}" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
 
-# 3. 课程 133（INTERACTIVE 需 ADMIN；强制 id=133 匹配 phase11 硬编码）
+# 3. 课程 133（HTML_COURSEWARE 需 ADMIN；强制 id=133 匹配 phase11 硬编码）
 CID133=$(curl -s -X POST "$API_BASE/api/courses" -H "Authorization: Bearer $ADMIN_AT" -H 'Content-Type: application/json' \
-  -d "{\"title\":\"E2E互动课程133\",\"courseType\":\"INTERACTIVE\",\"categoryId\":$CAT,\"offerDepartmentId\":1,\"difficulty\":1,\"description\":\"e2e fixture\",\"price\":0,\"teacherId\":2}" \
+  -d "{\"title\":\"E2E互动课程133\",\"courseType\":\"HTML_COURSEWARE\",\"categoryId\":$CAT,\"offerDepartmentId\":1,\"difficulty\":1,\"description\":\"e2e fixture\",\"price\":0,\"teacherId\":2}" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])")
 if [ "$CID133" != "133" ]; then
   PSQL "UPDATE courses SET id=133 WHERE id=$CID133;"

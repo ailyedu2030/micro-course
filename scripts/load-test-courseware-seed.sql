@@ -49,8 +49,9 @@ SELECT setval('course_chapters_id_seq',           GREATEST((SELECT COALESCE(MAX(
 INSERT INTO courses (id, title, subtitle, summary, category_id, teacher_id, status, course_type,
                      difficulty, max_students, is_free, price, description)
 VALUES
-  (990001, 'LOADTEST-PPT 课件压测', '压测专用', '30/100 页 PPT 性能基准', 1, 1, 1, 'INTERACTIVE', 1, 9999, true, 0, 'Phase 14 load test PPT'),
-  (990002, 'LOADTEST-HTML 课件压测', '压测专用', '50 段 HTML 性能基准', 1, 1, 1, 'INTERACTIVE', 1, 9999, true, 0, 'Phase 14 load test HTML');
+  -- 【V333 简化方案】990001 全 PPT section → PPT_COURSEWARE；990002 全 HTML section → HTML_COURSEWARE
+  (990001, 'LOADTEST-PPT 课件压测', '压测专用', '30/100 页 PPT 性能基准', 1, 1, 1, 'PPT_COURSEWARE', 1, 9999, true, 0, 'Phase 14 load test PPT'),
+  (990002, 'LOADTEST-HTML 课件压测', '压测专用', '50 段 HTML 性能基准', 1, 1, 1, 'HTML_COURSEWARE', 1, 9999, true, 0, 'Phase 14 load test HTML');
 
 INSERT INTO course_chapters (id, course_id, title, sort_order)
 VALUES
