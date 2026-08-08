@@ -29,11 +29,11 @@ public interface SlideHtmlSegmentScriptMapper extends BaseMapper<SlideHtmlSegmen
     /**
      * 【BUG #9 修复】 批量取多个 unit 的 active segments (1 SQL, 取代 N 次).
      */
-    @Select("SELECT * FROM slide_html_segment_scripts WHERE is_active = TRUE "
+    @Select("<script>SELECT * FROM slide_html_segment_scripts WHERE is_active = TRUE "
           + "AND html_unit_id IN "
           + "  <foreach collection='unitIds' item='uid' open='(' separator=',' close=')'>"
           + "  #{uid}"
           + "  </foreach> "
-          + "ORDER BY html_unit_id, segment_index ASC")
+          + "ORDER BY html_unit_id, segment_index ASC</script>")
     List<SlideHtmlSegmentScript> listActiveByUnitIds(@Param("unitIds") List<Long> unitIds);
 }

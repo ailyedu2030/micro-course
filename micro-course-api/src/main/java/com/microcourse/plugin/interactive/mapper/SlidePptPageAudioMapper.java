@@ -33,11 +33,11 @@ public interface SlidePptPageAudioMapper extends BaseMapper<SlidePptPageAudio> {
      * Q-2 (N+1 修复): 批量取多个 script 的所有音频 (1 SQL 取代 N 次 listByScript).
      * 与 listByScript 一致按 is_default DESC, completed_at DESC 排序 (U-5 确定性).
      */
-    @Select("SELECT * FROM slide_ppt_page_audios WHERE script_id IN "
+    @Select("<script>SELECT * FROM slide_ppt_page_audios WHERE script_id IN "
           + "<foreach collection='scriptIds' item='sid' open='(' separator=',' close=')'>"
           + "  #{sid}"
           + "</foreach> "
-          + "ORDER BY is_default DESC, completed_at DESC")
+          + "ORDER BY is_default DESC, completed_at DESC</script>")
     List<SlidePptPageAudio> listByScriptIds(@Param("scriptIds") List<Long> scriptIds);
 
     /**
@@ -51,14 +51,14 @@ public interface SlidePptPageAudioMapper extends BaseMapper<SlidePptPageAudio> {
      * 【BUG #9 修复】 批量查询: 一次 SQL 取多个 script 的所有音频, 取代 N+1.
      * 配合 listByPageIds (script mapper) 实现 2 queries per tree.
      */
-    @Select("SELECT * FROM slide_ppt_page_audios WHERE script_id IN "
+    @Select("<script>SELECT * FROM slide_ppt_page_audios WHERE script_id IN "
           + "(SELECT id FROM slide_ppt_page_scripts "
           + " WHERE ppt_page_id IN "
           + "   <foreach collection='pageIds' item='pid' open='(' separator=',' close=')'>"
           + "   #{pid}"
           + " </foreach>"
           + " AND is_active = TRUE) "
-          + "ORDER BY is_default DESC, completed_at DESC")
+          + "ORDER BY is_default DESC, completed_at DESC</script>")
     List<SlidePptPageAudio> listByPageIds(@Param("pageIds") List<Long> pageIds);
 
     // ====== Q-1: TtsWorker 幂等抢占 (V330 worker_id 列) ======

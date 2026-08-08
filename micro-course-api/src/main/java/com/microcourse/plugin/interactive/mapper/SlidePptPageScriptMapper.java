@@ -29,10 +29,10 @@ public interface SlidePptPageScriptMapper extends BaseMapper<SlidePptPageScript>
      * 【BUG #9 修复】 批量取多个 PPT page 的 active script (1 SQL, 取代 N 次).
      * 用 IN + LIMIT 防误用 (100 个 page 一次查).
      */
-    @Select("SELECT * FROM slide_ppt_page_scripts WHERE is_active = TRUE "
+    @Select("<script>SELECT * FROM slide_ppt_page_scripts WHERE is_active = TRUE "
           + "AND ppt_page_id IN "
           + "  <foreach collection='pageIds' item='pid' open='(' separator=',' close=')'>"
           + "  #{pid}"
-          + "  </foreach>")
+          + "  </foreach></script>")
     List<SlidePptPageScript> listActiveByPageIds(@Param("pageIds") List<Long> pageIds);
 }
