@@ -163,7 +163,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
-            <version>3.3.4</version>
+            <version>4.0.3</version>
             <exclusions>
                 <!-- 排除所有 POI 传递依赖，使用项目显式声明的 poi-ooxml:5.3.0 -->
                 <exclusion>
