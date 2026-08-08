@@ -106,7 +106,21 @@
             >
               联系技术支持
             </el-button>
+            <!-- G3-P1-C-2: 限流场景 → 5 分钟倒计时按钮（禁用 → 倒计时 → 自动启用）。
+                 后端对 1002 限流立即置 FAILED，前端倒计时结束后才允许重试，避免无效点击 -->
             <el-button
+              v-if="errorInfo(audio).action === 'ratelimit'"
+              size="small"
+              type="primary"
+              plain
+              :loading="retryingId === audio.id"
+              :disabled="retryingId !== null || rateLimitRemaining(audio.id) > 0"
+              @click="emit('retry', { audio, scriptId: props.scriptId })"
+            >
+              {{ rateLimitRemaining(audio.id) > 0 ? `${formatRateLimit(rateLimitRemaining(audio.id))} 后可重试` : errorInfo(audio).actionLabel }}
+            </el-button>
+            <el-button
+              v-if="errorInfo(audio).action !== 'ratelimit'"
               size="small"
               type="primary"
               plain
@@ -146,11 +160,52 @@ const loading = ref(true)
 const playingId = ref(null)
 const audioEl = ref(null)
 
+// G3-P1-C-2: 限流 5 分钟倒计时（audioId → 剩余秒数）。倒计时归零后按钮自动启用。
+const RATE_LIMIT_SECONDS = 300
+const rateLimitCountdown = ref({})
+const countdownTimers = {}
+
+function rateLimitRemaining(audioId) {
+  return rateLimitCountdown.value[audioId] || 0
+}
+
+function startRateLimitCountdown(audioId) {
+  if (rateLimitRemaining(audioId) > 0) return
+  rateLimitCountdown.value = { ...rateLimitCountdown.value, [audioId]: RATE_LIMIT_SECONDS }
+  countdownTimers[audioId] = setInterval(() => {
+    const next = (rateLimitCountdown.value[audioId] || 0) - 1
+    if (next <= 0) {
+      clearInterval(countdownTimers[audioId])
+      delete countdownTimers[audioId]
+      rateLimitCountdown.value = { ...rateLimitCountdown.value }
+      delete rateLimitCountdown.value[audioId]
+    } else {
+      rateLimitCountdown.value = { ...rateLimitCountdown.value, [audioId]: next }
+    }
+  }, 1000)
+}
+
+function formatRateLimit(seconds) {
+  const m = Math.floor(seconds / 60)
+  const s = String(seconds % 60).padStart(2, '0')
+  return `${m}:${s}`
+}
+
+// FAILED + 限流 → 启动倒计时（L0：明确告知"等多久"，倒计时结束按钮自动可用）
+function maybeStartRateLimitCountdown(audiosList) {
+  audiosList.forEach((a) => {
+    if (a.status === 'FAILED' && classifyAudioError(a.errorMessage).action === 'ratelimit') {
+      startRateLimitCountdown(a.id)
+    }
+  })
+}
+
 async function load() {
   loading.value = true
   try {
     // 无脚本时静默置空，避免以 null 请求后端（此前必现 500）
     audios.value = props.scriptId ? await props.tokenLoader(props.scriptId) : []
+    maybeStartRateLimitCountdown(audios.value)
   } catch (e) {
     // F-2026-08-07-09：加载失败给出明确提示，避免未处理 rejection
     ElMessage.warning('音频列表加载失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
@@ -229,6 +284,8 @@ function formatSize(bytes) {
 onMounted(load)
 onUnmounted(() => {
   audioEl.value?.pause()
+  // G3-P1-C-2: 清理限流倒计时定时器
+  Object.values(countdownTimers).forEach(clearInterval)
 })
 </script>
 

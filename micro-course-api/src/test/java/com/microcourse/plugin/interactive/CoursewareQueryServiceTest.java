@@ -81,6 +81,7 @@ class CoursewareQueryServiceTest {
     private SectionQuizMapper sectionQuizMapper;
     private ExerciseRecordRepository exerciseRecordRepository;
     private com.microcourse.repository.LearningProgressRepository learningProgressRepository;
+    private com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper;
     private FlowEngine flowEngine;
     private CourseSectionRepository courseSectionRepository;
     private CoursewareQueryServiceImpl service;
@@ -100,6 +101,7 @@ class CoursewareQueryServiceTest {
         sectionQuizMapper = mock(SectionQuizMapper.class);
         exerciseRecordRepository = mock(ExerciseRecordRepository.class);
         learningProgressRepository = mock(com.microcourse.repository.LearningProgressRepository.class);
+        courseSlideMapper = mock(com.microcourse.plugin.interactive.mapper.CourseSlideMapper.class);
         flowEngine = mock(FlowEngine.class);
         courseSectionRepository = mock(CourseSectionRepository.class);
         service = new CoursewareQueryServiceImpl(pageMapper, pageScriptMapper,
@@ -110,7 +112,8 @@ class CoursewareQueryServiceTest {
                 courseSectionRepository,
                 courseRepository, enrollmentRepository, sectionQuizMapper, exerciseRecordRepository,
                 learningProgressRepository,
-                mock(org.springframework.jdbc.core.JdbcTemplate.class));
+                mock(org.springframework.jdbc.core.JdbcTemplate.class),
+                courseSlideMapper);
     }
 
     @AfterEach
@@ -387,6 +390,93 @@ class CoursewareQueryServiceTest {
         FlowEvaluateRequest req = new FlowEvaluateRequest();
         req.setCurrentPageId(1L);
         req.setUserProgress(0.99); // 客户端伪造高进度 —— 必须被忽略
+        FlowEvaluateResponse resp = service.evaluateFlow(42L, 99L, req);
+
+        assertNull(resp.getNextPageId());
+        assertEquals("LINEAR", resp.getMatchedType());
+    }
+
+    @Test
+    @DisplayName("evaluateFlow: SKIP_IF_KNOWN 服务端读到 video_progress=0.8（播放器翻页/ended 上报）→ SKIP 命中")
+    void evaluateFlowSkipWithProgress() {
+        loginAsOwnerTeacher();
+        mockCourseOwnedBy1();
+        mockSectionBelongsToCourse42();
+        when(flowEngine.decideNextPage(eq(99L), any())).thenReturn(4L);
+        when(flowEngine.listFlows(99L)).thenReturn(List.of(
+                newFlow(1L, 4L, "SKIP_IF_KNOWN")));
+
+        // G3-P0-5: 播放器通过 PUT video-progress 上报后，服务端从 learning_progress 读到 80（=0.8）
+        com.microcourse.entity.LearningProgress lp = new com.microcourse.entity.LearningProgress();
+        lp.setVideoProgress(80);
+        when(learningProgressRepository.findLatestByUserAndLesson(1L, 42L, 99L)).thenReturn(lp);
+
+        FlowEvaluateRequest req = new FlowEvaluateRequest();
+        req.setCurrentPageId(1L);
+        FlowEvaluateResponse resp = service.evaluateFlow(42L, 99L, req);
+
+        assertEquals(4L, resp.getNextPageId());
+        assertEquals("SKIP_IF_KNOWN", resp.getMatchedType());
+        verify(learningProgressRepository).findLatestByUserAndLesson(1L, 42L, 99L);
+    }
+
+    @Test
+    @DisplayName("evaluateFlow: BRANCH_DEPENDS 播放器不传 lastQuizId → 服务端读取最近通过测验 → BRANCH 命中")
+    void evaluateFlowBranchWithQuiz() {
+        loginAsOwnerTeacher();
+        mockCourseOwnedBy1();
+        mockSectionBelongsToCourse42();
+        // section 99 有两个 quiz：quiz 5（用户通过）、quiz 6（用户未做过）
+        SectionQuiz q5 = new SectionQuiz();
+        q5.setId(5L);
+        q5.setSectionId(99L);
+        SectionQuiz q6 = new SectionQuiz();
+        q6.setId(6L);
+        q6.setSectionId(99L);
+        when(sectionQuizMapper.selectList(any())).thenReturn(List.of(q5, q6));
+        // 服务端读取：quiz 5 有 passed=true 记录，quiz 6 无记录
+        ExerciseRecord passed = new ExerciseRecord();
+        passed.setPassed(true);
+        passed.setSubmittedAt(java.time.LocalDateTime.now());
+        when(exerciseRecordRepository.selectList(any())).thenAnswer(inv -> {
+            com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ExerciseRecord> w =
+                    inv.getArgument(0);
+            boolean isQuiz5 = w.getParamNameValuePairs().containsValue(5L);
+            return isQuiz5 ? List.of(passed) : java.util.Collections.emptyList();
+        });
+        when(flowEngine.decideNextPage(eq(99L), any())).thenReturn(3L);
+        when(flowEngine.listFlows(99L)).thenReturn(List.of(
+                newFlow(1L, 3L, "BRANCH_DEPENDS")));
+
+        // 播放器唯一调用点 payload 只有 {currentPageId, userProgress} —— 不传 lastQuizId
+        FlowEvaluateRequest req = new FlowEvaluateRequest();
+        req.setCurrentPageId(1L);
+        req.setUserProgress(0.0);
+        FlowEvaluateResponse resp = service.evaluateFlow(42L, 99L, req);
+
+        assertEquals(3L, resp.getNextPageId());
+        assertEquals("BRANCH_DEPENDS", resp.getMatchedType());
+        verify(sectionQuizMapper).selectList(any());
+    }
+
+    @Test
+    @DisplayName("evaluateFlow: BRANCH 服务端读取失败（无通过记录）→ 退化为 LINEAR")
+    void evaluateFlowBranchNoPassedQuiz() {
+        loginAsOwnerTeacher();
+        mockCourseOwnedBy1();
+        mockSectionBelongsToCourse42();
+        SectionQuiz q5 = new SectionQuiz();
+        q5.setId(5L);
+        q5.setSectionId(99L);
+        when(sectionQuizMapper.selectList(any())).thenReturn(List.of(q5));
+        // 用户对 quiz 5 从未通过 → 无 passed 记录 → lastQuizId 保持 null → BRANCH 不匹配
+        when(exerciseRecordRepository.selectList(any())).thenReturn(java.util.Collections.emptyList());
+        when(flowEngine.decideNextPage(eq(99L), any())).thenReturn(null);
+        when(flowEngine.listFlows(99L)).thenReturn(List.of(
+                newFlow(1L, 3L, "BRANCH_DEPENDS")));
+
+        FlowEvaluateRequest req = new FlowEvaluateRequest();
+        req.setCurrentPageId(1L);
         FlowEvaluateResponse resp = service.evaluateFlow(42L, 99L, req);
 
         assertNull(resp.getNextPageId());

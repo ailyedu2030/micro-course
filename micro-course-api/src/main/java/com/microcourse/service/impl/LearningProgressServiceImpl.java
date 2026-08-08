@@ -21,6 +21,8 @@ import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.LearningProgressService;
 import com.microcourse.util.SecurityUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,8 @@ import java.util.stream.Collectors;
 
 @Service
 public class LearningProgressServiceImpl implements LearningProgressService {
+
+    private static final Logger log = LoggerFactory.getLogger(LearningProgressServiceImpl.class);
 
     private final LearningProgressRepository learningProgressRepository;
     private final CourseRepository courseRepository;
@@ -544,6 +548,79 @@ public class LearningProgressServiceImpl implements LearningProgressService {
      * 构建学习进度查重条件（Round 8-4 P0）：按 (user, course, chapter, lesson) 业务粒度匹配活跃记录，
      * chapter/lesson 为空时用 IS NULL 精确匹配，避免 NULL 误命中。@TableLogic 自动追加 deleted_at IS NULL。
      */
+    /**
+     * G3-P0-5: 上报课时播放进度 → 服务端计算 video_progress 并写入 learning_progress。
+     * <p>
+     * 计算 {@code video_progress = min(100, round(played/total*100))}（0-100，与
+     * evaluateFlow 的 {@code lp.getVideoProgress()/100.0} 换算对齐）。total &lt;= 0 或
+     * played 为空时仅刷新 last_watch_at，不清零已有进度（避免翻页瞬间 0 进度覆盖历史）。
+     * 记录不存在（纯 PPT/HTML 场景 ensureProgress 已建，此处兜底）→ 幂等创建（ON CONFLICT DO NOTHING）。
+     * </p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateVideoProgress(Long userId, Long courseId, Long sectionId,
+                                    Integer playedSeconds, Integer totalSeconds) {
+        if (courseId == null || sectionId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "courseId 与 sectionId 必填");
+        }
+        // IDOR/选课校验：仅已选课学生可上报（与 updateProgress 同构）
+        long enrollmentCount = enrollmentRepository.selectCount(
+                new LambdaQueryWrapper<Enrollment>()
+                        .eq(Enrollment::getUserId, userId)
+                        .eq(Enrollment::getCourseId, courseId)
+                        .in(Enrollment::getEnrollmentStatus,
+                                EnrollmentStatus.legacyActiveWith(EnrollmentStatus.COMPLETED.getValue())));
+        if (enrollmentCount == 0) {
+            throw new BusinessException(ErrorCode.NOT_ENROLLED, "请先选课后再上报学习进度");
+        }
+
+        Integer computed = null;
+        if (totalSeconds != null && totalSeconds > 0
+                && playedSeconds != null && playedSeconds >= 0) {
+            computed = (int) Math.min(100, Math.round(playedSeconds * 100.0 / totalSeconds));
+        }
+
+        LearningProgress lp = learningProgressRepository.findLatestByUserAndLesson(
+                userId, courseId, sectionId);
+        if (lp == null) {
+            // 幂等创建（Round 8-4 并发防护：ON CONFLICT DO NOTHING 绝不抛唯一约束异常）
+            LearningProgress progress = new LearningProgress();
+            progress.setUserId(userId);
+            progress.setCourseId(courseId);
+            progress.setChapterId(resolveChapterId(courseId, sectionId));
+            progress.setSectionId(sectionId);
+            progress.setVideoProgress(computed);
+            progress.setCompleted(false);
+            progress.setLastWatchAt(LocalDateTime.now());
+            progress.setCreatedAt(LocalDateTime.now());
+            progress.setUpdatedAt(LocalDateTime.now());
+            learningProgressRepository.insertIfAbsent(progress);
+        } else {
+            LambdaUpdateWrapper<LearningProgress> wrapper = new LambdaUpdateWrapper<>();
+            if (computed != null) {
+                wrapper.set(LearningProgress::getVideoProgress, computed);
+            }
+            wrapper.set(LearningProgress::getLastWatchAt, LocalDateTime.now());
+            wrapper.set(LearningProgress::getUpdatedAt, LocalDateTime.now());
+            wrapper.eq(LearningProgress::getId, lp.getId());
+            learningProgressRepository.update(null, wrapper);
+        }
+    }
+
+    /** 反查 section → chapter（仅用于新建记录补全 chapter_id；查不到不阻塞上报）。 */
+    private Long resolveChapterId(Long courseId, Long sectionId) {
+        try {
+            com.microcourse.entity.CourseSection cs = courseSectionRepository.selectById(sectionId);
+            if (cs != null && courseId.equals(cs.getCourseId())) {
+                return cs.getChapterId();
+            }
+        } catch (Exception e) {
+            log.warn("[LearningProgress] 反查 chapterId 失败（忽略）: {}", e.getMessage());
+        }
+        return null;
+    }
+
     private LambdaQueryWrapper<LearningProgress> dedupWrapper(ProgressCreateRequest request) {
         LambdaQueryWrapper<LearningProgress> w = new LambdaQueryWrapper<>();
         w.eq(LearningProgress::getUserId, request.getUserId())

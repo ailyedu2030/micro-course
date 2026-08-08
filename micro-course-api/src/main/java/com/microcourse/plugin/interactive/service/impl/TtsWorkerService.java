@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -95,6 +96,66 @@ public class TtsWorkerService {
     private int schedulerPoolSize;
 
     private final AtomicInteger inFlight = new AtomicInteger(0);
+
+    /**
+     * G3-P1-C-2: 确定性失败 vs 瞬时失败分类。
+     * <p>
+     * 确定性错误（余额不足 / Key 无效 / 限流 / 未配置 key）重试不会成功，
+     * 此前一律 releaseClaim 回滚 GENERATING → 10 分钟后 markTimedOut 才置 FAILED，
+     * 用户收到失败反馈延迟 10 分钟。现在确定性错误<b>立即置 FAILED</b>并保留 error_message；
+     * 仅网络 / 超时 / 未知走重试（未知最多重试 3 次后 FAILED）。
+     * </p>
+     */
+    enum FailureCategory {
+        BALANCE_NOT_ENOUGH,   // 余额不足 → 立即 FAILED
+        INVALID_API_KEY,      // API Key 无效 → 立即 FAILED
+        RATE_LIMIT,           // 限流 → 立即 FAILED（提示 5 分钟后重试）
+        API_KEY_NOT_CONFIGURED, // 未配置 key → 立即 FAILED
+        NETWORK,              // 网络失败 → 重试
+        TIMEOUT,              // 超时 → 重试
+        UNKNOWN;              // 未知 → 重试最多 3 次后 FAILED
+
+        /** 是否无需重试、直接判定 FAILED（确定性错误）。 */
+        boolean failsImmediately() {
+            return this == BALANCE_NOT_ENOUGH || this == INVALID_API_KEY
+                    || this == RATE_LIMIT || this == API_KEY_NOT_CONFIGURED;
+        }
+    }
+
+    /** 错误消息 → 失败类别（与 TtsServiceImpl 抛出的消息文案对齐）。 */
+    static FailureCategory classifyFailure(String message) {
+        String m = message == null ? "" : message;
+        if (m.contains("余额不足")) return FailureCategory.BALANCE_NOT_ENOUGH;
+        if (m.contains("Key 无效")) return FailureCategory.INVALID_API_KEY;
+        if (m.contains("限流")) return FailureCategory.RATE_LIMIT;
+        if (m.contains("key 未配置")) return FailureCategory.API_KEY_NOT_CONFIGURED;
+        if (m.contains("MiniMax 调用失败")) return FailureCategory.NETWORK;  // 网络 IO 失败
+        if (m.contains("超时") || m.toLowerCase().contains("timeout")) return FailureCategory.TIMEOUT;
+        return FailureCategory.UNKNOWN;
+    }
+
+    /**
+     * G3-P1-C-2: UNKNOWN 类失败的重试计数（内存态，跨 worker 节点不共享可接受——
+     * 10 分钟 markTimedOut 兜底仍在）。key = "PPT:{id}" / "HTML:{id}"。
+     */
+    private static final int UNKNOWN_MAX_RETRIES = 3;
+    private final Map<String, AtomicInteger> unknownRetryCount = new ConcurrentHashMap<>();
+
+    private String retryKey(boolean ppt, Long audioRowId) {
+        return (ppt ? "PPT:" : "HTML:") + audioRowId;
+    }
+
+    /** UNKNOWN 失败重试次数是否已超限（达到上限 → 立即 FAILED）。 */
+    private boolean isUnknownRetryExhausted(boolean ppt, Long audioRowId) {
+        AtomicInteger counter = unknownRetryCount.computeIfAbsent(
+                retryKey(ppt, audioRowId), k -> new AtomicInteger(0));
+        return counter.incrementAndGet() >= UNKNOWN_MAX_RETRIES;
+    }
+
+    /** 成功/终态后清理重试计数，避免 Map 无限增长。 */
+    private void clearRetryCount(boolean ppt, Long audioRowId) {
+        unknownRetryCount.remove(retryKey(ppt, audioRowId));
+    }
 
     /** 历史前端枚举 → MiniMax 官方 voice_id（R-6 别名映射） */
     private static final Map<String, String> VOICE_ALIASES = Map.of(
@@ -327,14 +388,28 @@ public class TtsWorkerService {
             });
             log.info("[TtsWorker] READY audioRowId={} type={} bytes={} ~{}s", audioRowId, ppt ? "PPT" : "HTML",
                     audio.getBytes().length, audio.getEstimatedSec());
+            clearRetryCount(ppt, audioRowId);
         } catch (Exception e) {
             log.error("[TtsWorker] 生成失败 audioRowId={} type={}: {}", audioRowId, ppt ? "PPT" : "HTML",
                     e.getMessage(), e);
-            // 记录失败原因（R-15）——保留 GENERATING 下个周期重试，
-            // error_message 让用户在等待期可见真实原因（余额不足/限流/超时）；
-            // Q-1: 释放抢占回滚 status='GENERATING'（worker_id 清空），下轮重新抢占重试。
-            persistFailureMessage(audioRowId, ppt, e.getMessage());
-            releaseClaim(audioRowId, ppt);
+            // G3-P1-C-2：错误分类 —— 确定性错误（余额不足/Key 无效/限流/未配置 key）立即置 FAILED，
+            // 不再 releaseClaim 重试等 10 分钟 markTimedOut 兜底（用户反馈延迟 10 分钟）；
+            // 网络/超时保留 GENERATING 下轮重试（瞬时故障）；未知最多重试 3 次后 FAILED。
+            FailureCategory category = classifyFailure(e.getMessage());
+            if (category.failsImmediately()) {
+                markFailed(audioRowId, e.getMessage());
+                clearRetryCount(ppt, audioRowId);
+            } else if (category == FailureCategory.UNKNOWN && isUnknownRetryExhausted(ppt, audioRowId)) {
+                log.warn("[TtsWorker] UNKNOWN 错误重试 {} 次仍失败 → FAILED audioRowId={} type={}",
+                        UNKNOWN_MAX_RETRIES, audioRowId, ppt ? "PPT" : "HTML");
+                markFailed(audioRowId, e.getMessage());
+            } else {
+                // 记录失败原因（R-15）——保留 GENERATING 下个周期重试，
+                // error_message 让用户在等待期可见真实原因（余额不足/限流/超时）；
+                // Q-1: 释放抢占回滚 status='GENERATING'（worker_id 清空），下轮重新抢占重试。
+                persistFailureMessage(audioRowId, ppt, e.getMessage());
+                releaseClaim(audioRowId, ppt);
+            }
         }
     }
 

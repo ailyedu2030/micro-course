@@ -15,6 +15,7 @@ import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.dto.TtsOptionsVO;
+import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SectionQuiz;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
@@ -24,6 +25,7 @@ import com.microcourse.plugin.interactive.entity.SlidePptFlow;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageAudio;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SectionQuizMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
@@ -97,6 +99,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final LearningProgressRepository learningProgressRepository;
     // D-1 (V328)：幽灵章节审计函数调用（audit_ghost_chapters()）
     private final JdbcTemplate jdbcTemplate;
+    // G3-P1-C-1: 渲染状态透传（course_slides.status / error_message）
+    private final CourseSlideMapper courseSlideMapper;
 
     /** MiniMax 官方模型（application.yml 契约，R-6） */
     private static final List<String> TTS_MODELS = java.util.List.of(
@@ -129,7 +133,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        SectionQuizMapper sectionQuizMapper,
                                        ExerciseRecordRepository exerciseRecordRepository,
                                        LearningProgressRepository learningProgressRepository,
-                                       JdbcTemplate jdbcTemplate) {
+                                       JdbcTemplate jdbcTemplate,
+                                       CourseSlideMapper courseSlideMapper) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -147,6 +152,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.exerciseRecordRepository = exerciseRecordRepository;
         this.learningProgressRepository = learningProgressRepository;
         this.jdbcTemplate = jdbcTemplate;
+        this.courseSlideMapper = courseSlideMapper;
     }
 
     @Override
@@ -317,6 +323,15 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         return tree;
     }
 
+    /**
+     * G3-P1-C-1: 空树构建 —— 透传 course_slides 渲染状态。
+     * <p>
+     * 当课件树为空（无 PPT pages / 无 HTML unit / 无 v1 HTML）时，
+     * 若存在对应 section 的 course_slides 记录且状态为 FAILED，
+     * 前端可据此展示真实原因（如"PPT 文件损坏，请重新上传"），
+     * 而非 90 秒轮询超时后只能提示泛化的"超时"（L0：错误消息诚实）。
+     * </p>
+     */
     private CoursewareTreeDTO emptyTree(Long courseId, Long sectionId) {
         CoursewareTreeDTO tree = new CoursewareTreeDTO();
         tree.setType("EMPTY");
@@ -325,7 +340,35 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         tree.setFlow(Collections.emptyList());
         tree.setNarrationStatus("PENDING");
         tree.setAudioReadyCount(0);
+        // 透传最近一次上传的课件渲染状态（仅渲染失败/进行中时填充，空课件保持 null）
+        if (courseSlideMapper != null && sectionId != null) {
+            try {
+                CourseSlide slide = courseSlideMapper.selectOne(
+                        new LambdaQueryWrapper<CourseSlide>()
+                                .eq(CourseSlide::getSectionId, sectionId)
+                                .eq(courseId != null, CourseSlide::getCourseId, courseId)
+                                .orderByDesc(CourseSlide::getId)
+                                .last("LIMIT 1"));
+                if (slide != null && slide.getStatus() != null) {
+                    tree.setRenderStatus(renderStatusName(slide.getStatus()));
+                    tree.setRenderErrorMessage(slide.getErrorMessage());
+                }
+            } catch (Exception e) {
+                // 读失败仅丢失错误透传，不影响课件树主流程
+                log.warn("[CoursewareTree] course_slides 渲染状态读取失败（跳过透传）: {}", e.getMessage());
+            }
+        }
         return tree;
+    }
+
+    /** 状态码 → 可读枚举名（未知码回退数字字符串，绝不让 EMPTY 树因枚举解析失败而 500）。 */
+    private String renderStatusName(Integer status) {
+        if (status == null) return null;
+        try {
+            return com.microcourse.enums.CourseSlideStatus.fromCode(status).name();
+        } catch (Exception e) {
+            return String.valueOf(status);
+        }
     }
 
     @Override
@@ -391,6 +434,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         // P1-C-2（设计决策 3）：BRANCH quiz 答案服务端读取，不信任客户端 lastQuizAnswer。
         // 客户端 lastQuizId 仅作 hint：必须属于本 section 的 quiz（section_quizzes），否则忽略；
         // 通过状态从 exercise_records 服务端读取（同 ExerciseRecordController.getAttemptSummary 数据源）。
+        Long userId = SecurityUtil.getCurrentUserIdOpt();
         Long quizId = request.getLastQuizId();
         Boolean quizPassed = null;
         if (quizId != null) {
@@ -402,20 +446,49 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                 log.warn("[FlowEvaluate] 忽略跨 section/伪造的 lastQuizId={} (sectionId={})", quizId, sectionId);
                 quizId = null;
             } else {
-                Long uid = SecurityUtil.getCurrentUserIdOpt();
-                quizPassed = uid != null && exerciseRecordRepository.selectList(
+                quizPassed = userId != null && exerciseRecordRepository.selectList(
                                 new LambdaQueryWrapper<ExerciseRecord>()
-                                        .eq(ExerciseRecord::getUserId, uid)
+                                        .eq(ExerciseRecord::getUserId, userId)
                                         .eq(ExerciseRecord::getExerciseId, quizId))
                         .stream().anyMatch(r -> Boolean.TRUE.equals(r.getPassed()));
                 if (quizPassed == null) quizPassed = false;
+            }
+        }
+        // G3-P0-5（P0-5 flow 端到端）：播放器不传 lastQuizId（无机制获取"最近完成的 quiz id"），
+        // 导致 BRANCH_DEPENDS 规则永不匹配。此处服务端自动读取：当前用户在本 section 下
+        // 最近一次通过（passed=true）的测验 → 注入 FlowContext.lastQuizId，让 BRANCH 规则真实生效。
+        if (quizId == null && userId != null) {
+            try {
+                List<SectionQuiz> quizzes = sectionQuizMapper.selectList(
+                        new LambdaQueryWrapper<SectionQuiz>()
+                                .eq(SectionQuiz::getSectionId, sectionId));
+                for (SectionQuiz q : quizzes) {
+                    List<ExerciseRecord> recs = exerciseRecordRepository.selectList(
+                            new LambdaQueryWrapper<ExerciseRecord>()
+                                    .eq(ExerciseRecord::getUserId, userId)
+                                    .eq(ExerciseRecord::getExerciseId, q.getId())
+                                    .orderByDesc(ExerciseRecord::getSubmittedAt)
+                                    .last("LIMIT 1"));
+                    ExerciseRecord latest = recs.isEmpty() ? null : recs.get(0);
+                    if (latest != null && Boolean.TRUE.equals(latest.getPassed())) {
+                        quizId = q.getId();
+                        quizPassed = true;
+                        log.debug("[FlowEvaluate] BRANCH quiz 服务端读取: userId={}, section={}, quiz={}",
+                                userId, sectionId, quizId);
+                        break;
+                    }
+                }
+            } catch (Exception e) {
+                // 服务端读取失败 → 不命中 BRANCH（安全侧退化：宁可不跳，不伪造测验状态）
+                log.warn("[FlowEvaluate] 最近通过测验读取失败（BRANCH 不命中）: {}", e.getMessage());
+                quizId = null;
+                quizPassed = null;
             }
         }
         // S-1（设计决策 3 完整性）：SKIP_IF_KNOWN 的 userProgress 也必须服务端读取，
         // 不信任客户端 request.getUserProgress()（可伪造进度绕过教师配置的 SKIP 规则）。
         // 数据源：learning_progress（user_id + course_id + lesson_id 最新记录），
         // video_progress 0-100 → 0.0-1.0；无记录 → null（SKIP 不命中，退化为线性）。
-        Long userId = SecurityUtil.getCurrentUserIdOpt();
         Double userProgress = null;
         if (userId != null && learningProgressRepository != null) {
             try {

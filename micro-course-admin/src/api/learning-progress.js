@@ -8,6 +8,16 @@ export function updateLearningProgress(id, data) {
   return request({ method: 'PUT', url: `/learning-progress/progress/${id}`, data })
 }
 
+// G3-P0-5: 播放器翻页/音频结束上报本课时播放进度（SKIP_IF_KNOWN 服务端读取）。
+// 服务端计算 video_progress = played/total（0-100），仅 STUDENT 可用。
+export function reportVideoProgress(courseId, sectionId, playedSeconds, totalSeconds) {
+  return request({
+    method: 'PUT',
+    url: `/learning-progress/${courseId}/sections/${sectionId}/video-progress`,
+    data: { playedSeconds, totalSeconds }
+  })
+}
+
 export function createLearningProgress(data) {
   return request({ method: 'POST', url: '/learning-progress/progress', data })
 }

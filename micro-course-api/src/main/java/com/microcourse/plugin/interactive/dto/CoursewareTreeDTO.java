@@ -35,6 +35,12 @@ public class CoursewareTreeDTO {
 
     private LocalDateTime lastUpdatedAt;
 
+    // G3-P1-C-1: 渲染状态透传（来源 course_slides.status / error_message）。
+    // 树为 EMPTY 时前端据此区分"课件真的为空/被删除"与"渲染失败（文件损坏等）"，
+    // 避免 90 秒轮询超时后只能提示泛化的"超时"而看不到真实原因（L0：错误消息诚实）。
+    private String renderStatus;
+    private String renderErrorMessage;
+
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
     public Long getSectionId() { return sectionId; }
@@ -53,6 +59,10 @@ public class CoursewareTreeDTO {
     public void setAudioReadyCount(Integer audioReadyCount) { this.audioReadyCount = audioReadyCount; }
     public LocalDateTime getLastUpdatedAt() { return lastUpdatedAt; }
     public void setLastUpdatedAt(LocalDateTime lastUpdatedAt) { this.lastUpdatedAt = lastUpdatedAt; }
+    public String getRenderStatus() { return renderStatus; }
+    public void setRenderStatus(String renderStatus) { this.renderStatus = renderStatus; }
+    public String getRenderErrorMessage() { return renderErrorMessage; }
+    public void setRenderErrorMessage(String renderErrorMessage) { this.renderErrorMessage = renderErrorMessage; }
 
     /**
      * PPT 单页节点 (含 page 元数据 + 脚本 + 音频列表).

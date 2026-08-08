@@ -6,13 +6,20 @@
 -->
 <template>
   <div class="slide-player" ref="playerRef" tabindex="0" @keydown="handleKeydown">
+    <!-- P1-C-7（L0 铁律）：教师/管理员预览态必须明确标识 —— 预览不记录进度，
+         避免教师误以为学习进度已写入、或误判 quiz 分支行为与真实学生一致 -->
+    <div v-if="inPreview || !isStudent" class="teacher-preview-banner" role="alert">
+      <el-icon :size="14"><Warning /></el-icon>
+      <span class="tpb-text">教师预览模式 · 不会记录学习进度 · quiz 回答不影响分支跳转</span>
+      <button type="button" class="tpb-exit" @click="handleBack" aria-label="退出预览">退出预览</button>
+    </div>
     <!-- Top Bar -->
     <header class="player-header">
-      <button class="btn-icon" @click="$router.back()" aria-label="返回">
+      <button class="btn-icon" @click="handleBack" :aria-label="inPreview ? '退出预览' : '返回'">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
       <div class="header-center">
-        <span class="page-counter">{{ current + 1 }}<span class="counter-divider">/</span>{{ pages.length }}</span>
+        <span class="page-counter">{{ pages.length === 0 ? 0 : current + 1 }}<span class="counter-divider">/</span>{{ pages.length }}</span>
         <div class="page-thumb-strip">
           <button
 v-for="(p, i) in pages" :key="i"
@@ -50,6 +57,20 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
     <div v-else-if="pageError" class="player-loading" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px">
       <span style="color:var(--el-text-color-secondary)">幻灯片加载失败</span>
       <el-button size="small" @click="loadPages">重试</el-button>
+    </div>
+
+    <!-- G3-P0-6（L0 铁律）：0 页课件空状态 —— 明确告知"当前状况 + 该怎么办"。
+         此前 pages.length===0 落入 slide-placeholder 显示"图片加载失败"+重试按钮、
+         页计数器显示"1/0"，学生无法区分"图片挂了"与"课件没了"（误导）。
+         空状态不指责用户，提供返回课程详情的明确出口。 -->
+    <div v-else-if="pages.length === 0" class="player-empty" role="region" aria-label="课件为空">
+      <el-empty :image-size="140">
+        <template #description>
+          <span class="player-empty-title">该课件暂无内容或已被教师删除</span>
+        </template>
+        <p class="player-empty-hint">如有问题请联系教师或管理员</p>
+        <el-button type="primary" @click="goBackToCourse">返回课程详情</el-button>
+      </el-empty>
     </div>
 
     <!-- Main Content -->
@@ -158,6 +179,20 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           <span v-else-if="audioStatus === 'pending'" class="status-pending">
             <el-icon :size="14"><Clock /></el-icon> 等待音频生成{{ pendingTimeoutWarning }}
           </span>
+          <!-- P1-C-5：v2 PPT GENERATING 页 / legacy PENDING 页均按 narrationStatus 正确提示 -->
+          <span v-else-if="audioStatus === 'generating'" class="status-pending">
+            <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频生成中
+          </span>
+          <!-- P1-C-3：AUDIO_FAILED 段/页 → 明确"生成失败"而非"无音频"，并提供重试入口 -->
+          <span v-else-if="audioStatus === 'failed'" class="status-error">
+            <el-icon :size="14"><Warning /></el-icon> 音频生成失败
+            <button
+              type="button"
+              class="audio-status-btn status-failed-retry"
+              aria-label="重新加载音频状态"
+              @click="handleAudioRetry"
+            >重试</button>
+          </span>
           <span v-else-if="audioStatus === 'error'" class="status-error">
             <el-icon :size="14"><Warning /></el-icon> 音频加载失败
           </span>
@@ -172,7 +207,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" aria-label="上一页">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none')" aria-label="播放/暂停">
+        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none' || audioStatus === 'generating' || audioStatus === 'failed')" aria-label="播放/暂停">
           <el-icon :size="24"><VideoPause v-if="playing" /><VideoPlay v-else /></el-icon>
         </button>
         <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" aria-label="下一页">
@@ -182,7 +217,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         <div class="progress-area">
           <span class="time-label">{{ formatTime(audioTime) }}</span>
           <div
-            v-if="audioStatus !== 'pending' && audioStatus !== 'none'"
+            v-if="audioStatus !== 'pending' && audioStatus !== 'none' && audioStatus !== 'generating' && audioStatus !== 'failed'"
             class="progress-track"
             role="slider"
             tabindex="0"
@@ -258,19 +293,28 @@ v-for="s in speeds" :key="s"
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { evaluateFlow } from '@/plugins/interactive/api/queryCourseware'
 import { loadAuthResource, clearImageCache } from '@/utils/authImage'
-import { getLearningProgress, createLearningProgress, updateLearningProgress } from '@/api/learning-progress'
+import { getLearningProgress, createLearningProgress, updateLearningProgress, reportVideoProgress } from '@/api/learning-progress'
 import { useUserStore } from '@/store/user'
 import { ArrowLeft, ArrowRight, VideoPlay, VideoPause, FullScreen, Loading, RefreshRight, PictureFilled, Download, Clock, Warning, Document, Mute } from '@element-plus/icons-vue'
 import { enhanceHtmlContentForA11y } from '@/plugins/interactive/composables/useHtmlSegmentBridge'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
-const courseId = computed(() => route.params.courseId)
+// P1-C-7/P1-C-8：SlidePreview（教师预览 dialog）通过 in-preview 传入；courseId/sectionId
+// props 优先（预览场景显式传入），route 兜底（学生端路由直接打开）
+const props = defineProps({
+  inPreview: { type: Boolean, default: false },
+  courseId: { type: [String, Number], default: null },
+  sectionId: { type: [String, Number], default: null }
+})
+const emit = defineEmits(['close'])
+const courseId = computed(() => props.courseId ?? route.params.courseId)
 const chapterId = computed(() => route.query.chapterId || route.params.chapterId || null)
 // 学习进度仅对 STUDENT 上报；教师/管理员在管理页"预览"打开播放器时不写入进度（后端 hasRole('STUDENT') 会 403）
 const isStudent = computed(() => userStore.role === 'STUDENT')
@@ -304,7 +348,8 @@ let autoAdvanceTimer = null
 let loadingTimer = null
 const currentAudioSrcGen = ref(0)
 
-const audioStatus = ref('none') // 'loading' | 'ready' | 'pending' | 'none' | 'error'
+// P1-C-5/P1-C-3: 'loading' | 'ready' | 'pending'(等待生成) | 'generating'(生成中) | 'failed'(生成失败) | 'none' | 'error'(加载失败)
+const audioStatus = ref('none')
 const pendingStartTime = ref(null)
 const pendingTimeoutWarning = ref('')
 const interactiveWaiting = ref(false)  // 当前页是否等待用户点"完成"
@@ -695,8 +740,16 @@ function playSegment(index, time) {
   const seg = segments.value[index]
   if (!seg) return
   if (!seg.audio?.url) {
-    audioStatus.value = seg.audio?.status === 'GENERATING' ? 'pending' : 'error'
-    if (audioStatus.value === 'error') ElMessage.warning('该段音频尚未生成，请教师先生成音频')
+    // P1-C-3：FAILED 段明确提示"生成失败"（不再与未生成混为"尚未生成"）
+    if (seg.audio?.status === 'GENERATING') {
+      audioStatus.value = 'pending'
+    } else if (seg.audio?.status === 'FAILED') {
+      audioStatus.value = 'failed'
+      ElMessage.warning('该段音频生成失败，请教师重新生成音频')
+    } else {
+      audioStatus.value = 'error'
+      ElMessage.warning('该段音频尚未生成，请教师先生成音频')
+    }
     return
   }
   if (!unlocked.value) {
@@ -860,6 +913,9 @@ function goTo(index) {
   if (index < 0 || index >= pages.value.length) return
   if (pageNavLock) return
   pageNavLock = true
+  // G3-P0-5: 离开当前页前上报本页播放进度（此时 current/audioTime 仍是旧页值，
+  // currentPlaybackProgress 计算的是"已离开页"的真实进度；0 进度自动跳过）
+  updateVideoProgress()
   lastDirection.value = index > current.value ? 1 : -1
   transitionName.value = index > current.value ? 'slide-next' : 'slide-prev'
   current.value = index
@@ -906,7 +962,9 @@ async function loadAudio(index) {
   if (hasSegments) {
     const hasReady = segments.value.some(s => s.audio?.url)
     const hasPending = segments.value.some(s => s.audio?.status === 'GENERATING')
-    audioStatus.value = hasReady ? 'ready' : (hasPending ? 'pending' : 'none')
+    // P1-C-3：FAILED 段不再归入"无音频"—— 明确提示生成失败并提供重试入口
+    const hasFailed = segments.value.some(s => s.audio?.status === 'FAILED')
+    audioStatus.value = hasReady ? 'ready' : (hasPending ? 'pending' : (hasFailed ? 'failed' : 'none'))
     audioDuration.value = 0
     audioTime.value = 0
     audioProgress.value = 0
@@ -968,14 +1026,11 @@ async function loadAudio(index) {
     return
   }
 
-  if (!page?.narrationAudioUrl) {
-    audioStatus.value = 'none'
-    audioDuration.value = 0
-    audioRef.value.src = ''
-    return
-  }
-
-  if (page.narrationStatus === 'PENDING') {
+  // P1-C-5：判断顺序调整 —— 先按 narrationStatus 精确提示，
+  // 再兜底"无音频"。v2 PPT GENERATING 页（pickReadyAudio 返回 null →
+  // audio.url / narrationAudioUrl 均为 null）与 legacy PENDING 页若先判
+  // narrationAudioUrl 会全部落入「该页无讲解音频」，而非真实状态。
+  if (page.narrationStatus === 'PENDING' || page.narrationStatus === 'AUDIO_PENDING') {
     audioStatus.value = 'pending'
     pendingStartTime.value = Date.now()
     pendingTimeoutWarning.value = ''
@@ -983,6 +1038,30 @@ async function loadAudio(index) {
     audioRef.value.src = ''
     startPendingTimer()
     checkHtmlInteractive(page)
+    return
+  }
+
+  if (page.narrationStatus === 'GENERATING' || page.narrationStatus === 'AUDIO_GENERATING') {
+    audioStatus.value = 'generating'
+    audioDuration.value = 0
+    audioRef.value.src = ''
+    checkHtmlInteractive(page)
+    return
+  }
+
+  // P1-C-3：AUDIO_FAILED（G3 后端新枚举）→ 显示「音频生成失败 [重试]」，不再落入"无音频"
+  if (page.narrationStatus === 'FAILED' || page.narrationStatus === 'AUDIO_FAILED') {
+    audioStatus.value = 'failed'
+    audioDuration.value = 0
+    audioRef.value.src = ''
+    checkHtmlInteractive(page)
+    return
+  }
+
+  if (!page?.narrationAudioUrl) {
+    audioStatus.value = 'none'
+    audioDuration.value = 0
+    audioRef.value.src = ''
     return
   }
 
@@ -1079,7 +1158,7 @@ function cleanAudioBlobCache(currentIdx) {
 function playAudio() {
   if (!audioRef.value) return
   if (segmentMode.value) { playSegment(activeSegmentIndex.value); return }
-  if (audioStatus.value === 'pending' || audioStatus.value === 'none') return
+  if (audioStatus.value === 'pending' || audioStatus.value === 'none' || audioStatus.value === 'generating' || audioStatus.value === 'failed') return
   if (!unlocked.value) { audioStatus.value = 'ready'; return }
   audioRef.value.play().then(() => {
     playing.value = true
@@ -1152,6 +1231,8 @@ function onAudioLoaded() {
 function onAudioEnded() {
   const expectedGen = currentAudioSrcGen.value
   playing.value = false; autoCountdown.value = 0
+  // G3-P0-5: 整页音频播放结束 → 上报本页进度（audioTime=duration → ratio=1.0 → video_progress=100）
+  updateVideoProgress()
   sendMessageToHtmlIframe({ type: 'slide-audio-state', state: 'ended' })
 
   // P0 AudioHost：HTML 分段顺序播放（方案 §8.1）
@@ -1175,8 +1256,8 @@ function onAudioEnded() {
             advanceToNextPage(expectedGen)
           }, 1500)
         } else if (!courseCompleted) {
-          courseCompleted = true
-          ElMessage.success('本课学习完成')
+          // P1-C-8：教师预览零记录 → 文案必须诚实（预览结束 ≠ 学习完成）
+          notifyCourseCompleted()
         }
       }
     }
@@ -1191,9 +1272,25 @@ function onAudioEnded() {
       advanceToNextPage(expectedGen)
     }, 1500)
   } else if (autoMode.value && !courseCompleted) {
-    courseCompleted = true
-    ElMessage.success('本课学习完成')
+    notifyCourseCompleted()
   }
+}
+
+// P1-C-8：完成/结束通知 —— 按角色诚实区分：
+// 学生 =「本课学习完成」；教师/管理员预览 =「课件预览结束」（isStudent=false 不写进度）
+function notifyCourseCompleted() {
+  courseCompleted = true
+  ElMessage.success(isStudent.value ? '本课学习完成' : '课件预览结束')
+}
+
+// P1-C-3：音频生成失败 → 重试入口（重新加载该页音频状态；生成操作本身在教师端）
+function handleAudioRetry() {
+  if (isStudent.value) {
+    ElMessage.info('音频生成失败，请提醒教师重新生成音频')
+  } else {
+    ElMessage.info('请在「音频」面板重新生成该页音频')
+  }
+  loadAudio(current.value)
 }
 
 function seekAudioByClick(e) {
@@ -1224,6 +1321,16 @@ function dismissKeyboardHint() {
   showKeyboardHint.value = false
 }
 
+// P1-C-8：退出语义 —— 预览 dialog 内返回按钮 emit 'close'（关闭预览 dialog，保留管理页上下文），
+// 而非 $router.back()（会误退整个管理页）；学生端路由直接打开时才 router.back()
+function handleBack() {
+  if (props.inPreview) {
+    emit('close')
+  } else {
+    router.back()
+  }
+}
+
 function handleKeydown(e) {
   if (showKeyboardHint.value && e.key === 'Escape') {
     e.preventDefault()
@@ -1251,8 +1358,9 @@ function formatTime(s) {
   return `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 }
 
-// P1I-016: 在进度上报时增加 sectionId 参数（query 优先，path 兜底——支持章节级管理页内嵌预览）
-const sectionId = computed(() => route.query.sectionId || route.params.sectionId || null)
+// P1I-016: 在进度上报时增加 sectionId 参数（query 优先，path 兜底——支持章节级管理页内嵌预览）；
+// P1-C-7: 预览场景 SlidePreview 显式传入 sectionId（props 优先）
+const sectionId = computed(() => props.sectionId ?? (route.query.sectionId || route.params.sectionId || null))
 
 // P0-2: 创建/获取进度记录
 async function ensureProgress() {
@@ -1291,6 +1399,32 @@ async function markSlideComplete() {
   } catch { /* 静默 */ }
 }
 
+// G3-P0-5（P0-5 flow 端到端）：上报本课时播放进度（翻页离开时 / 音频 ended / 单页挂载时触发）。
+// 服务端计算 video_progress = 已播/总时长 写入 learning_progress，供 evaluateFlow 的
+// SKIP_IF_KNOWN 服务端读取 —— 此前纯 PPT/HTML 学习场景该字段恒 null → SKIP 规则永不命中。
+// fire-and-forget：失败静默，绝不阻塞播放（L0：流畅体验优先）。
+// 用 currentPlaybackProgress()（已播/总时长比例，0.0-1.0）换算虚拟秒数（total=1000），
+// 服务端算出的 video_progress 百分比与真实播放进度一致；ratio<=0（刚进入未播放）跳过，
+// 避免翻页瞬间以 0 进度覆盖已累计的真实进度。
+function updateVideoProgress() {
+  if (!courseId.value || !sectionId.value || !isStudent.value) return
+  const page = currentPage.value
+  if (!page) return
+  const ratio = currentPlaybackProgress()
+  if (ratio <= 0) return
+  reportVideoProgress(courseId.value, sectionId.value, Math.round(ratio * 1000), 1000)
+    .catch(() => { /* fire-and-forget：上报失败不影响播放 */ })
+}
+
+// G3-P0-6：0 页课件空状态 → 返回课程详情（学生 CourseDetail 路由 /student/courses/:id）
+function goBackToCourse() {
+  if (courseId.value) {
+    router.push(`/student/courses/${courseId.value}`)
+  } else {
+    router.back()
+  }
+}
+
 // P0-2: 翻到最后一页时触发完成标记
 // P1C-019: 单页课件浏览后也应标记完成 — 移除 pages.length <= 1 的提前返回
 watch(current, (newVal) => {
@@ -1307,7 +1441,19 @@ onMounted(async () => {
   setupMediaSession()
   await ensureProgress()
   await loadPages()
-  if (pages.value.length > 0) loadAudio(0)
+  if (pages.value.length > 0) {
+    await loadAudio(0)
+    // P1-C-6：单页课件 current 恒 0，watch(current) 永不触发 → 挂载后立即标记完成；
+    // 无音频单页无 ended 事件 → 同步触发完成/预览结束通知（有音频单页由 ended 自然触发）
+    if (pages.value.length === 1) {
+      if (audioStatus.value === 'none' || audioStatus.value === 'failed') {
+        notifyCourseCompleted()
+      }
+      markSlideComplete()
+      // G3-P0-5: 单页课件无翻页/ended 触发 → 挂载后上报一次进度（页序号退化 ratio=1.0）
+      updateVideoProgress()
+    }
+  }
   playerRef.value?.focus()
   document.addEventListener('fullscreenchange', onFullscreenChange)
   window.addEventListener('message', onSlideAudioMessage)
@@ -1346,6 +1492,24 @@ onUnmounted(() => {
   overflow: hidden; outline: none; user-select: none;
 }
 
+/* P1-C-7（L0 铁律）：教师预览态 banner —— warning 黄 + 居中 + 退出按钮，
+   教师打开预览瞬间即可确认「这是预览、进度不被记录、quiz 不影响分支」 */
+.teacher-preview-banner {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  padding: 8px 16px; min-height: 42px; flex-shrink: 0;
+  background: rgba(245, 158, 11, 0.16); color: #fbbf24;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.35);
+  font-size: 13px; z-index: 110; text-align: center;
+}
+.tpb-text { line-height: 1.5; }
+.tpb-exit {
+  border: 1px solid rgba(245, 158, 11, 0.55); border-radius: 6px;
+  background: transparent; color: #fbbf24; font-size: 12px;
+  padding: 3px 12px; cursor: pointer; flex-shrink: 0;
+}
+.tpb-exit:hover { background: rgba(245, 158, 11, 0.2); }
+.tpb-exit:focus-visible { outline: 3px solid #facc15; outline-offset: 2px; }
+
 /* ========= HEADER ========= */
 .player-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -1378,6 +1542,14 @@ onUnmounted(() => {
 
 /* ========= MAIN ========= */
 .player-main { flex: 1; display: flex; overflow: hidden; }
+
+/* G3-P0-6: 0 页课件空状态 —— 明确告知当前状况 + 该怎么办（L0） */
+.player-empty {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 24px; background: var(--player-bg);
+}
+.player-empty-title { font-size: 16px; font-weight: 600; color: var(--player-text); }
+.player-empty-hint { margin: 8px 0 16px; font-size: 13px; color: var(--player-text-secondary); }
 
 /* --- Slide Stage --- */
 .slide-stage { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; cursor: pointer; padding: 12px 0; }
@@ -1547,11 +1719,14 @@ onUnmounted(() => {
 .audio-status.loading { color: var(--player-text-secondary); }
 .audio-status.ready { color: var(--player-accent); }
 .audio-status.pending { color: #f59e0b; }
+.audio-status.generating { color: #f59e0b; }
+.audio-status.failed { color: var(--player-danger); }
 .audio-status.error { color: var(--player-danger); }
 /* L0 U-1：无音频页状态栏恒显 —— 灰色中性提示（区别于 error 红色），
    让学生明白"该页无讲解音频"是内容属性而非故障 */
 .audio-status.none { color: #909399; }
 .status-no-audio { display: inline-flex; align-items: center; gap: 4px; }
+.status-failed-retry { text-decoration: underline; margin-left: 2px; }
 .audio-status-btn {
   border: none;
   background: transparent;
