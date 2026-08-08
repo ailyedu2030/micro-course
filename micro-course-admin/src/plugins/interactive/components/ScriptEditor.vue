@@ -4,8 +4,9 @@
   支持:
   1. 当前 active 脚本编辑 (textarea)
   2. 历史版本列表 (点击切换查看)
-  3. 一键 AI 生成 (mock, 等 opencode 后端支持)
+  3. 一键 AI 生成 (P3-1 后端真实 LLM, 生成后应用预览再保存)
   4. 保存即生成新版本, 旧版本永久保留 (V301 partial unique 兼容)
+  5. P0-A: 新上传 PPT 页 (无 active script) 也可直接输入/保存 —— 首次保存自动创建 v1
 
   Props:
     courseId, pageType, pageId (PPT) 或 unitId+idx (HTML)
@@ -51,14 +52,13 @@
       type="textarea"
       :rows="8"
       placeholder="输入讲述稿内容...保存将创建新版本,旧版本永久保留。"
-      :disabled="pageType === 'PPT' && !currentScriptId"
     />
 
     <div class="se-toolbar">
       <el-button :icon="MagicStick" plain size="small" @click="handleAiGenerate" :loading="aiLoading">
         AI 生成讲述稿
       </el-button>
-      <el-button type="primary" size="small" :icon="Check" @click="handleSave" :loading="saving" :disabled="!scriptText.trim() || (pageType === 'PPT' && !currentScriptId)">
+      <el-button type="primary" size="small" :icon="Check" @click="handleSave" :loading="saving" :disabled="!scriptText.trim()">
         保存 (创建 v{{ history.length + 1 }})
       </el-button>
     </div>
@@ -103,13 +103,9 @@ const aiPreview = ref(null)
 const activeVersion = ref(0)
 
 async function loadActive() {
-  // P0-2 修复: 仅 PPT 模式依赖 currentScriptId (PPT 需 pageId 对应 active script id)
-  // HTML 模式不依赖 currentScriptId —— getActiveHtmlSegment 按 unitId+segmentIndex 自取,
-  // 段无脚本时返回 null 即空稿, 用户可首次输入并保存 (后端自建 v1)
-  if (props.pageType === 'PPT' && !props.currentScriptId) {
-    scriptText.value = ''
-    return
-  }
+  // P0-A 修复: 新上传 PPT 页（无 currentScriptId）也允许进入加载流程 ——
+  // getActivePptScript 无 active 脚本时后端返回 null → 空稿可输入,
+  // 首次保存由 saveScript 契约自动创建 v1（PPT 与 HTML 行为一致）。
   if (props.pageType === 'PPT') {
     const [active, hist] = await Promise.all([
       getActivePptScript(props.courseId, props.pageId),
@@ -166,7 +162,9 @@ async function handleSave() {
         scriptText: scriptText.value,
         voice: currentScript.value?.voice || null,
         ttsModel: currentScript.value?.ttsModel || null,
-        segmentMarker: currentScript.value?.segmentMarker || null,
+        // P0-E (F-2026-08-08): segmentMarker 为空时按段序号自动生成 seg-{idx}
+        // （检测 marker 即 seg-{1基index}，保证 marker 数据链不断，播放器 marker 匹配路径生效）
+        segmentMarker: currentScript.value?.segmentMarker || (props.segmentIndex ? `seg-${props.segmentIndex}` : null),
         createdBy
       })
     }

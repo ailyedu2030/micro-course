@@ -90,6 +90,30 @@ public class AiScriptController {
         return R.ok(Map.of("scriptText", script));
     }
 
+    /**
+     * P0-D: 批量 AI 生成 PPT 讲述稿并真实落库（取代前端"生成后不保存"的假完成）。
+     * <p>
+     * 请求体：{@code {pageIds: [1,2,3], contextType: "page-text"}}。
+     * 对每个 pageId：取该页 page_text → LLM 生成 → 保存到 slide_ppt_page_scripts
+     * （无 active 脚本创建 v1，有则创建新版本），逐页隔离失败。
+     * </p>
+     * <p>返回：{@code {results: [{pageId, success, scriptId, error}]}}。</p>
+     * 安全：课程级 owner 校验（checkOwner，未越权不触发任何 LLM 调用）；
+     * service 内逐页 verifyPageOwner 防跨课程 pageId 枚举。
+     */
+    @PostMapping("/ppt/pages/scripts/batch-ai-generate")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    public R<List<AiScriptService.BatchPptScriptResult>> batchGeneratePptScripts(
+            @PathVariable Long courseId,
+            @RequestBody(required = false) BatchAiGenerateRequest body) {
+        checkOwner(courseId);
+        List<Long> pageIds = body != null ? body.pageIds() : null;
+        if (pageIds == null || pageIds.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "pageIds 不能为空");
+        }
+        return R.ok(aiScriptService.batchGeneratePptScripts(courseId, pageIds));
+    }
+
     @PostMapping("/html/units/{unitId}/segments/{idx}/ai-generate")
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Map<String, String>> generateHtmlSegmentScript(@PathVariable Long courseId,
@@ -126,4 +150,7 @@ public class AiScriptController {
             throw new BusinessException(ErrorCode.NO_PERMISSION);
         }
     }
+
+    /** P0-D 批量 AI 生成请求体。contextType 保留扩展位（当前恒为 "page-text"）。 */
+    public record BatchAiGenerateRequest(List<Long> pageIds, String contextType) {}
 }

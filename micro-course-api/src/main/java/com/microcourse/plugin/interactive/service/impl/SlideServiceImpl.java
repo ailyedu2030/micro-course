@@ -45,6 +45,9 @@ import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -76,6 +79,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.zip.ZipInputStream;
@@ -658,13 +662,55 @@ public class SlideServiceImpl implements SlideService {
         if (chapterId != null) {
             List<SlidePptPage> v2PptPages = pptPageMapper.listByChapter(chapterId);
             if (!v2PptPages.isEmpty() && allBelongToCourse(v2PptPages, courseId)) {
-                // 章节级 flow 规则不适用（与 getCoursewareTree.buildPptTree 章节级语义一致），
-                // 传入 null sectionId → listBySection 恒空 → flows 为空列表。
+                // P0-F (I2): 章节级入口也挂载 flows —— buildV2PptPages 在 sectionId 为 null 时
+                // 从页面自身 sectionId 推断（V310 回填后章节级课件页挂在该章节第一个 section 下），
+                // 使学生端章节级入口 BRANCH/SKIP 规则真实生效（不再退化为线性）。
                 return cachedOrBuildV2PptPages(courseId, null, chapterId, v2PptPages);
             }
             SlideHtmlUnit v2HtmlUnit = htmlUnitMapper.findByChapter(chapterId);
             if (v2HtmlUnit != null && courseId.equals(v2HtmlUnit.getCourseId())) {
                 return cachedOrBuildV2HtmlPage(courseId, null, chapterId, v2HtmlUnit);
+            }
+        }
+
+        // ===== P0-B (I2): 学生端无参数入口 course 级 v2 兜底 =====
+        // 学习中心/课程广场/继续学习(无历史)/课程详情 goLearn 均不带 sectionId/chapterId；
+        // v2 课件必然挂在 section 下（V310 已回填 legacy→v2），若此处只走 legacy 分支
+        // （slide_pages.section_id IS NULL）则恒空 → 学生看到 0 页空态，无法学习。
+        // 兜底策略：取该 courseId 下 v2 PPT 页按 section 分组后的第一组（含 flows），
+        // 无 PPT 则取第一个 v2 HTML unit。
+        if (sectionId == null && chapterId == null) {
+            List<SlidePptPage> coursePptPages = pptPageMapper.listByCourse(courseId);
+            if (!coursePptPages.isEmpty() && allBelongToCourse(coursePptPages, courseId)) {
+                Long firstSectionId = coursePptPages.stream()
+                        .map(SlidePptPage::getSectionId)
+                        .filter(Objects::nonNull)
+                        .min(Long::compareTo)
+                        .orElse(null);
+                if (firstSectionId != null) {
+                    List<SlidePptPage> firstGroup = coursePptPages.stream()
+                            .filter(p -> firstSectionId.equals(p.getSectionId()))
+                            .collect(Collectors.toList());
+                    return cachedOrBuildV2PptPages(courseId, firstSectionId, null, firstGroup);
+                }
+                // 纯章节级 v2（section 全为 NULL）：取最小 chapterId 组兜底返回
+                Long firstChapterId = coursePptPages.stream()
+                        .map(SlidePptPage::getChapterId)
+                        .filter(Objects::nonNull)
+                        .min(Long::compareTo)
+                        .orElse(null);
+                if (firstChapterId != null) {
+                    List<SlidePptPage> firstGroup = coursePptPages.stream()
+                            .filter(p -> firstChapterId.equals(p.getChapterId()))
+                            .collect(Collectors.toList());
+                    return cachedOrBuildV2PptPages(courseId, null, firstChapterId, firstGroup);
+                }
+                return cachedOrBuildV2PptPages(courseId, null, null, coursePptPages);
+            }
+            List<SlideHtmlUnit> courseHtmlUnits = htmlUnitMapper.listByCourse(courseId);
+            if (!courseHtmlUnits.isEmpty() && courseId.equals(courseHtmlUnits.get(0).getCourseId())) {
+                SlideHtmlUnit first = courseHtmlUnits.get(0);
+                return cachedOrBuildV2HtmlPage(courseId, first.getSectionId(), first.getChapterId(), first);
             }
         }
 
@@ -820,8 +866,20 @@ public class SlideServiceImpl implements SlideService {
             vos.add(vo);
         }
         // section 级 flow 规则（挂在每页节点，前端按 fromPageId 建索引）
-        List<PptFlowVO> flows = pptFlowMapper.listBySection(sectionId).stream()
-                .map(this::toPptFlowVO).collect(Collectors.toList());
+        // P0-F (I2): sectionId 为 null（章节级入口/无参数 course 级兜底）时，
+        // 从页面自身 sectionId 推断（V310 回填后 v2 课件页基本都挂 section 下），
+        // 使学生端 BRANCH_DEPENDS/SKIP_IF_KNOWN 规则真实生效（不再恒线性）。
+        Long flowSectionId = sectionId;
+        if (flowSectionId == null) {
+            flowSectionId = pages.stream()
+                    .map(SlidePptPage::getSectionId)
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        }
+        List<PptFlowVO> flows = flowSectionId == null ? java.util.Collections.emptyList()
+                : pptFlowMapper.listBySection(flowSectionId).stream()
+                        .map(this::toPptFlowVO).collect(Collectors.toList());
         for (SlidePageVO vo : vos) {
             vo.setFlows(flows);
         }
@@ -852,7 +910,8 @@ public class SlideServiceImpl implements SlideService {
                         .collect(Collectors.groupingBy(SlideHtmlSegmentAudio::getSegmentScriptId));
         List<HtmlSegmentVO> segmentVos = new java.util.ArrayList<>();
         int readyCount = 0;
-        boolean generating = false;
+        boolean generating = false;  // GENERATING / PROCESSING
+        boolean failed = false;      // FAILED
         for (SlideHtmlSegmentScript s : segs) {
             HtmlSegmentVO segVo = new HtmlSegmentVO();
             segVo.setIndex(s.getSegmentIndex());
@@ -860,21 +919,46 @@ public class SlideServiceImpl implements SlideService {
             segVo.setText(s.getSegmentText());
             segVo.setScriptText(s.getScriptText());
             // U-5: SQL 已按 is_default DESC, completed_at DESC 排序 → 取首个 READY 即默认/最新音色
-            SlideHtmlSegmentAudio ready = pickReadyHtmlAudio(
-                    audiosByScript.getOrDefault(s.getId(), List.of()));
+            List<SlideHtmlSegmentAudio> segAudios = audiosByScript.getOrDefault(s.getId(), List.of());
+            SlideHtmlSegmentAudio ready = pickReadyHtmlAudio(segAudios);
             if (ready != null) {
                 segVo.setAudio(toPageAudioVO(courseId, ready));
                 readyCount++;
-            } else if (audiosByScript.getOrDefault(s.getId(), List.of())
-                    .stream().anyMatch(a -> "GENERATING".equals(a.getStatus()))) {
-                generating = true;
+            } else {
+                // P0-H: 无 READY 也下发 audio 节点（含真实状态），播放器据此诚实提示
+                // "生成中/生成失败/尚未生成"，而非误判为"无音频/可播放"
+                SlideHtmlSegmentAudio nonReady = segAudios.stream()
+                        .filter(a -> a.getStatus() != null && !"READY".equals(a.getStatus()))
+                        .findFirst().orElse(null);
+                if (nonReady != null) {
+                    segVo.setAudio(buildSegmentAudioVO(courseId, nonReady));
+                    String st = nonReady.getStatus();
+                    if ("GENERATING".equals(st) || "PROCESSING".equals(st)) {
+                        generating = true;
+                    } else if ("FAILED".equals(st)) {
+                        failed = true;
+                    }
+                }
             }
             segmentVos.add(segVo);
         }
         vo.setSegments(segmentVos);
-        vo.setNarrationStatus(readyCount == segs.size() && !segs.isEmpty()
-                ? "AUDIO_READY"
-                : (readyCount > 0 || generating) ? "AUDIO_GENERATING" : "PENDING");
+        // P0-H: 页级 narrationStatus 取"最差"（FAILED > GENERATING/PROCESSING > 部分 READY+PENDING）
+        String narrationStatus;
+        if (segs.isEmpty()) {
+            narrationStatus = "PENDING";
+        } else if (failed) {
+            narrationStatus = "AUDIO_FAILED";
+        } else if (generating) {
+            narrationStatus = "AUDIO_GENERATING";  // 含 PROCESSING
+        } else if (readyCount == segs.size()) {
+            narrationStatus = "AUDIO_READY";
+        } else if (readyCount > 0) {
+            narrationStatus = "AUDIO_PENDING";  // 部分 READY + 部分 PENDING/无音频
+        } else {
+            narrationStatus = "PENDING";  // 全部段均无音频记录
+        }
+        vo.setNarrationStatus(narrationStatus);
         vo.setNarrationStatusText(SlidePageVO.narrationStatusText(vo.getNarrationStatus()));
         // P2-2：读时增强 —— marker 注入 data-segment + 高亮 CSS + bridge.js（不落库）
         // Q-4: is_trusted=false（未标记可信教师）→ 注入动态 CSP nonce（每次请求不同，故不缓存）
@@ -910,8 +994,9 @@ public class SlideServiceImpl implements SlideService {
 
     /**
      * P2-2（方案 §5.2/§8.2）：为 HTML 课件注入分段标记与平台桥接脚本。
-     * - 有 segment_marker（如 "seg-1"）：给对应 id 元素补 data-segment="N"
-     * - 无 marker：按顺序给前 N 个标题/段落元素补 data-segment
+     * - 有 segment_marker（如 "seg-1"）：给对应 id 元素补 data-segment="N"（marker 命中优先覆盖）
+     * - 无 marker（或 marker 未命中）：Jsoup 解析 + 复用 HtmlSegmentDetector 段边界规则，
+     *   段内所有元素（标题/段落/内容）都标 data-segment="N"，段高亮覆盖整段
      * - 注入 .active 高亮 CSS 与 bridge.js（点击段→segment-active；接收 segment-activated 高亮）
      * 只读增强（入播放器时组装），不写库，不经过 sanitize 白名单（教师内容不被改）。
      *
@@ -922,41 +1007,11 @@ public class SlideServiceImpl implements SlideService {
      * is_trusted=true（可信教师课件，含自有 script）→ cspNonce=null，不注入 CSP（保持现有功能）。
      */
     private String enhanceHtmlSegments(String html, List<HtmlSegmentVO> segments, String cspNonce) {
-        String out = html;
-        int autoCursor = 0;
-        for (HtmlSegmentVO seg : segments) {
-            int idx = seg.getIndex();
-            String marker = seg.getMarker();
-            if (marker != null && !marker.isBlank()) {
-                String idAttr = "id=\"" + marker + "\"";
-                String idAttrSingle = "id='" + marker + "'";
-                if (out.contains(idAttr)) {
-                    out = out.replace(idAttr, idAttr + " data-segment=\"" + idx + "\"");
-                    continue;
-                }
-                if (out.contains(idAttrSingle)) {
-                    out = out.replace(idAttrSingle, idAttrSingle + " data-segment=\"" + idx + "\"");
-                    continue;
-                }
-            }
-            // 无 marker（或 marker 未命中）：按顺序给 h1-h3/section/p 元素注入
-            java.util.regex.Matcher m = java.util.regex.Pattern
-                    .compile("(?is)(<(h[1-3]|section|p)\\b[^>]*?)>")
-                    .matcher(out);
-            int target = 0;
-            while (m.find()) {
-                if (target == autoCursor) {
-                    String tag = m.group(1);
-                    String replacement = (tag.contains("data-segment")
-                            ? tag : tag + " data-segment=\"" + idx + "\"") + ">";
-                    out = out.substring(0, m.start()) + replacement + out.substring(m.end());
-                    autoCursor++;
-                    break;
-                }
-                target++;
-            }
-            autoCursor++;
-        }
+        // P0-1 彻底修复（F-2026-08-08）：
+        // 旧实现用字符串正则顺序注入，内层命中 + 外层 for 尾各 autoCursor++ → 每段净增 2，
+        // 真实"标题+段落"课件下半数段锚点错位/缺失（T2「点哪段播哪段」验收失败）。
+        // 现改为 Jsoup 解析 + 复用 HtmlSegmentDetector 段边界规则：段内所有元素都标 data-segment="N"。
+        String out = annotateHtmlSegments(html, segments);
 
         String css = "<style>"
                 + "[data-segment]{scroll-margin-top:12px;transition:box-shadow .25s ease,background-color .25s ease}"
@@ -987,6 +1042,89 @@ public class SlideServiceImpl implements SlideService {
         int idx = out.lastIndexOf("</body>");
         if (idx < 0) return out + bridge;
         return out.substring(0, idx) + bridge + out.substring(idx);
+    }
+
+    /** h1-h6 标题开新段（与 HtmlSegmentDetector.HEADING_TAGS 一致） */
+    private static final Set<String> SEG_HEADING_TAGS = Set.of("h1", "h2", "h3", "h4", "h5", "h6");
+    /** section/article 块边界开新段（与 HtmlSegmentDetector.BLOCK_BOUNDARY_TAGS 一致） */
+    private static final Set<String> SEG_BOUNDARY_TAGS = Set.of("section", "article");
+    /** 纯容器：不产生文本，仅递归子元素（与 HtmlSegmentDetector.CONTAINER_TAGS 一致） */
+    private static final Set<String> SEG_CONTAINER_TAGS = Set.of(
+            "div", "span", "header", "footer", "main", "aside", "nav", "figure", "figcaption", "body");
+    /** 不可见/不可分段内容，完全跳过（与 HtmlSegmentDetector.IGNORED_TAGS 一致） */
+    private static final Set<String> SEG_IGNORED_TAGS = Set.of("script", "style", "noscript", "template", "head");
+
+    /**
+     * P0-1 (F-2026-08-08)：Jsoup 段标注。
+     * 1) 复用 HtmlSegmentDetector 的段边界规则对 DOM 预序遍历：
+     *    - 标题(h1-h6)/块边界(section,article) 开新段并标注自身（段首锚点）；
+     *    - 段内所有内容元素(p/li/blockquote/...) 标 data-segment=N（段高亮覆盖整段）；
+     *    - 纯容器递归子元素（自身不标注，避免跨段容器被单一段号污染）；
+     *    - script/style 等不可见内容完全跳过（检测无段 → 不注入任何 data-segment）。
+     * 2) marker 覆盖：HTML 自带 id="seg-N" 锚点时，强制该元素 data-segment=对应段序号
+     *    （教师/导出工具锚定优先于顺序标注）。
+     * 只读增强，不写库。
+     */
+    private String annotateHtmlSegments(String html, List<HtmlSegmentVO> segments) {
+        Document doc = Jsoup.parse(html == null ? "" : html);
+        Element body = doc.body();
+        if (body == null) {
+            return html == null ? "" : html;
+        }
+        int[] segCounter = {0};   // 当前段序号（1 基，镜像 detector 的 out.size()+1）
+        boolean[] open = {false}; // 是否有活跃段可并入（镜像 detector 的 current != null）
+        annotateWalk(body.children(), segCounter, open);
+
+        // marker 锚点覆盖：HTML 自带 id="seg-N" 的元素强制归入对应段
+        if (segments != null) {
+            for (HtmlSegmentVO seg : segments) {
+                String marker = seg.getMarker();
+                Integer segIndex = seg.getIndex();
+                if (marker == null || marker.isBlank() || segIndex == null) {
+                    continue;
+                }
+                Element anchor = doc.getElementById(marker);
+                if (anchor != null) {
+                    anchor.attr("data-segment", String.valueOf(segIndex));
+                }
+            }
+        }
+        return doc.outerHtml();
+    }
+
+    /** 段标注预序遍历（段边界规则与 HtmlSegmentDetector.walk 一一对应）。 */
+    private void annotateWalk(List<Element> children, int[] segCounter, boolean[] open) {
+        for (Element child : children) {
+            String tag = child.tagName().toLowerCase();
+            if (SEG_IGNORED_TAGS.contains(tag)) {
+                continue;
+            }
+            if (SEG_HEADING_TAGS.contains(tag)) {
+                // 标题 → 开启新段（标题即段首锚点；标题内部元素由 closest('[data-segment]') 覆盖）
+                segCounter[0]++;
+                open[0] = true;
+                child.attr("data-segment", String.valueOf(segCounter[0]));
+            } else if (SEG_BOUNDARY_TAGS.contains(tag)) {
+                // section/article → 整段并入（不细分内部；段内点击由 closest('[data-segment]') 覆盖）
+                segCounter[0]++;
+                open[0] = true;
+                child.attr("data-segment", String.valueOf(segCounter[0]));
+            } else if (SEG_CONTAINER_TAGS.contains(tag)) {
+                // 纯容器 → 仅递归子元素（open 状态透传）
+                annotateWalk(child.children(), segCounter, open);
+            } else {
+                // 块级内容元素（p/li/blockquote/pre/...）
+                if (!open[0]) {
+                    // 无活跃段 → 自成一新段（p 即段边界；open 保持 false，后续内容元素各自成段，
+                    // 与 detector 的 solo 分支 current 保持 null 一致）
+                    segCounter[0]++;
+                    child.attr("data-segment", String.valueOf(segCounter[0]));
+                } else {
+                    // 活跃段内（标题之后）→ 归入当前段（段高亮覆盖整段）
+                    child.attr("data-segment", String.valueOf(segCounter[0]));
+                }
+            }
+        }
     }
 
     private String toJsonSegments(List<HtmlSegmentVO> segments) {
@@ -1033,6 +1171,25 @@ public class SlideServiceImpl implements SlideService {
         vo.setVoiceUsed(a.getVoiceUsed());
         vo.setModelUsed(a.getModelUsed());
         vo.setScriptId(a.getSegmentScriptId());
+        return vo;
+    }
+
+    /**
+     * P0-H: HTML 段音频 VO —— 无 READY 音频时的段节点（GENERATING/PROCESSING/FAILED/PENDING）。
+     * 仅 READY 提供可播 token url；非 READY 仅下发状态 + errorMessage，
+     * 播放器据此显示"生成中/生成失败/尚未生成"而非错误地显示"无音频/可播放"。
+     */
+    private PageAudioVO buildSegmentAudioVO(Long courseId, SlideHtmlSegmentAudio a) {
+        PageAudioVO vo = new PageAudioVO();
+        vo.setToken(a.getAudioToken());
+        boolean playable = "READY".equals(a.getStatus()) && a.getAudioUrl() != null;
+        vo.setUrl(playable ? "/api/courses/" + courseId + "/courseware/audio/" + a.getAudioToken() : null);
+        vo.setDurationMs(a.getAudioDurationMs());
+        vo.setStatus(a.getStatus());
+        vo.setVoiceUsed(a.getVoiceUsed());
+        vo.setModelUsed(a.getModelUsed());
+        vo.setScriptId(a.getSegmentScriptId());
+        vo.setErrorMessage(a.getErrorMessage());
         return vo;
     }
 

@@ -322,7 +322,10 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         SlideHtmlSegmentScript next = new SlideHtmlSegmentScript();
         next.setHtmlUnitId(unitId);
         next.setSegmentIndex(segmentIndex);
-        next.setSegmentMarker(segmentMarker);
+        // P0-E (F-2026-08-08): segmentMarker 缺失时按段序号兜底生成 seg-{index}
+        // （保证 marker 数据链不断：即使调用方未传 marker，播放器 marker 匹配路径仍可生效）
+        next.setSegmentMarker(segmentMarker != null && !segmentMarker.isBlank()
+                ? segmentMarker.trim() : "seg-" + segmentIndex);
         next.setScriptText(scriptText);
         next.setScriptVersion(currentActive != null ? currentActive.getScriptVersion() + 1 : 1);
         next.setIsActive(true);

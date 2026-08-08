@@ -15,6 +15,8 @@ public class PageAudioVO {
     private String voiceUsed;
     private String modelUsed;
     private Long scriptId;
+    /** P0-H：非 READY 状态（GENERATING/PROCESSING/FAILED）时的后端错误信息，前端据此诚实提示 */
+    private String errorMessage;
 
     public PageAudioVO() {}
 
@@ -32,4 +34,6 @@ public class PageAudioVO {
     public void setModelUsed(String modelUsed) { this.modelUsed = modelUsed; }
     public Long getScriptId() { return scriptId; }
     public void setScriptId(Long scriptId) { this.scriptId = scriptId; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
 }

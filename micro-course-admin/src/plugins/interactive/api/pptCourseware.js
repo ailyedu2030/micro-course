@@ -49,6 +49,19 @@ export function savePptScript(courseId, pageId, { scriptText, voice, ttsModel, c
   return request({ method: 'PUT', url: `/courses/${courseId}/ppt/pages/${pageId}/scripts`, data: { scriptText, voice, ttsModel, createdBy } })
 }
 
+/**
+ * P0-D: 批量 AI 生成 PPT 讲述稿并真实落库（后端逐页 LLM 生成 + 保存 slide_ppt_page_scripts）。
+ * payload: { pageIds, contextType }
+ * 返回: { results: [{pageId, success, scriptId, error}] } —— 失败页 error 含原因
+ */
+export function batchGeneratePptScripts(courseId, pageIds) {
+  return request({
+    method: 'POST',
+    url: `/courses/${courseId}/ppt/pages/scripts/batch-ai-generate`,
+    data: { pageIds, contextType: 'page-text' }
+  })
+}
+
 // === PPT 音频 ===
 
 export function listPptAudios(courseId, scriptId) {

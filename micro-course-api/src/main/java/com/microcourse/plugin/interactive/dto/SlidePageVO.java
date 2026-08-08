@@ -114,6 +114,8 @@ public class SlidePageVO {
             case "TEACHER_EDITED": return "教师已编辑";
             case "AUDIO_GENERATING": return "音频生成中";
             case "AUDIO_READY": return "音频就绪";
+            case "AUDIO_FAILED": return "音频生成失败";
+            case "AUDIO_PENDING": return "音频待生成";
             default: return status;
         }
     }
