@@ -56,6 +56,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -101,6 +103,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final JdbcTemplate jdbcTemplate;
     // G3-P1-C-1: 渲染状态透传（course_slides.status / error_message）
     private final CourseSlideMapper courseSlideMapper;
+    // P14-C (N+1 修复): 教师课件树 Redis 缓存（PPT 分支，无动态 nonce 可安全缓存）
+    private final com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache;
 
     /** MiniMax 官方模型（application.yml 契约，R-6） */
     private static final List<String> TTS_MODELS = java.util.List.of(
@@ -134,7 +138,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        ExerciseRecordRepository exerciseRecordRepository,
                                        LearningProgressRepository learningProgressRepository,
                                        JdbcTemplate jdbcTemplate,
-                                       CourseSlideMapper courseSlideMapper) {
+                                       CourseSlideMapper courseSlideMapper,
+                                       com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache) {
         this.pageMapper = pageMapper;
         this.pageScriptMapper = pageScriptMapper;
         this.pageAudioMapper = pageAudioMapper;
@@ -153,6 +158,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.learningProgressRepository = learningProgressRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.courseSlideMapper = courseSlideMapper;
+        this.pagesCache = pagesCache;
     }
 
     @Override
@@ -167,6 +173,14 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         // 与 evaluateFlow 同构：ADMIN/ACADEMIC 通行；TEACHER 必须课程 owner；STUDENT 必须有选课记录。
         verifyCourseAccess(courseId);
 
+        // P14-C (N+1 修复): 教师课件树 Redis 缓存 —— PPT 分支无动态 nonce 可安全缓存。
+        // 权限校验（verifyCourseAccess）独立于缓存 key 执行，缓存命中不跳过 IDOR 校验。
+        // 缓存失效由所有写路径统一走 pagesCache.invalidateCourse 覆盖（上传/编辑/删除/flow/TTS 完成）。
+        Optional<CoursewareTreeDTO> cachedTree = pagesCache.getTree(courseId, sectionId, chapterId);
+        if (cachedTree != null && cachedTree.isPresent()) {
+            return cachedTree.get();
+        }
+
         // 1. 一次性查 PPT pages (验证 + 数据复用, 避免 N+1)；课时级优先，章节级兜底
         List<SlidePptPage> pptPages = sectionId != null
                 ? pageMapper.listBySection(sectionId)
@@ -179,8 +193,12 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         // 消除 BUG #8 的重复 SQL (N+1 → 1 query)
         validateSectionBelongsToCourse(courseId, sectionId, pptPages, htmlUnit);
 
+        CoursewareTreeDTO result;
         if (!pptPages.isEmpty()) {
-            return buildPptTree(courseId, sectionId, pptPages);
+            result = buildPptTree(courseId, sectionId, pptPages);
+            // P14-C: 仅 PPT 树缓存（HTML 含动态 CSP nonce 不缓存，与 pages 严格模式同理）
+            pagesCache.putTree(courseId, sectionId, chapterId, result);
+            return result;
         } else if (htmlUnit != null) {
             return buildHtmlTree(courseId, sectionId, htmlUnit);
         } else {
@@ -252,7 +270,24 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         tree.setCourseId(pages.isEmpty() ? null : pages.get(0).getCourseId());
         tree.setLastUpdatedAt(LocalDateTime.now());
 
-        // 2. 批量取脚本 (1 SQL per page)
+        // 2. 批量取 active scripts + audios（Q-2 同款模式: 2 SQL 取代 2N SQL）
+        //    1) listActiveByPageIds → Map<pageId, activeScript>（1 SQL）
+        //    2) listByScriptIds     → Map<scriptId, List<Audio>>（1 SQL, is_default DESC, completed_at DESC 排序）
+        List<Long> pageIds = pages.stream().map(SlidePptPage::getId)
+                .filter(Objects::nonNull).toList();
+        List<SlidePptPageScript> activeScripts = pageIds.isEmpty()
+                ? List.of() : pageScriptMapper.listActiveByPageIds(pageIds);
+        Map<Long, SlidePptPageScript> scriptByPage = activeScripts.stream()
+                .filter(s -> s.getPptPageId() != null)
+                .collect(Collectors.toMap(SlidePptPageScript::getPptPageId, s -> s, (a, b) -> a));
+        List<Long> scriptIds = activeScripts.stream().map(SlidePptPageScript::getId)
+                .filter(Objects::nonNull).toList();
+        Map<Long, List<SlidePptPageAudio>> audiosByScript = scriptIds.isEmpty()
+                ? Map.of()
+                : pageAudioMapper.listByScriptIds(scriptIds).stream()
+                        .filter(a -> a.getScriptId() != null)
+                        .collect(Collectors.groupingBy(SlidePptPageAudio::getScriptId));
+
         List<CoursewareTreeDTO.PptPageNode> nodes = new ArrayList<>(pages.size());
         int readyAudios = 0;
         LocalDateTime lastUpdate = null;
@@ -264,11 +299,12 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             node.setImageUrl(page.getImageUrl());
             node.setThumbnailUrl(page.getThumbnailUrl());
 
-            // active script
-            SlidePptPageScript activeScript = pageScriptMapper.findActiveByPage(page.getId());
+            // active script（内存 Map 查找, 无 SQL）
+            SlidePptPageScript activeScript = scriptByPage.get(page.getId());
             if (activeScript != null) {
                 node.setActiveScript(toPptScriptDTO(activeScript));
-                List<SlidePptPageAudio> audios = pageAudioMapper.listByScript(activeScript.getId());
+                List<SlidePptPageAudio> audios = audiosByScript.getOrDefault(
+                        activeScript.getId(), Collections.emptyList());
                 List<PptAudioDTO> audioDTOs = audios.stream()
                         .map(this::toPptAudioDTO).collect(Collectors.toList());
                 node.setAudios(audioDTOs);

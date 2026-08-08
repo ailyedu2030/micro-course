@@ -1383,7 +1383,16 @@ function onAudioLoaded() {
 }
 
 // P0-G：<audio> 加载/解码错误 → 即时可感知错误态（L0：错误不许静默卡死/无限转圈）
+// P14-C (空 src 误导): 重置音频时 src='' 按 HTML spec 会触发一次文档 URL 的媒体加载,
+// 触发 onAudioError（MEDIA_ERR_SRC_NOT_SUPPORTED），无条件置 error 会覆盖诚实状态
+// （pending/generating/none/failed）。reset 行为必须被识别并忽略。
 function onAudioError(e) {
+  // 空 src 触发的是 reset 行为，不应被当作错误
+  const rawSrc = e?.target?.getAttribute?.('src')
+  const resolvedSrc = e?.target?.src || e?.target?.currentSrc
+  if (!rawSrc || resolvedSrc === window.location.href) {
+    return
+  }
   const err = e?.target?.error
   // MediaError codes: 2=MEDIA_ERR_NETWORK 3=MEDIA_ERR_DECODE 4=MEDIA_ERR_SRC_NOT_SUPPORTED
   if (err?.code === 2) {
