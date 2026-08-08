@@ -96,6 +96,28 @@ ORDER BY course_id;
 
 `CoursewareQueryService.auditGhostChapters()`（仅 ADMIN 角色）→ 调 `audit_ghost_chapters()`，返回 JSON 文本。由 admin 后台接入（后续 API 暴露由 D1/D2 或前端批次负责）。
 
+### 4.3 生产审计脚本（DBA 手工执行）
+
+> **安全**：只读审计（纯 SELECT），**不修改任何数据**。生产 DB 写操作必须先 ask user（生产安全铁律 #5）。
+
+提供统一审计脚本 `scripts/audit-v310-ghost-chapter-prod.sh`，DBA 在生产执行生成审计报告给总工程师 review：
+
+```bash
+# 本地提前验证脚本语法（只读，不连库）
+bash -n scripts/audit-v310-ghost-chapter-prod.sh
+
+# 生产执行（参数：PGHOST PGDATABASE；用 readonly 账号，禁止用超级用户）
+bash scripts/audit-v310-ghost-chapter-prod.sh <prod-pg-host> readonly_user micro_course
+```
+
+脚本输出四段审计结果：
+1. `slide_ppt_pages` 中 `chapter_id=1` 的幽灵行总数 + 受影响课程数
+2. `slide_html_units` 中 `chapter_id=1` 的幽灵行总数 + 受影响课程数
+3. 跨课程引用：`chapter_id=1` 但 `course_chapters.id=1` 属于其它课程的明细（按 course 分布）
+4. 孤儿引用：`section_id` 无对应 `course_sections` 的 PPT 页明细（sample rows）
+
+**review 决策流程**：DBA 将报告交总工程师 → 判定每行正确归属（section 反查 / 跨课程 / 孤儿）→ 可自动修复部分由 V332 migration 处理（幂等 + operation_logs 留痕）→ 剩余待人工 review 行按 §5 模板人工确认后走 V329+ 后置迁移。
+
 ---
 
 ## 5. 长期修复（人工 review 后执行，V329+）

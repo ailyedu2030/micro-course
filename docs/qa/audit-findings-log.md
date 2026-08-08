@@ -664,3 +664,69 @@
 - **修复**（commit 7375c4b8，PR #194）：`start-services` 循环 30 次成功后增加 **retry 10 次（每次 sleep 1s）**，给 PostgreSQL initdb 充分时间完成连接握手；PG/Redis 同构修复，对称性兜底；action 注释明确说明 race condition 场景。同时按 C-3 在 `scripts/validate-commit-message.sh` 增加 Sign-off（DCO）校验（`git commit -s`）。
 - **横向扫描**：`ci.yml` backend/e2e 两 job 此前各有一段复制粘贴的 Start PostgreSQL/Redis 步骤（Q-6 维护性），本次抽成单一 `start-services` composite action 供两 job 复用，消除漂移；Redis 侧同样有 warmup 竞态（`redis-cli ping` 成功即 break），一并加 retry 兜底。全仓 CI 启动路径仅此一处，无其他同类循环 break 后立即复用连接的竞态。
 - **验证**：PR #194 合并后 CI 5/5 全绿（backend/frontend/e2e/docker/monitoring-lint），e2e job 启动依赖步骤稳定通过；多次重跑无 flaky；本地 `bash scripts/local-dev-deploy.sh` 16/16 通过。
+
+## 2026-08-07 · PR #194/#195/#196 修复补登（F-16 ~ F-23 · 纪律 7 审计完整性）
+
+### F-2026-08-07-16 · V331 音频状态 CHECK 约束缺 PROCESSING → v2 音频永卡 GENERATING（P0 紧急修复）
+
+- **症状**：v2 音频（`slide_ppt_page_audios` / `slide_html_segment_audios`）提交后永远停在 `GENERATING`，永不 `READY`，学生端播放器永久无音。`TtsWorkerService.poll()` 的 `claimPending` UPDATE 被 DB 拒绝 → catch 吞异常 → 0 行返回 → 音频任务死锁在生成中。
+- **根因**：V330 幂等修复（Q-1）引入 `PROCESSING` 中间态（worker 原子抢占），但 V302/V305 建表时的 CHECK 约束只允许 `('GENERATING','READY','FAILED')`，全仓无任何 migration 同步更新该约束 → 状态机演进与 DB 约束脱节（契约同步缺失），本地/CI 单测不覆盖真实 UPDATE 路径故未提前暴露。
+- **修复**：PR #194 新增 V331 —— DROP 旧 CHECK + ADD 新 CHECK 允许 `PROCESSING`（约束名沿用 `chk_ppt_audios_status` / `chk_html_seg_audios_status` 最小变更）；补部分索引 `idx_ppt_page_audios_status_processing` / `idx_html_segment_audios_status_processing` 加快按状态查询；COMMENT 明确 4 态语义。Rollback 路径写入 migration 头注释（停 worker → 状态复位 → 恢复约束）。
+- **横向扫描**：全仓 grep 音频状态 CHECK 约束——仅这两张表有音频状态约束，无其它状态机与约束脱节点；TtsWorker 写入 `PROCESSING` 的路径仅 `claimPending` 一处。
+- **验证**：V331 应用后 Flyway success；后端全量 1164/0/0（PR #194）；TtsWorker 幂等回归通过（worker 抢占 → PROCESSING → READY 闭环）。
+
+### F-2026-08-07-17 · V332 幽灵章节自动修复 + admin 后台审计 UI（D-1 闭环）
+
+- **症状**：V310 `COALESCE(s.chapter_id, 1)` 硬编码产生的幽灵章节数据生产持续存在；V328 仅提供只读诊断（视图 + 函数），admin 无法在线执行修复；学生端按 chapter 归档展示时课件归错章节。
+- **根因**：审计与修复分离 —— V328 诊断后无自动化修复入口，人工 SQL 模板易错且无 operation_logs 留痕；admin 后台无可视化入口，管理员看不到 ghost chapter 分布（by_course / cnt）。
+- **修复**：PR #195 双闭环 —— ① V332 幂等自动修复 migration：修复前调 `audit_ghost_chapters()` 输出报告留痕 → 可反查行（section 真实 chapter ≠ 1）UPDATE 修正 → section 缺失 / 跨课程引用等无法自动判定行保持 chapter_id=1 写入 `operation_logs`（GHOST_CHAPTER_FIX）+ 新视图 `v_ghost_chapter_audit` 暴露待人工 review 项；② `CoursewareQueryService.runGhostChapterFix()` + AuditController 端点（仅 ADMIN）+ admin 后台 AuditGhostChapter UI（by_course/cnt 分布可视化）。
+- **横向扫描**：V310 同类硬编码兜底全仓 migration 扫描（`grep COALESCE(s.chapter_id`）确认无其它硬编码；V332 幂等（修复后 chapter_id≠1，二次执行 COUNT=0 跳过）；precheck 26/26 含 AuditController 白名单与 `v_ghost_chapter_audit` 字段契约登记。
+- **验证**：`mvn -o compile` 通过；Flyway V332 dev PG success；`runGhostChapterFix()` 返回合法 JSONB 审计报告；AuditController 非 ADMIN 403；修复逻辑幂等实测。
+
+### F-2026-08-07-18 · PR #196 P0 IDOR —— PPT/HTML 课件对象级授权缺失（数据安全 P0）
+
+- **症状**：任意 TEACHER 凭自增 id 枚举/篡改他人课程课件——跨课程修改/删除 pageId/scriptId/unitId/flowId、消耗他人 TTS 额度（generateAudio/generateSegmentAudio 触发计费）；任意登录用户可 `GET /html/units/{unitId}` 越权读取课件内容。
+- **根因**：`PptCoursewareController` / `HtmlCoursewareController` 所有写端点仅 `@PreAuthorize` 角色校验，无对象级授权（IDOR）——角色校验 ≠ 数据归属校验；读端点 `getUnit` 无鉴权。
+- **修复**：Service 层新增 `verify*` 对象级授权 9 方法（ADMIN 通行 / TEACHER 必须 course owner；关键：unitId 必须属于 courseId）；两个 Controller 全部写端点 + `getUnit`/`getUnitBySection` 读端点补齐校验；全局 `CourseAccessInterceptor` 拦截 `/api/courses/*/ppt/**` + `/api/courses/*/html/**` 写方法（POST/PUT/DELETE/PATCH）统一校验路径 courseId owner——新端点默认受覆盖，未接 verify 也无法绕过。
+- **横向扫描**：全仓课件相关 Controller 逐一核查其余读写端点——`evaluateFlow` 同批补 `verifyAccess`（PR #194 P1-C-2 已收口）；`AiScriptController` ai-generate 补 unitId→courseId 校验（与 PPT 分支对称）。
+- **验证**：27 个安全测试（越权读/写/删 + ADMIN/TEACHER/STUDENT 矩阵）全部通过；后端全量 1234/0/0。
+
+### F-2026-08-07-19 · PR #196 P0 替换 HTML 静默失效（数据完整性 + 用户核心操作）
+
+- **症状**：教师「替换上传」HTML 课件后，所有端仍显示旧内容——新内容成为"死数据"；替换操作无任何报错提示，静默失效（用户核心操作无反馈 = 体验断裂）。
+- **根因**：`uploadHtmlFile` 在 v2 unit 已存在时不写回 `slide_html_units`（`html_sanitized` / `is_trusted` / `detected_segments` 不更新），且前端缓存未失效 → 替换后各端读到旧数据。
+- **修复**：`uploadHtmlFile` 在 v2 unit 存在时同步 v2 列 + 缓存失效 + 审计；前端替换上传后 `reloadKey` 强制编辑器重载，诚实提示文案（避免"替换成功但看不到新内容"）。
+- **横向扫描**：PPT 替换路径走渲染管线生成新图片（无 v2 同步问题）；上传初始化与替换两条路径统一走同一 v2 同步逻辑，杜绝分支遗漏；同批"自动段检测缺失"（F-20）同属 v2 承诺未兑现，一并修复。
+- **验证**：`SlideServiceTest` v2 同步新增 2 例；本地替换上传实测 reloadKey 生效、新内容立即可见；eslint + build 全绿。
+
+### F-2026-08-07-20 · PR #196 P0 自动段检测兑现（设计 P2-1）
+
+- **症状**：设计 P2-1 承诺的「自动段检测」从未兑现——HTML 课件分段只能靠教师手工标记，缺失 marker 的 HTML 无段、无段音频、无段高亮（分段驱动播放链路的根能力缺失）。
+- **根因**：自动段检测在设计与计划中承诺，但实现批次未落地（承诺与交付脱节）；手工标记对长 HTML 不现实，段缺失连带段音频/段高亮全链路不可用。
+- **修复**：新建 `HtmlSegmentDetector`（Jsoup 启发式：标题/段落/section 边界，1-50 段上限）+ `POST /units/{unitId}/detect` 端点（owner 校验协同 F-18 IDOR）+ 上传时自动检测双保险 + 前端「开始检测」真实调用并 toast 返回段数。
+- **横向扫描**：同批替换 HTML 失效（F-19）与段检测缺失均属"v2 能力未完整交付"，统一修复路径（上传时同步 + 自动检测），P2-1 承诺不再靠手工兑付。
+- **验证**：`HtmlSegmentDetectorTest`（11）+ `HtmlCoursewareServiceTest.runDetection`（3）新增 16 测试固化（检测算法/同步/端点）；前端「开始检测」实测返回段数。
+
+### F-2026-08-07-21 · PR #196 P0 flow video_progress 上报（设计 P1-4 兑现）
+
+- **症状**：教师配置的 SKIP / BRANCH_DEPENDS flow 规则从未真实生效——纯 PPT/HTML 学习场景 `learning_progress.video_progress` 恒 null，`evaluateFlow` 的 SKIP_IF_KNOWN 服务端读取永不命中，flow 规则形同虚设。
+- **根因**：`video_progress` 上报本为视频学习场景设计，PPT/HTML 播放器没有任何进度写入路径 → 服务端无从判断"该学生已学过本课时"。
+- **修复**：新增 `PUT /api/learning-progress/{cid}/sections/{sid}/video-progress`（仅 STUDENT）；SlidePlayer 新增 `updateVideoProgress`（翻页离开 / 音频 ended / 单页挂载触发；fire-and-forget 不阻塞播放）；服务端按已播/总时长计算 `video_progress` 写入 `learning_progress`。
+- **横向扫描**：教师预览场景 `isStudent=false` 不上报（预览不污染真实进度，F-191 同源约束）；`ratio<=0`（刚进入未播放）跳过，避免翻页瞬间以 0 进度覆盖已累计真实进度。
+- **验证**：`LearningProgressControllerTest` 等新增测试全绿；本地播放器翻页实测 `learning_progress.video_progress` 正确更新。
+
+### F-2026-08-07-22 · PR #196 P0 BRANCH quizId 服务端兜底读取（数据安全 + 设计决策 3 完整兑现）
+
+- **症状**：BRANCH_DEPENDS 规则依赖"测验通过记录"，但客户端未传 `lastQuizId` 时服务端拿不到测验通过记录 → 分支规则永不命中（设计决策 3"quiz 答案以服务端 DB 为唯一真相"未完整兑现）。
+- **根因**：`evaluateFlow` 此前信任客户端传入 `lastQuizId`/`lastQuizAnswer`（PR #194 已改为校验归属 + 答案服务端读取），但"客户端完全不传 quizId"的场景服务端无兜底读取逻辑 → 规则依赖的通过记录仍拿不到。
+- **修复**：`evaluateFlow` 在客户端未传 `lastQuizId` 时服务端读取本 section 最近通过的测验（`exercise_records.passed`）→ BRANCH_DEPENDS 规则真实命中。
+- **横向扫描**：全链路 quiz/进度读取以服务端 DB 为唯一真相（PR #194 已收口 lastQuizId 归属校验），本次补"无参兜底"，显式传参与服务端自取双路径闭环，客户端不可伪造分支依据。
+- **验证**：服务端单测覆盖 evaluateFlow 六态；本地配置 BRANCH_DEPENDS 规则实测分支跳转命中。
+
+### F-2026-08-07-23 · PR #196 P0-6 0 页课件空态（用户体验）
+
+- **症状**：0 页课件被误判为「图片加载失败」——显示加载失败占位 + 重试按钮，页计数器显示 "1/0"，学生无法区分"图片挂了"与"课件没了"（误导，重复点重试无意义）。
+- **根因**：`pages.length===0` 落入 `slide-placeholder`（图片失败分支），无独立空态分支；页计数器 `current+1` 在 0 页时显示 1。
+- **修复**：SlidePlayer 增加 `pages.length===0` 独立 `el-empty` 空态（「该课件暂无内容或已被教师删除」+ 提示联系教师/管理员 + 「返回课程详情」出口）；页计数器 0 页显示 0/0；空态不指责用户、提供明确出路（L0：体验至上）。
+- **横向扫描**：同批 `CoursewareTreeDTO` 透传 `renderStatus` / `renderErrorMessage`（P1-C-1），课件树渲染失败信息不再被吞——0 页空态与渲染失败可区分；教师预览态空态同样生效（banner 已明示预览语义）。
+- **验证**：本地构造 0 页课件实测空态渲染、返回按钮路由正确；`npm run build` 通过；页计数器 0/0 断言通过。
