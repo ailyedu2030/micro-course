@@ -8,7 +8,6 @@ import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -29,7 +28,6 @@ public class LegacyCoursewareAdapter implements CoursewareAdapter {
     private final SlidePageMapper slidePageMapper;
     private final CoursewareQueryService queryService;
 
-    @Autowired
     public LegacyCoursewareAdapter(SlideService slideService,
                                     SlidePageMapper slidePageMapper,
                                     CoursewareQueryService queryService) {

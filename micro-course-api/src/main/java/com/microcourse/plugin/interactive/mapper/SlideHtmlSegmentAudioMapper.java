@@ -32,11 +32,11 @@ public interface SlideHtmlSegmentAudioMapper extends BaseMapper<SlideHtmlSegment
     /**
      * Q-2 (N+1 修复): 批量取多个 segment script 的所有音频 (1 SQL 取代 N 次 listByScript).
      */
-    @Select("SELECT * FROM slide_html_segment_audios WHERE segment_script_id IN "
+    @Select("<script>SELECT * FROM slide_html_segment_audios WHERE segment_script_id IN "
           + "<foreach collection='scriptIds' item='sid' open='(' separator=',' close=')'>"
           + "  #{sid}"
           + "</foreach> "
-          + "ORDER BY is_default DESC, completed_at DESC")
+          + "ORDER BY is_default DESC, completed_at DESC</script>")
     List<SlideHtmlSegmentAudio> listByScriptIds(@Param("scriptIds") List<Long> scriptIds);
 
     @Select("SELECT * FROM slide_html_segment_audios WHERE audio_token = #{token} LIMIT 1")
@@ -45,13 +45,13 @@ public interface SlideHtmlSegmentAudioMapper extends BaseMapper<SlideHtmlSegment
     /**
      * 【BUG #9 修复】 批量取多个 unit 的所有音频 (1 SQL).
      */
-    @Select("SELECT * FROM slide_html_segment_audios WHERE segment_script_id IN "
+    @Select("<script>SELECT * FROM slide_html_segment_audios WHERE segment_script_id IN "
           + "(SELECT id FROM slide_html_segment_scripts "
           + " WHERE is_active = TRUE "
           + "   AND html_unit_id IN "
           + "     <foreach collection='unitIds' item='uid' open='(' separator=',' close=')'>"
           + "     #{uid}"
-          + "     </foreach>")
+          + "     </foreach>)</script>")
     List<SlideHtmlSegmentAudio> listByUnitIds(@Param("unitIds") List<Long> unitIds);
 
     // ====== Q-1: TtsWorker 幂等抢占 (V330 worker_id 列) ======

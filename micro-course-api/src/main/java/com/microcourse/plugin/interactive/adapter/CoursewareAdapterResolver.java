@@ -2,7 +2,6 @@ package com.microcourse.plugin.interactive.adapter;
 
 import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -27,7 +26,6 @@ public class CoursewareAdapterResolver {
     private final LegacyCoursewareAdapter legacyAdapter;
     private final CoursewareQueryService queryService;
 
-    @Autowired
     public CoursewareAdapterResolver(PptCoursewareAdapter pptAdapter,
                                        HtmlCoursewareAdapter htmlAdapter,
                                        LegacyCoursewareAdapter legacyAdapter,

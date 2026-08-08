@@ -5,7 +5,6 @@ import com.microcourse.plugin.interactive.entity.SlidePptFlow;
 import com.microcourse.plugin.interactive.mapper.SlidePptFlowMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -29,7 +28,6 @@ public class FlowEngine {
     private final SlidePptFlowMapper flowMapper;
     private final List<FlowHandler> handlers;
 
-    @Autowired
     public FlowEngine(SlidePptFlowMapper flowMapper, List<FlowHandler> handlers) {
         this.flowMapper = flowMapper;
         this.handlers = handlers;

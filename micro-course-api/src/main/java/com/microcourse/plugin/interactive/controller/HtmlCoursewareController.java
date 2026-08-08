@@ -6,7 +6,6 @@ import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
 import com.microcourse.plugin.interactive.dto.SegmentDetectionResult;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,7 +26,6 @@ public class HtmlCoursewareController {
 
     private final HtmlCoursewareService htmlService;
 
-    @Autowired
     public HtmlCoursewareController(HtmlCoursewareService htmlService) {
         this.htmlService = htmlService;
     }

@@ -6,7 +6,6 @@ import com.microcourse.plugin.interactive.dto.SegmentAudioVO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -24,7 +23,6 @@ public class PptCoursewareAdapter implements CoursewareAdapter {
     private final PptCoursewareService pptService;
     private final CoursewareQueryService queryService;
 
-    @Autowired
     public PptCoursewareAdapter(PptCoursewareService pptService,
                                  CoursewareQueryService queryService) {
         this.pptService = pptService;

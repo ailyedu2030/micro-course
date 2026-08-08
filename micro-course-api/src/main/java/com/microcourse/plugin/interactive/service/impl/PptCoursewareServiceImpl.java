@@ -52,19 +52,22 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     private final SlidePptFlowMapper flowMapper;
     private final CourseRepository courseRepository;
     private final CourseSectionRepository sectionRepository;
+    private final com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache;
 
     public PptCoursewareServiceImpl(SlidePptPageMapper pageMapper,
                                      SlidePptPageScriptMapper scriptMapper,
                                      SlidePptPageAudioMapper audioMapper,
                                      SlidePptFlowMapper flowMapper,
                                      CourseRepository courseRepository,
-                                     CourseSectionRepository sectionRepository) {
+                                     CourseSectionRepository sectionRepository,
+                                     com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache) {
         this.pageMapper = pageMapper;
         this.scriptMapper = scriptMapper;
         this.audioMapper = audioMapper;
         this.flowMapper = flowMapper;
         this.courseRepository = courseRepository;
         this.sectionRepository = sectionRepository;
+        this.pagesCache = pagesCache;
     }
 
     // ====== Page CRUD ======
@@ -239,6 +242,7 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         entity.setCreatedAt(now);
         entity.setUpdatedAt(now);
         flowMapper.insert(entity);
+        invalidateCourseBySection(dto.getSectionId());
         log.info("[PPT-Flow] created: id={}, type={}, from={}, to={}",
                 entity.getId(), entity.getFlowType(),
                 entity.getFromPageId(), entity.getToPageId());
@@ -267,6 +271,7 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         if (dto.getDescription() != null) entity.setDescription(dto.getDescription());
         entity.setUpdatedAt(LocalDateTime.now());
         flowMapper.updateById(entity);
+        invalidateCourseBySection(entity.getSectionId());
         log.info("[PPT-Flow] updated: id={}, type={}, from={}, to={}",
                 flowId, entity.getFlowType(), entity.getFromPageId(), entity.getToPageId());
     }
@@ -274,11 +279,32 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     @Override
     @Transactional
     public void deleteFlow(Long flowId) {
+        SlidePptFlow entity = flowMapper.selectById(flowId);
+        if (entity == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
+        }
         int affected = flowMapper.deleteById(flowId);
         if (affected == 0) {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
         }
+        invalidateCourseBySection(entity.getSectionId());
         log.info("[PPT-Flow] deleted: id={}", flowId);
+    }
+
+    /**
+     * 根据 sectionId 失效课程级缓存（Phase 13 P1 修复）：
+     * 教师新建/更新/删除 flow 后，学生端 getPages 立即能看到新规则（P0-F flow 求值真正生效）。
+     */
+    private void invalidateCourseBySection(Long sectionId) {
+        if (sectionId == null) return;
+        try {
+            CourseSection section = sectionRepository.selectById(sectionId);
+            if (section != null && section.getCourseId() != null) {
+                pagesCache.invalidateCourse(section.getCourseId());
+            }
+        } catch (Exception e) {
+            log.warn("[PPT-Flow] invalidateCourseBySection failed: sectionId={} err={}", sectionId, e.getMessage());
+        }
     }
 
     // ====== IDOR 对象级授权校验 (Phase 9 P0-1 修复) ======

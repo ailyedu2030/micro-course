@@ -5,7 +5,6 @@ import com.microcourse.plugin.interactive.dto.AudioStreamInfo;
 import com.microcourse.plugin.interactive.dto.CoursewareTreeDTO;
 import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -55,7 +54,6 @@ public class CoursewareQueryController {
 
     private final CoursewareQueryService queryService;
 
-    @Autowired
     public CoursewareQueryController(CoursewareQueryService queryService) {
         this.queryService = queryService;
     }
