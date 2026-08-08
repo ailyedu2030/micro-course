@@ -29,6 +29,16 @@ export function deleteHtmlUnit(courseId, unitId) {
   return request({ method: 'DELETE', url: `/courses/${courseId}/html/units/${unitId}` })
 }
 
+// === HTML 自动分段检测 (P2-1) ===
+
+/**
+ * 对 unit 内容运行启发式分段检测（标题/段落边界），
+ * 后端落库 detected_segments 并返回 { detectedCount, segments:[{index,marker,selector,text}] }
+ */
+export function detectHtmlSegments(courseId, unitId) {
+  return request({ method: 'POST', url: `/courses/${courseId}/html/units/${unitId}/detect` })
+}
+
 // === HTML 分段脚本 ===
 
 export function listActiveHtmlSegments(courseId, unitId) {

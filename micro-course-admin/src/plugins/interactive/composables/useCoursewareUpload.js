@@ -75,7 +75,8 @@ export function useCoursewareUpload({ courseId, chapterId, sectionId, onSuccess 
         uploadProgress.value = Math.round((e.loaded / e.total) * 100)
       }, chapterId.value ? Number(chapterId.value) : null, sectionId.value ? Number(sectionId.value) : null)
       if (v.isHtml) {
-        ElMessage.success('HTML 上传成功，内容已载入编辑器')
+        // P0-3 诚实提示：上传只保存到服务器，编辑器需重载后才显示新内容
+        ElMessage.success('HTML 已保存到服务器，编辑器将自动重载新内容')
       } else {
         ElMessage.success('上传成功，正在后台渲染...')
       }
@@ -112,7 +113,22 @@ export function useCoursewareUpload({ courseId, chapterId, sectionId, onSuccess 
       if (count > maxTries) {
         stopRenderPolling()
         renderPending.value = false
-        ElMessage.error('课件处理超时，请稍后刷新查看')
+        // G3-P1-C-1: 轮询超时后调 getCoursewareTree 透传真实渲染错误（如 PPT 文件损坏），
+        // 而非一律提示泛化的"超时"（L0：错误消息诚实，用户知道该怎么办）。
+        try {
+          const res = await getCoursewareTree(courseId.value, sectionId.value, chapterId.value)
+          const t = res.data || res
+          const renderErr = t?.renderErrorMessage
+          if (t?.renderStatus === 'FAILED' && renderErr) {
+            ElMessage.error(`课件处理失败：${renderErr}，请重新上传`)
+          } else if (t?.renderStatus === 'FAILED') {
+            ElMessage.error('课件处理失败（文件可能损坏），请重新上传')
+          } else {
+            ElMessage.error('课件处理超时，请稍后刷新查看')
+          }
+        } catch {
+          ElMessage.error('课件处理超时，请稍后刷新查看')
+        }
       }
     }, 3000)
   }

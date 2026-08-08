@@ -29,6 +29,7 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.service.impl.SlideRenderService;
 import com.microcourse.plugin.interactive.service.impl.SlideServiceImpl;
+import com.microcourse.plugin.interactive.service.HtmlSegmentDetector;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
@@ -67,6 +68,7 @@ class SlideServiceTest {
     private SlideHtmlUnitMapper htmlUnitMapper;
     private SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
     private SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper;
+    private HtmlSegmentDetector htmlSegmentDetector;
     private SlideServiceImpl slideService;
 
     @BeforeEach
@@ -84,12 +86,14 @@ class SlideServiceTest {
         htmlUnitMapper = mock(SlideHtmlUnitMapper.class);
         htmlSegmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         htmlSegmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
+        htmlSegmentDetector = mock(HtmlSegmentDetector.class);
         io.micrometer.core.instrument.MeterRegistry meterRegistry = new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
         slideService = new SlideServiceImpl(courseSlideMapper, slidePageMapper, courseRepository,
                 courseChapterRepository, courseSectionRepository, slideRenderService,
                 pptPageMapper, pptScriptMapper, pptAudioMapper, pptFlowMapper,
                 htmlUnitMapper, htmlSegmentScriptMapper, htmlSegmentAudioMapper,
-                mock(com.microcourse.plugin.interactive.cache.CoursewarePagesCache.class), meterRegistry);
+                mock(com.microcourse.plugin.interactive.cache.CoursewarePagesCache.class),
+                htmlSegmentDetector, meterRegistry);
         ReflectionTestUtils.setField(slideService, "storagePath", "/tmp/slides-test");
         ReflectionTestUtils.setField(slideService, "maxHtmlSize", 5L * 1024 * 1024);
     }
@@ -699,6 +703,142 @@ class SlideServiceTest {
                 assertNotNull(resp);
                 assertEquals(44L, resp.getSlideId().longValue());
                 verify(courseSlideMapper).insert(any(CourseSlide.class));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("P0-3 — v2 unit 存在时替换 HTML 同步更新 unit（html_sanitized + is_trusted + 自动段检测），修复替换静默失效")
+        void uploadHtmlFileV2UnitUpdateTest() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseSection section = new CourseSection();
+                section.setId(7L);
+                section.setCourseId(1L);
+                section.setVersion(1);
+                when(courseSectionRepository.selectById(7L)).thenReturn(section);
+                when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
+
+                // v1 course_slides 已存在（UPSERT 路径）
+                CourseSlide existing = new CourseSlide();
+                existing.setId(43L);
+                existing.setCourseId(1L);
+                existing.setSectionId(7L);
+                existing.setFileName("old.html");
+                existing.setFileUrl("html:inline");
+                existing.setStatus(2);
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+                when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
+
+                // v1 slide_pages 已存在（UPSERT in-place）
+                SlidePage existingPage = new SlidePage();
+                existingPage.setId(100L);
+                existingPage.setSlideId(43L);
+                existingPage.setCourseId(1L);
+                existingPage.setSectionId(7L);
+                existingPage.setPageNumber(1);
+                existingPage.setContentType("HTML_DIRECT");
+                existingPage.setHtmlContent("<p>Old</p>");
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existingPage);
+                when(slidePageMapper.updateById(any(SlidePage.class))).thenReturn(1);
+
+                // v2 unit 已存在 → 替换必须同步更新它（P0-3 根因修复）
+                SlideHtmlUnit v2Unit = new SlideHtmlUnit();
+                v2Unit.setId(500L);
+                v2Unit.setCourseId(1L);
+                v2Unit.setSectionId(7L);
+                v2Unit.setSlideId(43L);
+                v2Unit.setHtmlContent("<p>Old v2</p>");
+                v2Unit.setHtmlSanitized("<p>Old v2</p>");
+                v2Unit.setIsTrusted(true);
+                v2Unit.setVersion(1);
+                when(htmlUnitMapper.findBySection(7L)).thenReturn(v2Unit);
+                when(htmlUnitMapper.updateById(any(SlideHtmlUnit.class))).thenReturn(1);
+                // 自动段检测：新内容含 2 个标题 → 2 段
+                when(htmlSegmentDetector.detectSegments(anyString())).thenReturn(List.of(
+                        new com.microcourse.plugin.interactive.dto.SegmentInfo(1, "seg-1", "#seg-1", "一"),
+                        new com.microcourse.plugin.interactive.dto.SegmentInfo(2, "seg-2", "#seg-2", "二")));
+
+                MockMultipartFile newFile = new MockMultipartFile(
+                        "file", "new.html", "text/html",
+                        "<h1>新标题一</h1><p>内容一</p><h2>新标题二</h2><p>内容二</p>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, newFile, null, 7L);
+
+                assertEquals(43L, resp.getSlideId().longValue());
+                // P0-3 核心验证：v2 unit 必须被 update（且不可 delete / insert）
+                verify(htmlUnitMapper).findBySection(7L);
+                verify(htmlUnitMapper, never()).deleteById(anyLong());
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).updateById(unitCaptor.capture());
+                SlideHtmlUnit updatedUnit = unitCaptor.getValue();
+                // 新内容同步进 v2 unit（学生端 getPages v2 优先 → 读到新内容）
+                assertTrue(updatedUnit.getHtmlSanitized().contains("新标题一"));
+                assertTrue(updatedUnit.getHtmlSanitized().contains("新标题二"));
+                assertEquals(Boolean.TRUE, updatedUnit.getIsTrusted());
+                // 自动段检测双保险：detected_segments 一次写入
+                assertEquals(2, updatedUnit.getDetectedSegments().intValue());
+                verify(htmlSegmentDetector).detectSegments(anyString());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("P0-3 — v2 unit 不存在时保持 v1 流程（不创建 v2 unit，不调用检测）")
+        void uploadHtmlFile_NoV2UnitKeepsV1() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseSection section = new CourseSection();
+                section.setId(7L);
+                section.setCourseId(1L);
+                section.setVersion(1);
+                when(courseSectionRepository.selectById(7L)).thenReturn(section);
+                when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
+
+                CourseSlide existing = new CourseSlide();
+                existing.setId(43L);
+                existing.setCourseId(1L);
+                existing.setSectionId(7L);
+                existing.setStatus(2);
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existing);
+                when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
+
+                SlidePage existingPage = new SlidePage();
+                existingPage.setId(100L);
+                existingPage.setSlideId(43L);
+                existingPage.setCourseId(1L);
+                existingPage.setSectionId(7L);
+                existingPage.setPageNumber(1);
+                existingPage.setContentType("HTML_DIRECT");
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(existingPage);
+                when(slidePageMapper.updateById(any(SlidePage.class))).thenReturn(1);
+
+                // v2 unit 不存在
+                when(htmlUnitMapper.findBySection(7L)).thenReturn(null);
+
+                MockMultipartFile file = new MockMultipartFile(
+                        "file", "new.html", "text/html", "<p>New v1 only</p>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, 7L);
+                assertNotNull(resp);
+                // v1 流程正常 + 不触碰 v2 unit / 不调用检测
+                verify(courseSlideMapper).updateById(any(CourseSlide.class));
+                verify(htmlUnitMapper).findBySection(7L);
+                verify(htmlUnitMapper, never()).updateById(any(SlideHtmlUnit.class));
+                verify(htmlSegmentDetector, never()).detectSegments(anyString());
             } finally {
                 SecurityContextHolder.clearContext();
             }

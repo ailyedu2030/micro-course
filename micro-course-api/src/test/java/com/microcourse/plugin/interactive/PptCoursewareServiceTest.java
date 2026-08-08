@@ -40,6 +40,8 @@ class PptCoursewareServiceTest {
     private SlidePptPageScriptMapper scriptMapper;
     private SlidePptPageAudioMapper audioMapper;
     private SlidePptFlowMapper flowMapper;
+    private com.microcourse.repository.CourseRepository courseRepository;
+    private com.microcourse.repository.CourseSectionRepository sectionRepository;
     private PptCoursewareServiceImpl service;
 
     @BeforeEach
@@ -48,7 +50,10 @@ class PptCoursewareServiceTest {
         scriptMapper = mock(SlidePptPageScriptMapper.class);
         audioMapper = mock(SlidePptPageAudioMapper.class);
         flowMapper = mock(SlidePptFlowMapper.class);
-        service = new PptCoursewareServiceImpl(pageMapper, scriptMapper, audioMapper, flowMapper);
+        courseRepository = mock(com.microcourse.repository.CourseRepository.class);
+        sectionRepository = mock(com.microcourse.repository.CourseSectionRepository.class);
+        service = new PptCoursewareServiceImpl(pageMapper, scriptMapper, audioMapper, flowMapper,
+                courseRepository, sectionRepository);
     }
 
     @Nested

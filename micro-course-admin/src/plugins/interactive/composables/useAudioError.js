@@ -3,11 +3,14 @@
  *
  * 后端 error_message 真实来源（TtsServiceImpl / TtsWorkerService）：
  *   - "账户余额不足"                                  → recharge
- *   - "TTS 限流，请 5 分钟后重试"                      → retry（可等 5 分钟自动恢复）
+ *   - "TTS 限流，请 5 分钟后重试"                      → ratelimit（5 分钟倒计时按钮，G3-P1-C-2 新增）
  *   - "生成超时（>10 分钟）" / "MiniMax 响应解析失败"   → retry（瞬时故障，可重试）
  *   - "MiniMax 错误: ..."（含 voice/speaker 关键词）   → voice（音色不可用）
  *   - "MiniMax API Key 无效，请检查 backend 配置"      → config（管理员介入）
  *   - 其它                                            → retry（默认重新生成）
+ *
+ * G3-P1-C-2: 确定性错误（余额不足/Key 无效/限流/未配置 key）现在由后端立即置 FAILED，
+ * 前端据此给出对应行动按钮；限流场景提供 5 分钟倒计时（禁用 → 倒计时 → 启用）。
  *
  * L0 铁律：每个错误状态必须告诉用户"该怎么办" + 提供"行动按钮"。
  */
@@ -35,9 +38,9 @@ export function classifyAudioError(msg = '') {
     return {
       level: 'warning',
       alertType: 'warning',
-      action: 'retry',
-      advice: 'TTS 服务限流，5 分钟后自动重试，也可立即手动重试',
-      actionLabel: '手动重试'
+      action: 'ratelimit',
+      advice: 'API 限流，请 5 分钟后重试（倒计时结束后按钮将自动启用）',
+      actionLabel: '重新生成'
     }
   }
   if (m.includes('超时') || /timeout|timed ?out/i.test(m)) {

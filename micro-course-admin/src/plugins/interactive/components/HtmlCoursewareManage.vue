@@ -36,7 +36,12 @@
     <div class="hcm-panels">
       <el-tabs v-model="activePanel" type="card">
         <el-tab-pane name="content" label="HTML 内容">
-          <HtmlBlockEditor :course-id="courseId" :section-id="sectionId" @unit-saved="emit('changed')" />
+          <HtmlBlockEditor
+            :course-id="courseId"
+            :section-id="sectionId"
+            :reload-key="htmlReloadKey"
+            @unit-saved="emit('changed')"
+          />
         </el-tab-pane>
         <el-tab-pane name="segment" label="分段脚本">
           <el-alert
@@ -54,7 +59,7 @@
             <p class="hcm-empty-title">本课件暂无分段</p>
             <p class="hcm-empty-desc">点击下方「开始检测」或「手动添加段」按钮开始配置</p>
             <div class="hcm-empty-actions">
-              <el-button type="primary" :icon="MagicStick" :loading="detecting" @click="runSegmentDetection">
+              <el-button type="primary" :icon="MagicStick" :loading="detectAction.loading.value" @click="detectAction.run">
                 开始检测
               </el-button>
               <el-button :icon="Plus" @click="addSegmentManually">手动添加段</el-button>
@@ -111,7 +116,7 @@ import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
 import { useAsyncAction } from '../composables/useAsyncAction'
 import { deleteCourseware } from '../api/slide'
-import { listActiveHtmlSegments } from '../api/htmlCourseware'
+import { listActiveHtmlSegments, detectHtmlSegments } from '../api/htmlCourseware'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -191,22 +196,28 @@ function addSegmentManually() {
   activePanel.value = 'segment'
 }
 
-// 「开始检测」：后端暂未提供独立分段检测接口（detected_segments 由上传分析写入），
-// 此按钮重读服务器最新单元/分段状态并通知父级刷新课件树；后端补检测接口后即为入口。
-const detecting = ref(false)
+// P2-1: 「开始检测」调用后端启发式分段检测接口（标题/段落边界）——
+// 后端落库 slide_html_units.detected_segments 并返回段列表。
+// 成功后刷新课件树（segmentSlots 由 detectedSegments 驱动渲染 N 个槽位），
+// 并如实提示检测到的段落数（不再是"仅重读服务器状态"的按钮摆设）。
 async function runSegmentDetection() {
-  if (!props.tree?.htmlUnit || detecting.value) return
-  detecting.value = true
+  const unitId = props.tree?.htmlUnit?.id
+  if (!unitId) {
+    ElMessage.warning('请先在「HTML 内容」中保存一次课件以创建单元')
+    return
+  }
   try {
-    await loadSegments()
+    const res = await detectHtmlSegments(props.courseId, unitId)
+    const payload = res?.data || res
+    const count = payload?.detectedCount
+      ?? (Array.isArray(payload?.segments) ? payload.segments.length : 0)
     emit('changed')
-    ElMessage.success('已重新检测课件分段')
+    ElMessage.success(count > 0 ? `已检测到 ${count} 个段落` : '未检测到段落，可点击「手动添加段」配置')
   } catch (e) {
     ElMessage.error(e?.response?.data?.message || '检测失败，请稍后重试')
-  } finally {
-    detecting.value = false
   }
 }
+const detectAction = useAsyncAction(runSegmentDetection)
 
 watch(
   () => props.tree?.htmlUnit?.id,
@@ -214,20 +225,42 @@ watch(
   { immediate: true }
 )
 
+// P0-3: 替换 HTML 后编辑器重载信号（每次上传 +1）
+const htmlReloadKey = ref(0)
+
 const upload = useCoursewareUpload({
   courseId: computed(() => props.courseId),
   chapterId: computed(() => props.chapterId),
   sectionId: computed(() => props.sectionId),
-  onSuccess: () => emit('changed')
+  onSuccess: () => {
+    // P0-3: 替换 HTML 上传成功后：
+    // 1) bump reloadKey → HtmlBlockEditor 强制重载 v2 unit 新内容（后端已同步）
+    // 2) 刷新课件树（detected_segments / narrationStatus 等）
+    htmlReloadKey.value++
+    emit('changed')
+  }
 })
 
 const canPreview = computed(() => props.tree?.type === 'HTML')
 
+// P1-C-4/P1-C-3：AUDIO_PENDING（待生成）/ AUDIO_FAILED（失败）聚合枚举映射（G3 后端新枚举）
 function statusLabel(s) {
-  return { PENDING: '待生成', AUDIO_GENERATING: '生成中', AUDIO_READY: '就绪' }[s] || s
+  return {
+    PENDING: '待生成',
+    AUDIO_PENDING: '待生成',
+    AUDIO_GENERATING: '生成中',
+    AUDIO_READY: '就绪',
+    AUDIO_FAILED: '失败'
+  }[s] || s
 }
 function statusTagType(s) {
-  return { PENDING: 'info', AUDIO_GENERATING: 'warning', AUDIO_READY: 'success' }[s] || 'info'
+  return {
+    PENDING: 'info',
+    AUDIO_PENDING: 'info',
+    AUDIO_GENERATING: 'warning',
+    AUDIO_READY: 'success',
+    AUDIO_FAILED: 'danger'
+  }[s] || 'info'
 }
 
 async function handleDeleteCourseware() {

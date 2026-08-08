@@ -68,4 +68,22 @@ public interface LearningProgressService {
      * @return 完成度 Map
      */
     Map<String, Object> getCourseCompletionWithGuard(Long currentUserId, Long userId, Long courseId);
+
+    /**
+     * G3-P0-5: 上报课时播放进度 → 服务端计算 video_progress 并写入 learning_progress。
+     * <p>
+     * 供 evaluateFlow 的 SKIP_IF_KNOWN 服务端读取（设计决策 3）：
+     * 学生播放器每次翻页/音频结束调用，纯 PPT/HTML 学习场景得以真正命中 SKIP 规则。
+     * 计算 {@code video_progress = min(100, round(played/total*100))}；total &lt;= 0 时
+     * 仅刷新 last_watch_at 不清零已有进度。记录不存在则幂等创建。
+     * </p>
+     *
+     * @param userId        当前用户 ID（SecurityContext 派生，不信任客户端）
+     * @param courseId      课程 ID（path）
+     * @param sectionId     课时 ID（path，对应 learning_progress.lesson_id）
+     * @param playedSeconds 已播时长（秒）
+     * @param totalSeconds  总时长（秒）
+     */
+    void updateVideoProgress(Long userId, Long courseId, Long sectionId,
+                             Integer playedSeconds, Integer totalSeconds);
 }

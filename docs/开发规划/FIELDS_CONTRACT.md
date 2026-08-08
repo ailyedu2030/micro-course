@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 286 | Vue 视图数: 62 | Controller 数: 77 | API 文件数: 47
+> 实体数: 287 | Vue 视图数: 62 | Controller 数: 77 | API 文件数: 47
 
 ---
 
@@ -12,7 +12,7 @@
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 20 字段
 
-- 后端实体字段总数: 2621
+- 后端实体字段总数: 2623
 
 - 前端引用字段总数: 445
 
@@ -889,7 +889,7 @@
 
 | InteractiveCourseware | /api/courses/{courseId}/interactive | 4 | - |
 
-| LearningProgress | /api/learning-progress | 8 | - |
+| LearningProgress | /api/learning-progress | 9 | - |
 
 | Lesson | /api/lessons | 6 | - |
 
@@ -1421,6 +1421,8 @@
 | SectionDTO | 21 | 0 |
 
 | SectionUpdateRequest | 2 | 0 |
+
+| SectionVideoProgressReportRequest | 2 | 0 |
 
 | SettingUpdateRequest | 3 | 0 |
 

@@ -1,6 +1,7 @@
 package com.microcourse.controller;
 
 import com.microcourse.dto.LearningProgressVO;
+import com.microcourse.dto.SectionVideoProgressReportRequest;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import com.microcourse.dto.ProgressCreateRequest;
@@ -73,6 +74,27 @@ public class LearningProgressController {
                                   @Valid @RequestBody ProgressUpdateRequest request) {
         Long userId = getCurrentUserId();
         learningProgressService.updateProgress(id, userId, request);
+        return R.ok();
+    }
+
+    /**
+     * G3-P0-5: PUT /api/learning-progress/{courseId}/sections/{sectionId}/video-progress
+     * 学生播放器翻页/音频结束上报"本课时播放进度"。
+     * <p>
+     * 服务端计算 {@code video_progress = played/total}（0-100，max 1.0）写入 learning_progress，
+     * 供 evaluateFlow 的 SKIP_IF_KNOWN 服务端读取（纯 PPT/HTML 学习场景此前该字段恒 null
+     * → SKIP 规则永不命中，教师配置的 flow 规则形同虚设）。仅 STUDENT 可调用，
+     * userId 取 SecurityContext，不信任客户端。
+     * </p>
+     */
+    @PutMapping("/{courseId}/sections/{sectionId}/video-progress")
+    @PreAuthorize("hasRole('STUDENT')")
+    public R<Void> reportVideoProgress(@PathVariable Long courseId,
+                                       @PathVariable Long sectionId,
+                                       @Valid @RequestBody SectionVideoProgressReportRequest request) {
+        Long userId = getCurrentUserId();
+        learningProgressService.updateVideoProgress(userId, courseId, sectionId,
+                request.getPlayedSeconds(), request.getTotalSeconds());
         return R.ok();
     }
 

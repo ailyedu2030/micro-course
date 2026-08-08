@@ -171,6 +171,99 @@ class TtsWorkerServiceTest {
         verify(ttsService, never()).synthesize(any(), any(), any(), any());
     }
 
+    // ====== G3-P1-C-2: 确定性错误 → 立即 FAILED（不再等 10 分钟 markTimedOut 兜底） ======
+
+    /** 构造"已抢占 1 行 PPT、TTS 抛指定异常"的最小环境并执行 poll。 */
+    private void pollWithTtsFailure(String errorMessage) {
+        SlidePptPageAudio row = newPptAudioRow(9L, LocalDateTime.now().minusMinutes(1));
+        when(pptAudioMapper.claimPending(anyString(), any(), anyInt())).thenReturn(1);
+        when(htmlAudioMapper.claimPending(anyString(), any(), anyInt())).thenReturn(0);
+        when(pptAudioMapper.selectClaimed(anyString())).thenReturn(List.of(row));
+        when(htmlAudioMapper.selectClaimed(anyString())).thenReturn(List.of());
+        SlidePptPageScript script = new SlidePptPageScript();
+        script.setId(100L); script.setScriptText("讲述稿");
+        when(pptScriptMapper.selectById(100L)).thenReturn(script);
+        SlidePptPage page = new SlidePptPage();
+        page.setId(10L); page.setCourseId(42L);
+        when(pptPageMapper.selectById(10L)).thenReturn(page);
+        when(pptAudioMapper.selectById(9L)).thenReturn(row);
+        // 用 doThrow 而非 when().thenThrow()：循环多次 poll 时 when() 内部会执行上一次的
+        // thenThrow stub（Mockito 已知行为）导致异常逃逸到测试层。
+        doThrow(new RuntimeException(errorMessage))
+                .when(ttsService).synthesize(any(), any(), any(), anyDouble());
+        worker.poll();
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: 余额不足（1008）→ 立即 FAILED，不 releaseClaim 重试")
+    void deterministicError_BalanceNotEnough_FailsImmediately() {
+        pollWithTtsFailure("账户余额不足");
+
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                "FAILED".equals(r.getStatus())
+                        && "账户余额不足".equals(r.getErrorMessage())));
+        verify(pptAudioMapper, never()).releaseClaim(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: API Key 无效（2049）→ 立即 FAILED，不 releaseClaim 重试")
+    void deterministicError_InvalidApiKey_FailsImmediately() {
+        pollWithTtsFailure("MiniMax API Key 无效，请检查 backend 配置");
+
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                "FAILED".equals(r.getStatus())
+                        && "MiniMax API Key 无效，请检查 backend 配置".equals(r.getErrorMessage())));
+        verify(pptAudioMapper, never()).releaseClaim(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: 限流（1002）→ 立即 FAILED（提示 5 分钟后重试），不 releaseClaim 重试")
+    void deterministicError_RateLimit_FailsImmediately() {
+        pollWithTtsFailure("TTS 限流，请 5 分钟后重试");
+
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                "FAILED".equals(r.getStatus())
+                        && r.getErrorMessage() != null
+                        && r.getErrorMessage().contains("限流")));
+        verify(pptAudioMapper, never()).releaseClaim(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: 未配置 API Key → 立即 FAILED，不 releaseClaim 重试")
+    void deterministicError_NoApiKey_FailsImmediately() {
+        pollWithTtsFailure("MiniMax API key 未配置");
+
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                "FAILED".equals(r.getStatus())
+                        && "MiniMax API key 未配置".equals(r.getErrorMessage())));
+        verify(pptAudioMapper, never()).releaseClaim(anyLong(), anyString());
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: 网络失败 → 保留 GENERATING 重试（releaseClaim），不立即 FAILED")
+    void transientError_Network_Retries() {
+        pollWithTtsFailure("MiniMax 调用失败: Connection refused");
+
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                r.getErrorMessage() != null && r.getErrorMessage().contains("MiniMax 调用失败")));
+        verify(pptAudioMapper).releaseClaim(eq(9L), anyString());
+        // 网络瞬时故障不得直接 FAILED
+        verify(pptAudioMapper, never()).updateById(argThat(r -> "FAILED".equals(r.getStatus())));
+    }
+
+    @Test
+    @DisplayName("G3-P1-C-2: 未知错误重试 3 次后 → FAILED")
+    void unknownError_RetriesThenFails() {
+        // 连续 3 次 UNKNOWN 失败（同一行 9）：前 2 次 releaseClaim 重试，第 3 次 FAILED
+        for (int i = 0; i < 3; i++) {
+            pollWithTtsFailure("some unknown error");
+        }
+        verify(pptAudioMapper, times(2)).releaseClaim(eq(9L), anyString());
+        verify(pptAudioMapper, atLeastOnce()).updateById(argThat(r ->
+                "FAILED".equals(r.getStatus())
+                        && "some unknown error".equals(r.getErrorMessage())));
+    }
+
     @Test
     @DisplayName("Q-1: 每轮 poll 先回收孤儿 PROCESSING + 标记超时 GENERATING")
     void poll_ReclaimsOrphansAndTimesOut() {

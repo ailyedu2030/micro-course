@@ -87,7 +87,15 @@ const statusClass = (p) => {
   return 'dot-pending'
 }
 const statusText = (p) => {
-  const m = { PENDING: '待处理', AI_GENERATED: 'AI已生成', TEACHER_EDITED: '已编辑', AUDIO_GENERATING: '配音中', AUDIO_READY: '音频就绪' }
+  const m = {
+    PENDING: '待处理',
+    AUDIO_PENDING: '待生成',
+    AI_GENERATED: 'AI已生成',
+    TEACHER_EDITED: '已编辑',
+    AUDIO_GENERATING: '配音中',
+    AUDIO_READY: '音频就绪',
+    AUDIO_FAILED: '生成失败'
+  }
   return m[p.narrationStatus] || p.narrationStatus
 }
 </script>
