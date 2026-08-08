@@ -43,4 +43,12 @@ public interface SlidePptPageMapper extends BaseMapper<SlidePptPage> {
           + "AND page_number = #{pageNumber} LIMIT 1")
     SlidePptPage findBySlideAndPageNumber(@Param("slideId") Long slideId,
                                           @Param("pageNumber") Integer pageNumber);
+
+    /**
+     * P0-B (I2): 按 course 列出全部 v2 PPT 页（学生端无参数入口 course 级兜底）。
+     * 按 section_id, chapter_id, page_number 排序，保证同 section 页面连续且顺序稳定。
+     */
+    @Select("SELECT * FROM slide_ppt_pages WHERE course_id = #{courseId} "
+          + "ORDER BY section_id, chapter_id, page_number ASC")
+    List<SlidePptPage> listByCourse(@Param("courseId") Long courseId);
 }
