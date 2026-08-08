@@ -103,6 +103,7 @@
             page-type="PPT"
             :page-id="activePage.pageId"
             :current-script-id="activePage.activeScript?.id || null"
+            @save-success="emit('changed')"
           />
         </el-tab-pane>
         <el-tab-pane name="audio" label="音频">
@@ -143,8 +144,8 @@ import PptFlowEditor from './PptFlowEditor.vue'
 import SlidePreview from './SlidePreview.vue'
 import { useCoursewareUpload } from '../composables/useCoursewareUpload'
 import { useAsyncAction } from '../composables/useAsyncAction'
-import { generatePptScriptAi, getTtsOptions } from '../api/queryCourseware'
-import { deletePptPage, generatePptAudio } from '../api/pptCourseware'
+import { getTtsOptions } from '../api/queryCourseware'
+import { deletePptPage, generatePptAudio, batchGeneratePptScripts } from '../api/pptCourseware'
 import { downloadOriginalSlide, deleteCourseware } from '../api/slide'
 
 const props = defineProps({
@@ -243,22 +244,28 @@ async function handleBatchAI() {
   }
   if (batchAiLoading.value) return // L0 Task 2: 防重复触发
   batchAiLoading.value = true
-  const failed = []
-  let ok = 0
   try {
-    for (const page of props.tree.pages || []) {
-      if (!selectedBatch.value.has(page.pageId)) continue
-      try {
-        await generatePptScriptAi(props.courseId, page.pageId)
-        ok++
-      } catch (e) {
-        failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
-      }
+    const pageIds = (props.tree.pages || [])
+      .filter(p => selectedBatch.value.has(p.pageId))
+      .map(p => p.pageId)
+    if (pageIds.length === 0) return
+    // P0-D 修复: 批量 AI 生成必须真实落库 —— 调后端 batch-ai-generate 端点
+    // (逐页 LLM 生成 + 保存 slide_ppt_page_scripts), 取代"生成后不保存"的假完成
+    const res = await batchGeneratePptScripts(props.courseId, pageIds)
+    const results = res?.data?.results || res?.results || []
+    const ok = results.filter(r => r.success).length
+    const failed = results.filter(r => !r.success)
+    if (failed.length > 0) {
+      const pageNumOf = (id) => (props.tree.pages || []).find(p => p.pageId === id)?.pageNumber || id
+      ElMessage.warning(
+        `批量 AI 生成并保存：成功 ${ok} 页，失败 ${failed.length} 页（${failed.map(f => `第${pageNumOf(f.pageId)}页: ${f.error || '未知错误'}`).join('；')}）`
+      )
+    } else {
+      ElMessage.success(`批量 AI 生成并保存完成：成功 ${ok} 页`)
     }
-    ElMessage[failed.length ? 'warning' : 'success'](
-      `批量 AI 生成完成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
-    )
-    emit('changed')
+    emit('changed') // 刷新课件树 → 页级 activeScript 更新 → 讲述稿/音频 tab 立即可见
+  } catch (e) {
+    ElMessage.error(e?.response?.data?.message || e?.message || '批量 AI 生成失败，请稍后重试')
   } finally {
     batchAiLoading.value = false
   }
