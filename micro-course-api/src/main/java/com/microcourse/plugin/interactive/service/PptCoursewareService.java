@@ -42,4 +42,26 @@ public interface PptCoursewareService {
     List<PptFlowDTO> listFlowsBySection(Long sectionId);
     void updateFlow(Long flowId, PptFlowDTO dto);
     void deleteFlow(Long flowId);
+
+    // === IDOR 对象级授权校验 (Phase 9 P0-1 修复) ===
+    // 所有写端点必须先通过对应 verify* 校验, 防止:
+    // 1) 非 owner TEACHER 凭自增 ID 枚举/篡改他人课程 PPT 课件
+    // 2) 跨课程修改/删除课件页 / 跳转规则
+    // 3) 消耗他人 TTS 额度 (generateAudio 触发计费)
+    // 语义: ADMIN 通行; TEACHER 必须为课程 owner (SecurityUtil.isOwnerOrAdmin)
+
+    /** 校验当前用户是该课程的 owner (或 ADMIN)。courseId 不存在 → COURSE_NOT_FOUND(404)。 */
+    void verifyOwner(Long courseId);
+
+    /** 校验 section 属于该课程 + 当前用户是 owner。createPage / createFlow 使用。 */
+    void verifySectionOwner(Long courseId, Long sectionId);
+
+    /** 校验 page 属于该课程 + 当前用户是 owner。updatePage / deletePage / saveScript 使用。 */
+    void verifyPageOwner(Long courseId, Long pageId);
+
+    /** 校验 script 所属 page 属于该课程 + 当前用户是 owner。generateAudio (TTS 计费) 使用。 */
+    void verifyScriptOwner(Long courseId, Long scriptId);
+
+    /** 校验 flow 所属 section 属于该课程 + 当前用户是 owner。updateFlow / deleteFlow 使用。 */
+    void verifyFlowOwner(Long courseId, Long flowId);
 }

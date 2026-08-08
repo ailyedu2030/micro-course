@@ -3,10 +3,12 @@ package com.microcourse.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.microcourse.audit.AuditLogWriter;
 import com.microcourse.audit.AuditedLogInterceptor;
+import com.microcourse.repository.CourseRepository;
 import com.microcourse.security.FileAccessLogger;
 import com.microcourse.security.FileAccessRateLimitInterceptor;
 import com.microcourse.security.RequireRoleInterceptor;
 import com.microcourse.util.RedisUtil;
+import com.microcourse.web.interceptor.CourseAccessInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -53,6 +55,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private final FileAccessLogger fileAccessLogger;
     private final AuditLogWriter auditLogWriter;
     private final ObjectMapper objectMapper;
+    private final CourseRepository courseRepository;
     /**
      * P1-C 修复(2026-08-03): 与上传/转码共用同一配置源。
      * 此前硬编码 ./uploads/videos/，一旦通过 VIDEO_STORAGE_BASE_DIR 覆写存储目录
@@ -62,11 +65,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
     private String videoStorageBaseDir;
 
     public WebMvcConfig(RedisUtil redisUtil, FileAccessLogger fileAccessLogger,
-                        AuditLogWriter auditLogWriter, ObjectMapper objectMapper) {
+                        AuditLogWriter auditLogWriter, ObjectMapper objectMapper,
+                        CourseRepository courseRepository) {
         this.redisUtil = redisUtil;
         this.fileAccessLogger = fileAccessLogger;
         this.auditLogWriter = auditLogWriter;
         this.objectMapper = objectMapper;
+        this.courseRepository = courseRepository;
     }
 
     @Override
@@ -102,5 +107,13 @@ public class WebMvcConfig implements WebMvcConfigurer {
         // 其余 /api/files/** 在拦截器内首行透传，零影响。
         registry.addInterceptor(new FileAccessRateLimitInterceptor(redisUtil, fileAccessLogger))
                 .addPathPatterns("/api/files/**");
+
+        // Phase 9 P0-1/P0-2 IDOR 修复: 课件写操作对象级授权（纵深防御）。
+        // 仅对 /ppt/** 与 /html/** 的写方法（POST/PUT/DELETE/PATCH）校验课程 owner；
+        // 读方法放行由 Controller 内显式校验（getUnit 等）。slides/** 与 courseware/**
+        // 已分别由 SlideController.verifyAccess / CoursewareQueryService.verifyCourseAccess
+        // 保护（含 STUDENT 已选课 / ACADEMIC 通行语义），此处不重复拦截避免破坏读侧。
+        registry.addInterceptor(new CourseAccessInterceptor(courseRepository))
+                .addPathPatterns("/api/courses/*/ppt/**", "/api/courses/*/html/**");
     }
 }

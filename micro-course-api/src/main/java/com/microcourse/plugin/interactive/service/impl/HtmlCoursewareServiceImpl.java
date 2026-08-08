@@ -17,7 +17,10 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.plugin.interactive.dto.SegmentDetectionResult;
+import com.microcourse.plugin.interactive.dto.SegmentInfo;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
+import com.microcourse.plugin.interactive.service.HtmlSegmentDetector;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
@@ -52,19 +55,23 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
     private final SlideHtmlSegmentAudioMapper segmentAudioMapper;
     private final CourseSectionRepository sectionRepo;
     private final CourseRepository courseRepository;  // Q-4: is_trusted 判定（课程 owner）
+    /** P2-1: 自动分段检测（启发式标题/段落边界，Jsoup） */
+    private final HtmlSegmentDetector segmentDetector;
 
     public HtmlCoursewareServiceImpl(CourseSlideMapper courseSlideMapper,
                                       SlideHtmlUnitMapper unitMapper,
                                       SlideHtmlSegmentScriptMapper segmentScriptMapper,
                                       SlideHtmlSegmentAudioMapper segmentAudioMapper,
                                       CourseSectionRepository sectionRepo,
-                                      CourseRepository courseRepository) {
+                                      CourseRepository courseRepository,
+                                      HtmlSegmentDetector segmentDetector) {
         this.courseSlideMapper = courseSlideMapper;
         this.unitMapper = unitMapper;
         this.segmentScriptMapper = segmentScriptMapper;
         this.segmentAudioMapper = segmentAudioMapper;
         this.sectionRepo = sectionRepo;
         this.courseRepository = courseRepository;
+        this.segmentDetector = segmentDetector;
     }
 
     /**
@@ -231,6 +238,67 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
         log.info("[HTML-Unit] deleted: id={}", unitId);
     }
 
+    /**
+     * P2-1 (F-2026-08-07-HTML-Detect): 自动分段检测。
+     * - 校验当前用户是 unit 所属课程的 owner 或 ADMIN（G1 IDOR 协同，防跨课程检测/写入）
+     * - 取 unit.htmlSanitized（缺失时回退 htmlContent）运行启发式检测
+     * - 将段落数落库 slide_html_units.detected_segments（INT，1-50）
+     * - 审计日志（谁在何时对哪个 unit 触发了检测）
+     */
+    @Override
+    @Transactional
+    public SegmentDetectionResult runDetection(Long unitId) {
+        SlideHtmlUnit unit = unitMapper.selectById(unitId);
+        if (unit == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "HTML unit not found: " + unitId);
+        }
+        // G1 IDOR 协同：unit 必须属于当前用户可写的课程（owner/ADMIN），否则拒绝
+        assertOwnerOfUnit(unit);
+
+        String html = unit.getHtmlSanitized() != null ? unit.getHtmlSanitized() : unit.getHtmlContent();
+        List<SegmentInfo> segments = segmentDetector.detectSegments(html);
+        int count = segments.size();
+        unit.setDetectedSegments(count);
+        unit.setUpdatedAt(LocalDateTime.now());
+        int affected = unitMapper.updateById(unit);
+        if (affected == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                    "HTML unit updated concurrently, refresh and retry");
+        }
+        // P2-1 审计：检测动作可追溯（谁触发、几个段、针对哪个 unit/课程）
+        log.info("[TrustAudit] F-2026-08-07-HTML-Detect: courseId={}, unitId={}, teacherId={}, "
+                        + "detectedSegments={}, uploaderId={}",
+                unit.getCourseId(), unitId,
+                resolveTeacherId(unit.getCourseId()),
+                count, SecurityUtil.getCurrentUserIdOpt());
+        log.info("[HTML-Unit] segment detection done: unitId={}, segments={}", unitId, count);
+        return new SegmentDetectionResult(count, segments);
+    }
+
+    /**
+     * G1 IDOR 协同：写操作前校验 unit 归属课程的 owner 或 ADMIN。
+     * 与 SlideServiceImpl.uploadHtmlFile 的 owner 校验语义一致。
+     */
+    private void assertOwnerOfUnit(SlideHtmlUnit unit) {
+        if (unit.getCourseId() == null) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "unit 缺少 courseId，无法校验归属");
+        }
+        Long teacherId = resolveTeacherId(unit.getCourseId());
+        if (!SecurityUtil.isOwnerOrAdmin(teacherId)) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION);
+        }
+    }
+
+    private Long resolveTeacherId(Long courseId) {
+        try {
+            com.microcourse.entity.Course course = courseRepository.selectById(courseId);
+            return course != null ? course.getTeacherId() : null;
+        } catch (Exception e) {
+            log.warn("[HTML-Unit] resolve teacherId failed courseId={}: {}", courseId, e.getMessage());
+            return null;
+        }
+    }
+
     // ====== Segment Script 1:N 历史 ======
 
     @Override
@@ -321,6 +389,61 @@ public class HtmlCoursewareServiceImpl implements HtmlCoursewareService {
     public List<HtmlSegmentAudioDTO> listSegmentAudios(Long segmentScriptId) {
         return segmentAudioMapper.listByScript(segmentScriptId).stream()
                 .map(this::toSegmentAudioDTO).collect(Collectors.toList());
+    }
+
+    // ====== IDOR 对象级授权校验 (Phase 9 P0-2 修复) ======
+
+    @Override
+    public void verifyOwner(Long courseId) {
+        com.microcourse.entity.Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            log.warn("[HTML-IDOR] 越权操作课程课件: courseId={}, userId={}, teacherId={}",
+                    courseId, SecurityUtil.getCurrentUserIdOpt(), course.getTeacherId());
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该课程的课件");
+        }
+    }
+
+    @Override
+    public void verifyUnitOwner(Long courseId, Long unitId) {
+        SlideHtmlUnit unit = unitMapper.selectById(unitId);
+        if (unit == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "HTML unit not found: " + unitId);
+        }
+        if (!courseId.equals(unit.getCourseId())) {
+            log.warn("[HTML-IDOR] unit 不属于该课程: path courseId={}, actual={}, unitId={}",
+                    courseId, unit.getCourseId(), unitId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问该 HTML 课件");
+        }
+        verifyOwner(courseId);
+    }
+
+    @Override
+    public void verifySectionUnitOwner(Long courseId, Long sectionId) {
+        SlideHtmlUnit unit = unitMapper.findBySection(sectionId);
+        if (unit != null && !courseId.equals(unit.getCourseId())) {
+            log.warn("[HTML-IDOR] section 下 unit 不属于该课程: path courseId={}, actual={}, sectionId={}",
+                    courseId, unit.getCourseId(), sectionId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权访问该 HTML 课件");
+        }
+        verifyOwner(courseId);
+    }
+
+    @Override
+    public void verifySegmentScriptOwner(Long courseId, Long segmentScriptId) {
+        SlideHtmlSegmentScript script = segmentScriptMapper.selectById(segmentScriptId);
+        if (script == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "Segment script not found: " + segmentScriptId);
+        }
+        SlideHtmlUnit unit = unitMapper.selectById(script.getHtmlUnitId());
+        if (unit == null || !courseId.equals(unit.getCourseId())) {
+            log.warn("[HTML-IDOR] segment script 不属于该课程: path courseId={}, actual={}, scriptId={}",
+                    courseId, unit != null ? unit.getCourseId() : null, segmentScriptId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该 HTML 课件音频");
+        }
+        verifyOwner(courseId);
     }
 
     // ====== DTO converters ======

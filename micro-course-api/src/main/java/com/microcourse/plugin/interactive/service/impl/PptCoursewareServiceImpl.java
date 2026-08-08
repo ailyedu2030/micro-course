@@ -2,6 +2,8 @@ package com.microcourse.plugin.interactive.service.impl;
 
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
+import com.microcourse.entity.Course;
+import com.microcourse.entity.CourseSection;
 import com.microcourse.plugin.interactive.dto.PptAudioDTO;
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
@@ -15,6 +17,9 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageAudioMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
+import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.util.SecurityUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
@@ -45,15 +50,21 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     private final SlidePptPageScriptMapper scriptMapper;
     private final SlidePptPageAudioMapper audioMapper;
     private final SlidePptFlowMapper flowMapper;
+    private final CourseRepository courseRepository;
+    private final CourseSectionRepository sectionRepository;
 
     public PptCoursewareServiceImpl(SlidePptPageMapper pageMapper,
                                      SlidePptPageScriptMapper scriptMapper,
                                      SlidePptPageAudioMapper audioMapper,
-                                     SlidePptFlowMapper flowMapper) {
+                                     SlidePptFlowMapper flowMapper,
+                                     CourseRepository courseRepository,
+                                     CourseSectionRepository sectionRepository) {
         this.pageMapper = pageMapper;
         this.scriptMapper = scriptMapper;
         this.audioMapper = audioMapper;
         this.flowMapper = flowMapper;
+        this.courseRepository = courseRepository;
+        this.sectionRepository = sectionRepository;
     }
 
     // ====== Page CRUD ======
@@ -268,6 +279,80 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
         }
         log.info("[PPT-Flow] deleted: id={}", flowId);
+    }
+
+    // ====== IDOR 对象级授权校验 (Phase 9 P0-1 修复) ======
+
+    @Override
+    public void verifyOwner(Long courseId) {
+        Course course = courseRepository.selectById(courseId);
+        if (course == null) {
+            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
+        }
+        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            log.warn("[PPT-IDOR] 越权操作课程课件: courseId={}, userId={}, teacherId={}",
+                    courseId, SecurityUtil.getCurrentUserIdOpt(), course.getTeacherId());
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权操作该课程的课件");
+        }
+    }
+
+    @Override
+    public void verifySectionOwner(Long courseId, Long sectionId) {
+        CourseSection section = sectionRepository.selectById(sectionId);
+        if (section == null) {
+            throw new BusinessException(ErrorCode.SECTION_NOT_FOUND, "课时不存在: " + sectionId);
+        }
+        if (!courseId.equals(section.getCourseId())) {
+            log.warn("[PPT-IDOR] section 不属于该课程: path courseId={}, actual={}, sectionId={}",
+                    courseId, section.getCourseId(), sectionId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "该课时不属于本课程");
+        }
+        verifyOwner(courseId);
+    }
+
+    @Override
+    public void verifyPageOwner(Long courseId, Long pageId) {
+        SlidePptPage page = pageMapper.selectById(pageId);
+        if (page == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "PPT page not found: " + pageId);
+        }
+        if (!courseId.equals(page.getCourseId())) {
+            log.warn("[PPT-IDOR] 跨课程操作课件页: path courseId={}, actual={}, pageId={}",
+                    courseId, page.getCourseId(), pageId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "该课件页不属于本课程");
+        }
+        verifyOwner(courseId);
+    }
+
+    @Override
+    public void verifyScriptOwner(Long courseId, Long scriptId) {
+        SlidePptPageScript script = scriptMapper.selectById(scriptId);
+        if (script == null) {
+            throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "Script not found: " + scriptId);
+        }
+        SlidePptPage page = pageMapper.selectById(script.getPptPageId());
+        if (page == null || !courseId.equals(page.getCourseId())) {
+            log.warn("[PPT-IDOR] script 不属于该课程: path courseId={}, actual={}, scriptId={}",
+                    courseId, page != null ? page.getCourseId() : null, scriptId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "该讲述稿不属于本课程");
+        }
+        verifyOwner(courseId);
+    }
+
+    @Override
+    public void verifyFlowOwner(Long courseId, Long flowId) {
+        SlidePptFlow flow = flowMapper.selectById(flowId);
+        if (flow == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "Flow rule not found: " + flowId);
+        }
+        // flow 表无 course_id 列, 通过 section 反查课程归属
+        CourseSection section = sectionRepository.selectById(flow.getSectionId());
+        if (section == null || !courseId.equals(section.getCourseId())) {
+            log.warn("[PPT-IDOR] flow 不属于该课程: path courseId={}, sectionId={}, flowId={}",
+                    courseId, flow.getSectionId(), flowId);
+            throw new BusinessException(ErrorCode.NO_PERMISSION, "该跳转规则不属于本课程");
+        }
+        verifyOwner(courseId);
     }
 
     // ====== DTO converters ======
