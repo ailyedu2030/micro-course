@@ -13,6 +13,7 @@ import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.User;
 import com.microcourse.enums.CourseStatus;
+import com.microcourse.enums.CourseType;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.repository.CourseChapterRepository;
@@ -145,7 +146,15 @@ public class CourseQueryServiceImpl implements CourseQueryService {
             wrapper.eq(Course::getDifficulty, query.getDifficulty());
         }
         if (query.getCourseType() != null && !query.getCourseType().isEmpty()) {
-            wrapper.eq(Course::getCourseType, query.getCourseType());
+            // 【V333 简化方案】旧值 INTERACTIVE 兼容：展开为 HTML 课件 + PPT 课件 全量；
+            // 新值 HTML_COURSEWARE / PPT_COURSEWARE 精确匹配（2 种类型独立筛选）
+            String raw = query.getCourseType();
+            if ("INTERACTIVE".equalsIgnoreCase(raw)) {
+                wrapper.in(Course::getCourseType, "HTML_COURSEWARE", "PPT_COURSEWARE");
+            } else {
+                CourseType t = CourseType.normalize(raw);
+                wrapper.eq(Course::getCourseType, t != null ? t.getCode() : raw);
+            }
         }
         // P1C-004: 按开课院系筛选（offer_department_id）
         if (query.getOfferDepartmentId() != null) {

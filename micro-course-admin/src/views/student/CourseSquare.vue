@@ -67,7 +67,10 @@
         >
           <el-option label="全部" value="" />
           <el-option label="视频课" value="VIDEO" />
-          <el-option label="互动课" value="INTERACTIVE" />
+          <el-option label="视频课" value="VIDEO" />
+          <el-option label="HTML 课件" value="HTML_COURSEWARE" />
+          <el-option label="PPT 课件" value="PPT_COURSEWARE" />
+          <el-option label="线下课" value="OFFLINE" />
           <el-option label="线下课" value="OFFLINE" />
         </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
@@ -399,6 +402,7 @@ import { getSquareData, getMicroSpecialtyList } from '@/api/microSpecialty'
 import { usePluginStore } from '@/store/plugins'
 import { useUserStore } from '@/store/user'
 import { getDefaultCover } from '@/utils/coverHelper'
+import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getDepartments } from '@/api/department'
 
 const router = useRouter()
@@ -672,7 +676,8 @@ const handleCourseClick = (course) => {
   if (!course?.id) return
   // 如果有 enrolled 标记，直接跳转到学习页面
   if (course.enrolled) {
-    const path = course.courseType === 'INTERACTIVE'
+    // 【V333】课件类课程（HTML 课件 / PPT 课件）→ 幻灯片播放器；其他 → 学习中心
+    const path = isCoursewareCourseType(course.courseType)
       ? `/student/courses/${course.id}/slides/player`
       : `/student/learning?courseId=${course.id}`
     router.push(path)

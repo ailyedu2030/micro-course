@@ -41,7 +41,7 @@ v-if="userRole === 'ACADEMIC'"
           <template v-if="courseData.status === 4 && userRole === 'ADMIN'">
             <el-button type="warning" @click="handleUnpublish">{{ $t('course.unpublish') }}</el-button>
           </template>
-          <el-button v-if="courseData.courseType === 'INTERACTIVE' && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">{{ $t('course.slideOverview') }}</el-button>
+          <el-button v-if="isCoursewareCourseType(courseData.courseType) && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" @click="goSlides">{{ $t('course.slideOverview') }}</el-button>
           <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" plain :disabled="courseData.status === 4" @click="switchToEdit">{{ $t('app.edit') }}</el-button>
           <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="warning" plain @click="handleCopy">{{ $t('course.copy') }}</el-button>
           <el-button type="info" plain @click="previewAsStudent">
@@ -95,8 +95,7 @@ v-if="userRole === 'ACADEMIC'"
           <div class="info-item">
             <label>{{ $t('course.courseType') }}</label>
             <span>
-              <el-tag v-if="courseData.courseType === 'VIDEO'" type="primary" size="small">{{ $t('course.videoCourse') }}</el-tag>
-              <el-tag v-else-if="courseData.courseType === 'INTERACTIVE'" type="success" size="small">{{ $t('course.interactive') }}</el-tag>
+              <el-tag v-if="getCourseTypeConfig(courseData.courseType)" :type="getCourseTypeConfig(courseData.courseType).tagType" size="small">{{ getCourseTypeConfig(courseData.courseType).label }}</el-tag>
               <span v-else>{{ courseData.courseType || '-' }}</span>
             </span>
           </div>
@@ -243,6 +242,16 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
             </el-col>
           </el-row>
           <el-row :gutter="20">
+            <el-col :span="8">
+              <!-- 【V333 简化方案】课程类型 4 选 1：HTML 课件 / PPT 课件 / 视频课程 / 线下课程 -->
+              <el-form-item :label="$t('course.courseType')" prop="courseType">
+                <el-select v-model="formData.courseType" :placeholder="$t('course.courseType')" class="full-width" :aria-label="$t('course.courseType')">
+                  <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+          <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item :label="$t('course.coursePrice') + '(¥)'">
                 <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=free" class="full-width" :aria-label="$t('course.coursePrice')" />
@@ -373,6 +382,7 @@ import { sanitizeHtml } from '@/utils/xss'
 import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
 import SectionList from '@/components/course/SectionList.vue'
 import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
+import { COURSE_TYPE_OPTIONS, getCourseTypeConfig, isCoursewareCourseType } from '@/config/courseTypeConfig'
 
 const router = useRouter()
 const route = useRoute()
@@ -389,6 +399,9 @@ const {
 })
 
 const userId = computed(() => userStore.userId)
+
+// 【V333 简化方案】课程类型 4 选 1
+const courseTypeOptions = COURSE_TYPE_OPTIONS
 
 const courseId = computed(() => route.params.id)
 const isOwner = computed(() => {
@@ -447,7 +460,8 @@ const formData = reactive({
 const formRules = {
   title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
+  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
+  courseType: [{ required: true, message: '请选择课程类型', trigger: 'change' }]
 }
 const teacherName = computed(() => courseData.value.teacherName || '')
 
@@ -567,7 +581,12 @@ const handleRowClick = (row) => {
 const handleBack = () => {
   router.push(courseListPath.value)
 }
-const goSlides = () => router.push(slideManagePath(route.params.id))
+const goSlides = () => {
+  // 【V333】按课程类型限定课件工作区：HTML 课件 → ?type=HTML，PPT 课件 → ?type=PPT
+  const cwType = courseData.value.courseType === 'HTML_COURSEWARE' ? 'HTML'
+    : (courseData.value.courseType === 'PPT_COURSEWARE' ? 'PPT' : '')
+  router.push({ path: slideManagePath(route.params.id), query: cwType ? { type: cwType } : {} })
+}
 const previewAsStudent = () => {
   window.open(`/student/courses/${courseId.value}`, '_blank')
 }

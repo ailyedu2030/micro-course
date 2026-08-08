@@ -515,6 +515,7 @@ import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'
 import { getDefaultCover } from '../../utils/coverHelper'
+import { isCoursewareCourseType } from '../../config/courseTypeConfig'
 import { filterActiveLearningEnrollments, filterCourseCollectionEnrollments, isActiveLearningEnrollment } from '../../utils/enrollmentFilters'
 
 // 客户体验修复 v1.7.0: 课程 coverUrl 通常为 null,用类别感知的 SVG 兜底,
@@ -840,10 +841,11 @@ const handlePageChange = () => {
 }
 
 const handleContinue = async (courseId) => {
-  // P1-C: 根据课程 type 决定跳转（互动课件 → SlidePlayer，其他 → LearningView）
+  // P1-C: 根据课程 type 决定跳转（课件类课程 → SlidePlayer，其他 → LearningView）
   try {
     const res = await getCourseById(courseId)
-    if (res.data?.courseType === 'INTERACTIVE') {
+    // 【V333】HTML 课件 / PPT 课件 均走幻灯片播放器
+    if (isCoursewareCourseType(res.data?.courseType)) {
       // 直接从后端获取学习进度，取最后学习的章节
       try {
         const progressRes = await getLearningProgress({ courseId })

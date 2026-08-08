@@ -397,12 +397,23 @@ public class TtsWorkerService {
             // 网络/超时保留 GENERATING 下轮重试（瞬时故障）；未知最多重试 3 次后 FAILED。
             FailureCategory category = classifyFailure(e.getMessage());
             if (category.failsImmediately()) {
-                markFailed(audioRowId, e.getMessage());
+                // 【P0 修复 2026-08-09】markFailed 内部固定写 PPT 表，
+                // HTML 行（synthesizeAndFinalizeHtml → ppt=false）会因写错表而永远停在 PROCESSING。
+                // 按 ppt 分流：PPT → markFailed，HTML → markFailedHtml。
+                if (ppt) {
+                    markFailed(audioRowId, e.getMessage());
+                } else {
+                    markFailedHtml(audioRowId, e.getMessage());
+                }
                 clearRetryCount(ppt, audioRowId);
             } else if (category == FailureCategory.UNKNOWN && isUnknownRetryExhausted(ppt, audioRowId)) {
                 log.warn("[TtsWorker] UNKNOWN 错误重试 {} 次仍失败 → FAILED audioRowId={} type={}",
                         UNKNOWN_MAX_RETRIES, audioRowId, ppt ? "PPT" : "HTML");
-                markFailed(audioRowId, e.getMessage());
+                if (ppt) {
+                    markFailed(audioRowId, e.getMessage());
+                } else {
+                    markFailedHtml(audioRowId, e.getMessage());
+                }
             } else {
                 // 记录失败原因（R-15）——保留 GENERATING 下个周期重试，
                 // error_message 让用户在等待期可见真实原因（余额不足/限流/超时）；

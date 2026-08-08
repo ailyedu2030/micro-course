@@ -554,6 +554,7 @@ import AccuracyTrendChart from '@/components/learning-center/AccuracyTrendChart.
 import { ElMessage } from 'element-plus'
 import { Calendar, Star, Medal, CircleCheck, Grid, Reading, Document, DataLine, Close } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 const { t } = useI18n()
 import { getStudyDays, getTotalTime, getLearningProgress, getServerTime } from '@/api/learning-progress'
 import { getMyEnrollments } from '@/api/enrollment'
@@ -587,8 +588,9 @@ function navigateTo(path) {
 }
 
 function navigateToLearning(course) {
-  const isInteractive = course.courseType === 'INTERACTIVE'
-  const path = isInteractive
+  // 【V333】课件类课程（HTML 课件 / PPT 课件）→ 幻灯片播放器；其他 → 学习中心
+  const isCourseware = isCoursewareCourseType(course.courseType)
+  const path = isCourseware
     ? `/student/courses/${course.courseId}/slides/player`
     : `/student/learning?courseId=${course.courseId}`
   router.push(path)

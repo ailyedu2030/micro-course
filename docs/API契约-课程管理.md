@@ -47,7 +47,7 @@
   - `status`: Integer (可选)
   - `recommended`: Boolean (可选)
   - `difficulty`: Integer (可选 1/2/3)
-  - `courseType`: String (可选 VIDEO/INTERACTIVE/OFFLINE)
+  - `courseType`: String (可选 HTML_COURSEWARE/PPT_COURSEWARE/VIDEO/OFFLINE；旧值 INTERACTIVE 兼容展开为 HTML+PPT 全量)
   - `offerDepartmentId`: Long (可选)
   - `sortBy`: String (studentCount/avgRating/updatedAt)
   - `sortOrder`: String (asc/desc)
@@ -69,7 +69,7 @@
   - `categoryId`: Long
   - `teacherId`: Long (TEACHER 自动绑定)
   - `subtitle`, `summary`, `coverUrl`, `description`: String
-  - `courseType`: String (VIDEO/INTERACTIVE/OFFLINE, 默认 VIDEO)
+  - `courseType`: String (HTML_COURSEWARE/PPT_COURSEWARE/VIDEO/OFFLINE, 默认 VIDEO; V333 简化方案, 旧值 INTERACTIVE 已被迁移消除)
   - `price`, `listPrice`: BigDecimal
   - `isFree`: Boolean
   - `freeAccessScope`: String (none/same_department/same_college/same_school)
@@ -126,7 +126,7 @@
 - **守卫**:
   - 自审批阻断
   - 定价审批通过 (非免费)
-  - INTERACTIVE 类型课件就绪
+  - HTML_COURSEWARE / PPT_COURSEWARE 类型课件就绪 (V333 简化方案: 2 种课件类型发布前均须有 COMPLETED 课件)
   - **CLOSED→PUBLISHED 须 lastPublishedAt != null** (S3 修复)
 - **响应**: `R<Void>`
 

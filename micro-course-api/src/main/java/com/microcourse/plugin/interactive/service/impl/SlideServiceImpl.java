@@ -847,13 +847,18 @@ public class SlideServiceImpl implements SlideService {
             if (active != null) {
                 vo.setNarrationScript(active.getScriptText());
                 // U-5: SQL 已按 is_default DESC, completed_at DESC 排序 → 取首个 READY 即"默认音色 → 最新完成"
-                SlidePptPageAudio ready = pickReadyAudio(audiosByScript.getOrDefault(active.getId(), List.of()));
+                List<SlidePptPageAudio> scriptAudios = audiosByScript.getOrDefault(active.getId(), List.of());
+                SlidePptPageAudio ready = pickReadyAudio(scriptAudios);
                 if (ready != null) {
                     vo.setAudio(toPageAudioVO(courseId, ready));
                     vo.setNarrationAudioUrl(ready.getAudioUrl());
                     vo.setAudioDuration(ready.getAudioDurationMs() != null
                             ? Math.max(1, ready.getAudioDurationMs() / 1000) : null);
                     vo.setNarrationStatus("AUDIO_READY");
+                } else if (scriptAudios.stream().anyMatch(a -> "FAILED".equals(a.getStatus()))) {
+                    // P1-C(2026-08-09): 有 FAILED 音频的 PPT 页必须诚实提示"生成失败"，
+                    // 而非一律 AUDIO_GENERATING（此前学生端看到"音频生成中"却永远不会就绪 → 用户困惑）。
+                    vo.setNarrationStatus("AUDIO_FAILED");
                 } else {
                     vo.setNarrationStatus("AUDIO_GENERATING");
                 }

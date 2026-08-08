@@ -38,10 +38,8 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课程类型">
-          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" @change="handleSearch" aria-label="课程类型">
-            <el-option label="视频课程" value="VIDEO" />
-            <el-option label="互动课程" value="INTERACTIVE" />
-            <el-option label="线下课程" value="OFFLINE" />
+          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" :disabled="!!fixedCourseType" @change="handleSearch" aria-label="课程类型">
+            <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -95,11 +93,17 @@
           </template>
         </el-table-column>
         <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column label="类型" width="90" align="center">
+        <el-table-column label="类型" width="110" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.courseType === 'INTERACTIVE'" type="success" size="small" effect="plain">互动</el-tag>
-            <el-tag v-else-if="row.courseType === 'OFFLINE'" type="info" size="small" effect="plain">线下</el-tag>
-            <el-tag v-else type="primary" size="small" effect="plain">视频</el-tag>
+            <el-tag
+              v-if="getCourseTypeConfig(row.courseType)"
+              :type="getCourseTypeConfig(row.courseType).tagType"
+              size="small"
+              effect="plain"
+            >
+{{ getCourseTypeConfig(row.courseType).shortLabel }}
+</el-tag>
+            <el-tag v-else type="primary" size="small" effect="plain">{{ row.courseType || '视频' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="categoryName" label="分类" width="120" />
@@ -120,7 +124,7 @@
         <el-table-column label="操作" width="280" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.courseType === 'INTERACTIVE'" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
+            <el-button v-if="isCoursewareCourseType(row.courseType)" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
             <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleManageOffline(row)">安排</el-button>
             <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
             <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
@@ -159,11 +163,9 @@
         <el-form-item label="课程标题" prop="title">
           <el-input v-model="formData.title" placeholder="请输入课程标题" aria-label="课程标题" />
         </el-form-item>
-        <el-form-item label="课程类型" prop="courseType">
+        <el-form-item label="课程类型" prop="courseType" v-if="!fixedCourseType">
           <el-select v-model="formData.courseType" class="full-width" aria-label="课程类型">
-            <el-option label="视频课程" value="VIDEO" />
-            <el-option label="互动课程" value="INTERACTIVE" />
-            <el-option label="线下课程" value="OFFLINE" />
+            <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-row :gutter="20">
@@ -321,6 +323,7 @@ import * as XLSX from 'xlsx'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
+import { COURSE_TYPE_OPTIONS, COURSE_TYPE_LABELS, getCourseTypeConfig, isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { createOfflineSession } from '@/api/offline-session'
@@ -329,6 +332,16 @@ import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
+// 【V333 简化方案】HTML 课件 / PPT 课件独立管理页复用本组件，fixedCourseType 强制类型维度
+const props = defineProps({
+  fixedCourseType: { type: String, default: '' }
+})
+const courseTypeOptions = computed(() => {
+  if (props.fixedCourseType) {
+    return COURSE_TYPE_OPTIONS.filter(o => o.value === props.fixedCourseType)
+  }
+  return COURSE_TYPE_OPTIONS
+})
 const { bindToQuery } = useUrlPagination()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -341,13 +354,14 @@ const {
   userRoleRef: userRole
 })
 
-// NN/g IA 原则: 标签精度比覆盖更重要。courseType filter 由 URL 驱动,
-// 落地直接显示"我的视频课/互动课/线下课"避免泛词
-const courseTypeLabels = { VIDEO: '视频课', INTERACTIVE: '互动课', OFFLINE: '线下课' }
+// NN/g IA 原则: 标签精度比覆盖更重要。courseType filter 由 URL/固定类型 驱动,
+// 落地直接显示"我的HTML课件/PPT课件/视频课/线下课"避免泛词
+const courseTypeLabels = COURSE_TYPE_LABELS
 const pageTitle = computed(() => {
   const base = userRole.value === 'TEACHER' ? '我的' : ''
-  if (searchForm.courseType && courseTypeLabels[searchForm.courseType]) {
-    return `${base}${courseTypeLabels[searchForm.courseType]}`
+  const activeType = searchForm.courseType || props.fixedCourseType
+  if (activeType && courseTypeLabels[activeType]) {
+    return `${base}${courseTypeLabels[activeType]}`
   }
   return `${base}课程`
 })
@@ -368,11 +382,15 @@ const searchForm = reactive({
   categoryId: '',
   teacherName: '',
   status: '',
-  courseType: ''
+  courseType: props.fixedCourseType || ''
 })
 
 // P2-14: URL 分页同步
 bindToQuery(page, size, searchForm, ['keyword', 'categoryId', 'teacherName', 'status', 'courseType'])
+// 【V333】固定类型页：URL 无 courseType 时兜底保持固定类型，防止重置/直达被清空
+if (props.fixedCourseType && !searchForm.courseType) {
+  searchForm.courseType = props.fixedCourseType
+}
 
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增课程')
@@ -387,7 +405,7 @@ const formData = reactive({
   creditHours: 1,
   semester: '',
   difficulty: null,
-  courseType: 'VIDEO',
+  courseType: props.fixedCourseType || 'VIDEO',
   price: null,
   freeAccessScope: 'none',
   freeDeptIds: '[]',
@@ -491,10 +509,15 @@ const handleReset = () => {
   searchForm.categoryId = ''
   searchForm.teacherName = ''
   searchForm.status = ''
-  searchForm.courseType = ''
+  searchForm.courseType = props.fixedCourseType || ''
   page.value = 1
   fetchData()
 }
+
+// 【V333】固定类型页防漂移：任何路径清空 courseType 都立即恢复固定类型
+watch(() => searchForm.courseType, (v) => {
+  if (props.fixedCourseType && !v) searchForm.courseType = props.fixedCourseType
+})
 
 const handleSizeChange = () => {
   page.value = 1
@@ -519,6 +542,8 @@ const handleCreate = () => {
   formData.creditHours = 1
   formData.semester = ''
   formData.difficulty = null
+  // 【V333】固定类型页创建课程时预设类型
+  formData.courseType = props.fixedCourseType || 'VIDEO'
   // 重置封面
   handleRemoveCover()
   dialogVisible.value = true
@@ -667,7 +692,7 @@ const handleExport = async () => {
     const exportData = allData.map((item, index) => ({
       '序号': index + 1,
       '标题': item.title || '',
-      '类型': item.courseType === 'VIDEO' ? '视频' : item.courseType === 'INTERACTIVE' ? '互动' : '线下',
+      '类型': courseTypeLabels[item.courseType] || (item.courseType === 'INTERACTIVE' ? '互动' : '未知'),
       '分类': item.categoryName || '',
       '教师': item.teacherName || '',
       '学员数': item.studentCount || 0,
@@ -689,7 +714,9 @@ function getStatusLabel(status) {
 }
 
 const goSlides = (row) => {
-  router.push(slideManagePath(row.id))
+  // 【V333】按课程类型限定课件工作区：HTML 课件 → ?type=HTML，PPT 课件 → ?type=PPT
+  const cwType = row.courseType === 'HTML_COURSEWARE' ? 'HTML' : (row.courseType === 'PPT_COURSEWARE' ? 'PPT' : '')
+  router.push({ path: slideManagePath(row.id), query: cwType ? { type: cwType } : {} })
 }
 const handleManageOffline = (row) => {
   router.push(courseDetailPath(row.id))
