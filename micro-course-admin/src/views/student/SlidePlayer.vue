@@ -208,7 +208,14 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
             >重试</button>
           </span>
           <span v-else-if="audioStatus === 'error'" class="status-error">
-            <el-icon :size="14"><Warning /></el-icon> 音频加载失败
+            <el-icon :size="14"><Warning /></el-icon> 音频加载失败{{ audioErrorHint }}
+            <!-- P0-G：error 态提供重试按钮，学生可即时重新加载音频（不再无限转圈） -->
+            <button
+              type="button"
+              class="audio-status-btn status-failed-retry"
+              aria-label="重新加载音频"
+              @click="handleAudioRetry"
+            >重新加载</button>
           </span>
           <!-- 加载/失败期间不显示"无音频"（避免初始 loading 闪一下误导） -->
           <span v-else-if="!pageLoading && !pageError" class="status-no-audio">
@@ -280,7 +287,15 @@ v-for="s in speeds" :key="s"
     </transition>
 
     <!-- Hidden Audio -->
-    <audio ref="audioRef" @timeupdate="onTimeUpdate" @ended="onAudioEnded" @loadedmetadata="onAudioLoaded" />
+    <audio
+      ref="audioRef"
+      @timeupdate="onTimeUpdate"
+      @ended="onAudioEnded"
+      @loadedmetadata="onAudioLoaded"
+      @error="onAudioError"
+      @waiting="onAudioWaiting"
+      @stalled="onAudioStalled"
+    />
 
     <!-- Keyboard hint (first visit) -->
     <transition name="hint-fade">
@@ -372,6 +387,16 @@ const currentAudioSrcGen = ref(0)
 
 // P1-C-5/P1-C-3: 'loading' | 'ready' | 'pending'(等待生成) | 'generating'(生成中) | 'failed'(生成失败) | 'none' | 'error'(加载失败)
 const audioStatus = ref('none')
+// P0-G：<audio> 加载错误分类（'network' | 'decode' | 'unsupported' | 'unknown'）→ error 态文案区分
+const audioErrorType = ref('')
+const audioErrorHint = computed(() => {
+  switch (audioErrorType.value) {
+    case 'network': return '，请检查网络后重试'
+    case 'decode': return '，音频文件损坏或格式异常'
+    case 'unsupported': return '，浏览器不支持该音频格式'
+    default: return ''
+  }
+})
 const pendingStartTime = ref(null)
 const pendingTimeoutWarning = ref('')
 const interactiveWaiting = ref(false)  // 当前页是否等待用户点"完成"
@@ -653,11 +678,15 @@ function currentPlaybackProgress() {
 }
 
 // P1-1：flow 求值后翻页（NEXT/BRANCH_DEPENDS/SKIP_IF_KNOWN），失败退化为线性
+// P0-F (I2)：学生端入口（学习中心/课程广场/继续学习/课程详情 goLearn）不带 sectionId 参数，
+// 但页面 VO 已从后端携带 sectionId（buildV2PptPages 设置 vo.sectionId）→ 从页面推断，
+// 使学生端 BRANCH/SKIP 规则真实生效（不再恒线性）。
 async function advanceToNextPage(expectedGen) {
   const page = currentPage.value
-  if (page?.flows?.length && page.id != null && sectionId.value != null) {
+  const effectiveSectionId = sectionId.value ?? page?.sectionId ?? null
+  if (page?.flows?.length && page.id != null && effectiveSectionId != null) {
     try {
-      const res = await evaluateFlow(courseId.value, sectionId.value, {
+      const res = await evaluateFlow(courseId.value, effectiveSectionId, {
         currentPageId: page.id,
         userProgress: currentPlaybackProgress()
       })
@@ -836,12 +865,15 @@ function playSegment(index, time) {
   const seg = segments.value[index]
   if (!seg) return
   if (!seg.audio?.url) {
-    // P1-C-3：FAILED 段明确提示"生成失败"（不再与未生成混为"尚未生成"）
-    if (seg.audio?.status === 'GENERATING') {
-      audioStatus.value = 'pending'
-    } else if (seg.audio?.status === 'FAILED') {
+    // P1-C-3/P0-H：按段音频真实状态诚实提示 —— GENERATING/PROCESSING → 生成中；
+    // FAILED → 生成失败（附后端 errorMessage）；PENDING/无音频记录 → 尚未生成
+    const segStatus = seg.audio?.status
+    if (segStatus === 'GENERATING' || segStatus === 'PROCESSING') {
+      audioStatus.value = 'generating'
+      ElMessage.warning('该段音频正在生成中...')
+    } else if (segStatus === 'FAILED') {
       audioStatus.value = 'failed'
-      ElMessage.warning('该段音频生成失败，请教师重新生成音频')
+      ElMessage.warning(`该段音频生成失败：${seg.audio?.errorMessage || '请教师重新生成音频'}`)
     } else {
       audioStatus.value = 'error'
       ElMessage.warning('该段音频尚未生成，请教师先生成音频')
@@ -1057,10 +1089,22 @@ async function loadAudio(index) {
 
   if (hasSegments) {
     const hasReady = segments.value.some(s => s.audio?.url)
-    const hasPending = segments.value.some(s => s.audio?.status === 'GENERATING')
+    const hasGenerating = segments.value.some(s => s.audio?.status === 'GENERATING' || s.audio?.status === 'PROCESSING')
     // P1-C-3：FAILED 段不再归入"无音频"—— 明确提示生成失败并提供重试入口
     const hasFailed = segments.value.some(s => s.audio?.status === 'FAILED')
-    audioStatus.value = hasReady ? 'ready' : (hasPending ? 'pending' : (hasFailed ? 'failed' : 'none'))
+    const allReady = hasReady && segments.value.every(s => s.audio?.url)
+    // P0-H：混合状态页级取"最差"（FAILED > GENERATING/PROCESSING > 部分 READY+PENDING > 全无）
+    if (hasFailed) {
+      audioStatus.value = 'failed'
+    } else if (hasGenerating) {
+      audioStatus.value = 'generating'
+    } else if (allReady) {
+      audioStatus.value = 'ready'
+    } else if (hasReady) {
+      audioStatus.value = 'pending' // 部分 READY + 部分 PENDING/无音频
+    } else {
+      audioStatus.value = 'none'
+    }
     audioDuration.value = 0
     audioTime.value = 0
     audioProgress.value = 0
@@ -1290,6 +1334,8 @@ function handleStageClick() {
 
 function onTimeUpdate() {
   if (!audioRef.value) return
+  // P0-G：缓冲恢复（waiting/stalled 期间置 loading）→ 播放中自动回 ready，避免 UI 卡在"加载中"
+  if (audioStatus.value === 'loading' && playing.value) audioStatus.value = 'ready'
   audioTime.value = audioRef.value.currentTime
   if (audioDuration.value > 0) audioProgress.value = (audioTime.value / audioDuration.value) * 100
   if (autoMode.value && audioDuration.value > 0) {
@@ -1335,6 +1381,40 @@ function onAudioLoaded() {
     updateMediaSession()
   }
 }
+
+// P0-G：<audio> 加载/解码错误 → 即时可感知错误态（L0：错误不许静默卡死/无限转圈）
+function onAudioError(e) {
+  const err = e?.target?.error
+  // MediaError codes: 2=MEDIA_ERR_NETWORK 3=MEDIA_ERR_DECODE 4=MEDIA_ERR_SRC_NOT_SUPPORTED
+  if (err?.code === 2) {
+    audioErrorType.value = 'network'
+  } else if (err?.code === 3) {
+    audioErrorType.value = 'decode'
+  } else if (err?.code === 4) {
+    audioErrorType.value = 'unsupported'
+  } else {
+    audioErrorType.value = 'unknown'
+  }
+  console.warn('[audio] error:', err)
+  clearTimeout(loadingTimer)
+  audioStatus.value = 'error'
+  audioTime.value = 0
+  audioProgress.value = 0
+  playing.value = false
+  updateMediaSession()
+  ElMessage.error('音频加载失败，请检查网络或重试')
+}
+
+function onAudioWaiting() {
+  // 播放中缓冲中断 → 暂置 loading（诚实提示）；恢复由 onTimeUpdate 兜底回 ready
+  if (audioStatus.value === 'ready' && playing.value) audioStatus.value = 'loading'
+}
+
+function onAudioStalled() {
+  // stalled 通常伴随 waiting；一致处理（10s loadingTimer 与 @error 兜底网络中断）
+  if (audioStatus.value === 'ready' && playing.value) audioStatus.value = 'loading'
+}
+
 function onAudioEnded() {
   const expectedGen = currentAudioSrcGen.value
   playing.value = false; autoCountdown.value = 0
@@ -1391,8 +1471,11 @@ function notifyCourseCompleted() {
 }
 
 // P1-C-3：音频生成失败 → 重试入口（重新加载该页音频状态；生成操作本身在教师端）
+// P0-G：error（加载失败）→ 直接重载音频资源，给学生即时恢复路径；failed（生成失败）→ 引导教师重新生成
 function handleAudioRetry() {
-  if (isStudent.value) {
+  if (audioStatus.value === 'error') {
+    ElMessage.info('正在重新加载音频...')
+  } else if (isStudent.value) {
     ElMessage.info('音频生成失败，请提醒教师重新生成音频')
   } else {
     ElMessage.info('请在「音频」面板重新生成该页音频')
