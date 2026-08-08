@@ -31,6 +31,7 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentAudioMapper;
 import com.microcourse.plugin.interactive.cache.CoursewarePagesCache;
 import com.microcourse.plugin.interactive.service.SlideService;
+import com.microcourse.plugin.interactive.service.HtmlSegmentDetector;
 import com.microcourse.plugin.interactive.util.HtmlSanitizer;
 import com.microcourse.entity.CourseChapter;
 import com.microcourse.entity.CourseSection;
@@ -103,6 +104,9 @@ public class SlideServiceImpl implements SlideService {
     /** Q-2 (N+1 修复): 课件播放页 Redis 缓存（courseware:pages:{courseId}:... TTL 10min） */
     private final CoursewarePagesCache pagesCache;
 
+    /** P2-1 (F-2026-08-07-HTML-Update): HTML 自动分段检测（上传/替换时同步产出 detected_segments） */
+    private final HtmlSegmentDetector htmlSegmentDetector;
+
     // Micrometer 指标 (HTML 互动课件 - 灰度监控)
     private final io.micrometer.core.instrument.Counter htmlLoadCounter;
     private final io.micrometer.core.instrument.Counter htmlXssBlockedCounter;
@@ -127,6 +131,7 @@ public class SlideServiceImpl implements SlideService {
                             SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper,
                             SlideHtmlSegmentAudioMapper htmlSegmentAudioMapper,
                             CoursewarePagesCache pagesCache,
+                            HtmlSegmentDetector htmlSegmentDetector,
                             io.micrometer.core.instrument.MeterRegistry meterRegistry) {
         this.courseSlideMapper = courseSlideMapper;
         this.slidePageMapper = slidePageMapper;
@@ -142,6 +147,7 @@ public class SlideServiceImpl implements SlideService {
         this.htmlSegmentScriptMapper = htmlSegmentScriptMapper;
         this.htmlSegmentAudioMapper = htmlSegmentAudioMapper;
         this.pagesCache = pagesCache;
+        this.htmlSegmentDetector = htmlSegmentDetector;
         // HTML 互动课件监控指标 (灰度观察 6.4 用)
         this.htmlLoadCounter = io.micrometer.core.instrument.Counter.builder("interactive_html_load_total")
                 .description("HTML 课件成功加载次数（白名单教师上传后学生可访问）")
@@ -446,6 +452,48 @@ public class SlideServiceImpl implements SlideService {
                 log.warn("[SlideUpload-HtmlFile] Section not found for content_url: sectionId={}", sectionId);
             }
         }
+
+        // ===== P0-3 (F-2026-08-07-HTML-Update): v2 unit 同步 — 替换 HTML 静默失效的根因修复 =====
+        // getPages 为 v2 优先（slide_html_units 存在则学生端永远读 v2），若只更新 v1
+        // course_slides/slide_pages 而不触碰 v2 unit，替换后的新内容将成为死数据，
+        // 所有端继续显示旧内容（核心操作必现失败）。
+        // 此处：v2 unit 存在 → 同步 html_sanitized + is_trusted + 自动段检测 + 缓存已在上方失效。
+        SlideHtmlUnit v2Unit = null;
+        if (sectionId != null) {
+            v2Unit = htmlUnitMapper.findBySection(sectionId);
+        } else if (chapterId != null) {
+            v2Unit = htmlUnitMapper.findByChapter(chapterId);
+        }
+        if (v2Unit != null) {
+            v2Unit.setHtmlContent(rawHtml);
+            v2Unit.setHtmlSanitized(safeHtml);
+            // uploadHtmlFile 开头已校验 course owner/ADMIN（isOwnerOrAdmin），
+            // 与 HtmlCoursewareServiceImpl.computeIsTrusted 语义一致 → is_trusted=true
+            v2Unit.setIsTrusted(true);
+            v2Unit.setFileSizeBytes(file.getSize());
+            v2Unit.setUpdatedAt(LocalDateTime.now());
+            // P2-1 双保险：替换上传时自动分段检测，教师打开课件立即看到 N 个段（无需手动触发）
+            int detected = htmlSegmentDetector.detectSegments(safeHtml).size();
+            v2Unit.setDetectedSegments(detected);
+            int affectedUnit = htmlUnitMapper.updateById(v2Unit);
+            if (affectedUnit == 0) {
+                throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION,
+                        "HTML 单元已被修改，请刷新后重试");
+            }
+            log.info("[SlideUpload-HtmlFile] P0-3 v2 unit synced: unitId={}, courseId={}, "
+                            + "sectionId={}, chapterId={}, detectedSegments={}, isTrusted=true",
+                    v2Unit.getId(), courseId, sectionId, chapterId, detected);
+            // P0-3 审计：替换操作落账（谁在何时替换了哪个 v2 unit 的 HTML 内容）
+            log.info("[TrustAudit] F-2026-08-07-HTML-Update: courseId={}, unitId={}, teacherId={}, "
+                            + "uploaderId={}, filename={}, size={}, detectedSegments={}",
+                    courseId, v2Unit.getId(), course.getTeacherId(), SecurityUtil.getCurrentUserIdOpt(),
+                    safeFilename, file.getSize(), detected);
+        } else {
+            log.info("[SlideUpload-HtmlFile] no v2 unit for courseId={}, sectionId={}, chapterId={} "
+                    + "(keep v1 path; next access falls back to v1 when v2 absent)",
+                    courseId, sectionId, chapterId);
+        }
+
         SlideUploadResponse resp = new SlideUploadResponse();
         resp.setSlideId(sid);
         resp.setTotalPages(1);

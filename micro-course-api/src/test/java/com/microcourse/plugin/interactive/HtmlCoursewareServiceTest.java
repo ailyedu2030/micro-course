@@ -2,9 +2,11 @@ package com.microcourse.plugin.interactive;
 
 import java.util.List;
 
+import com.microcourse.entity.Course;
 import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.entity.CourseSection;
+import com.microcourse.plugin.interactive.dto.SegmentDetectionResult;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.entity.CourseSlide;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentAudio;
@@ -16,6 +18,7 @@ import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
+import com.microcourse.plugin.interactive.service.HtmlSegmentDetector;
 import com.microcourse.plugin.interactive.service.impl.HtmlCoursewareServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +26,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -49,6 +53,8 @@ class HtmlCoursewareServiceTest {
     private SlideHtmlSegmentScriptMapper segmentScriptMapper;
     private SlideHtmlSegmentAudioMapper segmentAudioMapper;
     private CourseSectionRepository sectionRepo;
+    private CourseRepository courseRepository;
+    private HtmlSegmentDetector segmentDetector;
     private HtmlCoursewareServiceImpl service;
 
     @BeforeEach
@@ -58,8 +64,11 @@ class HtmlCoursewareServiceTest {
         segmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
         segmentAudioMapper = mock(SlideHtmlSegmentAudioMapper.class);
         sectionRepo = mock(CourseSectionRepository.class);
+        courseRepository = mock(CourseRepository.class);
+        // P2-1: 使用真实 detector（纯 Jsoup 启发式，无外部依赖）更贴近生产行为
+        segmentDetector = new HtmlSegmentDetector();
         service = new HtmlCoursewareServiceImpl(courseSlideMapper, unitMapper, segmentScriptMapper,
-                segmentAudioMapper, sectionRepo, mock(CourseRepository.class));
+                segmentAudioMapper, sectionRepo, courseRepository, segmentDetector);
     }
 
     @Nested
@@ -342,6 +351,89 @@ class HtmlCoursewareServiceTest {
             assertEquals("/api/courses/42/courseware/audio/" + saved.getAudioToken(), saved.getAudioUrl());
             assertEquals(Integer.valueOf(3), saved.getSegmentIndex(), "segmentIndex denormalized for query");
             assertEquals("GENERATING", saved.getStatus());
+        }
+    }
+
+    @Nested
+    @DisplayName("P2-1 runDetection 自动分段检测")
+    class SegmentDetection {
+
+        private void setupAdminContext() {
+            SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+            ctx.setAuthentication(new UsernamePasswordAuthenticationToken(
+                    1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
+            SecurityContextHolder.setContext(ctx);
+        }
+
+        @Test
+        @DisplayName("owner/ADMIN 可触发检测：落库 detected_segments 并返回段列表")
+        void runDetectionSuccess() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                SlideHtmlUnit unit = new SlideHtmlUnit();
+                unit.setId(500L);
+                unit.setCourseId(1L);
+                unit.setSectionId(7L);
+                unit.setHtmlSanitized("<h1>标题一</h1><p>内容一</p><h2>标题二</h2><p>内容二</p>");
+                when(unitMapper.selectById(500L)).thenReturn(unit);
+                when(unitMapper.updateById(any(SlideHtmlUnit.class))).thenReturn(1);
+
+                SegmentDetectionResult result = service.runDetection(500L);
+
+                assertEquals(2, result.getDetectedCount());
+                assertEquals(2, result.getSegments().size());
+                assertEquals("seg-1", result.getSegments().get(0).getMarker());
+                assertEquals("#seg-2", result.getSegments().get(1).getSelector());
+
+                ArgumentCaptor<SlideHtmlUnit> captor = ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(unitMapper).updateById(captor.capture());
+                assertEquals(Integer.valueOf(2), captor.getValue().getDetectedSegments());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("unit 不存在时抛 SLIDE_PAGE_NOT_FOUND")
+        void runDetectionUnitNotFound() {
+            when(unitMapper.selectById(999L)).thenReturn(null);
+            BusinessException e = assertThrows(BusinessException.class,
+                    () -> service.runDetection(999L));
+            assertEquals(ErrorCode.SLIDE_PAGE_NOT_FOUND.getCode(), e.getCode());
+        }
+
+        @Test
+        @DisplayName("非 owner 且非 ADMIN 触发检测被拒绝（G1 IDOR 协同）")
+        void runDetectionRejectsNonOwner() {
+            // 当前用户是普通用户（无 ROLE_ADMIN），teacherId 为另一用户 → NO_PERMISSION
+            SecurityContext ctx = SecurityContextHolder.createEmptyContext();
+            ctx.setAuthentication(new UsernamePasswordAuthenticationToken(
+                    2L, null, List.of(new SimpleGrantedAuthority("ROLE_TEACHER"))));
+            SecurityContextHolder.setContext(ctx);
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(99L);  // 非当前用户
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                SlideHtmlUnit unit = new SlideHtmlUnit();
+                unit.setId(500L);
+                unit.setCourseId(1L);
+                unit.setHtmlSanitized("<p>x</p>");
+                when(unitMapper.selectById(500L)).thenReturn(unit);
+
+                BusinessException e = assertThrows(BusinessException.class,
+                        () -> service.runDetection(500L));
+                assertEquals(ErrorCode.NO_PERMISSION.getCode(), e.getCode());
+                verify(unitMapper, never()).updateById(any(SlideHtmlUnit.class));
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
         }
     }
 }

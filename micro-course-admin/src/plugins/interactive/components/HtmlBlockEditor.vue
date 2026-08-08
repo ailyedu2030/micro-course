@@ -87,7 +87,9 @@ import { getSlidePages } from '../api/slide'
 
 const props = defineProps({
   courseId: { type: Number, required: true },
-  sectionId: { type: Number, default: null }
+  sectionId: { type: Number, default: null },
+  // P0-3: 替换 HTML 上传成功后由父组件 +1 强制重载编辑器内容（watch courseId/sectionId 不触发）
+  reloadKey: { type: Number, default: 0 }
 })
 const emit = defineEmits(['unit-saved'])
 
@@ -186,6 +188,12 @@ async function handleSave() {
 }
 
 watch(() => [props.courseId, props.sectionId], load, { immediate: true })
+// P0-3: 替换上传后父组件 bump reloadKey → 强制重载（v2 unit 内容已由后端同步更新）
+watch(() => props.reloadKey, (val, old) => {
+  if (val !== old) {
+    load()
+  }
+})
 </script>
 
 <style scoped>
