@@ -880,8 +880,16 @@ public class SlideServiceImpl implements SlideService {
         List<PptFlowVO> flows = flowSectionId == null ? java.util.Collections.emptyList()
                 : pptFlowMapper.listBySection(flowSectionId).stream()
                         .map(this::toPptFlowVO).collect(Collectors.toList());
+        // P14-C (载荷冗余 79%): flow 去重 —— 每页只挂 fromPageId 匹配自身的规则子集。
+        // 前端按 page.flows.length 判断是否调用 evaluateFlow（SlidePlayer.vue advanceToNextPage），
+        // 服务端 FlowEngine.decideNextPage 同样按 fromPageId 过滤（listBySectionAndFromPage）
+        // → 行为完全等价（该页有规则才 evaluate，无规则线性翻页）。
+        // 载荷从 section 全量 × N 页（30 页 ≈ 870 条序列化, 180KB → 37KB）→ 每页平均 1 条。
+        Map<Long, List<PptFlowVO>> flowsByFromPage = flows.stream()
+                .filter(f -> f.getFromPageId() != null)
+                .collect(Collectors.groupingBy(PptFlowVO::getFromPageId));
         for (SlidePageVO vo : vos) {
-            vo.setFlows(flows);
+            vo.setFlows(flowsByFromPage.getOrDefault(vo.getId(), java.util.Collections.emptyList()));
         }
         return vos;
     }

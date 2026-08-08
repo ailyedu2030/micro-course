@@ -42,10 +42,12 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -84,6 +86,7 @@ class CoursewareQueryServiceTest {
     private com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper;
     private FlowEngine flowEngine;
     private CourseSectionRepository courseSectionRepository;
+    private com.microcourse.plugin.interactive.cache.CoursewarePagesCache pagesCache;
     private CoursewareQueryServiceImpl service;
 
     @BeforeEach
@@ -104,6 +107,7 @@ class CoursewareQueryServiceTest {
         courseSlideMapper = mock(com.microcourse.plugin.interactive.mapper.CourseSlideMapper.class);
         flowEngine = mock(FlowEngine.class);
         courseSectionRepository = mock(CourseSectionRepository.class);
+        pagesCache = mock(com.microcourse.plugin.interactive.cache.CoursewarePagesCache.class);
         service = new CoursewareQueryServiceImpl(pageMapper, pageScriptMapper,
                 pageAudioMapper, flowMapper, unitMapper, segmentScriptMapper, segmentAudioMapper,
                 slidePageMapper,
@@ -113,7 +117,8 @@ class CoursewareQueryServiceTest {
                 courseRepository, enrollmentRepository, sectionQuizMapper, exerciseRecordRepository,
                 learningProgressRepository,
                 mock(org.springframework.jdbc.core.JdbcTemplate.class),
-                courseSlideMapper);
+                courseSlideMapper,
+                pagesCache);
     }
 
     @AfterEach
@@ -124,6 +129,8 @@ class CoursewareQueryServiceTest {
     @Test
     @DisplayName("getCoursewareTree: PPT course returns type=PPT with pages and audio status")
     void getPptTree() {
+        // P14-C: 缓存未命中（mock 返回 null）→ 走 DB 构建路径
+        when(pagesCache.getTree(42L, 99L, null)).thenReturn(null);
         // D-2: getCoursewareTree 现在做对象级 verifyAccess → 需要登录态 + 课程归属
         loginAsOwnerTeacher();
         mockCourseOwnedBy1();
@@ -136,14 +143,11 @@ class CoursewareQueryServiceTest {
 
         // Page 1 has active script + 1 READY audio
         SlidePptPageScript script1 = newActiveScript(100L, 1L, "script of page 1");
-        when(pageScriptMapper.findActiveByPage(1L)).thenReturn(script1);
-        SlidePptPageAudio audio1 = newAudio(500L, 100L, 1L, "READY");
-        when(pageAudioMapper.listByScript(100L)).thenReturn(List.of(audio1));
-
-        // Page 2 has script but no audio yet
         SlidePptPageScript script2 = newActiveScript(101L, 2L, "script of page 2");
-        when(pageScriptMapper.findActiveByPage(2L)).thenReturn(script2);
-        when(pageAudioMapper.listByScript(101L)).thenReturn(Collections.emptyList());
+        // P14-C (N+1 修复): 批量查询取代逐页 findActiveByPage + listByScript（2 SQL 取代 2N SQL）
+        when(pageScriptMapper.listActiveByPageIds(List.of(1L, 2L))).thenReturn(List.of(script1, script2));
+        SlidePptPageAudio audio1 = newAudio(500L, 100L, 1L, "READY");
+        when(pageAudioMapper.listByScriptIds(List.of(100L, 101L))).thenReturn(List.of(audio1));
 
         // When
         CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L, null);
@@ -159,6 +163,35 @@ class CoursewareQueryServiceTest {
         assertEquals("AUDIO_READY", tree.getPages().get(0).getNarrationStatus());
         // Page 2 should be GENERATING (script exists but no audio)
         assertEquals("AUDIO_GENERATING", tree.getPages().get(1).getNarrationStatus());
+        // P14-C 防回归: 不得再走逐页 N+1 查询
+        verify(pageScriptMapper, never()).findActiveByPage(any());
+        verify(pageAudioMapper, never()).listByScript(any());
+        // P14-C: PPT 树构建后写入缓存
+        verify(pagesCache).putTree(eq(42L), eq(99L), isNull(), any(CoursewareTreeDTO.class));
+    }
+
+    @Test
+    @DisplayName("P14-C: 课件树缓存命中 → 直接返回缓存，不查 DB（IDOR 校验仍执行）")
+    void getPptTree_CacheHitSkipsDbBuild() {
+        loginAsOwnerTeacher();
+        mockCourseOwnedBy1();
+        CoursewareTreeDTO cached = new CoursewareTreeDTO();
+        cached.setType("PPT");
+        cached.setCourseId(42L);
+        cached.setSectionId(99L);
+        when(pagesCache.getTree(42L, 99L, null)).thenReturn(Optional.of(cached));
+
+        CoursewareTreeDTO tree = service.getCoursewareTree(42L, 99L, null);
+
+        assertEquals("PPT", tree.getType());
+        assertEquals(42L, tree.getCourseId());
+        // 缓存命中 → 不触碰任何 Mapper
+        verify(pageMapper, never()).listBySection(any());
+        verify(pageScriptMapper, never()).listActiveByPageIds(any());
+        verify(flowMapper, never()).listBySection(any());
+        verify(pagesCache, never()).putTree(any(), any(), any(), any());
+        // 但 IDOR 权限校验必须仍执行
+        verify(courseRepository).selectById(42L);
     }
 
     @Test
@@ -186,7 +219,8 @@ class CoursewareQueryServiceTest {
         when(pageMapper.listByChapter(7L)).thenReturn(List.of(p1));
         when(unitMapper.findByChapter(7L)).thenReturn(null);
         when(flowMapper.listBySection(any())).thenReturn(Collections.emptyList());
-        when(pageScriptMapper.findActiveByPage(11L)).thenReturn(null);
+        // P14-C: 批量查询（章节级同样 1 SQL）
+        when(pageScriptMapper.listActiveByPageIds(List.of(11L))).thenReturn(Collections.emptyList());
 
         CoursewareTreeDTO tree = service.getCoursewareTree(42L, null, 7L);
 
