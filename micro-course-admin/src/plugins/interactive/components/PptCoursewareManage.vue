@@ -252,7 +252,7 @@ async function handleBatchAI() {
     // P0-D 修复: 批量 AI 生成必须真实落库 —— 调后端 batch-ai-generate 端点
     // (逐页 LLM 生成 + 保存 slide_ppt_page_scripts), 取代"生成后不保存"的假完成
     const res = await batchGeneratePptScripts(props.courseId, pageIds)
-    const results = res?.data?.results || res?.results || []
+    const results = res?.data || []
     const ok = results.filter(r => r.success).length
     const failed = results.filter(r => !r.success)
     if (failed.length > 0) {
