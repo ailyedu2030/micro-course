@@ -877,7 +877,7 @@
 
 | ExerciseRecord | /api/exercise-records | 6 | - |
 
-| FileAccess | /api/files | 2 | - |
+| FileAccess | /api/files | 3 | - |
 
 | FrontendError | /api/frontend-errors | 1 | - |
 
