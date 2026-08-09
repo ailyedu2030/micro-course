@@ -100,6 +100,8 @@ public class HtmlCoursewareController {
     @GetMapping("/units/{unitId}/segments")
     public R<List<HtmlSegmentScriptDTO>> listActiveSegments(@PathVariable Long courseId,
                                                              @PathVariable Long unitId) {
+        // D-1 IDOR 修复 (读端点同校验): unitId 必须属于 courseId + 当前用户是 owner
+        htmlService.verifyUnitOwner(courseId, unitId);
         return R.ok(htmlService.listActiveSegments(unitId));
     }
 
@@ -107,6 +109,8 @@ public class HtmlCoursewareController {
     public R<HtmlSegmentScriptDTO> getActiveSegment(@PathVariable Long courseId,
                                                     @PathVariable Long unitId,
                                                     @PathVariable Integer idx) {
+        // D-1 IDOR 修复 (读端点同校验): unitId 必须属于 courseId + 当前用户是 owner
+        htmlService.verifyUnitOwner(courseId, unitId);
         return R.ok(htmlService.getActiveSegmentScript(unitId, idx));
     }
 
@@ -127,6 +131,9 @@ public class HtmlCoursewareController {
     @GetMapping("/segments/{scriptId}/audios")
     public R<List<HtmlSegmentAudioDTO>> listSegmentAudios(@PathVariable Long courseId,
                                                            @PathVariable Long scriptId) {
+        // D-1 IDOR 修复 (读端点同校验): segment script 所属 unit 必须属于 courseId
+        // + 当前用户是 owner (audioToken 是流媒体唯一凭证, 防越权读取音频)
+        htmlService.verifySegmentScriptOwner(courseId, scriptId);
         return R.ok(htmlService.listSegmentAudios(scriptId));
     }
 

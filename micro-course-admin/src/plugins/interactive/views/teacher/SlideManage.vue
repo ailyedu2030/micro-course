@@ -18,6 +18,18 @@
       <div v-if="courseTitle || chapterTitle" class="context-tags">
         <el-tag v-if="courseTitle" type="primary" size="small" effect="plain">{{ courseTitle }}</el-tag>
         <el-tag v-if="chapterTitle" type="success" size="small" effect="plain">{{ chapterTitle }}</el-tag>
+        <!-- D-3 P1-C：章节切换器 —— 课程级入口进入后可自由切换章节，不再"死路" -->
+        <el-select
+          v-if="chapterOptions.length > 1 && chapterId"
+          :model-value="Number(chapterId)"
+          size="small"
+          class="sm-chapter-switch"
+          placeholder="切换章节"
+          @change="switchChapter"
+          aria-label="切换章节"
+        >
+          <el-option v-for="c in chapterOptions" :key="c.id" :label="c.title" :value="Number(c.id)" />
+        </el-select>
       </div>
     </div>
 
@@ -184,7 +196,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Picture, Document, UploadFilled, Loading, Files } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
-import { getChapterById } from '@/api/chapter'
+import { getChapterById, getChapters } from '@/api/chapter'
 import { listSections } from '@/api/section'
 import { useUserStore } from '@/store/user'
 import { getCoursewareTree } from '../../api/queryCourseware'
@@ -213,6 +225,8 @@ function clearRestrictedType() {
 
 const courseTitle = ref('')
 const chapterTitle = ref('')
+// D-3：章节选项（课程级入口自动选择第一个章节 + 顶部切换器）
+const chapterOptions = ref([])
 const tree = ref(null)
 const typeLoading = ref(true)
 const sectionsLoading = ref(false)
@@ -286,12 +300,36 @@ async function handleCreateUpload(file, type) {
   return ok
 }
 
+// D-3：顶部章节切换器 —— 切换后回到该章节的课时课件概览（移除 sectionId 上下文）
+function switchChapter(id) {
+  const q = { ...route.query, chapterId: id }
+  delete q.sectionId
+  router.push({ path: route.path, query: q })
+}
+
+async function loadChapters() {
+  if (!courseId.value) return
+  try {
+    const res = await getChapters({ courseId: courseId.value, size: 999 })
+    chapterOptions.value = res?.data?.items || res?.data || []
+  } catch {
+    chapterOptions.value = []
+  }
+}
+
 onMounted(async () => {
   if (courseId.value) {
     try {
       const c = await getCourseById(courseId.value)
       courseTitle.value = c?.data?.title || ''
     } catch { /* 标题加载失败不阻断 */ }
+  }
+  await loadChapters()
+  // D-3 P1-C：课程级入口（无 chapterId/sectionId）→ 自动选择第一个章节，
+  // 教师直接进入章节级课件管理（不再停留在只有创建卡的"死路"）。
+  if (!chapterId.value && !sectionId.value && chapterOptions.value.length > 0) {
+    const q = { ...route.query, chapterId: chapterOptions.value[0].id }
+    await router.replace({ path: route.path, query: q })
   }
   if (chapterId.value) {
     try {
@@ -309,6 +347,7 @@ onUnmounted(() => upload.stopRenderPolling())
 .slide-manage { padding: 20px; max-width: 1440px; margin: 0 auto; }
 .breadcrumb-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
 .context-tags { display: flex; gap: 8px; }
+.sm-chapter-switch { width: 220px; }
 .sm-chapter-overview { margin-bottom: 20px; }
 .sm-co-title { margin: 0 0 10px; font-size: 15px; }
 .sm-co-table { max-width: 720px; }

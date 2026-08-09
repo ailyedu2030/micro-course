@@ -24,6 +24,7 @@ vi.mock('@/api/learning-progress', () => ({
   getLearningProgress: vi.fn(() => Promise.resolve({ data: [] })),
   createLearningProgress: vi.fn(() => Promise.resolve({ data: { id: 1 } })),
   updateLearningProgress: vi.fn(() => Promise.resolve({ data: {} })),
+  reportVideoProgress: vi.fn(() => Promise.resolve()),
 }))
 
 // Mock user store（避免真实 store 引入 vue-router createRouter，导致套件收集失败）
@@ -38,6 +39,7 @@ vi.mock('vue-router', () => ({
     params: { courseId: '100' },
     query: { chapterId: '42', sectionId: '5' },
   }),
+  useRouter: () => ({ push: vi.fn() }),
 }))
 
 // Mock element-plus

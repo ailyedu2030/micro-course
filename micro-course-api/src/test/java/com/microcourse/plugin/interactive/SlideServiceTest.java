@@ -1087,9 +1087,197 @@ class SlideServiceTest {
                 SlideHtmlUnit created = unitCaptor.getValue();
                 assertEquals(10L, created.getChapterId().longValue());
                 assertEquals(7L, created.getSectionId().longValue());
-                assertEquals(100L, created.getSlideId().longValue());
+                // D-5 R1：slide_html_units.slide_id 语义 = course_slides.id（= slide_pages.slide_id，此处 43L），
+                // 此前误取 slide_pages.id（100L）造成语义错配
+                assertEquals(43L, created.getSlideId().longValue());
                 assertEquals(Boolean.TRUE, created.getIsTrusted());
                 verify(htmlSegmentDetector).detectSegments(anyString());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("R2 — 章节级 HTML 上传（仅 chapterId，无 sectionId）自动创建锚点 section + v2 unit")
+        void uploadHtmlFile_ChapterLevelCreatesAnchorAndUnit() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseChapter chapter = new CourseChapter();
+                chapter.setId(10L);
+                chapter.setCourseId(1L);
+                when(courseChapterRepository.selectById(10L)).thenReturn(chapter);
+
+                // v1 CourseSlide 新建（UPSERT 无既有行）
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
+                    CourseSlide s = inv.getArgument(0);
+                    s.setId(43L);
+                    return 1;
+                });
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                // 无锚点 section → 自动创建（title "HTML 课件节"）
+                when(courseSectionRepository.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSectionRepository.insert(any(CourseSection.class))).thenAnswer(inv -> {
+                    CourseSection s = inv.getArgument(0);
+                    s.setId(55L);
+                    return 1;
+                });
+                when(htmlUnitMapper.findBySection(55L)).thenReturn(null);
+                when(htmlUnitMapper.insert(any(SlideHtmlUnit.class))).thenAnswer(inv -> {
+                    SlideHtmlUnit u = inv.getArgument(0);
+                    u.setId(600L);
+                    return 1;
+                });
+
+                MockMultipartFile file = new MockMultipartFile(
+                        "file", "chapter.html", "text/html", "<h1>章节级 HTML</h1>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, 10L, null);
+
+                assertNotNull(resp);
+                assertEquals(43L, resp.getSlideId().longValue());
+                // 锚点 section 必须被创建（章节级 v2 unit 的 section_id NOT NULL 归属）
+                org.mockito.ArgumentCaptor<CourseSection> secCaptor =
+                        org.mockito.ArgumentCaptor.forClass(CourseSection.class);
+                verify(courseSectionRepository).insert(secCaptor.capture());
+                assertEquals("HTML 课件节", secCaptor.getValue().getTitle());
+                assertEquals(10L, secCaptor.getValue().getChapterId().longValue());
+                // v2 unit 挂在新锚点 section，slide_id = v1 course_slides.id
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).insert(unitCaptor.capture());
+                assertEquals(10L, unitCaptor.getValue().getChapterId().longValue());
+                assertEquals(55L, unitCaptor.getValue().getSectionId().longValue());
+                assertEquals(43L, unitCaptor.getValue().getSlideId().longValue());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("R2 — 课程级 HTML 上传（双 null）自动创建章节 + 锚点 section + v2 unit")
+        void uploadHtmlFile_CourseLevelCreatesChapterAnchorAndUnit() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                course.setTitle("测试课程");
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                // 课程无章节 → selectList 空
+                when(courseChapterRepository.selectList(any(LambdaQueryWrapper.class)))
+                        .thenReturn(java.util.Collections.emptyList());
+                when(courseChapterRepository.insert(any(CourseChapter.class))).thenAnswer(inv -> {
+                    CourseChapter c = inv.getArgument(0);
+                    c.setId(70L);
+                    return 1;
+                });
+
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
+                    CourseSlide s = inv.getArgument(0);
+                    s.setId(43L);
+                    return 1;
+                });
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                when(courseSectionRepository.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSectionRepository.insert(any(CourseSection.class))).thenAnswer(inv -> {
+                    CourseSection s = inv.getArgument(0);
+                    s.setId(55L);
+                    return 1;
+                });
+                when(htmlUnitMapper.insert(any(SlideHtmlUnit.class))).thenReturn(1);
+
+                MockMultipartFile file = new MockMultipartFile(
+                        "file", "course.html", "text/html", "<p>课程级 HTML</p>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, null);
+
+                assertNotNull(resp);
+                assertEquals(43L, resp.getSlideId().longValue());
+                // 自动创建章节（title 含"课件"）与锚点 section
+                org.mockito.ArgumentCaptor<CourseChapter> chCaptor =
+                        org.mockito.ArgumentCaptor.forClass(CourseChapter.class);
+                verify(courseChapterRepository).insert(chCaptor.capture());
+                assertTrue(chCaptor.getValue().getTitle().contains("课件"));
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).insert(unitCaptor.capture());
+                assertEquals(70L, unitCaptor.getValue().getChapterId().longValue());
+                assertEquals(55L, unitCaptor.getValue().getSectionId().longValue());
+                assertEquals(43L, unitCaptor.getValue().getSlideId().longValue());
+            } finally {
+                SecurityContextHolder.clearContext();
+            }
+        }
+
+        @Test
+        @DisplayName("D-4 — 章节级重传（锚点 unit 已存在）先清空旧段脚本，再更新 v2 unit")
+        void uploadHtmlFile_ChapterLevelReUploadPurgesOldScripts() {
+            setupAdminContext();
+            try {
+                Course course = new Course();
+                course.setId(1L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseChapter chapter = new CourseChapter();
+                chapter.setId(10L);
+                chapter.setCourseId(1L);
+                when(courseChapterRepository.selectById(10L)).thenReturn(chapter);
+
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
+                    CourseSlide s = inv.getArgument(0);
+                    s.setId(43L);
+                    return 1;
+                });
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                // 锚点 section 已存在（title "HTML 课件节"），其下已有 unit
+                CourseSection anchor = new CourseSection();
+                anchor.setId(55L);
+                anchor.setCourseId(1L);
+                anchor.setChapterId(10L);
+                when(courseSectionRepository.selectOne(any(LambdaQueryWrapper.class))).thenReturn(anchor);
+
+                SlideHtmlUnit v2Unit = new SlideHtmlUnit();
+                v2Unit.setId(600L);
+                v2Unit.setCourseId(1L);
+                v2Unit.setChapterId(10L);
+                v2Unit.setSectionId(55L);
+                v2Unit.setSlideId(43L);
+                v2Unit.setHtmlContent("<p>旧内容</p>");
+                v2Unit.setHtmlSanitized("<p>旧内容</p>");
+                v2Unit.setIsTrusted(true);
+                v2Unit.setVersion(1);
+                when(htmlUnitMapper.findBySection(55L)).thenReturn(v2Unit);
+                when(htmlUnitMapper.updateById(any(SlideHtmlUnit.class))).thenReturn(1);
+                when(htmlSegmentScriptMapper.delete(any(LambdaQueryWrapper.class))).thenReturn(3);
+
+                MockMultipartFile file = new MockMultipartFile(
+                        "file", "new.html", "text/html", "<h1>新章节内容</h1>".getBytes());
+
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, 10L, null);
+
+                assertNotNull(resp);
+                // D-4：旧段脚本必须先被清空（避免旧 marker seg-1 悬挂）
+                verify(htmlSegmentScriptMapper).delete(any(LambdaQueryWrapper.class));
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).updateById(unitCaptor.capture());
+                assertTrue(unitCaptor.getValue().getHtmlSanitized().contains("新章节内容"));
             } finally {
                 SecurityContextHolder.clearContext();
             }

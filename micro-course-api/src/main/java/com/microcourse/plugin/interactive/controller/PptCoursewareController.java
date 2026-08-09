@@ -33,6 +33,8 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<SlidePptPageDTO>> listPages(@PathVariable Long courseId,
                                                @PathVariable Long sectionId) {
+        // D-2 IDOR 修复 (读端点同校验): section 必须属于该课程 + 当前用户是 owner
+        pptService.verifySectionOwner(courseId, sectionId);
         return R.ok(pptService.listPagesBySection(sectionId));
     }
 
@@ -52,6 +54,8 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<SlidePptPageDTO> getPage(@PathVariable Long courseId,
                                        @PathVariable Long pageId) {
+        // D-2 IDOR 修复 (读端点同校验): page 必须属于该课程 + 当前用户是 owner
+        pptService.verifyPageOwner(courseId, pageId);
         return R.ok(pptService.getPage(pageId));
     }
 
@@ -82,6 +86,8 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PptScriptDTO> getActiveScript(@PathVariable Long courseId,
                                             @PathVariable Long pageId) {
+        // D-2 IDOR 修复 (读端点同校验): page 必须属于该课程 + 当前用户是 owner
+        pptService.verifyPageOwner(courseId, pageId);
         return R.ok(pptService.getActiveScript(pageId));
     }
 
@@ -89,6 +95,9 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptScriptDTO>> listScriptHistory(@PathVariable Long courseId,
                                                     @PathVariable Long pageId) {
+        // D-2 横向扫描 IDOR 修复 (读端点同校验): page 必须属于该课程 + 当前用户是 owner
+        // (讲述稿历史与 active 脚本同属敏感内容, 同模式漏网一并修复)
+        pptService.verifyPageOwner(courseId, pageId);
         return R.ok(pptService.listScriptHistory(pageId));
     }
 
@@ -116,6 +125,9 @@ public class PptCoursewareController {
         if (parsed == null) {
             return R.ok(new java.util.ArrayList<>());
         }
+        // D-2 IDOR 修复 (读端点同校验): script 所属 page 必须属于该课程 + 当前用户是 owner
+        // (audioToken 是流媒体唯一凭证, 防越权读取音频)
+        pptService.verifyScriptOwner(courseId, parsed);
         return R.ok(pptService.listAudios(parsed));
     }
 
@@ -153,6 +165,9 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<List<PptFlowDTO>> listFlows(@PathVariable Long courseId,
                                           @PathVariable Long sectionId) {
+        // D-2 横向扫描 IDOR 修复 (读端点同校验): section 必须属于该课程 + 当前用户是 owner
+        // (跳转规则属课程内部编排逻辑, 同模式漏网一并修复)
+        pptService.verifySectionOwner(courseId, sectionId);
         return R.ok(pptService.listFlowsBySection(sectionId));
     }
 

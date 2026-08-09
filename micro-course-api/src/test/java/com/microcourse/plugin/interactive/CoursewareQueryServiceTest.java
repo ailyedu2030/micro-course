@@ -28,6 +28,7 @@ import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
 import com.microcourse.plugin.interactive.service.impl.CoursewareQueryServiceImpl;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
@@ -114,6 +115,7 @@ class CoursewareQueryServiceTest {
                 mock(com.microcourse.plugin.interactive.cache.AudioStreamCache.class),
                 flowEngine,
                 courseSectionRepository,
+                mock(CourseChapterRepository.class),
                 courseRepository, enrollmentRepository, sectionQuizMapper, exerciseRecordRepository,
                 learningProgressRepository,
                 mock(org.springframework.jdbc.core.JdbcTemplate.class),

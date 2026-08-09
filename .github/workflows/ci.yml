@@ -85,6 +85,7 @@ jobs:
         run: |
           npm ci
           npm run lint
+          npm run test:unit
           npm run build
         working-directory: ./micro-course-admin
 

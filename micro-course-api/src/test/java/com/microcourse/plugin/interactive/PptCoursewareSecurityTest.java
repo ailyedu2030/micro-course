@@ -13,6 +13,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -34,7 +35,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @DisplayName("P0-1 PPT 课件 Controller 对象级授权 (IDOR)")
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class PptCoursewareControllerSecurityTest extends BaseIntegrationTest {
+class PptCoursewareSecurityTest extends BaseIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -190,6 +191,112 @@ class PptCoursewareControllerSecurityTest extends BaseIntegrationTest {
                         .header("Authorization", bearerAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"voice\":\"xiaoyan\",\"model\":\"default\",\"ttsParams\":\"{}\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    // ========== D-2 回归: PPT 读端点跨教师 IDOR (Deep Audit 2026-08-09) ==========
+    // 修复前: GET /ppt/sections/{sid}/pages、/ppt/pages/{pid}、/ppt/pages/{pid}/scripts/active、
+    // /ppt/scripts/{sid}/audios 仅角色门禁（TEACHER/ADMIN/ACADEMIC），无 owner 校验，
+    // 非 owner 教师可凭自增 ID 读取他人课程 PPT 页/讲述稿/音频。
+    // 修复后: Controller 内 verifySectionOwner / verifyPageOwner / verifyScriptOwner 显式校验
+    // → 越权 403 (10003)。横向扫描: listScriptHistory / listFlows 同模式一并修复。
+
+    @Test
+    @DisplayName("D-2 owner TEACHER 读取自己课程 section 的 pages 列表 → 200")
+    void d2OwnerTeacherCanListOwnPages() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/sections/{sectionId}/pages", courseA, sectionA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-2 owner TEACHER 读取自己课程的 page → 200")
+    void d2OwnerTeacherCanGetOwnPage() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}", courseA, pageA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-2 owner TEACHER 读取自己课程的 active 讲述稿 → 200")
+    void d2OwnerTeacherCanGetOwnActiveScript() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}/scripts/active", courseA, pageA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-2 owner TEACHER 读取自己课程 script 的音频列表 → 200")
+    void d2OwnerTeacherCanListOwnAudios() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/scripts/{scriptId}/audios", courseA, scriptA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程 section 的 pages 列表 → 403")
+    void d2OtherTeacherDeniedListForeignPages() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/sections/{sectionId}/pages", courseA, sectionA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程的 page → 403")
+    void d2OtherTeacherDeniedGetForeignPage() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}", courseA, pageA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程的 active 讲述稿 → 403")
+    void d2OtherTeacherDeniedGetForeignActiveScript() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}/scripts/active", courseA, pageA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程 script 的音频列表 → 403")
+    void d2OtherTeacherDeniedListForeignAudios() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/scripts/{scriptId}/audios", courseA, scriptA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程 page 的讲述稿历史 → 403（横向扫描）")
+    void d2OtherTeacherDeniedListForeignScriptHistory() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}/scripts", courseA, pageA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 其他 TEACHER 读取他人课程 section 的 flows 列表 → 403（横向扫描）")
+    void d2OtherTeacherDeniedListForeignFlows() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/sections/{sectionId}/flows", courseA, sectionA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-2 ADMIN 读取任意课程 page → 200")
+    void d2AdminCanGetForeignPage() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/ppt/pages/{pageId}", courseA, pageA)
+                        .header("Authorization", bearerAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }
