@@ -8,6 +8,7 @@ set -euo pipefail
 
 K8S_NAMESPACE="${K8S_NAMESPACE:-micro-course}"
 K8S_DEPLOYMENT="${K8S_DEPLOYMENT:-micro-course}"
+K8S_INGRESS="${K8S_INGRESS:-micro-course}"
 ROLLOBACK_VERSION="${ROLLOBACK_VERSION:-416cc1d5}"  # PR #203 之前稳定
 GRAY_PCT="${GRAY_PCT:-0}"  # 完全回滚
 
@@ -17,6 +18,15 @@ echo "  ⚠️  target: $ROLLOBACK_VERSION"
 echo "  ⚠️  traffic: ${GRAY_PCT}%"
 echo "========================================="
 echo ""
+
+# 基础设施守卫（F-2026-08-10-01）：当前生产为 docker compose，无 Kubernetes。
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  echo "⚠️  未检测到可用 Kubernetes 集群。"
+  echo "    当前生产（100.74.122.13）为 docker compose 单机部署，回滚请按 docs/ROLLBACK_PLAN.md："
+  echo "      - 后端: cp backups/micro-course-api-1.0.0.jar.backup.<ts> /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1"
+  echo "      - 前端: docker cp backups/admin.dist.backup.<ts> … + nginx -s reload（deploy-frontend.sh 同款 SOP）"
+  exit 1
+fi
 
 # 1. 团队通知
 echo "[1/5] 团队通知..."
@@ -37,7 +47,7 @@ kubectl patch ingress "${K8S_INGRESS}-canary" -n "$K8S_NAMESPACE" --type=json -p
     "op": "replace",
     "path": "/spec/rules/1",
     "value": {
-      "host": "api.microcourse.ailyd",
+      "host": "api.microcourse.ailyedu.cn",
       "http": {
         "paths": [
           {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "'${K8S_DEPLOYMENT}'", "port": {"number": 8080}}}}
@@ -51,7 +61,7 @@ kubectl patch ingress "${K8S_INGRESS}-canary" -n "$K8S_NAMESPACE" --type=json -p
     "path": "/spec/rules",
     "value": [
       {
-        "host": "api.microcourse.ailyd",
+        "host": "api.microcourse.ailyedu.cn",
         "http": {
           "paths": [
             {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "'${K8S_DEPLOYMENT}'", "port": {"number": 8080}}}}

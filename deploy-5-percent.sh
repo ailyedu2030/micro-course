@@ -12,14 +12,29 @@ set -euo pipefail
 K8S_NAMESPACE="${K8S_NAMESPACE:-micro-course}"
 K8S_DEPLOYMENT="${K8S_DEPLOYMENT:-micro-course}"
 K8S_INGRESS="${K8S_INGRESS:-micro-course}"
-TARGET_VERSION="${TARGET_VERSION:-dc5acba0}"  # PR #207 + 全部 P0 修复
+TARGET_VERSION="${TARGET_VERSION:-abc7cfd2}"  # main HEAD（PR #208 部署基础设施）
 ROLLOBACK_VERSION="${ROLLOBACK_VERSION:-416cc1d5}"  # PR #203 之前稳定
 GRAY_PCT="${GRAY_PCT:-5}"
+PGHOST="${PGHOST:-localhost}"
+PGUSER="${PGUSER:-postgres}"
+PGDATABASE="${PGDATABASE:-micro_course}"
 
 # 监控告警 webhook
 ALERT_WEBHOOK="${ALERT_WEBHOOK:-}"
 
 echo "========================================="
+
+# 基础设施守卫（F-2026-08-10-01）：当前生产为单机 docker compose，无 Kubernetes。
+# 本脚本仅适用于未来 K8s 化之后的灰度；错误使用会指向不存在的集群。
+if ! kubectl cluster-info >/dev/null 2>&1; then
+  echo "⚠️  未检测到可用 Kubernetes 集群。"
+  echo "    当前生产（100.74.122.13）为 docker compose 单机部署："
+  echo "      - 前端发布: bash scripts/deploy-frontend.sh"
+  echo "      - 后端发布: 备份 jar → 替换 /opt/micro-course/micro-course-api-1.0.0.jar → docker exec ... kill -s HUP 1"
+  echo "      - 回滚预案: docs/ROLLBACK_PLAN.md（最近 3 版本）"
+  echo "    若确需执行 K8s 灰度（未来迁移后），请先接入集群上下文后重跑。"
+  exit 1
+fi
 echo "  Micro-Course 灰度发布执行"
 echo "  target: $TARGET_VERSION"
 echo "  rollback: $ROLLOBACK_VERSION"
@@ -33,18 +48,18 @@ echo "========================================="
 echo ""
 echo "[阶段 0] 部署前检查..."
 
-# 0.1 staging-validation
+# 0.1 staging-validation（真实门禁：脚本内部逐项计分，失败即退出 1）
 echo "  - staging-validation.sh..."
 if ! bash scripts/staging-validation.sh > /tmp/staging_check.log 2>&1; then
   echo "  ❌ staging-validation 失败！"
   cat /tmp/staging_check.log
   exit 1
 fi
-echo "  ✓ staging-validation 8/8 PASS"
+echo "  ✓ staging-validation PASS（详见 /tmp/staging_check.log）"
 
 # 0.2 V310 ghost audit
 echo "  - V310 ghost audit..."
-if ! bash scripts/audit-v310-ghost-chapter-prod.sh localhost postgres micro_course > /tmp/v310_audit.log 2>&1; then
+if ! bash scripts/audit-v310-ghost-chapter-prod.sh "$PGHOST" "$PGUSER" "$PGDATABASE" > /tmp/v310_audit.log 2>&1; then
   echo "  ⚠️ V310 ghost audit 异常（不阻断发布，但需 review）"
   cat /tmp/v310_audit.log
 fi
@@ -97,7 +112,7 @@ kubectl patch ingress "$K8S_INGRESS" -n "$K8S_NAMESPACE" --type=json -p '[
     "op": "add",
     "path": "/spec/rules/1",
     "value": {
-      "host": "api.microcourse.ailyd",
+    "host": "api.microcourse.ailyedu.cn",
       "http": {
         "paths": [
           {"path": "/", "pathType": "Prefix", "backend": {"service": {"name": "'${K8S_DEPLOYMENT}'-canary", "port": {"number": 8080}}}}
