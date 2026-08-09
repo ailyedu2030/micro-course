@@ -120,12 +120,11 @@ describe('PptCoursewareManage.vue · P0-D 批量 AI 生成真实落库', () => {
 
   it('调用 batch-ai-generate 端点，并按成功/失败统计反馈 + 刷新树', async () => {
     apiMocks.batchGeneratePptScripts.mockResolvedValue({
-      data: {
-        results: [
-          { pageId: 1, success: true, scriptId: 11, error: null },
-          { pageId: 2, success: false, scriptId: null, error: 'LLM 不可用' },
-        ],
-      },
+      // 后端契约: R<List<BatchPptScriptResult>> → res.data 即结果数组（勿再包一层 results）
+      data: [
+        { pageId: 1, success: true, scriptId: 11, error: null },
+        { pageId: 2, success: false, scriptId: null, error: 'LLM 不可用' },
+      ],
     })
 
     const wrapper = mount(PptCoursewareManage, {
@@ -165,7 +164,7 @@ describe('PptCoursewareManage.vue · P0-D 批量 AI 生成真实落库', () => {
 
   it('全部成功时 success 提示，不出现失败统计', async () => {
     apiMocks.batchGeneratePptScripts.mockResolvedValue({
-      data: { results: [{ pageId: 1, success: true, scriptId: 11, error: null }] },
+      data: [{ pageId: 1, success: true, scriptId: 11, error: null }],
     })
 
     const wrapper = mount(PptCoursewareManage, {

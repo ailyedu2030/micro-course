@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @DisplayName("P0-2 HTML 课件 Controller 对象级授权 (IDOR)")
 @Sql(scripts = "/sql/p0-seed.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD)
-class HtmlCoursewareControllerSecurityTest extends BaseIntegrationTest {
+class HtmlCoursewareSecurityTest extends BaseIntegrationTest {
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -199,6 +199,101 @@ class HtmlCoursewareControllerSecurityTest extends BaseIntegrationTest {
                         .header("Authorization", bearerAdmin())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"pageTitle\":\"ADMIN更新\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    // ========== D-1 回归: HTML 段/音频读端点 IDOR (Deep Audit 2026-08-09) ==========
+    // 修复前: GET /html/units/{uid}/segments、/segments/{idx}、/html/segments/{sid}/audios 无任何
+    // 权限校验，任意登录用户（含未选课学生）可读取任意课程讲述稿 + audioToken（流媒体唯一凭证）。
+    // 修复后: Controller 内 verifyUnitOwner / verifySegmentScriptOwner 显式校验 → 越权 403 (10003)。
+
+    @Test
+    @DisplayName("D-1 owner TEACHER 读取自己课程的 segments 列表 → 200")
+    void d1OwnerTeacherCanListOwnSegments() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments", courseA, unitA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-1 owner TEACHER 读取自己课程的单段讲述稿 → 200")
+    void d1OwnerTeacherCanGetOwnSegment() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments/{idx}", courseA, unitA, 1)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-1 owner TEACHER 读取自己课程段的音频列表 → 200")
+    void d1OwnerTeacherCanListOwnSegmentAudios() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/segments/{scriptId}/audios", courseA, segmentScriptA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+    }
+
+    @Test
+    @DisplayName("D-1 其他 TEACHER 读取他人课程的 segments 列表 → 403")
+    void d1OtherTeacherDeniedListForeignSegments() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments", courseA, unitA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 其他 TEACHER 读取他人课程的单段讲述稿 → 403")
+    void d1OtherTeacherDeniedGetForeignSegment() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments/{idx}", courseA, unitA, 1)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 其他 TEACHER 读取他人课程段的音频列表 → 403")
+    void d1OtherTeacherDeniedListForeignSegmentAudios() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/segments/{scriptId}/audios", courseA, segmentScriptA)
+                        .header("Authorization", bearer("invite_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 STUDENT（未选课）读取他人课程 segments 列表 → 403")
+    void d1StudentDeniedListForeignSegments() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments", courseA, unitA)
+                        .header("Authorization", bearer("student")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 STUDENT（未选课）读取他人课程段的音频列表 → 403")
+    void d1StudentDeniedListForeignSegmentAudios() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/segments/{scriptId}/audios", courseA, segmentScriptA)
+                        .header("Authorization", bearer("student")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 跨课程 unitId（path courseId 与 unit 不匹配）→ 403")
+    void d1MismatchedCourseUnitDenied() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments", 999_999_999L, unitA)
+                        .header("Authorization", bearer("p0_teacher")))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value(10003));
+    }
+
+    @Test
+    @DisplayName("D-1 ADMIN 读取任意课程 segments 列表 → 200")
+    void d1AdminCanListForeignSegments() throws Exception {
+        mockMvc.perform(get("/api/courses/{courseId}/html/units/{unitId}/segments", courseA, unitA)
+                        .header("Authorization", bearerAdmin()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200));
     }

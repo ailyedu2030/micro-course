@@ -51,6 +51,7 @@
               <div v-loading="sectionLoading[row.id]">
                 <SectionList
                   :sections="sectionsByChapterId[row.id] || []"
+                  @upload="(s) => handleSectionUpload(row, s)"
                   @edit="(s) => handleEditSection(row, s)"
                   @delete="(s) => handleDeleteSection(row, s)"
                 />
@@ -215,6 +216,12 @@ const handleEditSection = (chapter, section) => {
   editingSection.value = { ...section }
   isEditSection.value = true
   showSectionDialog.value = true
+}
+
+const handleSectionUpload = (chapter, section) => {
+  // 【D-3 修复】SectionList「课件」按钮 @upload 死按钮 → 打开该课时的课件管理（上传/编辑入口）
+  if (!searchForm.courseId) return
+  router.push({ path: `/teacher/courses/${searchForm.courseId}/slides/manage`, query: { sectionId: section.id } })
 }
 
 const handleDeleteSection = async (chapter, section) => {

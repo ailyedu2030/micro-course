@@ -713,10 +713,18 @@ function getStatusLabel(status) {
   return map[status] || '未知'
 }
 
-const goSlides = (row) => {
+const goSlides = async (row) => {
+  // 【D-3 P1-C 修复】课程级课件管理入口死路：自动定位第一个章节，跳到章节级课件管理。
+  // 此前 /slides/manage?type=X 无 chapterId/sectionId → SlideManage 只渲染创建卡 + 后端树双 null 报错。
   // 【V333】按课程类型限定课件工作区：HTML 课件 → ?type=HTML，PPT 课件 → ?type=PPT
   const cwType = row.courseType === 'HTML_COURSEWARE' ? 'HTML' : (row.courseType === 'PPT_COURSEWARE' ? 'PPT' : '')
-  router.push({ path: slideManagePath(row.id), query: cwType ? { type: cwType } : {} })
+  let firstChapterId = null
+  try {
+    const { data } = await getChapters({ courseId: row.id, size: 1 })
+    firstChapterId = data?.items?.[0]?.id || null
+  } catch { /* 章节加载失败 → 维持课程级入口（后端已支持课程级聚合树，不再报错） */ }
+  const query = { ...(cwType ? { type: cwType } : {}), ...(firstChapterId ? { chapterId: firstChapterId } : {}) }
+  router.push({ path: slideManagePath(row.id), query })
 }
 const handleManageOffline = (row) => {
   router.push(courseDetailPath(row.id))

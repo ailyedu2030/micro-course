@@ -39,6 +39,7 @@ import com.microcourse.plugin.interactive.service.CoursewareQueryService;
 import com.microcourse.plugin.interactive.flow.FlowEngine;
 import com.microcourse.plugin.interactive.flow.FlowContext;
 import com.microcourse.repository.CourseRepository;
+import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseSectionRepository;
 import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.ExerciseRecordRepository;
@@ -92,6 +93,8 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
     private final com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache;
     private final FlowEngine flowEngine;
     private final CourseSectionRepository courseSectionRepository;
+    // D-3 (P1-C 课程级入口死路修复): 课程级课件树聚合需按 course 枚举章节
+    private final CourseChapterRepository courseChapterRepository;
     // P1-C-2 (IDOR + BRANCH 服务端读取)：课程归属 / 选课 / 测验完成状态
     private final CourseRepository courseRepository;
     private final EnrollmentRepository enrollmentRepository;
@@ -132,6 +135,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                                        com.microcourse.plugin.interactive.cache.AudioStreamCache audioStreamCache,
                                        FlowEngine flowEngine,
                                        CourseSectionRepository courseSectionRepository,
+                                       CourseChapterRepository courseChapterRepository,
                                        CourseRepository courseRepository,
                                        EnrollmentRepository enrollmentRepository,
                                        SectionQuizMapper sectionQuizMapper,
@@ -151,6 +155,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
         this.audioStreamCache = audioStreamCache;
         this.flowEngine = flowEngine;
         this.courseSectionRepository = courseSectionRepository;
+        this.courseChapterRepository = courseChapterRepository;
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.sectionQuizMapper = sectionQuizMapper;
@@ -163,15 +168,21 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
 
     @Override
     public CoursewareTreeDTO getCoursewareTree(Long courseId, Long sectionId, Long chapterId) {
-        if (courseId == null || (sectionId == null && chapterId == null)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                    "courseId 与 sectionId/chapterId 必填（课时级或章节级二选一）");
+        if (courseId == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "courseId 必填");
         }
 
         // D-2 (IDOR 修复): 对象级 verifyAccess —— 此前仅校验 section→course 归属，
         // 未校验调用者对 course 的访问权，学生可访问未选课课件树（含 HTML 完整内容）。
         // 与 evaluateFlow 同构：ADMIN/ACADEMIC 通行；TEACHER 必须课程 owner；STUDENT 必须有选课记录。
         verifyCourseAccess(courseId);
+
+        // D-3 (P1-C 课程级入口死路修复)：双 null（课程级入口，无 chapterId/sectionId）时
+        // 不再报错 —— 按 course 聚合章节，返回第一个"有课件内容"的章节树；
+        // 全部章节无内容则返回第一个章节的空树（EMPTY，前端显示创建卡，诚实空态）。
+        if (sectionId == null && chapterId == null) {
+            return courseLevelTree(courseId);
+        }
 
         // P14-C (N+1 修复): 教师课件树 Redis 缓存 —— PPT 分支无动态 nonce 可安全缓存。
         // 权限校验（verifyCourseAccess）独立于缓存 key 执行，缓存命中不跳过 IDOR 校验。
@@ -187,7 +198,7 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
                 : pageMapper.listByChapter(chapterId);
         SlideHtmlUnit htmlUnit = sectionId != null
                 ? unitMapper.findBySection(sectionId)
-                : unitMapper.findByChapter(chapterId);
+                : resolveChapterHtmlUnit(courseId, chapterId);
 
         // 【审计修复 BUG #4 + #8】 复用已查询的 pptPages 校验 section 归属,
         // 消除 BUG #8 的重复 SQL (N+1 → 1 query)
@@ -217,6 +228,87 @@ public class CoursewareQueryServiceImpl implements CoursewareQueryService {
             }
             return emptyTree(courseId, sectionId);
         }
+    }
+
+    /**
+     * D-5 R3 读侧兜底：章节级 HTML unit 解析。
+     * 优先匹配：① 章节级 unit（findByChapter，section_id IS NULL）
+     * ② 章节锚点 section 的 unit（R2 章节级/课程级上传创建，章节自有内容）
+     * ③ 章节内任意 unit（旧语义回退 = 章节内第一个课时内容）。
+     */
+    private SlideHtmlUnit resolveChapterHtmlUnit(Long courseId, Long chapterId) {
+        SlideHtmlUnit chapterUnit = unitMapper.findByChapter(chapterId);
+        if (chapterUnit != null) {
+            return chapterUnit;
+        }
+        // ② 锚点 section（title 约定 "HTML 课件节"，与 SlideServiceImpl 一致）
+        com.microcourse.entity.CourseSection anchor = courseSectionRepository.selectOne(
+                new LambdaQueryWrapper<com.microcourse.entity.CourseSection>()
+                        .eq(com.microcourse.entity.CourseSection::getCourseId, courseId)
+                        .eq(com.microcourse.entity.CourseSection::getChapterId, chapterId)
+                        .eq(com.microcourse.entity.CourseSection::getTitle, "HTML 课件节")
+                        .last("LIMIT 1"));
+        if (anchor != null) {
+            SlideHtmlUnit anchorUnit = unitMapper.findBySection(anchor.getId());
+            if (anchorUnit != null) {
+                return anchorUnit;
+            }
+        }
+        return unitMapper.listFirstByChapter(chapterId);
+    }
+
+    /**
+     * D-3 (P1-C)：课程级课件树 —— 双 null 入口聚合。
+     * 枚举该 course 全部章节（sortOrder, id 升序），返回第一个有课件内容的章节树；
+     * 所有章节无内容 → 第一个章节的 EMPTY 空树（渲染状态透传 course_slides）。
+     */
+    private CoursewareTreeDTO courseLevelTree(Long courseId) {
+        List<com.microcourse.entity.CourseChapter> chapters = courseChapterRepository.selectList(
+                new LambdaQueryWrapper<com.microcourse.entity.CourseChapter>()
+                        .eq(com.microcourse.entity.CourseChapter::getCourseId, courseId)
+                        .orderByAsc(com.microcourse.entity.CourseChapter::getSortOrder)
+                        .orderByAsc(com.microcourse.entity.CourseChapter::getId));
+        if (chapters.isEmpty()) {
+            log.info("[CoursewareTree] D-3 course-level: courseId={} 无章节 → EMPTY", courseId);
+            return emptyTree(courseId, null);
+        }
+        // 聚合：逐章节探测课件内容（PPT v2 → HTML v2 → v1 HTML），返回第一个有内容的章节树
+        for (com.microcourse.entity.CourseChapter ch : chapters) {
+            Long chId = ch.getId();
+            CoursewareTreeDTO chapterTree = probeChapterTree(courseId, chId);
+            if (chapterTree != null) {
+                log.info("[CoursewareTree] D-3 course-level: courseId={} 聚合命中章节 chapterId={}, type={}",
+                        courseId, chId, chapterTree.getType());
+                return chapterTree;
+            }
+        }
+        log.info("[CoursewareTree] D-3 course-level: courseId={} 各章节均无内容 → 第一章节 EMPTY", courseId);
+        return emptyTree(courseId, null);
+    }
+
+    /**
+     * D-3：探测单个章节的课件树。有内容返回对应树（PPT/HTML/PENDING-HTML），无内容返回 null。
+     */
+    private CoursewareTreeDTO probeChapterTree(Long courseId, Long chapterId) {
+        List<SlidePptPage> pptPages = pageMapper.listByChapter(chapterId);
+        if (!pptPages.isEmpty()) {
+            return buildPptTree(courseId, null, pptPages);
+        }
+        SlideHtmlUnit htmlUnit = resolveChapterHtmlUnit(courseId, chapterId);
+        if (htmlUnit != null) {
+            return buildHtmlTree(courseId, null, htmlUnit);
+        }
+        SlidePage v1Html = slidePageMapper.selectOne(
+                new LambdaQueryWrapper<SlidePage>()
+                        .eq(SlidePage::getCourseId, courseId)
+                        .eq(SlidePage::getChapterId, chapterId)
+                        .eq(SlidePage::getContentType, "HTML_DIRECT")
+                        .orderByAsc(SlidePage::getId)
+                        .last("LIMIT 1"));
+        if (v1Html != null) {
+            return pendingHtmlTree(courseId, null);
+        }
+        return null;
     }
 
     private CoursewareTreeDTO pendingHtmlTree(Long courseId, Long sectionId) {

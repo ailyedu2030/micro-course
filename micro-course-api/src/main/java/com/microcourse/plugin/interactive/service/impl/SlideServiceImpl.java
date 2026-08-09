@@ -466,9 +466,19 @@ public class SlideServiceImpl implements SlideService {
         if (sectionId != null) {
             v2Unit = htmlUnitMapper.findBySection(sectionId);
         } else if (chapterId != null) {
-            v2Unit = htmlUnitMapper.findByChapter(chapterId);
+            // D-5 R3：章节级上传只命中【章节级锚点 section】下的 unit，
+            // 绝不复用 findByChapter（其会命中课时级 unit → 章节级文件覆盖课时级内容）。
+            v2Unit = findChapterAnchorUnit(courseId, chapterId);
         }
         if (v2Unit != null) {
+            // D-4 (P1-C)：重传后旧段脚本残留 —— 新 HTML 结构与旧 marker(seg-1...) 不再匹配，
+            // 播放器段高亮/点击定位失效。替换内容前清空该 unit 全部旧段脚本
+            // （slide_html_segment_audios 对 scripts 的 FK 为 ON DELETE CASCADE，一并级联清理）。
+            int removedScripts = htmlSegmentScriptMapper.delete(
+                    new LambdaQueryWrapper<SlideHtmlSegmentScript>()
+                            .eq(SlideHtmlSegmentScript::getHtmlUnitId, v2Unit.getId()));
+            log.info("[SlideUpload-HtmlFile] D-4 old segment scripts purged: unitId={}, removed={}",
+                    v2Unit.getId(), removedScripts);
             v2Unit.setHtmlContent(rawHtml);
             v2Unit.setHtmlSanitized(safeHtml);
             // uploadHtmlFile 开头已校验 course owner/ADMIN（isOwnerOrAdmin），
@@ -498,27 +508,38 @@ public class SlideServiceImpl implements SlideService {
             // slide_id, file_uuid, html_content, html_sanitized, file_size_bytes）。
             log.info("[SlideUpload-HtmlFile] no v2 unit for courseId={}, sectionId={}, chapterId={} -> CREATE",
                     courseId, sectionId, chapterId);
-            // 1) 解析 chapterId（从 sectionId 反查）
+            // 1) 解析 chapterId（从 sectionId 反查；章节级/课程级上传 → 自动创建缺失的章节/章节级 section）
             Long resolvedChapterId = chapterId;
             if (resolvedChapterId == null && sectionId != null) {
                 CourseSection sec = sectionRepo.selectById(sectionId);
                 if (sec != null) resolvedChapterId = sec.getChapterId();
             }
-            if (resolvedChapterId == null) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                        "HTML 上传必须提供 chapterId 或关联到存在的 sectionId=" + sectionId);
+            // R2 (P1-C)：章节级/课程级 HTML 上传回归修复 ——
+            // 此前升级为业务异常 9005，导致 SlideManage 创建卡（课程级/空章节级均渲染 HTML 上传入口）报错。
+            // 现在：章节级（仅 chapterId）→ 创建/复用章节级锚点 section；课程级（双 null）→ 先建章节再建锚点 section。
+            Long resolvedSectionId = sectionId;
+            if (resolvedSectionId == null) {
+                if (resolvedChapterId == null) {
+                    // 课程级：创建一个承载课件内容的章节（title 带课程标题，sortOrder 取章节最大值+1）
+                    resolvedChapterId = ensureCoursewareChapter(courseId);
+                }
+                CourseSection anchor = findOrCreateChapterAnchorSection(courseId, resolvedChapterId);
+                resolvedSectionId = anchor.getId();
             }
-            // 2) 解析 slide_id（从 v1 slide_pages 派生）
-            Long resolvedSlideId = null;
+            // 2) 解析 slide_id —— slide_html_units.slide_id 语义 = course_slides.id（D-5 R1）：
+            //    课时级沿用 slide_pages.slide_id（本表 FK 列，等于 v1 course_slides.id）；
+            //    章节级/课程级直接取本次上传创建的 v1 course_slides.id（sid），无需反查页面。
+            Long resolvedSlideId;
             if (sectionId != null) {
-                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SlidePage> sq = new LambdaQueryWrapper<>();
+                LambdaQueryWrapper<SlidePage> sq = new LambdaQueryWrapper<>();
                 sq.eq(SlidePage::getSectionId, sectionId).last("LIMIT 1");
                 SlidePage existingPage = slidePageMapper.selectOne(sq);
-                if (existingPage != null) resolvedSlideId = existingPage.getId();
-            }
-            if (resolvedSlideId == null) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
-                        "HTML 上传找不到关联 slide_page(slide.html_units.slide_id NOT NULL, sectionId=" + sectionId + ")");
+                // D-5 R1：此前取 existingPage.getId()（slide_pages 主键）写入 unit.slide_id，
+                // 语义错配（正确语义为 course_slides.id）。改为取 FK 列 slide_id。
+                resolvedSlideId = existingPage != null ? existingPage.getSlideId() : sid;
+            } else {
+                // 章节级/课程级：sid 即本次 UPSERT 的 v1 course_slides.id，语义天然正确
+                resolvedSlideId = sid;
             }
             // 3) 生成 fileUuid
             String fileUuid = java.util.UUID.randomUUID().toString().replace("-", "");
@@ -528,7 +549,7 @@ public class SlideServiceImpl implements SlideService {
             SlideHtmlUnit newUnit = new SlideHtmlUnit();
             newUnit.setCourseId(courseId);
             newUnit.setChapterId(resolvedChapterId);
-            newUnit.setSectionId(sectionId);
+            newUnit.setSectionId(resolvedSectionId);
             newUnit.setSlideId(resolvedSlideId);
             newUnit.setFileUuid(fileUuid);
             newUnit.setHtmlContent(rawHtml);
@@ -540,7 +561,7 @@ public class SlideServiceImpl implements SlideService {
             newUnit.setUpdatedAt(LocalDateTime.now());
             htmlUnitMapper.insert(newUnit);
             log.info("[SlideUpload-HtmlFile] v2 unit created: unitId={}, courseId={}, chapterId={}, sectionId={}, slideId={}, detectedSegments={}",
-                    newUnit.getId(), courseId, resolvedChapterId, sectionId, resolvedSlideId, detected);
+                    newUnit.getId(), courseId, resolvedChapterId, resolvedSectionId, resolvedSlideId, detected);
         }
 
         SlideUploadResponse resp = new SlideUploadResponse();
@@ -549,6 +570,88 @@ public class SlideServiceImpl implements SlideService {
         resp.setStatus(2);
         resp.setMessage("HTML file upload success");
         return resp;
+    }
+
+    /** 章节级锚点 section 标题约定（既有数据即用此约定：course_sections.id=50 "HTML 课件节"）。 */
+    private static final String CHAPTER_ANCHOR_SECTION_TITLE = "HTML 课件节";
+
+    /**
+     * R2：课程级 HTML 上传（双 null）→ 自动创建承载课件内容的章节。
+     * title 带课程标题（可读性），sortOrder 取该课程章节最大值+1（排在最后）。
+     */
+    private Long ensureCoursewareChapter(Long courseId) {
+        com.microcourse.entity.Course course = courseRepository.selectById(courseId);
+        String base = course != null && course.getTitle() != null ? course.getTitle() : "课程" + courseId;
+        int maxSort = 0;
+        List<CourseChapter> chapters = courseChapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>()
+                        .eq(CourseChapter::getCourseId, courseId)
+                        .orderByDesc(CourseChapter::getSortOrder)
+                        .last("LIMIT 1"));
+        if (!chapters.isEmpty() && chapters.get(0).getSortOrder() != null) {
+            maxSort = chapters.get(0).getSortOrder();
+        }
+        CourseChapter ch = new CourseChapter();
+        ch.setCourseId(courseId);
+        ch.setTitle(base + " · 课件");
+        ch.setSortOrder(maxSort + 1);
+        ch.setChapterType("INTERACTIVE");
+        ch.setVersion(0);
+        LocalDateTime now = LocalDateTime.now();
+        ch.setCreatedAt(now);
+        ch.setUpdatedAt(now);
+        courseChapterRepository.insert(ch);
+        log.info("[SlideUpload-HtmlFile] R2 course-level: chapter auto-created id={}, courseId={}, title={}",
+                ch.getId(), courseId, ch.getTitle());
+        return ch.getId();
+    }
+
+    /**
+     * R2：创建/复用章节级锚点 section（title 约定 "HTML 课件节"，courseware_type=HTML）。
+     * 章节级/课程级 HTML 上传的 v2 unit 挂在此 section 下，
+     * 使 slide_html_units.section_id（NOT NULL + FK）有真实归属，且不污染真实课时。
+     */
+    private CourseSection findOrCreateChapterAnchorSection(Long courseId, Long chapterId) {
+        CourseSection anchor = sectionRepo.selectOne(
+                new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getCourseId, courseId)
+                        .eq(CourseSection::getChapterId, chapterId)
+                        .eq(CourseSection::getTitle, CHAPTER_ANCHOR_SECTION_TITLE)
+                        .last("LIMIT 1"));
+        if (anchor != null) {
+            return anchor;
+        }
+        anchor = new CourseSection();
+        anchor.setCourseId(courseId);
+        anchor.setChapterId(chapterId);
+        anchor.setTitle(CHAPTER_ANCHOR_SECTION_TITLE);
+        anchor.setSectionType("INTERACTIVE");
+        anchor.setCoursewareType("HTML");
+        anchor.setSortOrder(0);
+        anchor.setDuration(0);
+        anchor.setVisible(true);
+        anchor.setVersion(0);
+        LocalDateTime now = LocalDateTime.now();
+        anchor.setCreatedAt(now);
+        anchor.setUpdatedAt(now);
+        sectionRepo.insert(anchor);
+        log.info("[SlideUpload-HtmlFile] R2 chapter-level: anchor section created id={}, courseId={}, chapterId={}",
+                anchor.getId(), courseId, chapterId);
+        return anchor;
+    }
+
+    /**
+     * D-5 R3：查章节级锚点 section 下的 HTML unit。
+     * 仅章节级上传/更新使用 —— 绝不返回课时级 unit（避免章节级文件覆盖课时级内容）。
+     */
+    private SlideHtmlUnit findChapterAnchorUnit(Long courseId, Long chapterId) {
+        CourseSection anchor = sectionRepo.selectOne(
+                new LambdaQueryWrapper<CourseSection>()
+                        .eq(CourseSection::getCourseId, courseId)
+                        .eq(CourseSection::getChapterId, chapterId)
+                        .eq(CourseSection::getTitle, CHAPTER_ANCHOR_SECTION_TITLE)
+                        .last("LIMIT 1"));
+        return anchor == null ? null : htmlUnitMapper.findBySection(anchor.getId());
     }
 
     @Override
@@ -713,6 +816,15 @@ public class SlideServiceImpl implements SlideService {
                 return cachedOrBuildV2PptPages(courseId, null, chapterId, v2PptPages);
             }
             SlideHtmlUnit v2HtmlUnit = htmlUnitMapper.findByChapter(chapterId);
+            // D-5 R3：findByChapter 现仅匹配章节级（section_id IS NULL）unit；
+            // 无章节级 unit 时依次兜底：① 章节锚点 section 的 unit（章节自有内容，R2 创建）
+            // ② 章节内任意 unit（学生端章节级入口回退 = 章节内第一个课时内容）
+            if (v2HtmlUnit == null) {
+                v2HtmlUnit = findChapterAnchorUnit(courseId, chapterId);
+            }
+            if (v2HtmlUnit == null) {
+                v2HtmlUnit = htmlUnitMapper.listFirstByChapter(chapterId);
+            }
             if (v2HtmlUnit != null && courseId.equals(v2HtmlUnit.getCourseId())) {
                 return cachedOrBuildV2HtmlPage(courseId, null, chapterId, v2HtmlUnit);
             }
