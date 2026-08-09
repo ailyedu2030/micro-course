@@ -493,9 +493,54 @@ public class SlideServiceImpl implements SlideService {
                     courseId, v2Unit.getId(), course.getTeacherId(), SecurityUtil.getCurrentUserIdOpt(),
                     safeFilename, file.getSize(), detected);
         } else {
-            log.info("[SlideUpload-HtmlFile] no v2 unit for courseId={}, sectionId={}, chapterId={} "
-                    + "(keep v1 path; next access falls back to v1 when v2 absent)",
+            // L0 兜底：HTML 上传未创建 v2 unit 时段检测会失败（段检测端点依赖 unitId），
+            // 必须新建 v2 unit（slide_html_units 所有 NOT NULL 字段：course_id, chapter_id, section_id,
+            // slide_id, file_uuid, html_content, html_sanitized, file_size_bytes）。
+            log.info("[SlideUpload-HtmlFile] no v2 unit for courseId={}, sectionId={}, chapterId={} -> CREATE",
                     courseId, sectionId, chapterId);
+            // 1) 解析 chapterId（从 sectionId 反查）
+            Long resolvedChapterId = chapterId;
+            if (resolvedChapterId == null && sectionId != null) {
+                CourseSection sec = sectionRepo.selectById(sectionId);
+                if (sec != null) resolvedChapterId = sec.getChapterId();
+            }
+            if (resolvedChapterId == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "HTML 上传必须提供 chapterId 或关联到存在的 sectionId=" + sectionId);
+            }
+            // 2) 解析 slide_id（从 v1 slide_pages 派生）
+            Long resolvedSlideId = null;
+            if (sectionId != null) {
+                com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SlidePage> sq = new LambdaQueryWrapper<>();
+                sq.eq(SlidePage::getSectionId, sectionId).last("LIMIT 1");
+                SlidePage existingPage = slidePageMapper.selectOne(sq);
+                if (existingPage != null) resolvedSlideId = existingPage.getId();
+            }
+            if (resolvedSlideId == null) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "HTML 上传找不到关联 slide_page(slide.html_units.slide_id NOT NULL, sectionId=" + sectionId + ")");
+            }
+            // 3) 生成 fileUuid
+            String fileUuid = java.util.UUID.randomUUID().toString().replace("-", "");
+            // 4) 检测段数
+            int detected = htmlSegmentDetector.detectSegments(safeHtml).size();
+            // 5) 插入新 unit
+            SlideHtmlUnit newUnit = new SlideHtmlUnit();
+            newUnit.setCourseId(courseId);
+            newUnit.setChapterId(resolvedChapterId);
+            newUnit.setSectionId(sectionId);
+            newUnit.setSlideId(resolvedSlideId);
+            newUnit.setFileUuid(fileUuid);
+            newUnit.setHtmlContent(rawHtml);
+            newUnit.setHtmlSanitized(safeHtml);
+            newUnit.setIsTrusted(true);
+            newUnit.setFileSizeBytes(file.getSize());
+            newUnit.setDetectedSegments(detected);
+            newUnit.setCreatedAt(LocalDateTime.now());
+            newUnit.setUpdatedAt(LocalDateTime.now());
+            htmlUnitMapper.insert(newUnit);
+            log.info("[SlideUpload-HtmlFile] v2 unit created: unitId={}, courseId={}, chapterId={}, sectionId={}, slideId={}, detectedSegments={}",
+                    newUnit.getId(), courseId, resolvedChapterId, sectionId, resolvedSlideId, detected);
         }
 
         SlideUploadResponse resp = new SlideUploadResponse();
