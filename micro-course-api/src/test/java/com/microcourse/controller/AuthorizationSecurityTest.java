@@ -42,10 +42,11 @@ public class AuthorizationSecurityTest extends BaseIntegrationTest {
     }
 
     @Test
-    @DisplayName("P0-8 公开封面无token访问不被鉴权拦截")
+    @DisplayName("P0-8 公开封面无token访问不被鉴权拦截（缺失时返回200占位图）")
     void shouldAllowPublicCoverAccessWithoutToken() throws Exception {
-        var res = mockMvc.perform(get("/api/files/covers/1/__nonexistent_cover__.jpg")).andReturn();
-        assertNotBlockedByAuth(res.getResponse().getStatus(), "/api/files/covers/**");
+        // 文件缺失 → HTTP 200 + 内置占位图：既不被鉴权拦截（permitAll 生效），也不 404 破图
+        mockMvc.perform(get("/api/files/covers/1/__nonexistent_cover__.jpg"))
+                .andExpect(status().isOk());
     }
 
     @Test

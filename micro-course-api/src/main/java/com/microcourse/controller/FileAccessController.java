@@ -11,13 +11,16 @@ import com.microcourse.repository.EnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyProposalRepository;
 import com.microcourse.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -188,6 +192,59 @@ public class FileAccessController {
     }
 
     // ================================================================
+    // 课程封面（公开 · 占位图兜底）
+    // ================================================================
+
+    /**
+     * GET /api/files/covers/{filename}
+     *
+     * <p>课程/视频封面公开访问（白名单静态资源）。文件缺失时返回内置占位图
+     * （HTTP 200），避免前端 {@code <img>} 破图——L0 铁律：用户体验至上。</p>
+     *
+     * <p>本端点经 {@code @RestController} HandlerMapping（优先级高于 WebMvcConfig
+     * 中的 SimpleUrlHandlerMapping）接管现有 {@code /api/files/covers/**} 静态映射。
+     * 保留路径穿越防护：URL 解码 + normalize + 验证在 covers 根目录内
+     * （拒绝 {@code ..}、{@code \}、空字符；允许子目录 {@code /}，与静态映射
+     * 支持任意子路径的语义一致）。</p>
+     *
+     * @param request HTTP 请求（用于提取原始 URI 中的相对路径）
+     * @return 封面文件；文件缺失时返回内置占位图 SVG（HTTP 200）
+     */
+    @GetMapping("/covers/**")
+    public ResponseEntity<Resource> getCoverFile(HttpServletRequest request) {
+        // 1. 从 request URI 提取 /api/files/covers/ 之后的部分（原始编码形式）
+        String uri = request.getRequestURI();
+        String prefix = "/api/files/covers/";
+        String relative = uri.substring(uri.indexOf(prefix) + prefix.length());
+        // 2. 路径穿越防护：URL 解码 + 拒绝 .. / \ / 空字符（允许子目录 /）
+        String decoded = sanitizeCoverPath(relative);
+        Path coversBaseDir = Paths.get(uploadBaseDir, "covers").toAbsolutePath().normalize();
+        Path filePath = coversBaseDir.resolve(decoded).normalize();
+        if (!filePath.startsWith(coversBaseDir)) {
+            log.warn("[FileAccess] 路径穿越拦截 covers, resolved={}", filePath);
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法文件路径");
+        }
+        // 3. 文件存在 → 正常返回；缺失 → 占位图（HTTP 200，避免 <img> 破图）
+        if (Files.isRegularFile(filePath)) {
+            String contentType = resolveCoverContentType(decoded);
+            Resource resource = new FileSystemResource(filePath.toFile());
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_TYPE, contentType)
+                    .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
+                    .header("X-Content-Type-Options", "nosniff")
+                    .body(resource);
+        }
+        // 缺失分支：no-cache —— 真实封面恢复后，同一 URL 立即重新拉取，不被占位图缓存污染（P1-2）
+        log.warn("[FileAccess] 封面文件缺失，返回占位图 path={}", filePath);
+        Resource placeholder = new ClassPathResource("static/placeholder.svg");
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_TYPE, "image/svg+xml; charset=utf-8")
+                .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+                .header("X-Content-Type-Options", "nosniff")
+                .body(placeholder);
+    }
+
+    // ================================================================
     // 授权方法
     // ================================================================
 
@@ -257,6 +314,32 @@ public class FileAccessController {
     // ================================================================
 
     /**
+     * covers 相对路径安全净化：URL 解码 + 路径穿越字符检测。
+     *
+     * <p>与 {@link #sanitizeFilename(String)} 的区别：允许子目录分隔符 {@code /}
+     * （covers 静态映射支持任意子路径，如 {@code 2024/01/course.jpg}），
+     * 但同样拒绝 {@code ..}、{@code \}、空字符；畸形 {@code %} 编码视为非法。</p>
+     *
+     * @param path 相对路径（原始编码形式，可含子目录）
+     * @return 解码后的相对路径
+     * @throws BusinessException 含非法字符时抛出
+     */
+    private String sanitizeCoverPath(String path) {
+        final String decoded;
+        try {
+            decoded = URLDecoder.decode(path, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            // 畸形 % 编码（如孤立 % 后非十六进制）→ 400
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法文件名");
+        }
+        if (decoded.contains("..") || decoded.contains("\\")
+                || decoded.indexOf('\u0000') >= 0) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法文件名");
+        }
+        return decoded;
+    }
+
+    /**
      * 文件名安全净化：URL 解码 + 路径穿越字符检测。
      *
      * @param filename 原始文件名
@@ -270,6 +353,42 @@ public class FileAccessController {
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "非法文件名");
         }
         return decoded;
+    }
+
+    /**
+     * covers 封面专用 Content-Type 推断。
+     *
+     * <p>与 {@link #resolveContentType(String)}（私有文件用，未知类型回退
+     * {@code application/octet-stream}）不同：封面是 {@code <img>} 渲染的公开图片，
+     * 必须永远返回 {@code image/*}，否则浏览器破图（L0 铁律：用户体验至上）。
+     * 永不对封面返回 text/html / application/octet-stream。</p>
+     *
+     * <p>策略：扩展名白名单优先（jpg/jpeg/jpe/jfif/png/webp/gif/svg/bmp），
+     * 未命中再用 {@link MediaTypeFactory} 兜底，但结果非 {@code image/*} 时
+     * 回退 {@code image/png}。</p>
+     */
+    private String resolveCoverContentType(String filename) {
+        String lower = filename.toLowerCase();
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".jpe")
+                || lower.endsWith(".jfif")) {
+            return MediaType.IMAGE_JPEG_VALUE;
+        } else if (lower.endsWith(".png")) {
+            return MediaType.IMAGE_PNG_VALUE;
+        } else if (lower.endsWith(".webp")) {
+            return "image/webp";
+        } else if (lower.endsWith(".gif")) {
+            return MediaType.IMAGE_GIF_VALUE;
+        } else if (lower.endsWith(".svg") || lower.endsWith(".svgz")) {
+            return "image/svg+xml";
+        } else if (lower.endsWith(".bmp")) {
+            return "image/bmp";
+        }
+        // MediaTypeFactory 兜底：非 image/* 一律回退 image/png，保证 <img> 可渲染
+        Optional<MediaType> mediaType = MediaTypeFactory.getMediaType(filename);
+        if (mediaType.isPresent() && "image".equalsIgnoreCase(mediaType.get().getType())) {
+            return mediaType.get().toString();
+        }
+        return MediaType.IMAGE_PNG_VALUE;
     }
 
     /**
