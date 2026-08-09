@@ -747,7 +747,7 @@ class SlideServiceTest {
         }
 
         @Test
-        @DisplayName("HTML 文件上传成功")
+        @DisplayName("HTML 文件上传成功（v2 unit 自动创建）")
         void uploadHtmlFile_Success() {
             setupAdminContext();
             try {
@@ -755,17 +755,32 @@ class SlideServiceTest {
                 course.setId(1L);
                 course.setTeacherId(1L);
                 when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseSection section = new CourseSection();
+                section.setId(7L);
+                section.setCourseId(1L);
+                section.setChapterId(10L);
+                section.setVersion(1);
+                when(courseSectionRepository.selectById(7L)).thenReturn(section);
+                when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
+
                 when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
                     CourseSlide s = inv.getArgument(0);
                     s.setId(43L);
                     return 1;
                 });
+                // 第一次 selectOne（UPSERT 页面）→ null → 走 insert；第二次（v2 派生 slide_id）→ 已有页面
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null, existingPage(100L, 7L));
                 when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                // v2 unit 不存在 → 自动创建（PR#204 根因修复）
+                when(htmlUnitMapper.findBySection(7L)).thenReturn(null);
+                when(htmlUnitMapper.insert(any(SlideHtmlUnit.class))).thenReturn(1);
 
                 MockMultipartFile file = new MockMultipartFile(
                         "file", "lesson.html", "text/html", "<p>File Upload Test</p>".getBytes());
 
-                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, null);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, 7L);
 
                 assertNotNull(resp);
                 assertEquals(1, resp.getTotalPages());
@@ -773,6 +788,13 @@ class SlideServiceTest {
                 assertEquals(43L, resp.getSlideId().longValue());
                 verify(courseSlideMapper).insert(any(CourseSlide.class));
                 verify(slidePageMapper).insert(any(SlidePage.class));
+                // v2 unit 必须被创建（PR#204：HTML 上传必须关联到 section 并建 unit）
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).insert(unitCaptor.capture());
+                assertEquals(10L, unitCaptor.getValue().getChapterId().longValue());
+                assertEquals(7L, unitCaptor.getValue().getSectionId().longValue());
+                assertEquals(Boolean.TRUE, unitCaptor.getValue().getIsTrusted());
             } finally {
                 SecurityContextHolder.clearContext();
             }
@@ -884,12 +906,26 @@ class SlideServiceTest {
                 course.setId(1L);
                 course.setTeacherId(1L);
                 when(courseRepository.selectById(1L)).thenReturn(course);
+
+                CourseSection section = new CourseSection();
+                section.setId(7L);
+                section.setCourseId(1L);
+                section.setChapterId(10L);
+                section.setVersion(1);
+                when(courseSectionRepository.selectById(7L)).thenReturn(section);
+                when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
+
                 when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
                     CourseSlide s = inv.getArgument(0);
                     s.setId(44L);
                     return 1;
                 });
+                when(slidePageMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null, existingPage(100L, 7L));
                 when(slidePageMapper.insert(any(SlidePage.class))).thenReturn(1);
+
+                // v2 unit 不存在 → 自动创建
+                when(htmlUnitMapper.findBySection(7L)).thenReturn(null);
+                when(htmlUnitMapper.insert(any(SlideHtmlUnit.class))).thenReturn(1);
 
                 MockMultipartFile xssFile = new MockMultipartFile(
                         "file", "xss.html", "text/html", "<script>alert(1)</script>".getBytes());
@@ -897,10 +933,11 @@ class SlideServiceTest {
                 // HtmlSanitizer.sanitizeForCourseware() 是宽松模式，
                 // 允许 script 标签（安全由前端 iframe sandbox 兜底），
                 // 因此上传应成功，不抛异常
-                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, xssFile, null, null);
+                SlideUploadResponse resp = slideService.uploadHtmlFile(1L, xssFile, null, 7L);
                 assertNotNull(resp);
                 assertEquals(44L, resp.getSlideId().longValue());
                 verify(courseSlideMapper).insert(any(CourseSlide.class));
+                verify(htmlUnitMapper).insert(any(SlideHtmlUnit.class));
             } finally {
                 SecurityContextHolder.clearContext();
             }
@@ -990,8 +1027,8 @@ class SlideServiceTest {
         }
 
         @Test
-        @DisplayName("P0-3 — v2 unit 不存在时保持 v1 流程（不创建 v2 unit，不调用检测）")
-        void uploadHtmlFile_NoV2UnitKeepsV1() {
+        @DisplayName("P0-3 — v2 unit 不存在时自动创建 v2 unit（PR#204 修复段检测链路）")
+        void uploadHtmlFile_NoV2UnitCreatesV2() {
             setupAdminContext();
             try {
                 Course course = new Course();
@@ -1002,6 +1039,7 @@ class SlideServiceTest {
                 CourseSection section = new CourseSection();
                 section.setId(7L);
                 section.setCourseId(1L);
+                section.setChapterId(10L);
                 section.setVersion(1);
                 when(courseSectionRepository.selectById(7L)).thenReturn(section);
                 when(courseSectionRepository.updateById(any(CourseSection.class))).thenReturn(1);
@@ -1026,17 +1064,32 @@ class SlideServiceTest {
 
                 // v2 unit 不存在
                 when(htmlUnitMapper.findBySection(7L)).thenReturn(null);
+                when(htmlUnitMapper.insert(any(SlideHtmlUnit.class))).thenAnswer(inv -> {
+                    SlideHtmlUnit u = inv.getArgument(0);
+                    u.setId(500L);
+                    return 1;
+                });
+                when(htmlSegmentDetector.detectSegments(anyString())).thenReturn(List.of(
+                        new com.microcourse.plugin.interactive.dto.SegmentInfo(1, "seg-1", "#seg-1", "一")));
 
                 MockMultipartFile file = new MockMultipartFile(
                         "file", "new.html", "text/html", "<p>New v1 only</p>".getBytes());
 
                 SlideUploadResponse resp = slideService.uploadHtmlFile(1L, file, null, 7L);
                 assertNotNull(resp);
-                // v1 流程正常 + 不触碰 v2 unit / 不调用检测
+                // v1 流程正常
                 verify(courseSlideMapper).updateById(any(CourseSlide.class));
+                // PR#204: v2 unit 缺失时必须自动创建（不再 keep v1-only）
                 verify(htmlUnitMapper).findBySection(7L);
-                verify(htmlUnitMapper, never()).updateById(any(SlideHtmlUnit.class));
-                verify(htmlSegmentDetector, never()).detectSegments(anyString());
+                org.mockito.ArgumentCaptor<SlideHtmlUnit> unitCaptor =
+                        org.mockito.ArgumentCaptor.forClass(SlideHtmlUnit.class);
+                verify(htmlUnitMapper).insert(unitCaptor.capture());
+                SlideHtmlUnit created = unitCaptor.getValue();
+                assertEquals(10L, created.getChapterId().longValue());
+                assertEquals(7L, created.getSectionId().longValue());
+                assertEquals(100L, created.getSlideId().longValue());
+                assertEquals(Boolean.TRUE, created.getIsTrusted());
+                verify(htmlSegmentDetector).detectSegments(anyString());
             } finally {
                 SecurityContextHolder.clearContext();
             }
@@ -1050,5 +1103,16 @@ class SlideServiceTest {
         seg.setSegmentMarker(marker);
         seg.setScriptText("段" + idx);
         return seg;
+    }
+
+    private SlidePage existingPage(Long id, Long sectionId) {
+        SlidePage page = new SlidePage();
+        page.setId(id);
+        page.setSlideId(43L);
+        page.setCourseId(1L);
+        page.setSectionId(sectionId);
+        page.setPageNumber(1);
+        page.setContentType("HTML_DIRECT");
+        return page;
     }
 }
