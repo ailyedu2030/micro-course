@@ -120,7 +120,7 @@ BEGIN
 
     -- 2.6 审计留痕: 修复事件写入 operation_logs（action 长度 < 50）
     IF v_ppt_fixed > 0 OR v_html_fixed > 0 OR v_review_left > 0 THEN
-        INSERT INTO operation_logs (user_id, action, target_type, target_id, detail, ip, success, created_at)
+        INSERT INTO operation_logs (user_id, action, target_type, target_id, detail, ip, is_success, created_at)
         VALUES (
             NULL,
             'GHOST_CHAPTER_FIX',
