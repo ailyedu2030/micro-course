@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>课程 Owner 教师访问 slides → 200 + 正确 Content-Type</li>
  *   <li>路径穿越（{@code ..} 字符）→ 400 BAD_REQUEST_PARAM</li>
  *   <li>管理员访问 slides → 200</li>
- *   <li>未登录访问公开 covers → 200/204（静态资源仍放行）</li>
+ *   <li>未登录访问公开 covers → 200（缺失时返回内置占位图，静态资源仍放行）</li>
  * </ol>
  *
  * <p>种子（/sql/p0-seed.sql）：course 1（teacher=6）、p0_teacher(id=6)、student(id=7)。</p>
@@ -124,15 +124,12 @@ class FileAccessControllerTest extends BaseIntegrationTest {
     // ================================================================
 
     @Test
-    @DisplayName("未登录访问公开封面路径返回 404（文件不存在）而非 401/403")
+    @DisplayName("未登录访问公开封面路径返回 200 占位图（文件缺失）而非 401/403")
     void testPublicCoverAccessibleWithoutAuth() throws Exception {
         mockMvc.perform(get("/api/files/covers/999/nonexistent.jpg"))
-                .andExpect(status().isNotFound()) // 文件不存在 → 404（而非 Spring Security 拦截 401）
-                .andDo(result -> {
-                    String body = result.getResponse().getContentAsString();
-                    // 确认是 "文件不存在" 的错误，而不是 "未认证"
-                    org.junit.jupiter.api.Assertions.assertNotNull(body);
-                });
+                .andExpect(status().isOk()) // 文件缺失 → 200 + 内置占位图（而非 Spring Security 拦截 401/403 或静态资源 404 破图）
+                .andExpect(header().string(HttpHeaders.CONTENT_TYPE,
+                        "image/svg+xml; charset=utf-8"));
     }
 
     // ================================================================
