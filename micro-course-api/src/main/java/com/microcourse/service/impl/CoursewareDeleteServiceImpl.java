@@ -9,12 +9,16 @@ import com.microcourse.exception.BusinessException;
 import com.microcourse.exception.ErrorCode;
 import com.microcourse.plugin.interactive.entity.SlideHtmlSegmentScript;
 import com.microcourse.plugin.interactive.entity.SlideHtmlUnit;
+import com.microcourse.plugin.interactive.entity.SlidePage;
 import com.microcourse.plugin.interactive.entity.SlidePptPage;
 import com.microcourse.plugin.interactive.entity.SlidePptPageScript;
+import com.microcourse.plugin.interactive.mapper.CourseSlideMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlSegmentScriptMapper;
 import com.microcourse.plugin.interactive.mapper.SlideHtmlUnitMapper;
+import com.microcourse.plugin.interactive.mapper.SlidePageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageMapper;
 import com.microcourse.plugin.interactive.mapper.SlidePptPageScriptMapper;
+import com.microcourse.plugin.interactive.service.SlideService;
 import com.microcourse.repository.CourseChapterRepository;
 import com.microcourse.repository.CourseRepository;
 import com.microcourse.repository.CourseSectionRepository;
@@ -24,6 +28,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +57,11 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
     private final SlidePptPageScriptMapper pptPageScriptMapper;
     private final SlideHtmlUnitMapper htmlUnitMapper;
     private final SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
+    // F-2026-08-10-09: 删除章节/课时级联清理 v1 course_slides / slide_pages（无 FK CASCADE → 手动删除）
+    private final CourseSlideMapper courseSlideMapper;
+    private final SlidePageMapper slidePageMapper;
+    // F-2026-08-10-09: 物理文件清理复用（afterCommit 钩子）
+    private final SlideService slideService;
 
     public CoursewareDeleteServiceImpl(CourseRepository courseRepository,
                                        CourseChapterRepository chapterRepository,
@@ -58,7 +69,10 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
                                        SlidePptPageMapper pptPageMapper,
                                        SlidePptPageScriptMapper pptPageScriptMapper,
                                        SlideHtmlUnitMapper htmlUnitMapper,
-                                       SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper) {
+                                       SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper,
+                                       CourseSlideMapper courseSlideMapper,
+                                       SlidePageMapper slidePageMapper,
+                                       SlideService slideService) {
         this.courseRepository = courseRepository;
         this.chapterRepository = chapterRepository;
         this.sectionRepository = sectionRepository;
@@ -66,6 +80,9 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
         this.pptPageScriptMapper = pptPageScriptMapper;
         this.htmlUnitMapper = htmlUnitMapper;
         this.htmlSegmentScriptMapper = htmlSegmentScriptMapper;
+        this.courseSlideMapper = courseSlideMapper;
+        this.slidePageMapper = slidePageMapper;
+        this.slideService = slideService;
     }
 
     // ====================================================================
@@ -89,16 +106,26 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
                         .eq(CourseSection::getChapterId, chapterId));
         List<Long> sectionIds = sections.stream().map(CourseSection::getId).collect(Collectors.toList());
 
+        // F-2026-08-10-11: 收集章节级挂载课件（chapter_id=chapterId 且 section_id IS NULL，章节级 PPT/HTML 上传场景）
+        List<com.microcourse.plugin.interactive.entity.CourseSlide> chapterLevelSlides = courseSlideMapper.selectList(
+                new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                        .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, courseId)
+                        .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getChapterId, chapterId)
+                        .isNull(com.microcourse.plugin.interactive.entity.CourseSlide::getSectionId));
+        List<Long> chapterLevelSlideIds = chapterLevelSlides.stream()
+                .map(com.microcourse.plugin.interactive.entity.CourseSlide::getId)
+                .collect(Collectors.toList());
+
         // 软删 chapter
         int deletedChapters = chapterRepository.delete(
                 new LambdaQueryWrapper<CourseChapter>()
                         .eq(CourseChapter::getId, chapterId));
 
         // 级联软删 section + 课件
-        DeleteStats cascade = deleteSectionsAndCourseware(sectionIds);
+        DeleteStats cascade = deleteSectionsAndCourseware(sectionIds, chapterLevelSlideIds, courseId);
 
-        log.info("[CoursewareDelete] deleteChapter: courseId={}, chapterId={}, sections={}, deletedChapters={}",
-                courseId, chapterId, sectionIds.size(), deletedChapters);
+        log.info("[CoursewareDelete] deleteChapter: courseId={}, chapterId={}, sections={}, chapterLevelSlides={}, deletedChapters={}",
+                courseId, chapterId, sectionIds.size(), chapterLevelSlideIds.size(), deletedChapters);
 
         return new DeleteStats(
                 deletedChapters,
@@ -123,7 +150,7 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
         }
         assertOwnership(course);
 
-        DeleteStats cascade = deleteSectionsAndCourseware(Collections.singletonList(sectionId));
+        DeleteStats cascade = deleteSectionsAndCourseware(Collections.singletonList(sectionId), null, courseId);
 
         log.info("[CoursewareDelete] deleteSection: courseId={}, sectionId={}, stats={}",
                 courseId, sectionId, cascade);
@@ -191,6 +218,51 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
                 courseId, htmlUnitId, deletedSegments);
 
         return new DeleteStats(0, 0, 0, deletedUnits, 0, deletedSegments);
+    }
+
+    // ====================================================================
+    // F-2026-08-10-12: 课程级级联清理（由 CourseAdminServiceImpl.delete 调用）
+    // 直接按 courseId 收集 sections + course_slides，避免依赖 chapter 状态
+    // ====================================================================
+    @Override
+    @Transactional(readOnly = true)
+    public DeleteStats deleteCourseCascade(Long courseId) {
+        // 收集所有 section（含软删的——避免漏清；MyBatis-Plus @TableLogic 会过滤已软删的，
+        // 但我们在课程删除场景下已主动绕过此过滤，按 courseId 全量查）
+        List<CourseSection> sections = sectionRepository.selectList(
+                new LambdaQueryWrapper<CourseSection>().eq(CourseSection::getCourseId, courseId));
+        List<Long> sectionIds = sections.stream().map(CourseSection::getId).collect(Collectors.toList());
+
+        // 收集所有章节级课件（chapter_id 关联 + section_id IS NULL）
+        // 先按 courseId 查 chapterIds
+        List<CourseChapter> chapters = chapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>().eq(CourseChapter::getCourseId, courseId));
+        List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).collect(Collectors.toList());
+        List<com.microcourse.plugin.interactive.entity.CourseSlide> chapterLevelSlides = Collections.emptyList();
+        if (!chapterIds.isEmpty()) {
+            chapterLevelSlides = courseSlideMapper.selectList(
+                    new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                            .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, courseId)
+                            .in(com.microcourse.plugin.interactive.entity.CourseSlide::getChapterId, chapterIds)
+                            .isNull(com.microcourse.plugin.interactive.entity.CourseSlide::getSectionId));
+        }
+        List<Long> chapterLevelSlideIds = chapterLevelSlides.stream()
+                .map(com.microcourse.plugin.interactive.entity.CourseSlide::getId)
+                .collect(Collectors.toList());
+
+        // 调用核心清理（v1+v2 课件 + 物理文件 + sections 软删）
+        DeleteStats cascade = deleteSectionsAndCourseware(sectionIds, chapterLevelSlideIds, courseId);
+
+        log.info("[CoursewareDelete] deleteCourseCascade: courseId={}, chapters={}, sections={}, chapterLevelSlides={}",
+                courseId, chapterIds.size(), sectionIds.size(), chapterLevelSlideIds.size());
+
+        return new DeleteStats(
+                chapterIds.size(),  // deletedChapters（章节数）
+                cascade.deletedSections(),
+                cascade.deletedPptPages(),
+                cascade.deletedHtmlUnits(),
+                cascade.deletedPptScripts(),
+                cascade.deletedHtmlSegmentScripts());
     }
 
     // ====================================================================
@@ -277,10 +349,35 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
     /**
      * 删除 section 列表 + 级联课件.
      */
-    private DeleteStats deleteSectionsAndCourseware(List<Long> sectionIds) {
-        if (sectionIds.isEmpty()) {
+    private DeleteStats deleteSectionsAndCourseware(List<Long> sectionIds, List<Long> extraSlideIds, Long courseIdForExtraSlides) {
+        if (sectionIds.isEmpty() && (extraSlideIds == null || extraSlideIds.isEmpty())) {
             return new DeleteStats(0, 0, 0, 0, 0, 0);
         }
+        // F-2026-08-10-09: 收集 course_slides（v1 旧表入口，无 FK CASCADE 需手动清理）
+        List<com.microcourse.plugin.interactive.entity.CourseSlide> courseSlides = courseSlideMapper.selectList(
+                new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                        .in(com.microcourse.plugin.interactive.entity.CourseSlide::getSectionId, sectionIds));
+        List<Long> slideIds = courseSlides.stream().map(com.microcourse.plugin.interactive.entity.CourseSlide::getId)
+                .collect(Collectors.toList());
+        // F-2026-08-10-11: 合并章节级挂载课件（chapter_id 关联，section_id IS NULL）
+        if (extraSlideIds != null && !extraSlideIds.isEmpty()) {
+            slideIds = new java.util.ArrayList<>(slideIds);
+            slideIds.addAll(extraSlideIds);
+        }
+        // 课件所在课程（用于 cleanupSlideFiles 拼接 storage 路径；courseId 必须真实值否则文件残留）
+        java.util.Map<Long, Long> slideToCourseMap = courseSlides.stream()
+                .filter(s -> s.getCourseId() != null && s.getId() != null)
+                .collect(Collectors.toMap(
+                        com.microcourse.plugin.interactive.entity.CourseSlide::getId,
+                        com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId,
+                        (a, b) -> a));
+        // 章节级课件用传入的 courseId 兜底（这些课件通常 section_id=NULL 但 chapter_id 仍指向该 chapter）
+        if (extraSlideIds != null && courseIdForExtraSlides != null) {
+            for (Long sid : extraSlideIds) {
+                slideToCourseMap.putIfAbsent(sid, courseIdForExtraSlides);
+            }
+        }
+
         // 收集 PPT pages
         List<SlidePptPage> pptPages = pptPageMapper.selectList(
                 new LambdaQueryWrapper<SlidePptPage>()
@@ -313,10 +410,53 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
                 new LambdaQueryWrapper<SlideHtmlUnit>()
                         .in(SlideHtmlUnit::getId, htmlUnitIds));
 
-        // 删除 sections (软删)
+        // F-2026-08-10-09: 删除 v1 slide_pages（依赖 course_slides，必须先于 course_slides 删除避免 FK 违反）
+        int deletedSlidePages = slideIds.isEmpty() ? 0 : slidePageMapper.delete(
+                new LambdaQueryWrapper<SlidePage>().in(SlidePage::getSlideId, slideIds));
+
+        // F-2026-08-10-09: 删除 course_slides（无 @TableLogic 物理删除）
+        int deletedCourseSlides = slideIds.isEmpty() ? 0 : courseSlideMapper.delete(
+                new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                        .in(com.microcourse.plugin.interactive.entity.CourseSlide::getId, slideIds));
+
+        // 删除 sections (@TableLogic 软删)
         int deletedSections = sectionRepository.delete(
                 new LambdaQueryWrapper<CourseSection>()
                         .in(CourseSection::getId, sectionIds));
+
+        // F-2026-08-10-09: 物理文件清理（afterCommit 钩子，事务提交后执行避免回滚后清文件）
+        if (!slideIds.isEmpty()) {
+            final List<Long> slideIdsForCleanup = slideIds;
+            final java.util.Map<Long, Long> courseMapForCleanup = slideToCourseMap;
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (Long sid : slideIdsForCleanup) {
+                            Long cid = courseMapForCleanup.get(sid);
+                            try {
+                                slideService.cleanupSlideFiles(cid, sid);
+                            } catch (Exception e) {
+                                log.warn("[CoursewareDelete] cleanupSlideFiles failed: courseId={}, slideId={}", cid, sid, e);
+                            }
+                        }
+                    }
+                });
+            } else {
+                for (Long sid : slideIdsForCleanup) {
+                    Long cid = courseMapForCleanup.get(sid);
+                    try {
+                        slideService.cleanupSlideFiles(cid, sid);
+                    } catch (Exception e) {
+                        log.warn("[CoursewareDelete] cleanupSlideFiles failed: courseId={}, slideId={}", cid, sid, e);
+                    }
+                }
+            }
+        }
+
+        log.info("[CoursewareDelete] deleteSectionsAndCourseware: sections={}, courseSlides={}, slidePages={}, "
+                        + "pptPages={}, htmlUnits={}",
+                sectionIds.size(), deletedCourseSlides, deletedSlidePages, deletedPptPages, deletedHtmlUnits);
 
         return new DeleteStats(0, deletedSections, deletedPptPages, deletedHtmlUnits,
                 deletedPptScripts, deletedHtmlSegScripts);

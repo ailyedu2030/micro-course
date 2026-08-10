@@ -152,6 +152,23 @@
       </el-col>
     </el-row>
 
+    <!-- F-2026-08-10-06: 5 种课件/课程类型分布（HTML/PPT/视频/线下/练习） -->
+    <div class="courseware-distribution" v-if="stats.coursewareDistribution">
+      <h3 class="section-title">
+        <el-icon><Grid /></el-icon>
+        <span>课件类型分布（5 维度）</span>
+      </h3>
+      <el-row :gutter="12" v-loading="statsLoading">
+        <el-col :xs="12" :sm="8" :md="4" v-for="t in coursewareTypeItems" :key="t.key">
+          <div class="courseware-type-card" :class="`type-${t.key}`">
+            <div class="ctc-label">{{ t.label }}</div>
+            <div class="ctc-value">{{ stats.coursewareDistribution[t.field] ?? 0 }}</div>
+            <div class="ctc-tag" v-if="t.note">{{ t.note }}</div>
+          </div>
+        </el-col>
+      </el-row>
+    </div>
+
     <!-- 统计加载失败提示 -->
     <div v-if="statsError" class="stats-error-tip">
       <el-icon><WarningFilled /></el-icon>
@@ -562,7 +579,16 @@ function markFragmentLoaded() {
 // 统计数据
 const statsLoading = ref(true)
 const statsError = ref(false)
-const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0, completionRate: 0, avgScore: 0 })
+const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pendingQuestions: 0, completionRate: 0, avgScore: 0, coursewareDistribution: null })
+
+// F-2026-08-10-06: 5 种课件类型展示项（标签与后端字段一一对应，UI 与契约对齐）
+const coursewareTypeItems = [
+  { key: 'html', label: 'HTML 课件', field: 'htmlCoursewareCourses', note: '可独立' },
+  { key: 'ppt',  label: 'PPT 课件',  field: 'pptCoursewareCourses',  note: '可独立' },
+  { key: 'video', label: '视频课件', field: 'videoCourses', note: '' },
+  { key: 'offline', label: '线下课程', field: 'offlineCourses', note: '' },
+  { key: 'exercise', label: '练习课件', field: 'coursesWithExercises', note: '章节聚合' },
+]
 
 // 学情图表
 const activityLoading = ref(true)
@@ -1077,6 +1103,42 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-md), var(--shadow-lg);
   border-color: var(--role-primary-light-7);
 }
+
+/* F-2026-08-10-06: 5 种课件类型分布卡片 */
+.courseware-distribution {
+  margin-top: var(--space-6);
+  padding: var(--space-5);
+  background: var(--el-fill-color-blank);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs), var(--shadow-sm);
+}
+.courseware-distribution .section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-4) 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.courseware-type-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--el-fill-color-light);
+  border-left: 4px solid var(--el-color-primary);
+  min-height: 80px;
+}
+.courseware-type-card.type-html { border-left-color: var(--el-color-success); }
+.courseware-type-card.type-ppt { border-left-color: var(--el-color-primary); }
+.courseware-type-card.type-video { border-left-color: var(--el-color-primary); }
+.courseware-type-card.type-offline { border-left-color: var(--el-color-info); }
+.courseware-type-card.type-exercise { border-left-color: var(--el-color-warning); }
+.ctc-label { font-size: 13px; color: var(--el-text-color-regular); margin-bottom: 4px; }
+.ctc-value { font-size: 24px; font-weight: 700; color: var(--el-text-color-primary); }
+.ctc-tag { font-size: 11px; color: var(--el-text-color-placeholder); margin-top: 4px; }
 
 .stat-icon-wrap {
   width: 56px;

@@ -60,6 +60,8 @@ public class TeacherServiceImpl implements TeacherService {
     private final TeacherRatingRepository teacherRatingRepository;
     private final OrderRepository orderRepository;
     private final com.microcourse.service.PlatformShareRateResolver rateResolver;
+    // F-2026-08-10-06: 5 种课件类型分布聚合（HTML/PPT/视频/线下/练习）
+    private final com.microcourse.service.CoursewareDistributionService coursewareDistributionService;
 
     public TeacherServiceImpl(
             CourseRepository courseRepository,
@@ -73,7 +75,8 @@ public class TeacherServiceImpl implements TeacherService {
             UserRepository userRepository,
             TeacherRatingRepository teacherRatingRepository,
             OrderRepository orderRepository,
-            com.microcourse.service.PlatformShareRateResolver rateResolver) {
+            com.microcourse.service.PlatformShareRateResolver rateResolver,
+            com.microcourse.service.CoursewareDistributionService coursewareDistributionService) {
         this.courseRepository = courseRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.exerciseRecordRepository = exerciseRecordRepository;
@@ -86,6 +89,7 @@ public class TeacherServiceImpl implements TeacherService {
         this.teacherRatingRepository = teacherRatingRepository;
         this.orderRepository = orderRepository;
         this.rateResolver = rateResolver;
+        this.coursewareDistributionService = coursewareDistributionService;
     }
 
     @Override
@@ -207,6 +211,9 @@ public class TeacherServiceImpl implements TeacherService {
         double completionRate = totalEnrollments > 0 ? completedEnrollments * 100.0 / totalEnrollments : 0;
         stats.setCompletionRate(completionRate);
         stats.setAvgScore(avgScore);
+
+        // F-2026-08-10-06: 5 种课件/课程类型分布（HTML/PPT/视频/线下 + 练习章节聚合）
+        stats.setCoursewareDistribution(coursewareDistributionService.getTeacherDistribution(teacherId));
 
         return stats;
     }

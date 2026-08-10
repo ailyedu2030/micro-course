@@ -9,6 +9,14 @@ public class TeacherStatsVO {
     private Double completionRate;
     private Double avgScore;
 
+    // F-2026-08-10-06: 5 种课件/课程类型分布（HTML/PPT/视频/线下课程 + 练习课件聚合）
+    private CoursewareTypeDistributionVO coursewareDistribution;
+
+    public CoursewareTypeDistributionVO getCoursewareDistribution() { return coursewareDistribution; }
+    public void setCoursewareDistribution(CoursewareTypeDistributionVO coursewareDistribution) {
+        this.coursewareDistribution = coursewareDistribution;
+    }
+
     public TeacherStatsVO() {}
 
     public Integer getCourseCount() { return courseCount; }

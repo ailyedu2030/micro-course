@@ -692,7 +692,7 @@ const handleExport = async () => {
     const exportData = allData.map((item, index) => ({
       '序号': index + 1,
       '标题': item.title || '',
-      '类型': courseTypeLabels[item.courseType] || (item.courseType === 'INTERACTIVE' ? '互动' : '未知'),
+      '类型': courseTypeLabels[item.courseType] || (item.courseType === 'INTERACTIVE' ? '课件' : '未知'),
       '分类': item.categoryName || '',
       '教师': item.teacherName || '',
       '学员数': item.studentCount || 0,

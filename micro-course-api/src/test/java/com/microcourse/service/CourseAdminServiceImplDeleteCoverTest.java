@@ -114,7 +114,10 @@ class CourseAdminServiceImplDeleteCoverTest {
                 courseCopyContentService,
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 domainEventPublisher,
-                hermesCourseMappingRepository
+                hermesCourseMappingRepository,
+                mock(com.microcourse.service.CourseTypeChangeValidator.class),
+                mock(com.microcourse.service.CoursewareDeleteService.class),
+                mock(com.microcourse.service.CourseP1MetaService.class)
         );
         ReflectionTestUtils.setField(service, "uploadBaseDir", tempDir.toString());
 

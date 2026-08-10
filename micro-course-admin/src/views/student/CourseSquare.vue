@@ -66,12 +66,10 @@
           class="type-select" aria-label="课程类型" @change="handleSearch"
         >
           <el-option label="全部" value="" />
-          <el-option label="视频课" value="VIDEO" />
-          <el-option label="视频课" value="VIDEO" />
+          <el-option label="视频课件" value="VIDEO" />
           <el-option label="HTML 课件" value="HTML_COURSEWARE" />
           <el-option label="PPT 课件" value="PPT_COURSEWARE" />
-          <el-option label="线下课" value="OFFLINE" />
-          <el-option label="线下课" value="OFFLINE" />
+          <el-option label="线下课程" value="OFFLINE" />
         </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
           <el-radio-group

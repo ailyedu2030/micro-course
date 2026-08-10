@@ -439,7 +439,7 @@ const handleSearch = () => {
 }
 
 const chapterTypeLabel = (type) => {
-  const map = { VIDEO: '视频', INTERACTIVE: '互动', EXERCISE: '练习', OFFLINE: '线下' }
+  const map = { VIDEO: '视频', INTERACTIVE: '课件', EXERCISE: '练习', OFFLINE: '线下' }
   return map[type] || (type || '未知')
 }
 
