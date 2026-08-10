@@ -1407,6 +1407,11 @@ public class SlideServiceImpl implements SlideService {
         String fn = p.getFileUuid() != null ? p.getFileUuid() + ".png" : "page_" + pageNumber + ".png";
         Path imgPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "images", fn);
         byte[] d = readImage(imgPath);
+        if (d.length == 0) {
+            // C 修复（PPT 图片丢失诊断）：文件缺失时输出 WARN，避免静默返回占位图掩盖故障
+            log.warn("[Slide] 页面图片缺失，返回占位图 courseId={}, slideId={}, pageNumber={}, expectedPath={}",
+                    courseId, p.getSlideId(), pageNumber, imgPath);
+        }
         return d.length > 0 ? d : generateFallback("第" + pageNumber + "页");
     }
 
@@ -1416,6 +1421,11 @@ public class SlideServiceImpl implements SlideService {
         String fn = p.getFileUuid() != null ? p.getFileUuid() + "_thumbnail.png" : "page_" + pageNumber + ".png";
         Path thumbPath = Paths.get(storagePath, String.valueOf(courseId), String.valueOf(p.getSlideId()), "thumbnails", fn);
         byte[] d = readImage(thumbPath);
+        if (d.length == 0) {
+            // C 修复（PPT 图片丢失诊断）：缩略图缺失时输出 WARN，避免静默返回占位图掩盖故障
+            log.warn("[Slide] 缩略图缺失，返回占位图 courseId={}, slideId={}, pageNumber={}, expectedPath={}",
+                    courseId, p.getSlideId(), pageNumber, thumbPath);
+        }
         return d.length > 0 ? d : generateFallback("第" + pageNumber + "页");
     }
 
