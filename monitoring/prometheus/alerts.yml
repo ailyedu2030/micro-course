@@ -54,7 +54,7 @@ groups:
           description: "5xx 错误率超过 5%，当前 {{ $value | humanizePercentage }}，实例 {{ $labels.instance }}。"
 
       - alert: HighLatency
-        expr: histogram_quantile(0.95, rate(http_server_requests_seconds_bucket[5m])) > 2
+        expr: rate(http_server_requests_seconds_sum[5m]) / rate(http_server_requests_seconds_count[5m]) > 2
         for: 5m
         labels:
           severity: warning
@@ -102,7 +102,7 @@ groups:
       # ═══════════════════════════════════════════════
 
       - alert: SlowQueryDetected
-        expr: histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[10m])) > 3
+        expr: rate(http_server_requests_seconds_sum[10m]) / rate(http_server_requests_seconds_count[10m]) > 3
         for: 10m
         labels:
           severity: info

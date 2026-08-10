@@ -178,7 +178,7 @@ const props = defineProps({
   statusClickable: { type: Boolean, default: false }
 })
 
-defineEmits(['update:page', 'update:size', 'retry', 'view-detail', 'edit', 'delete', 'toggle-status'])
+defineEmits(['update:page', 'update:size', 'retry', 'view-detail', 'edit', 'delete', 'toggle-status', 'reset-password'])
 
 function getRoleLabel(role) {
   const map = { STUDENT: '学生', TEACHER: '教师', ADMIN: '管理员', ACADEMIC: '教务' }
