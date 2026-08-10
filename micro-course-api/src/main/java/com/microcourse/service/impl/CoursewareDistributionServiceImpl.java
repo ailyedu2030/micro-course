@@ -55,12 +55,13 @@ public class CoursewareDistributionServiceImpl implements CoursewareDistribution
      */
     private CoursewareTypeDistributionVO buildDistribution(Long teacherId) {
         // 1) 4 种课程维度：单条 SQL 按 teacherId/全平台 过滤后 GROUP BY course_type
+        // 不使用 qw.select(Course::getCourseType) 避免触发 MyBatis-Plus lambda cache 初始化
+        // （全字段查询对 N<10K 的课程表性能影响可忽略）
         LambdaQueryWrapper<Course> courseQw = new LambdaQueryWrapper<>();
         if (teacherId != null) {
             courseQw.eq(Course::getTeacherId, teacherId);
         }
-        courseQw.isNull(Course::getDeletedAt)
-                .select(Course::getCourseType);
+        courseQw.isNull(Course::getDeletedAt);
         List<Course> courses = courseRepository.selectList(courseQw);
 
         long video = 0, html = 0, ppt = 0, offline = 0;

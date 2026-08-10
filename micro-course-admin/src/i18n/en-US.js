@@ -158,7 +158,7 @@ export default {
     slideOverview: 'Slide Overview',
     submitForReview: 'Submit for Review',
     interactive: 'Interactive',
-    videoCourse: 'Video Course',
+    videoCourse: 'Video Courseware',
     noCover: 'No course cover set',
     noCoverDesc: 'A cover image is required before submitting for review. Click "Edit" to upload.',
     home: 'Home',
