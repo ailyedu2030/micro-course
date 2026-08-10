@@ -50,7 +50,10 @@ class SectionOwnershipTest {
         sectionRepo = Mockito.mock(CourseSectionRepository.class);
         slideMapper = Mockito.mock(CourseSlideMapper.class);
         com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
-        sectionService = new SectionServiceImpl(sectionRepo, chapterRepo, courseRepo, slideMapper, om);
+        // F-2026-08-10-10: 删除章节委托给 CoursewareDeleteService（mock 即可，测试不涉及 delete 路径）
+        com.microcourse.service.CoursewareDeleteService coursewareDeleteService =
+                Mockito.mock(com.microcourse.service.CoursewareDeleteService.class);
+        sectionService = new SectionServiceImpl(sectionRepo, chapterRepo, courseRepo, slideMapper, om, coursewareDeleteService);
     }
 
     @Test

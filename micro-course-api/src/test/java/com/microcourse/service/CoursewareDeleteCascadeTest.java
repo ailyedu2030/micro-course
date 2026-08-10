@@ -187,8 +187,39 @@ class CoursewareDeleteCascadeTest {
             service.deleteChapter(COURSE_ID, CHAPTER_ID);
 
             verify(courseSlideMapper, times(1)).delete(any(LambdaQueryWrapper.class));
-            // cleanup 用 null（orphan 不影响 DB 一致性，物理文件可能残留——记录 warn 日志即可）
-            verify(slideService, atLeastOnce()).cleanupSlideFiles(eq(null), eq(SLIDE_ID_1));
+            // F-2026-08-10-11 修复：孤儿 slide 的 courseId=null → 兜底用当前 courseId（避免物理文件路径拼接 null）
+            verify(slideService, atLeastOnce()).cleanupSlideFiles(eq(COURSE_ID), eq(SLIDE_ID_1));
+        }
+    }
+
+    @Test
+    @DisplayName("【新增】删除章节 → 同时清理章节级挂载课件（chapterId 关联 + section_id IS NULL）")
+    void deleteChapter_mustCascadeChapterLevelSlides() {
+        setUp();
+
+        // 准备：1 chapter + 0 sections + 1 章节级挂载课件（section_id=NULL）
+        Course course = makeCourse();
+        CourseChapter chapter = makeChapter();
+        CourseSlide chapterLevelSlide = chapterLevelSlideInChapter(SLIDE_ID_1, COURSE_ID, CHAPTER_ID);
+
+        when(courseRepository.selectById(COURSE_ID)).thenReturn(course);
+        when(chapterRepository.selectById(CHAPTER_ID)).thenReturn(chapter);
+        when(sectionRepository.selectList(any(LambdaQueryWrapper.class))).thenReturn(Collections.emptyList());
+        // 章节级课件查询：按 chapterId + section_id IS NULL（mock 返回章节级课件）
+        // 课时级课件查询：按 sectionId 集合（mock 返回空——无课时级课件）
+        when(courseSlideMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenAnswer(inv -> Collections.singletonList(chapterLevelSlide));  // 章节级课件（任意 wrapper）
+        when(slidePageMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(Collections.emptyList());
+
+        try (MockedStatic<SecurityUtil> secMock = mockStatic(SecurityUtil.class)) {
+            secMock.when(() -> SecurityUtil.isOwnerOrAdmin(anyLong())).thenReturn(true);
+            service.deleteChapter(COURSE_ID, CHAPTER_ID);
+
+            // 验证章节级课件被物理删除（service 内部按 chapterId 收集 → 合并到 slideIds → delete）
+            verify(courseSlideMapper, atLeastOnce()).delete(any(LambdaQueryWrapper.class));
+            // 验证物理文件清理使用真实 courseId（章节级课件 courseId 已知 = 100L）
+            verify(slideService, atLeastOnce()).cleanupSlideFiles(eq(COURSE_ID), eq(SLIDE_ID_1));
         }
     }
 
@@ -216,6 +247,14 @@ class CoursewareDeleteCascadeTest {
         CourseSlide s = new CourseSlide();
         s.setId(id);
         s.setSectionId(sectionId);
+        s.setCourseId(courseId);
+        return s;
+    }
+    private CourseSlide chapterLevelSlideInChapter(Long id, Long courseId, Long chapterId) {
+        CourseSlide s = new CourseSlide();
+        s.setId(id);
+        s.setSectionId(null);  // 章节级挂载（V333 PPT 锚点场景）
+        s.setChapterId(chapterId);
         s.setCourseId(courseId);
         return s;
     }

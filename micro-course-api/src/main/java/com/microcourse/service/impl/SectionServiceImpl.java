@@ -21,17 +21,21 @@ public class SectionServiceImpl implements SectionService {
     private final CourseRepository courseRepo;
     private final CourseSlideMapper courseSlideMapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    // F-2026-08-10-10: 删除章节走完整级联清理（v1+v2 课件表 + 物理文件）—— 避免 SectionController 入口的孤儿数据
+    private final com.microcourse.service.CoursewareDeleteService coursewareDeleteService;
 
     public SectionServiceImpl(CourseSectionRepository sectionRepo,
                               CourseChapterRepository chapterRepo,
                               CourseRepository courseRepo,
                               CourseSlideMapper courseSlideMapper,
-                              com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+                              com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                              com.microcourse.service.CoursewareDeleteService coursewareDeleteService) {
         this.sectionRepo = sectionRepo;
         this.chapterRepo = chapterRepo;
         this.courseRepo = courseRepo;
         this.courseSlideMapper = courseSlideMapper;
         this.objectMapper = objectMapper;
+        this.coursewareDeleteService = coursewareDeleteService;
     }
 
     @Override
@@ -142,11 +146,10 @@ public class SectionServiceImpl implements SectionService {
     public void delete(Long id, boolean force) {
         CourseSection section = findOrThrow(id);
         assertOwner(section.getCourseId());
-        if (!force) {
-            Integer slideCount = slideCount(id);
-            if (slideCount > 0) throw new BusinessException(ErrorCode.SECTION_HAS_SLIDES);
-        }
-        sectionRepo.deleteById(id);
+        // F-2026-08-10-10: 委托给 CoursewareDeleteService.deleteSection —— 完整级联清理 v1/v2 课件 + 物理文件
+        // force=false 时 CoursewareDeleteService 内部会校验课件数（同 SECTION_HAS_SLIDES 错误码）；
+        // force=true 时跳过校验直接级联清理（保证无孤儿数据）
+        coursewareDeleteService.deleteSection(section.getCourseId(), id);
     }
 
     private CourseSection findOrThrow(Long id) {
