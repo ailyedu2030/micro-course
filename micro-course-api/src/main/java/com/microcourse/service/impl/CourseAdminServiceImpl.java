@@ -98,10 +98,13 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final CourseStateMachine courseStateMachine;
     private final CourseCopyContentService courseCopyContentService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    // F-2026-08-10-07/12: 课程类型变更校验器 + 课程级级联清理（独立 service 避免主类超 800 行）
+    private final com.microcourse.service.CoursewareDeleteService coursewareDeleteService;
     private final DomainEventPublisher domainEventPublisher;
     private final HermesCourseMappingRepository hermesCourseMappingRepository;
-    // F-2026-08-10-07: 课程类型变更校验器（独立 service 避免主类超 800 行）
     private final com.microcourse.service.CourseTypeChangeValidator courseTypeChangeValidator;
+    // F-2026-08-10-12: P1 课程级元信息（独立 service 避免主类超 800 行）
+    private final com.microcourse.service.CourseP1MetaService courseP1MetaService;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -128,7 +131,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                   DomainEventPublisher domainEventPublisher,
                                   HermesCourseMappingRepository hermesCourseMappingRepository,
-                                  com.microcourse.service.CourseTypeChangeValidator courseTypeChangeValidator) {
+                                  com.microcourse.service.CourseTypeChangeValidator courseTypeChangeValidator,
+                                  com.microcourse.service.CoursewareDeleteService coursewareDeleteService,
+                                  com.microcourse.service.CourseP1MetaService courseP1MetaService) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -152,6 +157,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.courseCopyContentService = courseCopyContentService;
         this.objectMapper = objectMapper;
         this.courseTypeChangeValidator = courseTypeChangeValidator;
+        this.coursewareDeleteService = coursewareDeleteService;
+        this.courseP1MetaService = courseP1MetaService;
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
@@ -234,8 +241,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             request.setTeacherId(SecurityUtil.getCurrentUserId());
         } else if (request.getTeacherId() == null) {
-            // P1-C(2026-08-05): 管理员/教务无教师身份，teacher_id NOT NULL
-            // 若未显式指定授课教师，此前 insert 直接 409 数据冲突
+            // P1-C(2026-08-05): 管理员/教务无教师身份，teacher_id NOT NULL——若未显式指定授课教师，此前 insert 直接 409 数据冲突
             throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
                     "管理员/教务创建课程必须指定授课教师");
         }
@@ -267,8 +273,9 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         course.setStudentCount(0);
         course.setAvgRating(BigDecimal.ZERO);
 
-        // P1 Stage 1: 课程级元信息(交叉审查 P2-1 抽取 helper,避免 create/update 重复)
-        applyP1CourseMetaFromCreate(course, request);
+        // P1 Stage 1: 课程级元信息（抽到 CourseP1MetaService 避免主类超 800 行）
+        courseP1MetaService.applyP1CourseMeta(course, request.getHid(), request.getTotalHours(), request.getTotalWeeks(),
+                request.getLearningMode(), request.getEvaluationScheme(), request.getTeachingPhilosophy());
 
         courseRepository.insert(course);
         LOG.info("课程创建成功, id={}, title={}, operator={}", course.getId(), course.getTitle());
@@ -306,7 +313,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getOfferDepartmentId() != null) course.setOfferDepartmentId(request.getOfferDepartmentId());
         if (request.getSemester() != null) course.setSemester(request.getSemester());
         if (request.getCreditHours() != null) course.setCreditHours(request.getCreditHours());
-if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
+        if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
         if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
@@ -333,8 +340,9 @@ if (request.getCourseNature() != null) course.setCourseNature(request.getCourseN
         if (request.getDiscountScope() != null) course.setDiscountScope(request.getDiscountScope());
         if (request.getDiscountPercent() != null) course.setDiscountPercent(request.getDiscountPercent());
 
-        // P1 Stage 1: 课程级元信息(交叉审查 P2-1 抽取 helper)
-        applyP1CourseMetaFromUpdate(course, request);
+        // P1 Stage 1: 课程级元信息（抽到 CourseP1MetaService 避免主类超 800 行）
+        courseP1MetaService.applyP1CourseMeta(course, request.getHid(), request.getTotalHours(), request.getTotalWeeks(),
+                request.getLearningMode(), request.getEvaluationScheme(), request.getTeachingPhilosophy());
 
         courseRepository.updateById(course);
         LOG.info("课程更新成功, id={}, operator={}", id);
@@ -379,6 +387,8 @@ if (request.getCourseNature() != null) course.setCourseNature(request.getCourseN
         if (affected == 0) {
             throw new BusinessException(ErrorCode.COURSE_STATUS_TRANSITION_NOT_ALLOWED);
         }
+        // F-2026-08-10-12: 完整级联清理（v1+v2 课件 + 物理文件）。必须在 chapterRepository.update 之前调用——@TableLogic 软删后章节会被过滤
+        coursewareDeleteService.deleteCourseCascade(id);
 
         chapterRepository.update(null,
                 new LambdaUpdateWrapper<CourseChapter>()
@@ -711,7 +721,6 @@ if (request.getCourseNature() != null) course.setCourseNature(request.getCourseN
     }
 
     // ───── 委托给 CourseAuditServiceImpl ─────
-
     @Override
     public void submitForReview(Long id) {
         auditService.submitForReview(id);
@@ -763,36 +772,5 @@ if (request.getCourseNature() != null) course.setCourseNature(request.getCourseN
     @Override
     public BatchOperationResult batchReject(List<Long> ids, String reason) {
         return auditService.batchReject(ids, reason);
-    }
-
-    /**
-     * P1 Stage 1 helper: 把 DTO 的 P1 课程级元信息字段写入 Entity
-     * 交叉审查 P2-1: 抽取以避免 create/update 重复
-     */
-    private void applyP1CourseMetaFromCreate(Course course, com.microcourse.dto.CourseCreateRequest request) {
-        applyP1CourseMeta(course, request.getHid(), request.getTotalHours(), request.getTotalWeeks(),
-            request.getLearningMode(), request.getEvaluationScheme(), request.getTeachingPhilosophy());
-    }
-
-    private void applyP1CourseMetaFromUpdate(Course course, com.microcourse.dto.CourseUpdateRequest request) {
-        applyP1CourseMeta(course, request.getHid(), request.getTotalHours(), request.getTotalWeeks(),
-            request.getLearningMode(), request.getEvaluationScheme(), request.getTeachingPhilosophy());
-    }
-
-    private void applyP1CourseMeta(Course course, String hid, Integer totalHours, Integer totalWeeks,
-                                    String learningMode, String evaluationScheme,
-                                    java.util.List<String> teachingPhilosophy) {
-        if (hid != null) course.setHid(hid);
-        if (totalHours != null) course.setTotalHours(totalHours);
-        if (totalWeeks != null) course.setTotalWeeks(totalWeeks);
-        if (learningMode != null) course.setLearningMode(learningMode);
-        if (evaluationScheme != null) course.setEvaluationScheme(evaluationScheme);
-        if (teachingPhilosophy != null && !teachingPhilosophy.isEmpty()) {
-            try {
-                course.setTeachingPhilosophy(objectMapper.writeValueAsString(teachingPhilosophy));
-            } catch (Exception e) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "teachingPhilosophy 序列化失败: " + e.getMessage());
-            }
-        }
     }
 }

@@ -221,6 +221,51 @@ public class CoursewareDeleteServiceImpl implements CoursewareDeleteService {
     }
 
     // ====================================================================
+    // F-2026-08-10-12: 课程级级联清理（由 CourseAdminServiceImpl.delete 调用）
+    // 直接按 courseId 收集 sections + course_slides，避免依赖 chapter 状态
+    // ====================================================================
+    @Override
+    @Transactional(readOnly = true)
+    public DeleteStats deleteCourseCascade(Long courseId) {
+        // 收集所有 section（含软删的——避免漏清；MyBatis-Plus @TableLogic 会过滤已软删的，
+        // 但我们在课程删除场景下已主动绕过此过滤，按 courseId 全量查）
+        List<CourseSection> sections = sectionRepository.selectList(
+                new LambdaQueryWrapper<CourseSection>().eq(CourseSection::getCourseId, courseId));
+        List<Long> sectionIds = sections.stream().map(CourseSection::getId).collect(Collectors.toList());
+
+        // 收集所有章节级课件（chapter_id 关联 + section_id IS NULL）
+        // 先按 courseId 查 chapterIds
+        List<CourseChapter> chapters = chapterRepository.selectList(
+                new LambdaQueryWrapper<CourseChapter>().eq(CourseChapter::getCourseId, courseId));
+        List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).collect(Collectors.toList());
+        List<com.microcourse.plugin.interactive.entity.CourseSlide> chapterLevelSlides = Collections.emptyList();
+        if (!chapterIds.isEmpty()) {
+            chapterLevelSlides = courseSlideMapper.selectList(
+                    new LambdaQueryWrapper<com.microcourse.plugin.interactive.entity.CourseSlide>()
+                            .eq(com.microcourse.plugin.interactive.entity.CourseSlide::getCourseId, courseId)
+                            .in(com.microcourse.plugin.interactive.entity.CourseSlide::getChapterId, chapterIds)
+                            .isNull(com.microcourse.plugin.interactive.entity.CourseSlide::getSectionId));
+        }
+        List<Long> chapterLevelSlideIds = chapterLevelSlides.stream()
+                .map(com.microcourse.plugin.interactive.entity.CourseSlide::getId)
+                .collect(Collectors.toList());
+
+        // 调用核心清理（v1+v2 课件 + 物理文件 + sections 软删）
+        DeleteStats cascade = deleteSectionsAndCourseware(sectionIds, chapterLevelSlideIds, courseId);
+
+        log.info("[CoursewareDelete] deleteCourseCascade: courseId={}, chapters={}, sections={}, chapterLevelSlides={}",
+                courseId, chapterIds.size(), sectionIds.size(), chapterLevelSlideIds.size());
+
+        return new DeleteStats(
+                chapterIds.size(),  // deletedChapters（章节数）
+                cascade.deletedSections(),
+                cascade.deletedPptPages(),
+                cascade.deletedHtmlUnits(),
+                cascade.deletedPptScripts(),
+                cascade.deletedHtmlSegmentScripts());
+    }
+
+    // ====================================================================
     // 5. 批量删除 chapter
     // ====================================================================
     @Override

@@ -34,6 +34,12 @@ public interface CoursewareDeleteService {
     DeleteStats deleteChapter(Long courseId, Long chapterId);
 
     /**
+     * F-2026-08-10-12: 课程级联清理（软删章节后调用 deleteChapter 触发清理 + 物理文件）
+     * 不修改课程状态/选课检查（调用方 CourseAdminServiceImpl.delete 负责业务规则校验）
+     */
+    DeleteStats deleteCourseCascade(Long courseId);
+
+    /**
      * 删除单个 section (级联删除其课件 PPT page / HTML unit).
      */
     DeleteStats deleteSection(Long courseId, Long sectionId);
