@@ -268,8 +268,9 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                 .orderByAsc(CourseChapter::getSortOrder)
                 .last("LIMIT 200");
         List<CourseChapter> chapters = chapterRepository.selectList(chapterWrapper);
-        // 批量查询所有章节的课时类型，用于推导 ChapterVO.sectionType
+        // 批量查询所有章节的课时类型，用于推导 ChapterVO.sectionType + coursewareType（F-2026-08-10-17）
         Map<Long, String> sectionTypeMap = new java.util.HashMap<>();
+        Map<Long, String> coursewareTypeMap = new java.util.HashMap<>();
         if (!chapters.isEmpty()) {
             List<Long> chapterIds = chapters.stream().map(CourseChapter::getId).collect(Collectors.toList());
             List<CourseSection> allSections = sectionRepository.selectList(
@@ -277,10 +278,12 @@ public class CourseQueryServiceImpl implements CourseQueryService {
                             .orderByAsc(CourseSection::getSortOrder));
             for (CourseSection s : allSections) {
                 sectionTypeMap.putIfAbsent(s.getChapterId(), s.getSectionType());
+                coursewareTypeMap.putIfAbsent(s.getChapterId(), s.getCoursewareType());
             }
         }
         Map<Long, String> finalMap = sectionTypeMap;
-        vo.setChapters(chapters.stream().map(ch -> convertChapterToVO(ch, finalMap.get(ch.getId()))).collect(Collectors.toList()));
+        Map<Long, String> finalCwMap = coursewareTypeMap;
+        vo.setChapters(chapters.stream().map(ch -> convertChapterToVO(ch, finalMap.get(ch.getId()), finalCwMap.get(ch.getId()))).collect(Collectors.toList()));
 
         // 3) 写缓存（含章节的完整 VO；Redis 故障不影响主流程，硬约束 #2）
         try {
@@ -540,7 +543,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         return vo;
     }
 
-    private ChapterVO convertChapterToVO(CourseChapter chapter, String sectionType) {
+    private ChapterVO convertChapterToVO(CourseChapter chapter, String sectionType, String coursewareType) {
         ChapterVO vo = new ChapterVO();
         vo.setId(chapter.getId());
         vo.setCourseId(chapter.getCourseId());
@@ -548,6 +551,7 @@ public class CourseQueryServiceImpl implements CourseQueryService {
         vo.setDescription(chapter.getDescription());
         vo.setSortOrder(chapter.getSortOrder());
         vo.setSectionType(sectionType);
+        vo.setCoursewareType(coursewareType);
         vo.setDuration(chapter.getDuration());
         vo.setCreatedAt(chapter.getCreatedAt());
         vo.setUpdatedAt(chapter.getUpdatedAt());

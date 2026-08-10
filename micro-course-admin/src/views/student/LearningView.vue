@@ -71,7 +71,7 @@
 
         <!-- 非 VIDEO 章节:显示类型对应的操作按钮 -->
         <div v-else-if="currentChapter?.sectionType === 'INTERACTIVE'" class="chapter-content-placeholder">
-          <el-empty description="此章节为互动课件">
+          <el-empty :description="currentChapter?.coursewareType === 'PPT' ? '此章节为 PPT 课件' : '此章节为 HTML 课件'">
             <el-button type="primary" @click="goChapterContent(currentChapter, 'INTERACTIVE')">进入课件</el-button>
           </el-empty>
         </div>
@@ -392,7 +392,7 @@ async function loadCourse(cid) {
       } else if (ch.sectionType === 'INTERACTIVE') {
         lessons = [{
           id: `slide-${ch.id}`,
-          title: '互动课件',
+          title: ch.coursewareType === 'PPT' ? 'PPT 课件' : 'HTML 课件',
           type: 'INTERACTIVE',
           chapterId: ch.id,
           status: 'NOT_STARTED',
