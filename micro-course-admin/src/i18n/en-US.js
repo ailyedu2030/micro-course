@@ -157,7 +157,7 @@ export default {
     chapterName: 'Chapter Name',
     slideOverview: 'Slide Overview',
     submitForReview: 'Submit for Review',
-    interactive: 'Interactive',
+    interactive: 'Courseware (HTML)',
     videoCourse: 'Video Courseware',
     noCover: 'No course cover set',
     noCoverDesc: 'A cover image is required before submitting for review. Click "Edit" to upload.',
