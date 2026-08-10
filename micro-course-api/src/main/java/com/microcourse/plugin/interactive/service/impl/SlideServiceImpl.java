@@ -291,12 +291,22 @@ public class SlideServiceImpl implements SlideService {
         }
         Long fc = chapterId;
         Long fs = sectionId;
+        // F-2026-08-10-02：章节级 PPT 上传（仅 chapterId，无 sectionId）→ 解析/创建"PPT 课件节"锚点 section，
+        // 以锚点 sectionId 承载渲染写入 slide_ppt_pages（V300 section_id NOT NULL）。
+        // course_slides.section_id 保持 NULL（章节级挂载语义不变），锚点 sectionId 仅用于 v2 表落库与读取。
+        if (fs == null && fc != null) {
+            CourseSection anchor = findOrCreateChapterPptAnchorSection(courseId, fc);
+            fs = anchor.getId();
+            log.info("[SlideUpload] chapter-level PPT: anchor section resolved id={}, courseId={}, chapterId={}",
+                    anchor.getId(), courseId, fc);
+        }
         byte[] fb = fileBytes;
         Long finalSid = sid;
+        Long finalFs = fs;
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                slideRenderService.renderAsync(finalSid, fc, fs, fb);
+                slideRenderService.renderAsync(finalSid, fc, finalFs, fb);
                 // Q-2: 课件内容变更 → 事务提交后失效播放页缓存（学生端立即看到新内容）
                 pagesCache.invalidateCourse(courseId);
             }
@@ -575,6 +585,9 @@ public class SlideServiceImpl implements SlideService {
     /** 章节级锚点 section 标题约定（既有数据即用此约定：course_sections.id=50 "HTML 课件节"）。 */
     private static final String CHAPTER_ANCHOR_SECTION_TITLE = "HTML 课件节";
 
+    /** F-2026-08-10-02：章节级 PPT 锚点 section 标题（与 HTML 锚点对称；slide_ppt_pages.section_id NOT NULL 需真实 section 承载）。 */
+    private static final String PPT_ANCHOR_SECTION_TITLE = "PPT 课件节";
+
     /**
      * R2：课程级 HTML 上传（双 null）→ 自动创建承载课件内容的章节。
      * title 带课程标题（可读性），sortOrder 取该课程章节最大值+1（排在最后）。
@@ -612,11 +625,24 @@ public class SlideServiceImpl implements SlideService {
      * 使 slide_html_units.section_id（NOT NULL + FK）有真实归属，且不污染真实课时。
      */
     private CourseSection findOrCreateChapterAnchorSection(Long courseId, Long chapterId) {
+        return findOrCreateAnchorSection(courseId, chapterId,
+                CHAPTER_ANCHOR_SECTION_TITLE, "HTML", "SlideUpload-HtmlFile");
+    }
+
+    /** F-2026-08-10-02：章节级 PPT 锚点 section（承载 slide_ppt_pages 落库所需的 section_id，与 HTML 锚点互不干扰）。 */
+    private CourseSection findOrCreateChapterPptAnchorSection(Long courseId, Long chapterId) {
+        return findOrCreateAnchorSection(courseId, chapterId,
+                PPT_ANCHOR_SECTION_TITLE, "PPT", "SlideUpload");
+    }
+
+    /** 按 title 约定查找/创建章节级锚点 section（HTML/PPT 各自独立 title，互不干扰）。 */
+    private CourseSection findOrCreateAnchorSection(Long courseId, Long chapterId,
+                                                    String title, String coursewareType, String logTag) {
         CourseSection anchor = sectionRepo.selectOne(
                 new LambdaQueryWrapper<CourseSection>()
                         .eq(CourseSection::getCourseId, courseId)
                         .eq(CourseSection::getChapterId, chapterId)
-                        .eq(CourseSection::getTitle, CHAPTER_ANCHOR_SECTION_TITLE)
+                        .eq(CourseSection::getTitle, title)
                         .last("LIMIT 1"));
         if (anchor != null) {
             return anchor;
@@ -624,9 +650,9 @@ public class SlideServiceImpl implements SlideService {
         anchor = new CourseSection();
         anchor.setCourseId(courseId);
         anchor.setChapterId(chapterId);
-        anchor.setTitle(CHAPTER_ANCHOR_SECTION_TITLE);
+        anchor.setTitle(title);
         anchor.setSectionType("INTERACTIVE");
-        anchor.setCoursewareType("HTML");
+        anchor.setCoursewareType(coursewareType);
         anchor.setSortOrder(0);
         anchor.setDuration(0);
         anchor.setVisible(true);
@@ -635,8 +661,8 @@ public class SlideServiceImpl implements SlideService {
         anchor.setCreatedAt(now);
         anchor.setUpdatedAt(now);
         sectionRepo.insert(anchor);
-        log.info("[SlideUpload-HtmlFile] R2 chapter-level: anchor section created id={}, courseId={}, chapterId={}",
-                anchor.getId(), courseId, chapterId);
+        log.info("[{}] chapter-level: anchor section created id={}, courseId={}, chapterId={}, title={}",
+                logTag, anchor.getId(), courseId, chapterId, title);
         return anchor;
     }
 
