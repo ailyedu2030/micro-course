@@ -202,7 +202,8 @@ class AuditRegressionFixesTest {
                 mock(CourseCopyContentService.class),
                 new com.fasterxml.jackson.databind.ObjectMapper(),
                 mock(com.microcourse.event.DomainEventPublisher.class),
-                mock(com.microcourse.repository.HermesCourseMappingRepository.class));
+                mock(com.microcourse.repository.HermesCourseMappingRepository.class),
+                mock(com.microcourse.service.CourseTypeChangeValidator.class));
     }
 
     private static ExerciseRecordServiceImpl buildExerciseRecordService(ExerciseRecordRepository repo) {

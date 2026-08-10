@@ -100,6 +100,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final DomainEventPublisher domainEventPublisher;
     private final HermesCourseMappingRepository hermesCourseMappingRepository;
+    // F-2026-08-10-07: 课程类型变更校验器（独立 service 避免主类超 800 行）
+    private final com.microcourse.service.CourseTypeChangeValidator courseTypeChangeValidator;
 
     @Value("${upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -125,7 +127,8 @@ public class CourseAdminServiceImpl implements CourseAdminService {
                                   CourseCopyContentService courseCopyContentService,
                                   com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                                   DomainEventPublisher domainEventPublisher,
-                                  HermesCourseMappingRepository hermesCourseMappingRepository) {
+                                  HermesCourseMappingRepository hermesCourseMappingRepository,
+                                  com.microcourse.service.CourseTypeChangeValidator courseTypeChangeValidator) {
         this.courseRepository = courseRepository;
         this.categoryRepository = categoryRepository;
         this.chapterRepository = chapterRepository;
@@ -148,6 +151,7 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         this.courseStateMachine = courseStateMachine;
         this.courseCopyContentService = courseCopyContentService;
         this.objectMapper = objectMapper;
+        this.courseTypeChangeValidator = courseTypeChangeValidator;
     }
 
     private void checkPluginGrant(Long teacherId, String courseType) {
@@ -302,30 +306,25 @@ public class CourseAdminServiceImpl implements CourseAdminService {
         if (request.getOfferDepartmentId() != null) course.setOfferDepartmentId(request.getOfferDepartmentId());
         if (request.getSemester() != null) course.setSemester(request.getSemester());
         if (request.getCreditHours() != null) course.setCreditHours(request.getCreditHours());
-        if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
+if (request.getCourseNature() != null) course.setCourseNature(request.getCourseNature());
         if (request.getMaxStudents() != null) course.setMaxStudents(request.getMaxStudents());
         if (request.getDifficulty() != null) course.setDifficulty(request.getDifficulty());
         if (request.getDescription() != null) course.setDescription(com.microcourse.util.XssSanitizer.sanitize(request.getDescription()));
         if (request.getTags() != null) course.setTags(request.getTags());
-        if (request.getCourseType() != null) {
-            // When courseType is changed, verify plugin grant
-            if (!request.getCourseType().equals(course.getCourseType())) {
-                checkPluginGrant(course.getTeacherId(), request.getCourseType());
-            }
+        if (request.getCourseType() != null && !request.getCourseType().equals(course.getCourseType())) {
+            // F-2026-08-10-07: V333 锁定类型,切换前需校验课件残留
+            checkPluginGrant(course.getTeacherId(), request.getCourseType());
+            courseTypeChangeValidator.validate(course.getId(), course.getCourseType(), request.getCourseType());
             course.setCourseType(request.getCourseType());
         }
         if (request.getPrice() != null) {
             course.setPrice(request.getPrice());
             course.setIsFree(BigDecimal.ZERO.compareTo(request.getPrice()) >= 0);
-        }
-        if (request.getIsFree() != null) {
-            // When both price and isFree are provided, enforce consistency
-            if (request.getPrice() != null) {
-                if (request.getPrice().compareTo(BigDecimal.ZERO) == 0) {
-                    request.setIsFree(true);
-                } else {
-                    request.setIsFree(false);
-                }
+            // 冗余 if (request.getPrice() != null) 已在外层判断时消除（line 320）
+            if (request.getPrice().compareTo(BigDecimal.ZERO) == 0) {
+                request.setIsFree(true);
+            } else {
+                request.setIsFree(false);
             }
             course.setIsFree(request.getIsFree());
         }
