@@ -178,6 +178,36 @@
       </el-col>
     </el-row>
 
+    <!-- F-2026-08-10-06: 5 种课件/课程类型分布（HTML/PPT/视频/线下/练习） -->
+    <el-card class="chart-card courseware-dist-card" shadow="never">
+      <template #header>
+        <div class="card-header">
+          <span>课件类型分布（5 维度）</span>
+          <span class="card-header-tip">HTML / PPT / 视频 / 线下 / 练习（章节聚合）</span>
+        </div>
+      </template>
+      <el-skeleton :loading="coursewareDistributionLoading" animated :rows="2">
+        <template #template>
+          <el-skeleton-item style="width: 100%; height: 120px;" />
+        </template>
+        <template #default>
+          <div v-if="!coursewareDistribution" class="courseware-empty">
+            <el-icon><WarningFilled /></el-icon>
+            <span>5 种课件类型分布数据加载失败</span>
+          </div>
+          <el-row v-else :gutter="12" class="courseware-dist-grid">
+            <el-col :xs="12" :sm="8" :md="4" v-for="ct in coursewareTypeItems" :key="ct.key">
+              <div class="courseware-dist-item" :class="`ctd-${ct.key}`">
+                <div class="ctd-label">{{ ct.label }}</div>
+                <div class="ctd-value">{{ coursewareDistribution[ct.field] ?? 0 }}</div>
+                <div class="ctd-note" v-if="ct.note">{{ ct.note }}</div>
+              </div>
+            </el-col>
+          </el-row>
+        </template>
+      </el-skeleton>
+    </el-card>
+
     <!-- 图表行 -->
     <el-row :gutter="16" class="charts-row">
       <!-- 核心指标趋势 60% -->
@@ -322,7 +352,7 @@ import {
   Plus, Setting, OfficeBuilding, Download, List, Refresh
 } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
-import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getDailyActivity, getHealth } from '@/api/admin-stats'
+import { getOverview, getUserTrend, getCourseTrend, getCourseDistribution, getLearningBehavior, getDailyActivity, getHealth, getCoursewareOverview } from '@/api/admin-stats'
 import { getLogs } from '@/api/operation-log'
 
 const router = useRouter()
@@ -389,6 +419,17 @@ function handleQuickAction(action) {
 
 // ===== 统计卡片动画 =====
 const statsLoading = ref(true)
+// ===== 5 种课件类型分布（F-2026-08-10-06） =====
+const coursewareDistributionLoading = ref(false)
+const coursewareDistribution = ref(null)
+const coursewareTypeItems = [
+  { key: 'html', label: 'HTML 课件', field: 'htmlCoursewareCourses', icon: 'Document', note: '可独立' },
+  { key: 'ppt',  label: 'PPT 课件',  field: 'pptCoursewareCourses',  icon: 'Picture',  note: '可独立' },
+  { key: 'video', label: '视频课件', field: 'videoCourses', icon: 'VideoPlay', note: '' },
+  { key: 'offline', label: '线下课程', field: 'offlineCourses', icon: 'Calendar', note: '' },
+  { key: 'exercise', label: '练习课件', field: 'coursesWithExercises', icon: 'Edit', note: '章节聚合' },
+]
+
 const stats = ref({})
 const displayStats = reactive({
   totalUsers: 0,
@@ -474,7 +515,8 @@ async function refreshAll() {
     loadTrends(),
     loadCategoryStats(),
     loadActivity(),
-    loadLogs()
+    loadLogs(),
+    loadCoursewareDistribution()
   ])
   await loadHealth()
   lastUpdatedAt.value = Date.now()
@@ -522,6 +564,20 @@ async function loadStats() {
     ElMessage.error(t('admin.loadFailed'))
   } finally {
     statsLoading.value = false
+  }
+}
+
+// F-2026-08-10-06: 加载 5 种课件类型分布
+async function loadCoursewareDistribution() {
+  coursewareDistributionLoading.value = true
+  try {
+    const res = await getCoursewareOverview()
+    coursewareDistribution.value = res.data || null
+  } catch (e) {
+    // 静默失败，不影响其他统计展示
+    coursewareDistribution.value = null
+  } finally {
+    coursewareDistributionLoading.value = false
   }
 }
 
@@ -1035,6 +1091,52 @@ onBeforeUnmount(() => {
   justify-content: center;
   color: var(--el-text-color-placeholder);
   font-size: var(--text-sm);
+}
+
+/* F-2026-08-10-06: 5 种课件类型分布 */
+.courseware-dist-card .card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.courseware-dist-card .card-header-tip {
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--el-text-color-secondary);
+}
+.courseware-dist-grid {
+  padding: var(--space-4) var(--space-5);
+}
+.courseware-dist-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--el-fill-color-light);
+  border-left: 4px solid var(--el-color-primary);
+  min-height: 90px;
+  transition: transform var(--duration-base) var(--ease-out);
+}
+.courseware-dist-item:hover {
+  transform: translateY(-2px);
+}
+.courseware-dist-item.ctd-html { border-left-color: var(--el-color-success); }
+.courseware-dist-item.ctd-ppt { border-left-color: var(--el-color-primary); }
+.courseware-dist-item.ctd-video { border-left-color: var(--el-color-primary); }
+.courseware-dist-item.ctd-offline { border-left-color: var(--el-color-info); }
+.courseware-dist-item.ctd-exercise { border-left-color: var(--el-color-warning); }
+.ctd-label { font-size: 13px; color: var(--el-text-color-regular); margin-bottom: 4px; }
+.ctd-value { font-size: 28px; font-weight: 700; color: var(--el-text-color-primary); }
+.ctd-note { font-size: 11px; color: var(--el-text-color-placeholder); margin-top: 4px; }
+.courseware-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: var(--space-6);
+  color: var(--el-text-color-secondary);
+  font-size: 14px;
 }
 
 /* ===== List Card ===== */
