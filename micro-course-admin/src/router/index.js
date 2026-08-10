@@ -90,6 +90,10 @@ const routes = [
   // 【V333 简化方案】HTML 课件 + PPT 课件 2 种类型独立管理（复用 CourseList.vue 固定类型模式）
   { path: '/admin/courseware/html', name: 'CoursewareHtmlList', component: () => import('../views/courseware/CoursewareHtmlList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'HTML 课件管理' } },
   { path: '/admin/courseware/ppt', name: 'CoursewarePptList', component: () => import('../views/courseware/CoursewarePptList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'PPT 课件管理' } },
+  // 【F-2026-08-10-05】5 种课件类型独立管理：admin/academic 端的线下课程入口
+  // 复用 TeacherOfflineList 组件（line 215 已按 role=TEACHER 自动加 teacherId 过滤，
+  // admin/academic 不传 teacherId → 看全部线下场次）。
+  { path: '/admin/offline-sessions', name: 'AdminOfflineSessionList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '线下课程管理' } },
 
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
