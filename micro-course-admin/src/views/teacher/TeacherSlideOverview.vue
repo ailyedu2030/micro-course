@@ -4,7 +4,7 @@
       <button class="back-btn" @click="$router.push('/teacher/courses')" aria-label="返回">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
-      <h1>互动课件工作台</h1>
+      <h1>课件工作台</h1>
       <span class="page-subtitle" v-if="!loading">{{ filteredSlides.length }} 份课件</span>
       <div class="header-actions">
         <el-button type="primary" :icon="Plus" @click="openUploadDialog">上传课件</el-button>
@@ -42,7 +42,7 @@
 
     <section class="content-card">
       <div v-if="!loading && filteredSlides.length === 0" class="empty-tip">
-        <el-empty v-if="courses.length === 0" description="您还没有互动课程，去课程列表创建。">
+        <el-empty v-if="courses.length === 0" description="您还没有课件课程，去课程列表创建。">
           <el-button type="primary" @click="router.push('/teacher/courses')">前往课程列表</el-button>
         </el-empty>
         <el-empty v-else :description="emptyDescription">
@@ -110,7 +110,7 @@
     </section>
 
     <!-- 上传课件对话框 -->
-    <el-dialog v-model="uploadDialogVisible" title="上传互动课件" width="500px" @close="resetUploadDialog">
+    <el-dialog v-model="uploadDialogVisible" title="上传课件" width="500px" @close="resetUploadDialog">
       <el-form label-width="100px">
         <el-form-item label="所属课程" prop="courseId">
           <el-select v-model="uploadForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onCourseChange">

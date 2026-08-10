@@ -157,7 +157,7 @@ export default {
     chapterName: '章节名称',
     slideOverview: '课件总览',
     submitForReview: '提交审核',
-    interactive: '互动课程',
+    interactive: '课件课程',
     videoCourse: '视频课程',
     noCover: '尚未设置课程封面',
     noCoverDesc: '提交审核前必须上传封面，点击「编辑」按钮后在封面区域上传',
