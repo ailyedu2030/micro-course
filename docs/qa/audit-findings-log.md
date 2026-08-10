@@ -730,3 +730,24 @@
 - **修复**：SlidePlayer 增加 `pages.length===0` 独立 `el-empty` 空态（「该课件暂无内容或已被教师删除」+ 提示联系教师/管理员 + 「返回课程详情」出口）；页计数器 0 页显示 0/0；空态不指责用户、提供明确出路（L0：体验至上）。
 - **横向扫描**：同批 `CoursewareTreeDTO` 透传 `renderStatus` / `renderErrorMessage`（P1-C-1），课件树渲染失败信息不再被吞——0 页空态与渲染失败可区分；教师预览态空态同样生效（banner 已明示预览语义）。
 - **验证**：本地构造 0 页课件实测空态渲染、返回按钮路由正确；`npm run build` 通过；页计数器 0/0 断言通过。
+
+## 2026-08-10 · PPT 渲染图片丢失（生产回归发现 · P1-C 闭环）
+
+### F-2026-08-10-01 · 生产 PPT 渲染图片全部丢失 → 灰色占位（P1-C，用户生产回归发现）
+
+- **症状**：生产教师端打开 PPT 课件（课程 52 / slide 255），24 页页面缩略图全部为灰色占位图，图片加载失败；HTML 课件正常。
+- **直接原因**：渲染图片文件（/data/slides/52/255/images/*.png，07-16 渲染）在 08-09 生产 api 容器重建后全部丢失；`readImage` 对缺失文件静默返回灰色占位 PNG（HTTP 200），页面无法区分"图片挂了"与"课件没内容"。
+- **根本原因（3 层）**：
+  1. **配置层（P1-I）**：`storage-path` 默认 /data/slides（容器 overlay 非持久层），生产 compose 未映射该目录到持久卷；生产 api 容器为手动 docker run 启动（无 compose labels），08-09 重建容器时 overlay 数据全丢。
+  2. **诊断层（P2）**：`SlideServiceImpl.getPageImage/getPageThumbnail` 缺失文件时静默返回占位 PNG，无 WARN 日志，生产无法从日志感知图片丢失（HTTP 200 掩盖）。
+  3. **数据层**：slide_ppt_pages 24 行关联软删 section 605（"8.1 项目选题与需求定义"，2026-07-15 deleted_at），file 已删不可恢复；且原记录 24 页对应的是 07-06 旧版 pptx，当前 original.pptx（30795B，sha256=22bb6360）实际仅 3 页。
+- **横向扫描**：生产仅 1 个 PPT（slide 255）；chapter 151 有 5 个 HTML slide（253/283/284/314/315）不受影响（HTML_DIRECT 无文件依赖）；本地环境 compose 已有 slides_data 卷（生产缺失）——配置漂移仅影响生产；cover 404（已修 #212/#213）与本次同源（非持久卷 + 缺失文件无诊断）。
+- **修复（A+B+C 全链路）**：
+  - **A 持久卷（生产）**：docker-compose.yml 加 `slides_data:/data/slides`（api 服务 volumes + volumes 定义），备份 docker-compose.yml.bak-20260810-123309，`docker compose config -q` 语法 OK；api 容器手动重建（保留原参数 + `-v micro-course_slides_data:/data/slides` + `-e SLIDES_STORAGE_PATH=/data/slides`，网络/端口/restart/healthcheck 同原）；重启容器后写测试文件持久化验证通过。
+  - **B 重渲染（生产）**：仅传 chapterId=151（无 sectionId，因 sectionId=605 软删报错、675 与 HTML slide 314 冲突 uk_slides_course_section）UPSERT 复用 slide 255 → 渲染完成 pages=3；3 页真实图片（35167/77040/83367 字节，1920x1080 RGBA，主色白+深蓝 31,73,125）落盘新持久卷，页 1/2/3 HTTP 200 真实内容、页 24 现 404（不再静默占位）；DB 自洽（file_hash=22bb6360 匹配当前文件、total_pages=3）。
+  - **B 数据清理（生产 DB 写，用户已授权）**：slide_ppt_pages 旧 24 行 DELETE（备份 slide_ppt_pages_bak_20260810，SELECT 24 确认）；slide_pages 3 行保留。
+  - **C 诊断日志（PR #214，已 merge 40db9f81）**：getPageImage/getPageThumbnail 缺失时 WARN（含 courseId/slideId/pageNumber/expectedPath）；SlideServiceTest 新增 GetPageImage 3 测试（38 tests 全过）；CI 5/5 + auto-approve 后 squash merge。
+- **防止再发**：生产存储路径统一走持久卷（compose 声明 + 容器挂载 + SLIDES_STORAGE_PATH 环境变量三重确认）；缺失文件输出 WARN 日志（可告警）；渲染后用真实文件字节 + 尺寸 + 色彩数验证而非仅 HTTP 200；DB 软删 section 的孤儿 PPT 记录定期清理。
+- **验证**：持久化重启验证（写测试文件后重启仍存在）；3 页真实渲染（35/77/83KB 非占位）；页 24 返回 404；`mvn test -Dtest=SlideServiceTest` 38 全过；生产回归抽查（HTML 正常 + PPT 3 页图片正常）；C 修复 WARN 日志待部署后生产验证。
+
+> **遗留决策项**：章节级 `getPages(chapterId=151)` 返回 HTML 兜底（slide 253，软删 section 611）而非 PPT 3 页——slide_ppt_pages 已清空（章节级 PPT 无法写入该表，section_id NOT NULL 约束）且 HTML listFirstByChapter 兜底抢先；slide 255 内容（"坦诚相伴，共赴逆袭——四级冲专升本"励志演讲）与课程 52（AI工具与harness工程）主题不符，疑为误传/测试数据。待用户决策：(a) 修 getPages 章节级 legacy 回退（影响所有课程章节读取行为，需全量测试）vs (b) 视为误传数据仅记录不动。
