@@ -49,7 +49,7 @@
               <el-icon :size="28" color="#fff"><VideoPlay /></el-icon>
             </div>
           </button>
-          <!-- 视频课程: 封面图 或 内嵌播放器 -->
+          <!-- 视频课件: 封面图 或 内嵌播放器 -->
           <div v-else-if="showPlayer" class="hero-img-box hero-player-active">
             <video ref="videoRef" class="hero-video" controls autoplay @click.stop />
             <button class="hero-close-player" @click.stop="stopPreview">
@@ -213,7 +213,7 @@
                 </el-collapse>
                 <el-empty v-else description="暂无幻灯片，请教师上传课件" :image-size="60" />
               </template>
-              <!-- 视频课程: 章节手风琴 -->
+              <!-- 视频课件: 章节手风琴 -->
               <template v-else>
                 <el-collapse v-if="courseChapters.length > 0" v-model="activeChapters" @change="handleChapterChange">
                   <el-collapse-item v-for="(ch, idx) in courseChapters" :key="ch.id" :name="ch.id">
@@ -303,7 +303,7 @@
           <div class="side-card">
             <h3 class="side-card-title">课程信息</h3>
             <div class="info-list">
-              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ getCourseTypeConfig(course.courseType)?.label || '视频课程' }}</span></div>
+              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ getCourseTypeConfig(course.courseType)?.label || '视频课件' }}</span></div>
               <div class="info-item" v-if="pricingInfo">
                 <span class="info-label">价格</span>
                 <span class="info-value price">

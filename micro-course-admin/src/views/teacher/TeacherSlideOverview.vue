@@ -33,6 +33,12 @@
             <el-option label="失败" :value="3" />
           </el-select>
         </el-form-item>
+        <el-form-item label="课件类型">
+          <el-select v-model="searchForm.coursewareType" placeholder="全部类型" clearable class="filter-input-w160" @change="applyFilter">
+            <el-option label="PPT 课件" value="PPT" />
+            <el-option label="HTML 课件" value="HTML" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="loadData">搜索</el-button>
           <el-button @click="handleReset">重置</el-button>
@@ -54,6 +60,12 @@
         <el-table-column prop="courseTitle" label="所属课程" min-width="160" show-overflow-tooltip />
         <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
+        </el-table-column>
+        <el-table-column label="课件类型" width="110">
+          <template #default="{ row }">
+            <el-tag v-if="row._coursewareType === 'PPT'" size="small" type="primary">PPT</el-tag>
+            <el-tag v-else size="small" type="success">HTML</el-tag>
+          </template>
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
@@ -164,8 +176,15 @@ const chapterOptions = ref([])
 
 const searchForm = ref({
   courseId: '',
-  status: ''
+  status: '',
+  coursewareType: ''
 })
+
+// 从 fileUrl 派生课件类型（HTML 上传后端标记 fileUrl="html:inline"；PPT 是真实文件路径）。
+// 未来后端 SlideVO 加 coursewareType 字段后可改为读 row.coursewareType。
+function deriveCoursewareType(slide) {
+  return slide?.fileUrl?.startsWith('html:') ? 'HTML' : 'PPT'
+}
 
 
 
@@ -194,8 +213,20 @@ function formatTime(t) {
 }
 
 const filteredSlides = computed(() => {
-  if (searchForm.value.status === '' || searchForm.value.status === null) return slides.value
-  return slides.value.filter(s => String(s.status) === String(searchForm.value.status))
+  let list = slides.value.map(s => ({ ...s, _coursewareType: deriveCoursewareType(s) }))
+  if (searchForm.value.status !== '' && searchForm.value.status !== null) {
+    list = list.filter(s => String(s.status) === String(searchForm.value.status))
+  }
+  if (searchForm.value.coursewareType) {
+    list = list.filter(s => s._coursewareType === searchForm.value.coursewareType)
+  }
+  // 默认排序：同类相邻（PPT 在前、HTML 在后），同类内按更新时间倒序
+  return list.slice().sort((a, b) => {
+    if (a._coursewareType !== b._coursewareType) {
+      return a._coursewareType === 'PPT' ? -1 : 1
+    }
+    return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)
+  })
 })
 const displaySlides = computed(() => {
   const start = (page.value - 1) * pageSize.value
@@ -260,6 +291,7 @@ function applyFilter() { /* computed 触发 */ }
 function handleReset() {
   searchForm.value.courseId = ''
   searchForm.value.status = ''
+  searchForm.value.coursewareType = ''
   loadData()
 }
 function goEdit(row) {
