@@ -199,6 +199,11 @@ class GradeP0ConsistencyTest extends BaseIntegrationTest {
         jdbc.update("DELETE FROM enrollments WHERE course_id IN (1,2,3,4) AND user_id = ?", STUDENT_ID);
         // 防止 FK 约束: courses_teacher_id_fkey (用户 99 不能有课程引用)
         jdbc.update("UPDATE courses SET teacher_id = 6 WHERE teacher_id = 99");
+        // F-2026-08-10-02: teacher_ratings_teacher_id_fkey —— 测试流程会为 teacher 99 打分，
+        // 此前漏清理导致 DELETE users 99 必报 DataIntegrityViolation（基线测试缺陷）
+        jdbc.update("DELETE FROM teacher_ratings WHERE teacher_id = 99");
+        // F-2026-08-10-02: teacher_tier_log_teacher_id_fkey —— 评分/层级联动写入同源残留
+        jdbc.update("DELETE FROM teacher_tier_log WHERE teacher_id = 99");
         jdbc.update("DELETE FROM users WHERE id = 99");
     }
 

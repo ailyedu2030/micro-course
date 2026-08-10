@@ -50,6 +50,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -1363,6 +1365,90 @@ class SlideServiceTest {
         seg.setSegmentMarker(marker);
         seg.setScriptText("段" + idx);
         return seg;
+    }
+
+    @Nested
+    @DisplayName("章节级 PPT 上传锚点（F-2026-08-10-02）")
+    class UploadChapterLevelPpt {
+
+        private void setupAdminContext() {
+            Authentication auth = new UsernamePasswordAuthenticationToken(
+                    1L, null, List.of(new SimpleGrantedAuthority("ROLE_ADMIN")));
+            SecurityContextHolder.getContext().setAuthentication(auth);
+        }
+
+        @Test
+        @DisplayName("章节级上传（仅 chapterId）→ 创建 PPT 课件节锚点 → renderAsync 携带锚点 sectionId")
+        void upload_ChapterLevel_CreatesPptAnchorAndPassesSectionToRender() {
+            setupAdminContext();
+            TransactionSynchronizationManager.initSynchronization();
+            try {
+                Course course = new Course();
+                course.setId(52L);
+                course.setTeacherId(1L);
+                when(courseRepository.selectById(52L)).thenReturn(course);
+
+                CourseChapter chapter = new CourseChapter();
+                chapter.setId(151L);
+                chapter.setCourseId(52L);
+                when(courseChapterRepository.selectById(151L)).thenReturn(chapter);
+
+                // 无旧 slide → 新建（id=999）
+                when(courseSlideMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSlideMapper.insert(any(CourseSlide.class))).thenAnswer(inv -> {
+                    CourseSlide s = inv.getArgument(0);
+                    s.setId(999L);
+                    return 1;
+                });
+                // 锚点 section 不存在 → 创建（id=888）；fileUrl 更新路径返回 slide
+                when(courseSectionRepository.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+                when(courseSectionRepository.insert(any(CourseSection.class))).thenAnswer(inv -> {
+                    CourseSection sec = inv.getArgument(0);
+                    sec.setId(888L);
+                    return 1;
+                });
+                CourseSlide stored = new CourseSlide();
+                stored.setId(999L);
+                stored.setCourseId(52L);
+                when(courseSlideMapper.selectById(999L)).thenReturn(stored);
+                when(courseSlideMapper.updateById(any(CourseSlide.class))).thenReturn(1);
+
+                // PK zip 魔数（isZipHeader 校验通过）
+                byte[] pptx = new byte[]{0x50, 0x4B, 0x03, 0x04, 0x00, 0x00};
+                SlideUploadResponse resp = slideService.upload(52L, "chapter.pptx", pptx, 151L, null);
+
+                assertNotNull(resp);
+                assertEquals(999L, resp.getSlideId().longValue());
+
+                // ① PPT 锚点 section 必须被创建（title="PPT 课件节"，coursewareType="PPT"）
+                org.mockito.ArgumentCaptor<CourseSection> secCaptor =
+                        org.mockito.ArgumentCaptor.forClass(CourseSection.class);
+                verify(courseSectionRepository).insert(secCaptor.capture());
+                assertEquals("PPT 课件节", secCaptor.getValue().getTitle(),
+                        "章节级 PPT 必须创建/复用 PPT 锚点 section");
+                assertEquals("PPT", secCaptor.getValue().getCoursewareType());
+
+                // ② course_slides.section_id 保持 NULL（章节级挂载语义不变）
+                org.mockito.ArgumentCaptor<CourseSlide> slideCaptor =
+                        org.mockito.ArgumentCaptor.forClass(CourseSlide.class);
+                verify(courseSlideMapper).insert(slideCaptor.capture());
+                assertNull(slideCaptor.getValue().getSectionId(),
+                        "章节级挂载 course_slides.section_id 必须为 NULL");
+
+                // ③ 手动触发 afterCommit → renderAsync 收到锚点 sectionId=888（slide_ppt_pages 落库依据）
+                org.mockito.ArgumentCaptor<Long> secIdCaptor = org.mockito.ArgumentCaptor.forClass(Long.class);
+                for (TransactionSynchronization sync : TransactionSynchronizationManager.getSynchronizations()) {
+                    sync.afterCommit();
+                }
+                verify(slideRenderService).renderAsync(
+                        eq(999L), eq(151L), secIdCaptor.capture(), any(byte[].class));
+                assertEquals(888L, secIdCaptor.getValue().longValue(),
+                        "章节级 PPT 渲染必须携带锚点 sectionId（否则 slide_ppt_pages 无法落库）");
+            } finally {
+                TransactionSynchronizationManager.clearSynchronization();
+                SecurityContextHolder.clearContext();
+            }
+        }
     }
 
     private SlidePage existingPage(Long id, Long sectionId) {
