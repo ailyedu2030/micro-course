@@ -751,3 +751,19 @@
 - **验证**：持久化重启验证（写测试文件后重启仍存在）；3 页真实渲染（35/77/83KB 非占位）；页 24 返回 404；`mvn test -Dtest=SlideServiceTest` 38 全过；生产回归抽查（HTML 正常 + PPT 3 页图片正常）；C 修复 WARN 日志待部署后生产验证。
 
 > **遗留决策项**：章节级 `getPages(chapterId=151)` 返回 HTML 兜底（slide 253，软删 section 611）而非 PPT 3 页——slide_ppt_pages 已清空（章节级 PPT 无法写入该表，section_id NOT NULL 约束）且 HTML listFirstByChapter 兜底抢先；slide 255 内容（"坦诚相伴，共赴逆袭——四级冲专升本"励志演讲）与课程 52（AI工具与harness工程）主题不符，疑为误传/测试数据。待用户决策：(a) 修 getPages 章节级 legacy 回退（影响所有课程章节读取行为，需全量测试）vs (b) 视为误传数据仅记录不动。
+
+### F-2026-08-10-02 · 章节级 PPT 上传后学生/教师端不可见（P1-C，F-08-10-01 遗留决策闭环）
+
+- **症状**：章节级 PPT（仅传 chapterId、无 sectionId）上传成功后，`getPages(chapterId=151)` 返回 HTML 兜底（slide 253）而非 PPT 页；slide_ppt_pages 恒空；生产 slide 255 即此场景（历史误传数据 + 08-10 重渲染）。
+- **直接原因**：`SlideRenderService.renderAsync` 以 `if (sectionId != null)` 门禁跳过 v2 `slide_ppt_pages` 写入——章节级上传 sectionId 为 null → 该表唯一写入点被跳过。
+- **根本原因（3 层）**：
+  1. **决定性（代码）**：renderAsync L157 门禁把"章节级 PPT 页"与"section 级 PPT 页"绑定，章节级渲染产物无处落库。
+  2. **结构性（DB）**：V300 `slide_ppt_pages.section_id NOT NULL`，章节级 PPT 页（无 section 归属）本就无法落表。
+  3. **不对称（设计）**：HTML 章节级已有 `findOrCreateChapterAnchorSection` 锚点机制（title 约定 + coursewareType 区分，锚点 section 不暴露课程树），PPT 路径缺失同款机制。
+- **横向扫描**：getPages 章节级分支（SlideServiceImpl L810-831）HTML 兜底链（listByChapter→findByChapter→findChapterAnchorUnit→listFirstByChapter）顺序固定，PPT 落库后 listByChapter 可命中；生产章节级 PPT 全库仅 slide 255 一条（孤例模式）；HTML 章节级锚点机制是通用先例（课程 43）；GradeP0ConsistencyTest 测试流程会为伪造 user 99 打评分产生 teacher_ratings/teacher_tier_log 残留，cleanup 漏删导致 DELETE users 99 必报 FK 违反（基线测试缺陷，全量测试每次 4 errors）。
+- **修复（代码 PR #216 3b2f8792 + 数据兜底）**：
+  - **代码（PR #216）**：SlideServiceImpl 新增 `PPT_ANCHOR_SECTION_TITLE="PPT 课件节"`；`upload()` 章节级（sectionId 为 null 且有 chapterId）解析/创建 PPT 课件节锚点 section（coursewareType="PPT"，与 HTML 锚点 title 独立不冲突），以锚点 sectionId 传给 renderAsync 承载 v2 落库；course_slides.section_id 保持 NULL（章节级挂载语义不变，仅锚点用于落库）；锚点方法重构抽公共 `findOrCreateAnchorSection(courseId, chapterId, title, coursewareType, logTag)`；读取侧 listByChapter 按 chapter_id 检索无需改动。
+  - **测试（PR #216）**：SlideServiceTest 新增 `UploadChapterLevelPpt`（断言锚点 section 创建 title="PPT 课件节"+coursewareType="PPT"、course_slides.section_id=NULL、renderAsync 收到锚点 sectionId=888）；GradeP0ConsistencyTest cleanup 补 `DELETE FROM teacher_ratings/teacher_tier_log WHERE teacher_id=99`。
+  - **数据兜底（生产 DB 写 + 卷清理，用户授权）**：slide 255 确认为误传数据（原始 24 页 ailyedu.cn 营销 PPT + 08-10 覆盖的 3 页 Java 测试 PPT 均与课程 52 无关）→ DELETE course_slides 255 + slide_pages 3 行（备份 slide_255_course_bak_20260810/slide_255_pages_bak_20260810）；卷文件 52/255/ 与 original.pptx 归档 /opt/micro-course/backup-slide255-20260810/；章节 151 课件归属 slide 253 HTML 不变。
+- **防止再发**：章节级 PPT 上传统一走 PPT 课件节锚点（单测覆盖上传→锚点→renderAsync 携带锚点 sectionId 全链路）；测试 cleanup 依赖 users 99 的外键表全量清理（teacher_ratings/teacher_tier_log 已补，未来新增 FK 表须同步）；PPT 与 HTML 锚点 title 独立避免互踩。
+- **验证**：`mvn test` 全量 **1282 通过（0 失败 0 错误）**；GradeP0ConsistencyTest 4/4；本地 16/16 门禁；生产部署 3b2f8792（jar 校验 findOrCreateAnchorSection 在包内）→ 容器重启 healthy 15.91s 启动 0 ERROR；生产回归章节 151 getPages code=200 slideId=253（HTML 正确）；部署后 2 分钟 0 ERROR；WARN 修复（F-08-10-01 C 部分）随本次部署生效（jar 含 placeholder/warn 代码）。

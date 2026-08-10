@@ -618,7 +618,7 @@
 |---|--------|--------------|------|
 | E10.1 | 播放器 UI | 翻页/倍速/全屏/快捷键提示 | ✅ |
 | E10.2 | 图片加载失败重试 | 失败态+重试 | ✅ |
-| E10.3 | 真实渲染 | 容器安装 LibreOffice+Noto CJK 字体→PPT 上传→"Slide render complete pages=1"→status=2 就绪；学生播放器 1/1 显示 640x480 渲染页（修复前页列表 NULL section 查询为空→图片加载失败）。**2026-08-10 生产回归**：slide 255 重渲染 3 页真实图片（35/77/83KB，1920x1080 非占位）+ 持久卷 A 修复 + WARN 诊断 PR #214（详见 F-2026-08-10-01） | ✅ |
+| E10.3 | 真实渲染 | 容器安装 LibreOffice+Noto CJK 字体→PPT 上传→"Slide render complete pages=1"→status=2 就绪；学生播放器 1/1 显示 640x480 渲染页（修复前页列表 NULL section 查询为空→图片加载失败）。**2026-08-10 生产回归**：slide 255 重渲染 3 页真实图片（35/77/83KB，1920x1080 非占位）+ 持久卷 A 修复 + WARN 诊断 PR #214（详见 F-2026-08-10-01；**2026-08-10 部署 3b2f8792**：章节级 PPT 锚点修复 + slide 255 误传数据删除（F-2026-08-10-02） | ✅ |
 
 ### E11 StudentOfflineSession
 | # | 功能点 | 验证动作与证据 | 状态 |
@@ -847,7 +847,7 @@
 | G1.12 | AI 讲述稿生成（MMX 优先） | 2026-08-07 增量3：v1/v2 统一走 LlmChatClient（MiniMax OpenAI 兼容端点 + MiniMax-M3，DeepSeek 兜底，剥 think 标签）；无 key 时明确提示「需要配置 MINIMAX_API_KEY 或 DEEPSEEK_API_KEY」（实测 toast 透传）；单测 4 例 | ✅ |
 | G1.13 | PPT 音频生成守卫 | 2026-08-07 增量3：无讲述稿时「生成新音频」禁用 + tooltip「请先保存页面讲述稿，再生成音频」，消除 /ppt/scripts/null/audios 500（实测按钮禁用+后端无 500） | ✅ |
 | G1.14 | PPT/HTML 讲述稿保存 | 2026-08-07 增量3：created_by 服务端回退当前用户，PPT/HTML 脚本保存 500 消除（实测分段脚本 9999→200；单测 saveSegmentScriptFallsBackCreatedBy） | ✅ |
-| G1.15 | 学生播放器 PPT 图片显示 | 2026-08-07 增量3：修复 lazy+auto 死锁（移除 loading=lazy + 显式宽度），实测 3 页 PPT 图片全部解码（640×480）、1/3→2/3→3/3 翻页、0 console 错误。**2026-08-10 生产回归**：slide 255 3 页 1920x1080 真实图片 HTTP 200（重渲染 + 持久卷，见 F-2026-08-10-01） | ✅ |
+| G1.15 | 学生播放器 PPT 图片显示 | 2026-08-07 增量3：修复 lazy+auto 死锁（移除 loading=lazy + 显式宽度），实测 3 页 PPT 图片全部解码（640×480）、1/3→2/3→3/3 翻页、0 console 错误。**2026-08-10 生产回归**：slide 255 3 页 1920x1080 真实图片 HTTP 200（重渲染 + 持久卷，见 F-2026-08-10-01；**2026-08-10 部署 3b2f8792**：slide 255 已删（误传数据），章节 151 课件回归 slide 253 HTML（F-2026-08-10-02） | ✅ |
 | G1.16 | 学生播放器 HTML 段链路 | 2026-08-07 增量3：iframe srcdoc 注入 data-segment="1" + active CSS + bridge；字幕跟随（"这是第一段的讲述稿内容"）；segment-active 消息经 iframe.contentWindow 投递处理无异常；0 console 错误 | ✅ |
 
 ## 2026-08-07 增量4 · 设计裁定落地：无版本开关，PPT/HTML 独立模块（F-2026-08-07-13/14）
