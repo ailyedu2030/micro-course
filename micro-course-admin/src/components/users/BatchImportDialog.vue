@@ -50,7 +50,7 @@ import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled, Download } from '@element-plus/icons-vue'
 import { batchImportUsers } from '@/api/user'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 
 const props = defineProps({
   visible: { type: Boolean, default: false }
@@ -70,18 +70,18 @@ function handleFileRemove() {
   uploadFile.value = null
 }
 
-function handleDownloadTemplate() {
+async function handleDownloadTemplate() {
   const wsData = [
     ['username', 'realName', 'password', 'email', 'role', 'departmentId', 'majorId', 'classId', 'studentNo', 'teacherNo'],
     ['zhangsan', '张三', 'Abc123456', 'zhangsan@school.edu.cn', 'STUDENT', '1', '1', '1', 'S2024001', ''],
     ['lisi', '李四', 'Abc123456', 'lisi@school.edu.cn', 'TEACHER', '1', '', '', '', 'T001'],
     ['wangwu', '王五', 'Abc123456', 'wangwu@school.edu.cn', 'ADMIN', '1', '', '', '', '']
   ]
-  const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet(wsData)
-  ws['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 15 }, { wch: 28 }, { wch: 10 }, { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 10 }]
-  XLSX.utils.book_append_sheet(wb, ws, '用户导入')
-  XLSX.writeFile(wb, '用户导入样表.xlsx')
+  const wb = new Workbook()
+  const ws = wb.addWorksheet('用户导入')
+  ws.addRows(wsData)
+  ws.columns = [{ width: 15 }, { width: 12 }, { width: 15 }, { width: 28 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 12 }, { width: 10 }]
+  await wb.xlsx.writeFile('用户导入样表.xlsx')
 }
 
 async function handleBatchImport() {

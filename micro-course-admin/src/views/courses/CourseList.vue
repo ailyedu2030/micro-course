@@ -319,7 +319,7 @@ import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Download, Plus } from '@element-plus/icons-vue'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
@@ -698,10 +698,10 @@ const handleExport = async () => {
       '学员数': item.studentCount || 0,
       '状态': getStatusLabel(item.status)
     }))
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '课程列表')
-    XLSX.writeFile(wb, `课程导出_${Date.now()}.xlsx`)
+    const wb = new Workbook()
+    const ws = wb.addWorksheet('课程列表')
+    ws.addRows(exportData.map(row => Object.values(row)))
+    await wb.xlsx.writeFile(`课程导出_${Date.now()}.xlsx`)
     ElMessage.success(`导出成功，共 ${exportData.length} 条`)
   } catch {
     ElMessage.error('导出失败')

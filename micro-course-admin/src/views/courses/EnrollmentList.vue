@@ -206,8 +206,8 @@ const handleExport = async () => {
       return
     }
 
-    // 客户端 XLSX 导出
-    const XLSX = await import('xlsx')
+    // 客户端 exceljs 导出（F-2026-08-10-22: xlsx 替换）
+    const { Workbook } = await import('exceljs')
     const exportRows = items.map((item, index) => ({
       '序号': index + 1,
       '学员': item.userName || '',
@@ -216,11 +216,11 @@ const handleExport = async () => {
       '报名时间': item.enrolledAt || '',
       '状态': item.enrollmentStatus || ''
     }))
-    const ws = XLSX.utils.json_to_sheet(exportRows)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '选课数据')
+    const wb = new Workbook()
+    const ws = wb.addWorksheet('选课数据')
+    ws.addRows(exportRows.map(row => Object.values(row)))
     const date = new Date().toISOString().split('T')[0]
-    XLSX.writeFile(wb, `enrollments-${date}.xlsx`)
+    await wb.xlsx.writeFile(`enrollments-${date}.xlsx`)
     ElMessage.success('导出成功')
   } catch (e) {
     ElMessage.error('导出失败: ' + (e.message || '未知错误'))

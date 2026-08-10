@@ -181,7 +181,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Upload, Download, UploadFilled } from '@element-plus/icons-vue'
 import { getUsers, batchImportUsers, updateUserStatus, resetUserPassword } from '@/api/user'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 import UserSearchBar from '@/components/users/UserSearchBar.vue'
 import UserTable from '@/components/users/UserTable.vue'
 import UserDetailCard from '@/components/users/UserDetailCard.vue'
@@ -370,16 +370,16 @@ async function handleConfirmImport() {
   }
 }
 
-function handleDownloadTemplate() {
+async function handleDownloadTemplate() {
   const template = [
     ['username', 'realName', 'password', 'role', 'departmentName', 'majorName', 'className'],
     ['zhangsan', '张三', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-1 班'],
     ['lisi', '李四', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-2 班']
   ]
-  const wb = XLSX.utils.book_new()
-  const ws = XLSX.utils.aoa_to_sheet(template)
-  XLSX.utils.book_append_sheet(wb, ws, '用户导入模板')
-  const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' })
+  const wb = new Workbook()
+  const ws = wb.addWorksheet('用户导入模板')
+  ws.addRows(template)
+  const wbout = await wb.xlsx.writeBuffer()
   const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
@@ -389,7 +389,7 @@ function handleDownloadTemplate() {
   URL.revokeObjectURL(url)
 }
 
-function handleExport() {
+async function handleExport() {
   if (!tableData.value.length) {
     ElMessage.warning('暂无数据可导出')
     return
@@ -407,11 +407,11 @@ function handleExport() {
     状态: getStatusLabel(item.status),
     注册时间: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
   }))
-  const ws = XLSX.utils.json_to_sheet(exportData)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '用户列表')
+  const wb = new Workbook()
+  const ws = wb.addWorksheet('用户列表')
+  ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
-  XLSX.writeFile(wb, `users-${date}.xlsx`)
+  await wb.xlsx.writeFile(`users-${date}.xlsx`)
   ElMessage.success('导出成功')
 }
 

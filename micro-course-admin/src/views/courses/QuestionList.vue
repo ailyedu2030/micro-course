@@ -247,7 +247,7 @@ import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImpo
 import { getCategories } from '@/api/course-category'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 import QuestionPreview from './QuestionPreview.vue'
 
 const userStore = useUserStore()
@@ -448,10 +448,10 @@ const handleExportExcel = async () => {
       '正确答案': q.answer,
       '答案解析': q.explanation || ''
     }))
-    const ws = XLSX.utils.json_to_sheet(exportData)
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, '题目列表')
-    XLSX.writeFile(wb, `题目导出_${Date.now()}.xlsx`)
+    const wb = new Workbook()
+    const ws = wb.addWorksheet('题目列表')
+    ws.addRows(exportData.map(row => Object.values(row)))
+    await wb.xlsx.writeFile(`题目导出_${Date.now()}.xlsx`)
     ElMessage.success(`导出成功，共 ${exportData.length} 条`)
   } catch {
     ElMessage.error('导出失败')
