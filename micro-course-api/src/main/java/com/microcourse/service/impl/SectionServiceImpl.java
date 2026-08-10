@@ -128,6 +128,13 @@ public class SectionServiceImpl implements SectionService {
         if (req.getSectionType() != null) {
             if (!req.getSectionType().matches("VIDEO|INTERACTIVE|OFFLINE|EXERCISE"))
                 throw new BusinessException(ErrorCode.SECTION_TYPE_INVALID);
+            // F-2026-08-10-15: V333 锁定——类型变更时校验课件残留（避免锚点 section 类型错乱 + 课件孤儿）
+            if (!req.getSectionType().equals(section.getSectionType())) {
+                if (slideCount(id) > 0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "该课时已有课件，V333 锁定：类型不可变更，请先删除课件再修改类型");
+                }
+            }
             section.setSectionType(req.getSectionType());
         }
         if (req.getSortOrder() != null) section.setSortOrder(req.getSortOrder());
