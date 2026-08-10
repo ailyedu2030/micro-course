@@ -57,7 +57,10 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+            <el-tooltip v-if="row.status === 3 && row.errorMessage" :content="row.errorMessage" placement="top">
+              <el-tag size="small" type="danger">失败</el-tag>
+            </el-tooltip>
+            <el-tag v-else size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="总页数" width="90" align="center">
