@@ -120,9 +120,14 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课件文件" prop="file">
-          <el-upload :show-file-list="true" accept=".pptx" :auto-upload="false" :on-change="onFileChange">
+          <el-upload :show-file-list="true" accept=".pptx,.html,.htm" :auto-upload="false" :on-change="onFileChange">
             <el-button type="primary" :icon="UploadFilled">选择文件</el-button>
-            <template #tip><div class="el-upload__tip">仅支持 .pptx 格式，最大 50MB</div></template>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 .pptx (最大 50MB) 和 .html (最大 5MB)；
+                <strong>章节级上传</strong>会自动创建「PPT 课件节」/「HTML 课件节」锚点 section 以承载渲染数据（与课时级上传共享同一个课件工作区）
+              </div>
+            </template>
           </el-upload>
         </el-form-item>
       </el-form>
@@ -343,10 +348,12 @@ async function submitUpload() {
   }
   uploading.value = true
   try {
-    await uploadSlide(uploadForm.value.courseId, uploadForm.value.file, (e) => {
+    const res = await uploadSlide(uploadForm.value.courseId, uploadForm.value.file, (e) => {
       // progress callback, can add progress bar later
     }, uploadForm.value.chapterId)
-    ElMessage.success('课件上传成功，后台渲染中...')
+    // F-2026-08-10-08: 优先展示后端 message（包含锚点 section 提示等透明化信息）
+    const backendMsg = res?.data?.message
+    ElMessage.success(backendMsg || '课件上传成功，后台渲染中...')
     uploadDialogVisible.value = false
     loadData()  // 刷新列表
   } catch (e) {

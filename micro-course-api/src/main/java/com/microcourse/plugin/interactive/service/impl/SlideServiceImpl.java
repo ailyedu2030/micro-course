@@ -294,9 +294,12 @@ public class SlideServiceImpl implements SlideService {
         // F-2026-08-10-02：章节级 PPT 上传（仅 chapterId，无 sectionId）→ 解析/创建"PPT 课件节"锚点 section，
         // 以锚点 sectionId 承载渲染写入 slide_ppt_pages（V300 section_id NOT NULL）。
         // course_slides.section_id 保持 NULL（章节级挂载语义不变），锚点 sectionId 仅用于 v2 表落库与读取。
+        // F-2026-08-10-08: 章节级 PPT 上传 → 提示用户已创建锚点 section（透明化操作）
+        Long anchorSectionId = null;
         if (fs == null && fc != null) {
             CourseSection anchor = findOrCreateChapterPptAnchorSection(courseId, fc);
             fs = anchor.getId();
+            anchorSectionId = anchor.getId();
             log.info("[SlideUpload] chapter-level PPT: anchor section resolved id={}, courseId={}, chapterId={}",
                     anchor.getId(), courseId, fc);
         }
@@ -312,7 +315,11 @@ public class SlideServiceImpl implements SlideService {
             }
         });
         SlideUploadResponse r = new SlideUploadResponse();
-        r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0); r.setMessage("上传成功，正在后台渲染...");
+        r.setSlideId(sid); r.setTotalPages(0); r.setStatus(0);
+        String msg = (anchorSectionId != null)
+            ? "上传成功，已创建「PPT 课件节」锚点（id=" + anchorSectionId + "），后台渲染中..."
+            : "上传成功，正在后台渲染...";
+        r.setMessage(msg);
         return r;
     }
 
@@ -578,7 +585,7 @@ public class SlideServiceImpl implements SlideService {
         resp.setSlideId(sid);
         resp.setTotalPages(1);
         resp.setStatus(2);
-        resp.setMessage("HTML file upload success");
+        resp.setMessage("HTML 课件上传成功");
         return resp;
     }
 

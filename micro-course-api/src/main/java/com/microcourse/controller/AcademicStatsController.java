@@ -2,11 +2,13 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.AcademicOverviewVO;
 import com.microcourse.dto.CompletionWarningVO;
+import com.microcourse.dto.CoursewareTypeDistributionVO;
 import com.microcourse.dto.DepartmentDetailVO;
 import com.microcourse.dto.DepartmentStatsVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.TrendPointVO;
 import com.microcourse.service.AcademicStatsService;
+import com.microcourse.service.CoursewareDistributionService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,9 +28,12 @@ import java.util.List;
 public class AcademicStatsController {
 
     private final AcademicStatsService academicStatsService;
+    private final CoursewareDistributionService coursewareDistributionService;
 
-    public AcademicStatsController(AcademicStatsService academicStatsService) {
+    public AcademicStatsController(AcademicStatsService academicStatsService,
+                                   CoursewareDistributionService coursewareDistributionService) {
         this.academicStatsService = academicStatsService;
+        this.coursewareDistributionService = coursewareDistributionService;
     }
 
     /**
@@ -38,6 +43,16 @@ public class AcademicStatsController {
     @GetMapping("/overview")
     public R<AcademicOverviewVO> getOverview() {
         return R.ok(academicStatsService.getOverview());
+    }
+
+    /**
+     * GET /api/academic/stats/courseware-overview
+     * 全校 5 种课件/课程类型分布（F-2026-08-10-06 + F-2026-08-10-08）
+     * ACADEMIC 视角与 Admin 看全平台分布，与 /api/admin/stats/courseware-overview 数据一致
+     */
+    @GetMapping("/courseware-overview")
+    public R<CoursewareTypeDistributionVO> getCoursewareOverview() {
+        return R.ok(coursewareDistributionService.getGlobalDistribution());
     }
 
     /**
