@@ -60,6 +60,10 @@ class CoursewareDeleteServiceTest {
     private SlidePptPageScriptMapper pptPageScriptMapper;
     private SlideHtmlUnitMapper htmlUnitMapper;
     private SlideHtmlSegmentScriptMapper htmlSegmentScriptMapper;
+    // F-2026-08-10-09: 课程删除级联清理依赖
+    private com.microcourse.plugin.interactive.mapper.CourseSlideMapper courseSlideMapper;
+    private com.microcourse.plugin.interactive.mapper.SlidePageMapper slidePageMapper;
+    private com.microcourse.plugin.interactive.service.SlideService slideService;
     private CoursewareDeleteServiceImpl service;
 
     private MockedStatic<SecurityUtil> securityUtilMock;
@@ -85,9 +89,14 @@ class CoursewareDeleteServiceTest {
         pptPageScriptMapper = mock(SlidePptPageScriptMapper.class);
         htmlUnitMapper = mock(SlideHtmlUnitMapper.class);
         htmlSegmentScriptMapper = mock(SlideHtmlSegmentScriptMapper.class);
+        // F-2026-08-10-09: 课程删除级联清理 v1 表 course_slides + slide_pages + 物理文件
+        courseSlideMapper = mock(com.microcourse.plugin.interactive.mapper.CourseSlideMapper.class);
+        slidePageMapper = mock(com.microcourse.plugin.interactive.mapper.SlidePageMapper.class);
+        slideService = mock(com.microcourse.plugin.interactive.service.SlideService.class);
         service = new CoursewareDeleteServiceImpl(courseRepository, chapterRepository,
                 sectionRepository, pptPageMapper, pptPageScriptMapper,
-                htmlUnitMapper, htmlSegmentScriptMapper);
+                htmlUnitMapper, htmlSegmentScriptMapper,
+                courseSlideMapper, slidePageMapper, slideService);
 
         // 默认 sytafe 是当前登录用户, owner=true
         securityUtilMock = mockStatic(SecurityUtil.class, CALLS_REAL_METHODS);

@@ -74,3 +74,11 @@ export function getHealth() {
 export function getRevenueStats() {
   return request({ method: 'GET', url: '/admin/stats/revenue' })
 }
+/**
+ * 获取 5 种课件/课程类型分布（F-2026-08-10-06）
+ * GET /admin/stats/courseware-overview
+ * 响应: { videoCourses, htmlCoursewareCourses, pptCoursewareCourses, offlineCourses, coursesWithExercises, total }
+ */
+export function getCoursewareOverview() {
+  return request({ method: 'GET', url: '/admin/stats/courseware-overview' })
+}

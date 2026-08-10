@@ -4,7 +4,7 @@
       <button class="back-btn" @click="$router.push('/teacher/courses')" aria-label="返回">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
-      <h1>互动课件工作台</h1>
+      <h1>课件工作台</h1>
       <span class="page-subtitle" v-if="!loading">{{ filteredSlides.length }} 份课件</span>
       <div class="header-actions">
         <el-button type="primary" :icon="Plus" @click="openUploadDialog">上传课件</el-button>
@@ -48,7 +48,7 @@
 
     <section class="content-card">
       <div v-if="!loading && filteredSlides.length === 0" class="empty-tip">
-        <el-empty v-if="courses.length === 0" description="您还没有互动课程，去课程列表创建。">
+        <el-empty v-if="courses.length === 0" description="您还没有课件课程，去课程列表创建。">
           <el-button type="primary" @click="router.push('/teacher/courses')">前往课程列表</el-button>
         </el-empty>
         <el-empty v-else :description="emptyDescription">
@@ -69,7 +69,10 @@
         </el-table-column>
         <el-table-column label="状态" width="100">
           <template #default="{ row }">
-            <el-tag size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
+            <el-tooltip v-if="row.status === 3 && row.errorMessage" :content="row.errorMessage" placement="top">
+              <el-tag size="small" type="danger">失败</el-tag>
+            </el-tooltip>
+            <el-tag v-else size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="总页数" width="90" align="center">
@@ -119,7 +122,7 @@
     </section>
 
     <!-- 上传课件对话框 -->
-    <el-dialog v-model="uploadDialogVisible" title="上传互动课件" width="500px" @close="resetUploadDialog">
+    <el-dialog v-model="uploadDialogVisible" title="上传课件" width="500px" @close="resetUploadDialog">
       <el-form label-width="100px">
         <el-form-item label="所属课程" prop="courseId">
           <el-select v-model="uploadForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onCourseChange">
@@ -132,9 +135,14 @@
           </el-select>
         </el-form-item>
         <el-form-item label="课件文件" prop="file">
-          <el-upload :show-file-list="true" accept=".pptx" :auto-upload="false" :on-change="onFileChange">
+          <el-upload :show-file-list="true" accept=".pptx,.html,.htm" :auto-upload="false" :on-change="onFileChange">
             <el-button type="primary" :icon="UploadFilled">选择文件</el-button>
-            <template #tip><div class="el-upload__tip">仅支持 .pptx 格式，最大 50MB</div></template>
+            <template #tip>
+              <div class="el-upload__tip">
+                支持 .pptx (最大 50MB) 和 .html (最大 5MB)；
+                <strong>章节级上传</strong>会自动创建「PPT 课件节」/「HTML 课件节」锚点 section 以承载渲染数据（与课时级上传共享同一个课件工作区）
+              </div>
+            </template>
           </el-upload>
         </el-form-item>
       </el-form>
@@ -375,10 +383,12 @@ async function submitUpload() {
   }
   uploading.value = true
   try {
-    await uploadSlide(uploadForm.value.courseId, uploadForm.value.file, (e) => {
+    const res = await uploadSlide(uploadForm.value.courseId, uploadForm.value.file, (e) => {
       // progress callback, can add progress bar later
     }, uploadForm.value.chapterId)
-    ElMessage.success('课件上传成功，后台渲染中...')
+    // F-2026-08-10-08: 优先展示后端 message（包含锚点 section 提示等透明化信息）
+    const backendMsg = res?.data?.message
+    ElMessage.success(backendMsg || '课件上传成功，后台渲染中...')
     uploadDialogVisible.value = false
     loadData()  // 刷新列表
   } catch (e) {

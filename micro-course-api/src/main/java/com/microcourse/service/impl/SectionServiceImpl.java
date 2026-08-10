@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -21,17 +22,21 @@ public class SectionServiceImpl implements SectionService {
     private final CourseRepository courseRepo;
     private final CourseSlideMapper courseSlideMapper;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    // F-2026-08-10-10: 删除章节走完整级联清理（v1+v2 课件表 + 物理文件）—— 避免 SectionController 入口的孤儿数据
+    private final com.microcourse.service.CoursewareDeleteService coursewareDeleteService;
 
     public SectionServiceImpl(CourseSectionRepository sectionRepo,
                               CourseChapterRepository chapterRepo,
                               CourseRepository courseRepo,
                               CourseSlideMapper courseSlideMapper,
-                              com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+                              com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+                              com.microcourse.service.CoursewareDeleteService coursewareDeleteService) {
         this.sectionRepo = sectionRepo;
         this.chapterRepo = chapterRepo;
         this.courseRepo = courseRepo;
         this.courseSlideMapper = courseSlideMapper;
         this.objectMapper = objectMapper;
+        this.coursewareDeleteService = coursewareDeleteService;
     }
 
     @Override
@@ -65,6 +70,19 @@ public class SectionServiceImpl implements SectionService {
     @Transactional(rollbackFor = Exception.class)
     public SectionDTO create(Long courseId, Long chapterId, SectionCreateRequest req) {
         assertOwner(courseId);
+        // F-2026-08-10-13: V333 设计原则——同一 chapter 下 INTERACTIVE/EXERCISE/OFFLINE section 唯一
+        // 避免锚点 section（PPT 课件节/HTML 课件节）重复创建导致课件挂载错乱
+        if (Arrays.asList("INTERACTIVE", "EXERCISE", "OFFLINE").contains(req.getSectionType())) {
+            Long existingCount = sectionRepo.selectCount(
+                new LambdaQueryWrapper<CourseSection>()
+                    .eq(CourseSection::getChapterId, chapterId)
+                    .eq(CourseSection::getSectionType, req.getSectionType())
+                    .isNull(CourseSection::getDeletedAt));
+            if (existingCount > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "同一章节下已存在 " + req.getSectionType() + " 类型课时，V333 锁定：类型唯一，请先删除现有课时");
+            }
+        }
         CourseSection section = new CourseSection();
         section.setChapterId(chapterId);
         section.setCourseId(courseId);
@@ -110,6 +128,13 @@ public class SectionServiceImpl implements SectionService {
         if (req.getSectionType() != null) {
             if (!req.getSectionType().matches("VIDEO|INTERACTIVE|OFFLINE|EXERCISE"))
                 throw new BusinessException(ErrorCode.SECTION_TYPE_INVALID);
+            // F-2026-08-10-15: V333 锁定——类型变更时校验课件残留（避免锚点 section 类型错乱 + 课件孤儿）
+            if (!req.getSectionType().equals(section.getSectionType())) {
+                if (slideCount(id) > 0) {
+                    throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                        "该课时已有课件，V333 锁定：类型不可变更，请先删除课件再修改类型");
+                }
+            }
             section.setSectionType(req.getSectionType());
         }
         if (req.getSortOrder() != null) section.setSortOrder(req.getSortOrder());
@@ -142,11 +167,10 @@ public class SectionServiceImpl implements SectionService {
     public void delete(Long id, boolean force) {
         CourseSection section = findOrThrow(id);
         assertOwner(section.getCourseId());
-        if (!force) {
-            Integer slideCount = slideCount(id);
-            if (slideCount > 0) throw new BusinessException(ErrorCode.SECTION_HAS_SLIDES);
-        }
-        sectionRepo.deleteById(id);
+        // F-2026-08-10-10: 委托给 CoursewareDeleteService.deleteSection —— 完整级联清理 v1/v2 课件 + 物理文件
+        // force=false 时 CoursewareDeleteService 内部会校验课件数（同 SECTION_HAS_SLIDES 错误码）；
+        // force=true 时跳过校验直接级联清理（保证无孤儿数据）
+        coursewareDeleteService.deleteSection(section.getCourseId(), id);
     }
 
     private CourseSection findOrThrow(Long id) {

@@ -1,6 +1,6 @@
 export default {
   id: 'interactive',
-  name: '互动课程',
+  name: '课件课程',
   version: '1.0.0',
   enabled: import.meta.env.VITE_PLUGIN_INTERACTIVE !== 'false',
 
@@ -20,7 +20,7 @@ export default {
   ],
 
   courseCardConfig: {
-    typeLabel: '互动课',
+    typeLabel: '课件',
     /* A11Y(2026-08-05): #67c23a + 白字对比度 2.24:1(serious)；
        改为 #2e7d32（白字 5.13:1 达标），保持绿色语义 */
     typeColor: '#2e7d32',

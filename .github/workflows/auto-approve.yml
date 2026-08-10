@@ -47,9 +47,23 @@ jobs:
           MAX_WAIT=3300  # 55 minute timeout (匹配外层 job timeout-minutes: 55，与 backend job 对齐)
           INTERVAL=15
           ELAPSED=0
+          CANCELLED_ROUNDS=0  # F-2026-08-10-19: 连续 cancelled 轮次计数（SHA 未变时防死循环）
+          # F-2026-08-10-19: 实时跟踪最新 head SHA —— PR 作者连续 push 时旧 CI run 被 GitHub 自动取消
+          # （conclusion=cancelled 是正常事件），auto-approve 必须跟随最新 commit 的 CI，而不是看旧 SHA 的 cancelled
 
           while [ $ELAPSED -lt $MAX_WAIT ]; do
             ALL_READY=true
+            # 实时获取最新 head SHA（跟随新 push）
+            LATEST_SHA=$(gh pr view ${{ github.event.pull_request.number }} --repo "$GH_REPO" \
+              --json headRefOid --jq .headRefOid 2>/dev/null || echo "$HEAD_SHA")
+            # 若最新 SHA 与触发时不同（有新 push），更新跟踪目标
+            if [ "$LATEST_SHA" != "$HEAD_SHA" ]; then
+              echo "[${ELAPSED}s] new commit detected: $HEAD_SHA -> $LATEST_SHA — following latest CI"
+              HEAD_SHA=$LATEST_SHA
+              CANCELLED_ROUNDS=0
+            fi
+
+            CANCELLED_THIS_ROUND=0
             for check in $EXPECTED_CHECKS; do
               CONCLUSION=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
                 --jq ".check_runs[] | select(.name == \"$check\") | .conclusion" 2>/dev/null || echo "null")
@@ -59,9 +73,15 @@ jobs:
               if [ "$CONCLUSION" = "null" ] || [ "$CONCLUSION" = "" ]; then
                 echo "[${ELAPSED}s] $check: not started"
                 ALL_READY=false
-              elif [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "timed_out" ] || [ "$CONCLUSION" = "cancelled" ]; then
+              elif [ "$CONCLUSION" = "failure" ] || [ "$CONCLUSION" = "timed_out" ]; then
                 echo "::error::$check failed with conclusion=$CONCLUSION — aborting auto-approve"
                 exit 1
+              elif [ "$CONCLUSION" = "cancelled" ]; then
+                # F-2026-08-10-19: cancelled 容忍 —— 连续 push 时旧 run 被自动取消属正常；
+                # SHA 更新则跟随新 CI；SHA 不变且持续 cancelled 超 20 轮（5min）判定真异常
+                echo "::warning::$check cancelled (superseded or aborted), round=$CANCELLED_ROUNDS"
+                CANCELLED_THIS_ROUND=1
+                ALL_READY=false
               elif [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "skipped" ] || [ "$CONCLUSION" = "neutral" ]; then
                 echo "[${ELAPSED}s] $check: $CONCLUSION ✓"
               else
@@ -70,8 +90,17 @@ jobs:
               fi
             done
 
+            # F-2026-08-10-19: 连续 cancelled 且 SHA 未变超 20 轮 → 真异常 abort（防止死循环等待）
+            if [ "$CANCELLED_THIS_ROUND" = "1" ]; then
+              CANCELLED_ROUNDS=$((CANCELLED_ROUNDS + 1))
+              if [ $CANCELLED_ROUNDS -ge 20 ]; then
+                echo "::error::CI checks cancelled without new commit for 20 rounds — aborting auto-approve"
+                exit 1
+              fi
+            fi
+
             if $ALL_READY; then
-              echo "==> All CI checks passed after ${ELAPSED}s"
+              echo "==> All CI checks passed after ${ELAPSED}s (head=$HEAD_SHA)"
               break
             fi
 

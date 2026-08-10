@@ -37,7 +37,7 @@
             role="button"
             tabindex="0"
             class="hero-img-box hero-preview-trigger"
-            aria-label="开始学习互动课件课程"
+            aria-label="开始学习课件课程"
             @click="handlePlayPreview"
             @keydown.enter="handlePlayPreview"
             @keydown.space.prevent="handlePlayPreview"
@@ -196,7 +196,7 @@
               <span class="section-count">共 {{ isInteractive ? slides.length : courseChapters.length }} {{ isInteractive ? '页' : '章节' }}</span>
             </div>
             <div class="section-body">
-              <!-- 互动课程: 幻灯片手风琴 -->
+              <!-- 课件章节: 幻灯片手风琴 -->
               <template v-if="isInteractive">
                 <el-collapse v-if="slides.length > 0" v-model="activeChapters">
                   <el-collapse-item v-for="(sp, idx) in slides" :key="idx" :name="'s' + sp.pageNumber">
@@ -221,10 +221,11 @@
                       <span class="outline-idx">{{ idx + 1 }}</span>
                       <span class="outline-title">{{ ch.title }}</span>
                       <el-tag v-if="ch.sectionType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">🎯 互动课</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE' && ch.coursewareType === 'PPT'" size="small" type="success" effect="plain">📄 PPT 课件</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">📄 互动课件（HTML 课件）</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习课件</el-tag>
                       <el-tag v-else-if="ch.sectionType === 'HTML_COURSEWARE'" size="small" type="info" effect="plain">📄 HTML 课件</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课 (需线下授课)</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课程</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
@@ -507,7 +508,7 @@ const difficultyText = computed(() => {
 })
 
 const previewButtonLabel = computed(() => (
-  isInteractive.value ? `预览互动课件：${course.value.title || '当前课程'}` : `播放课程预览：${course.value.title || '当前课程'}`
+  isInteractive.value ? `预览课件：${course.value.title || '当前课程'}` : `播放课程预览：${course.value.title || '当前课程'}`
 ))
 
 // 内嵌视频播放

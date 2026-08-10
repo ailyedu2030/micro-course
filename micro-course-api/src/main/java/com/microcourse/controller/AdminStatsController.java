@@ -2,11 +2,13 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.AdminRevenueVO;
 import com.microcourse.dto.CourseTrendVO;
+import com.microcourse.dto.CoursewareTypeDistributionVO;
 import com.microcourse.dto.DailyActivityVO;
 import com.microcourse.dto.DashboardOverviewVO;
 import com.microcourse.dto.R;
 import com.microcourse.dto.UserTrendVO;
 import com.microcourse.service.AdminStatsService;
+import com.microcourse.service.CoursewareDistributionService;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,9 +27,12 @@ import java.util.Map;
 public class AdminStatsController {
 
     private final AdminStatsService adminStatsService;
+    private final CoursewareDistributionService coursewareDistributionService;
 
-    public AdminStatsController(AdminStatsService adminStatsService) {
+    public AdminStatsController(AdminStatsService adminStatsService,
+                                CoursewareDistributionService coursewareDistributionService) {
         this.adminStatsService = adminStatsService;
+        this.coursewareDistributionService = coursewareDistributionService;
     }
 
     /**
@@ -38,6 +43,16 @@ public class AdminStatsController {
     public R<DashboardOverviewVO> getOverview() {
         DashboardOverviewVO vo = adminStatsService.getOverview();
         return R.ok(vo);
+    }
+
+    /**
+     * GET /api/admin/stats/courseware-overview
+     * 返回 5 种课件/课程类型分布（F-2026-08-10-06）：
+     * HTML 课件 / PPT 课件 / 视频课件 / 线下课程 / 练习课件（章节维度聚合）
+     */
+    @GetMapping("/courseware-overview")
+    public R<CoursewareTypeDistributionVO> getCoursewareOverview() {
+        return R.ok(coursewareDistributionService.getGlobalDistribution());
     }
 
     /**
