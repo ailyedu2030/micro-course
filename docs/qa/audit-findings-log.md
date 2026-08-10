@@ -767,3 +767,20 @@
   - **数据兜底（生产 DB 写 + 卷清理，用户授权）**：slide 255 确认为误传数据（原始 24 页 ailyedu.cn 营销 PPT + 08-10 覆盖的 3 页 Java 测试 PPT 均与课程 52 无关）→ DELETE course_slides 255 + slide_pages 3 行（备份 slide_255_course_bak_20260810/slide_255_pages_bak_20260810）；卷文件 52/255/ 与 original.pptx 归档 /opt/micro-course/backup-slide255-20260810/；章节 151 课件归属 slide 253 HTML 不变。
 - **防止再发**：章节级 PPT 上传统一走 PPT 课件节锚点（单测覆盖上传→锚点→renderAsync 携带锚点 sectionId 全链路）；测试 cleanup 依赖 users 99 的外键表全量清理（teacher_ratings/teacher_tier_log 已补，未来新增 FK 表须同步）；PPT 与 HTML 锚点 title 独立避免互踩。
 - **验证**：`mvn test` 全量 **1282 通过（0 失败 0 错误）**；GradeP0ConsistencyTest 4/4；本地 16/16 门禁；生产部署 3b2f8792（jar 校验 findOrCreateAnchorSection 在包内）→ 容器重启 healthy 15.91s 启动 0 ERROR；生产回归章节 151 getPages code=200 slideId=253（HTML 正确）；部署后 2 分钟 0 ERROR；WARN 修复（F-08-10-01 C 部分）随本次部署生效（jar 含 placeholder/warn 代码）。
+
+### F-2026-08-10-03 · 生产监控盲区：Prometheus 告警规则全失效 + Alertmanager 通知链路线路 + exporter 缺失（P1）
+
+- **症状**：生产 Prometheus **13 条告警规则全部静默失效**——核心告警永不触发：ServiceDown（`up{job="micro-course"}` 与真实 job `micro-course-api` 不匹配）、错误率（`rate(http_requests_total[5m])` 指标不存在）、HikariCP（`hikaricpool_*` 拼写错误）、延迟（`histogram_quantile` 无 bucket）；Alertmanager receiver `log-only` webhook 指向 `http://localhost:9090/-/alerts (Prometheus alerts API placeholder)`（Prometheus 自身，placeholder），通知发不出；无 node/postgres/redis exporter（scrape 仅 1 job），主机磁盘/DB/Redis 规则无数据源。
+- **根因（3 层）**：
+  1. **配置漂移（决定性）**：生产加载的是**根目录旧版规则文件** `prometheus-alerts-micro-course.yaml`（指标名错配），仓库 `monitoring/prometheus/alerts.yml` 修正版**从未部署**——两套规则文件长期并存，监控未纳入部署流程。
+  2. **exporter 缺失**：生产 compose 无 node/postgres/redis exporter；prometheus 容器 command 缺 `--web.enable-lifecycle`（实际启动参数 ≠ compose 文件，容器 inspect 为准）。
+  3. **指标语义不匹配**：`http_server_requests_seconds` 无 histogram bucket（Spring Timer 默认），延迟规则 `histogram_quantile` 恒空。
+- **横向扫描**：仓库存在两套规则文件（monitoring/ 正确 vs 根目录旧版错误）且内容漂移；生产 compose 与仓库 monitoring compose 不一致（缺 exporter/lifecycle）；生产 alertmanager 为 placeholder vs 仓库完整版（SMTP/Slack/PagerDuty 占位）不一致；前端 UserTable.vue `reset-password` emit 未声明 defineEmits（全前端唯一 emit 未声明，CI 警告）；GitHub action 有 roll-your-own-23-05-2025 高危（待确认 action 版本升级）。
+- **修复（生产已应用 + PR #218）**：
+  - **规则**：统一为仓库修正版 21 条（指标名/标签正确），延迟规则改 `rate(http_server_requests_seconds_sum[5m]) / rate(...,count[5m])` 平均延迟适配无 bucket；根目录副本与 monitoring/ hash 一致消除漂移；scp 生产 + promtool 验证 SUCCESS → SIGHUP reload（原无 lifecycle flag，`kill -HUP` 生效）→ 21 rules loaded。
+  - **exporter**：monitoring/docker-compose.monitoring.yml 新建（node-exporter v1.7.0 / postgres-exporter v0.15.0 / redis-exporter v1.61.0 + prometheus `--web.enable-lifecycle`）；**关键陷阱**：compose 前缀卷（micro-course_prometheus_data）≠ 旧容器裸名卷（prometheus_data）→ 必须 `prometheus_data: external: true` 复用，否则重建丢 TSDB 历史；生产 docker stop/rm 旧容器（卷保留）→ compose up -d 5 容器 Started。
+  - **前端（PR #218）**：UserTable.vue defineEmits 补 `reset-password`（eslint 通过）；DuplicateKeyException 已有 409 友好化（GlobalExceptionHandler L157-162，无需改）；DB_PASSWORD 默认值安全（生产 compose 强注入，漏配即启动失败非弱口令）。
+- **防止再发**：monitoring/ 为唯一真相源（根目录副本 hash 校验）；监控配置纳入部署步骤（promtool 校验 + SIGHUP/reload 验证 21 规则 loaded + 5 target 全 up 检查清单）；exporter 指标规则实测命中（node_filesystem/pg_stat/redis 有数据）；`--web.enable-lifecycle` 支持 reload API（验证 200）；alertmanager 通知通道待用户提供真实 webhook 后启用。
+- **验证**：promtool 21 rules SUCCESS；SIGHUP 重载后 2 groups=21 rules loaded；5 target 全 up（micro-course-api/node-exporter/postgres-exporter/prometheus/redis-exporter）；核心规则 expr 实测命中（up/error rate/avg latency/hikaricp/outbox/jvm）；exporter 指标全命中；历史 TSDB 24h 保留（external 卷复用生效）；reload API 200；前端 eslint UserTable.vue 通过；PR #218 CI 中（backend 35min 长任务，frontend/monitoring-lint/Trivy/references-sync/secrets-check 已绿）。
+
+> **遗留决策项**：Alertmanager 真实通知通道（钉钉/飞书/Slack webhook 或 SMTP）需用户提供——当前 webhook placeholder 无法通知（不编造外部 URL）；GitHub action roll-your-own-23-05-2025 高危版本确认后升级。
