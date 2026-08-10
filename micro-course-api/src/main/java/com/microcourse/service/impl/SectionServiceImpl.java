@@ -12,6 +12,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 
 @Service
@@ -69,6 +70,19 @@ public class SectionServiceImpl implements SectionService {
     @Transactional(rollbackFor = Exception.class)
     public SectionDTO create(Long courseId, Long chapterId, SectionCreateRequest req) {
         assertOwner(courseId);
+        // F-2026-08-10-13: V333 设计原则——同一 chapter 下 INTERACTIVE/EXERCISE/OFFLINE section 唯一
+        // 避免锚点 section（PPT 课件节/HTML 课件节）重复创建导致课件挂载错乱
+        if (Arrays.asList("INTERACTIVE", "EXERCISE", "OFFLINE").contains(req.getSectionType())) {
+            Long existingCount = sectionRepo.selectCount(
+                new LambdaQueryWrapper<CourseSection>()
+                    .eq(CourseSection::getChapterId, chapterId)
+                    .eq(CourseSection::getSectionType, req.getSectionType())
+                    .isNull(CourseSection::getDeletedAt));
+            if (existingCount > 0) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM,
+                    "同一章节下已存在 " + req.getSectionType() + " 类型课时，V333 锁定：类型唯一，请先删除现有课时");
+            }
+        }
         CourseSection section = new CourseSection();
         section.setChapterId(chapterId);
         section.setCourseId(courseId);
