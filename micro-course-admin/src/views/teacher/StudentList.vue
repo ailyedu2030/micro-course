@@ -244,7 +244,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as XLSX from 'xlsx'
+import { Workbook } from 'exceljs'
 import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
@@ -476,11 +476,11 @@ async function handleExport() {
     选课时间: formatDate(item.enrolledAt),
     最近活跃: formatDate(item.lastWatchAt)
   }))
-  const ws = XLSX.utils.json_to_sheet(exportData)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, '学员列表')
+  const wb = new Workbook()
+  const ws = wb.addWorksheet('学员列表')
+  ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
-  XLSX.writeFile(wb, `students-${date}.xlsx`)
+  await wb.xlsx.writeFile(`students-${date}.xlsx`)
   ElMessage.success('导出成功')
 }
 
