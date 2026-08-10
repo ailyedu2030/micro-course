@@ -158,7 +158,7 @@ export default {
     slideOverview: '课件总览',
     submitForReview: '提交审核',
     interactive: '课件课程',
-    videoCourse: '视频课程',
+    videoCourse: '视频课件',
     noCover: '尚未设置课程封面',
     noCoverDesc: '提交审核前必须上传封面，点击「编辑」按钮后在封面区域上传',
     home: '首页',
