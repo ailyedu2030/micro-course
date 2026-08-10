@@ -1284,6 +1284,78 @@ class SlideServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("页面图片/缩略图读取")
+    class GetPageImage {
+        @Test
+        @DisplayName("文件缺失 → 返回占位图 PNG（非空字节）")
+        void missingFileReturnsFallback() {
+            SlidePage page = new SlidePage();
+            page.setId(1L);
+            page.setSlideId(43L);
+            page.setCourseId(1L);
+            page.setPageNumber(1);
+            page.setFileUuid("missing-file-uuid");
+            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
+
+            byte[] img = slideService.getPageImage(1L, 1);
+
+            assertNotNull(img);
+            assertTrue(img.length > 0, "文件缺失时返回占位图，不得为空");
+            // PNG 魔数校验
+            assertEquals((byte) 0x89, img[0]);
+            assertEquals((byte) 0x50, img[1]);
+            assertEquals((byte) 0x4E, img[2]);
+            assertEquals((byte) 0x47, img[3]);
+        }
+
+        @Test
+        @DisplayName("文件存在 → 返回真实文件内容")
+        void existingFileReturnsBytes() throws Exception {
+            SlidePage page = new SlidePage();
+            page.setId(1L);
+            page.setSlideId(43L);
+            page.setCourseId(1L);
+            page.setPageNumber(1);
+            page.setFileUuid("existing-uuid");
+            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
+
+            // 真实写入渲染文件
+            java.nio.file.Path dir = java.nio.file.Paths.get("/tmp/slides-test", "1", "43", "images");
+            java.nio.file.Files.createDirectories(dir);
+            byte[] realPng = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 1, 2, 3};
+            java.nio.file.Files.write(dir.resolve("existing-uuid.png"), realPng);
+
+            try {
+                byte[] img = slideService.getPageImage(1L, 1);
+                assertArrayEquals(realPng, img, "文件存在时必须返回真实内容而非占位图");
+            } finally {
+                java.nio.file.Files.deleteIfExists(dir.resolve("existing-uuid.png"));
+            }
+        }
+
+        @Test
+        @DisplayName("缩略图缺失 → 返回占位图 PNG（非空字节）")
+        void missingThumbnailReturnsFallback() {
+            SlidePage page = new SlidePage();
+            page.setId(1L);
+            page.setSlideId(43L);
+            page.setCourseId(1L);
+            page.setPageNumber(1);
+            page.setFileUuid("missing-thumb-uuid");
+            when(slidePageMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(page));
+
+            byte[] thumb = slideService.getPageThumbnail(1L, 1);
+
+            assertNotNull(thumb);
+            assertTrue(thumb.length > 0, "缩略图缺失时返回占位图，不得为空");
+            assertEquals((byte) 0x89, thumb[0]);
+            assertEquals((byte) 0x50, thumb[1]);
+            assertEquals((byte) 0x4E, thumb[2]);
+            assertEquals((byte) 0x47, thumb[3]);
+        }
+    }
+
     private SlideHtmlSegmentScript htmlSeg(int idx, String marker) {
         SlideHtmlSegmentScript seg = new SlideHtmlSegmentScript();
         seg.setId(100L + idx);
