@@ -244,7 +244,8 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           </el-row>
           <el-row :gutter="20">
             <el-col :span="8">
-              <!-- 【V333 简化方案】课程类型 4 选 1：HTML 课件 / PPT 课件 / 视频课程 / 线下课程 -->
+              <!-- 【F-2026-08-10-05】5 种课件类型：HTML 课件 / PPT 课件 / 视频课件 / 练习课件 / 线下课程。
+                 后端 CourseType 枚举保留 V333 4 值（练习按章节维度聚合），前端按 5 维度展示。 -->
               <el-form-item :label="$t('course.courseType')" prop="courseType">
                 <el-select v-model="formData.courseType" :placeholder="$t('course.courseType')" class="full-width" :aria-label="$t('course.courseType')">
                   <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
