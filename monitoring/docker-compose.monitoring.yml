@@ -1,0 +1,81 @@
+# 微课平台监控栈 (Prometheus + Alertmanager + exporters)
+# ⚠️ 生产部署路径: /opt/micro-course/docker-compose.monitoring.yml (本文件为仓库真相源, 部署时同步)
+# 变更记录:
+#   2026-08-10: 补 node-exporter / postgres-exporter / redis-exporter (主机磁盘CPU、DB连接、Redis内存告警数据源)
+#   2026-08-10: prometheus 补 --web.enable-lifecycle (支持 reload API)
+services:
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: micro-course-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus-alerts-micro-course.yaml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - micro-course_default
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: micro-course-alertmanager
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "127.0.0.1:9093:9093"
+    networks:
+      - micro-course_default
+
+  # 主机指标 (磁盘/CPU/内存) — F-2026-08-10-03: 补全监控盲区
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: micro-course-node-exporter
+    restart: unless-stopped
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/host/root'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/host/root:ro
+    networks:
+      - micro-course_default
+
+  # PostgreSQL 指标 (连接数/事务) — F-2026-08-10-03
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: micro-course-postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-micro_course}?sslmode=disable
+    networks:
+      - micro-course_default
+
+  # Redis 指标 (内存/连接) — F-2026-08-10-03
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.61.0
+    container_name: micro-course-redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    networks:
+      - micro-course_default
+
+volumes:
+  # external: true — 复用现有 prometheus_data 卷(历史 TSDB 数据), 避免 compose 前缀创建新空卷丢数据
+  prometheus_data:
+    external: true
+
+networks:
+  micro-course_default:
+    external: true

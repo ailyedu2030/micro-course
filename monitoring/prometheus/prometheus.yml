@@ -2,12 +2,15 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   scrape_timeout: 10s
+  external_labels:
+    cluster: micro-course-prod
+    monitor: micro-course
 
 # W35 治理: AlertManager 集成 (告警转发)
 alerting:
   alertmanagers:
     - static_configs:
-        - targets: ['alertmanager:9093']
+        - targets: ['micro-course-alertmanager:9093']
       timeout: 10s
       path_prefix: /
 
@@ -17,9 +20,10 @@ rule_files:
 scrape_configs:
   - job_name: 'micro-course-api'
     metrics_path: '/actuator/prometheus'
+    scheme: 'http'
     scrape_interval: 10s
     static_configs:
-      - targets: ['micro-course-api:8080']
+      - targets: ['micro-course-micro-course-api-1:8080']
         labels:
           service: 'micro-course-api'
           tier: 'backend'
@@ -28,20 +32,23 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9090']
 
+  # F-2026-08-10-03: 补全监控盲区 — 主机指标 (磁盘/CPU/内存)
   - job_name: 'node-exporter'
     static_configs:
-      - targets: ['node-exporter:9100']
+      - targets: ['micro-course-node-exporter:9100']
         labels:
           component: 'host'
 
+  # F-2026-08-10-03: PostgreSQL 指标 (连接数/事务量)
   - job_name: 'postgres-exporter'
     static_configs:
-      - targets: ['postgres-exporter:9187']
+      - targets: ['micro-course-postgres-exporter:9187']
         labels:
           component: 'postgres'
 
+  # F-2026-08-10-03: Redis 指标 (内存/连接数)
   - job_name: 'redis-exporter'
     static_configs:
-      - targets: ['redis-exporter:9121']
+      - targets: ['micro-course-redis-exporter:9121']
         labels:
           component: 'redis'
