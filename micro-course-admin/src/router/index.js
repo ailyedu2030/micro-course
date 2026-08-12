@@ -92,8 +92,9 @@ const routes = [
   { path: '/admin/courseware/ppt', name: 'CoursewarePptList', component: () => import('../views/courseware/CoursewarePptList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'PPT 课件管理' } },
   // 【F-2026-08-10-05】5 种课件类型独立管理：admin/academic 端的线下课程入口
   // 复用 TeacherOfflineList 组件（line 215 已按 role=TEACHER 自动加 teacherId 过滤，
-  // admin/academic 不传 teacherId → 看全部线下场次）。
-  { path: '/admin/offline-sessions', name: 'AdminOfflineSessionList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '线下课程管理' } },
+  // 【2026-08-12 P1-C 修复】ACADEMIC 无 pageByChapter 权限（OfflineSessionController 仅
+  // TEACHER/ADMIN/STUDENT），入口会 403；线下课运营归教师/管理员（权限矩阵 §1.27）
+  { path: '/admin/offline-sessions', name: 'AdminOfflineSessionList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], title: '线下课程管理' } },
 
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },

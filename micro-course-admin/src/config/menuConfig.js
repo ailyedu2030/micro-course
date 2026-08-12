@@ -124,6 +124,8 @@ const ACADEMIC = [
   },
   {
     // 【F-2026-08-10-05】ACADEMIC 角色补齐 5 种课件独立管理入口（与 ADMIN/TEACHER 对齐）
+    // 【2026-08-12 P1-C 修复】ACADEMIC 无线下课程权限（后端 OfflineSessionController 仅 TEACHER/ADMIN），
+    //  移除入口防 403；线下课程运营归教师/管理员（权限矩阵 §1.27）
     group: '内容资源',
     icon: 'VideoPlay',
     children: [
@@ -131,7 +133,6 @@ const ACADEMIC = [
       { label: 'HTML 课件', path: '/admin/courseware/html', icon: 'Document' },
       { label: 'PPT 课件', path: '/admin/courseware/ppt', icon: 'Picture' },
       { label: '练习课件', path: '/exercises', icon: 'Edit' },
-      { label: '线下课程', path: '/admin/offline-sessions', icon: 'Calendar' },
       { label: '题库管理', path: '/questions', icon: 'Document' },
     ],
   },
