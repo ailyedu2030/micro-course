@@ -1461,4 +1461,101 @@ class SlideServiceTest {
         page.setContentType("HTML_DIRECT");
         return page;
     }
+
+    // ────────────────────────────────────────────────────────────────
+    // 根因修复回归：toVO 从 section.courseware_type 权威字段派生课件类型
+    // （#219 前端 fileUrl hack 接线后端字段；BOTH/历史数据兜底）
+    // ────────────────────────────────────────────────────────────────
+    @Nested
+    @DisplayName("coursewareType 派生（SlideVO.coursewareType）")
+    class CoursewareTypeDerivationTest {
+
+        @Test
+        @DisplayName("section.coursewareType=PPT → SlideVO.coursewareType=PPT")
+        void pptFromSectionField() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1001L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(7L);
+            slide.setFileName("a.pptx"); slide.setFileUrl("/files/a.pptx");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            CourseSection sec = new CourseSection();
+            sec.setId(7L); sec.setTitle("PPT 节"); sec.setCoursewareType("PPT");
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.List.of(sec));
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("PPT", vos.get(0).getCoursewareType());
+        }
+
+        @Test
+        @DisplayName("section.coursewareType=HTML → SlideVO.coursewareType=HTML")
+        void htmlFromSectionField() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1002L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(7L);
+            slide.setFileName("index.html"); slide.setFileUrl("html:inline");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            CourseSection sec = new CourseSection();
+            sec.setId(7L); sec.setTitle("HTML 节"); sec.setCoursewareType("HTML");
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.List.of(sec));
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("HTML", vos.get(0).getCoursewareType());
+        }
+
+        @Test
+        @DisplayName("section.coursewareType=BOTH + fileUrl=html: → HTML")
+        void bothWithHtmlFileUrl() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1003L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(7L);
+            slide.setFileName("index.html"); slide.setFileUrl("html:inline");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            CourseSection sec = new CourseSection();
+            sec.setId(7L); sec.setTitle("BOTH 节"); sec.setCoursewareType("BOTH");
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.List.of(sec));
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("HTML", vos.get(0).getCoursewareType());
+        }
+
+        @Test
+        @DisplayName("section.coursewareType=BOTH + fileUrl=真实路径 → PPT")
+        void bothWithPptFileUrl() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1004L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(7L);
+            slide.setFileName("a.pptx"); slide.setFileUrl("/files/a.pptx");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            CourseSection sec = new CourseSection();
+            sec.setId(7L); sec.setTitle("BOTH 节"); sec.setCoursewareType("BOTH");
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.List.of(sec));
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("PPT", vos.get(0).getCoursewareType());
+        }
+
+        @Test
+        @DisplayName("section.coursewareType=null（历史数据）→ fileUrl 兜底判定 HTML")
+        void nullSectionTypeFallsBackToFileUrl() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1005L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(7L);
+            slide.setFileName("index.html"); slide.setFileUrl("html:inline");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            CourseSection sec = new CourseSection();
+            sec.setId(7L); sec.setTitle("历史节"); sec.setCoursewareType(null);
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.List.of(sec));
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("HTML", vos.get(0).getCoursewareType());
+        }
+
+        @Test
+        @DisplayName("sectionId=null（章节级挂载）→ fileUrl 兜底判定 PPT")
+        void nullSectionFallsBackToPpt() throws Exception {
+            CourseSlide slide = new CourseSlide();
+            slide.setId(1006L); slide.setCourseId(1L); slide.setChapterId(1L); slide.setSectionId(null);
+            slide.setFileName("a.pptx"); slide.setFileUrl("/files/a.pptx");
+            when(courseSlideMapper.selectList(any())).thenReturn(java.util.List.of(slide));
+            when(courseSectionRepository.selectBatchIds(any())).thenReturn(java.util.Collections.emptyList());
+
+            java.util.List<SlideVO> vos = slideService.listByCourseId(1L);
+            assertEquals("PPT", vos.get(0).getCoursewareType());
+        }
+    }
 }

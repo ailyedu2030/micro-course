@@ -9,7 +9,7 @@
 
 | # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
 |---|---|---|---|---|---|
-| F10-D1 | P1-I | 课件工作台类型派生 hack（#219）：前端 `deriveCoursewareType` 依赖 `fileUrl.startsWith('html:')` 派生 PPT/HTML 类型，后端已有 `SectionDTO.coursewareType` 字段但未接线 | 当前功能正确（后端保持 `html:inline` 标记），客户不可感知；但存在脆弱耦合：fileUrl 格式变更会静默错误 | 可放行（内部架构债），不阻断部署 | 后续优化：SlideVO 增加 coursewareType 字段，前端改读 row.coursewareType，移除 fileUrl hack |
+| ~~F10-D1~~ | ~~P1-I~~ | ~~课件工作台类型派生 hack（#219）~~ | ~~当前功能正确，客户不可感知~~ | ~~登记放行~~ | ✅ **已修复（2026-08-12）**：SlideVO 增加 `coursewareType` 字段，后端从 section.courseware_type 权威字段派生（fileUrl 兜底）；前端改读 `row.coursewareType`；6 例回归测试闭环 |
 
 ---
 

@@ -188,9 +188,10 @@ const searchForm = ref({
   coursewareType: ''
 })
 
-// 从 fileUrl 派生课件类型（HTML 上传后端标记 fileUrl="html:inline"；PPT 是真实文件路径）。
-// 未来后端 SlideVO 加 coursewareType 字段后可改为读 row.coursewareType。
+// 课件类型派生（根因修复：优先读后端 SlideVO.coursewareType 权威字段，
+// fileUrl 兜底兼容历史数据/旧后端）。后端字段来自 section.courseware_type。
 function deriveCoursewareType(slide) {
+  if (slide?.coursewareType) return slide.coursewareType
   return slide?.fileUrl?.startsWith('html:') ? 'HTML' : 'PPT'
 }
 

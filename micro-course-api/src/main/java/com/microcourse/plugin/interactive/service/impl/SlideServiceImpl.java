@@ -1518,12 +1518,41 @@ public class SlideServiceImpl implements SlideService {
         }
         if (sectionCache != null && s.getSectionId() != null) {
             CourseSection sec = sectionCache.get(s.getSectionId());
-            if (sec != null) vo.setLessonTitle(sec.getTitle());
+            if (sec != null) {
+                vo.setLessonTitle(sec.getTitle());
+                vo.setCoursewareType(deriveCoursewareType(sec, s.getFileUrl()));
+            } else {
+                vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
+            }
         } else if (s.getSectionId() != null) {
             CourseSection sec = sectionRepo.selectById(s.getSectionId());
-            if (sec != null) vo.setLessonTitle(sec.getTitle());
+            if (sec != null) {
+                vo.setLessonTitle(sec.getTitle());
+                vo.setCoursewareType(deriveCoursewareType(sec, s.getFileUrl()));
+            } else {
+                vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
+            }
+        } else if (s.getFileUrl() != null) {
+            // 章节级挂载（sectionId=null）：仅能依赖 fileUrl 兜底判定
+            vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
         }
         return vo;
+    }
+
+    /**
+     * 派生课件类型（根因修复：优先读 section 权威 courseware_type 字段，fileUrl 兜底兼容历史数据）。
+     * - section.coursewareType 为 HTML/PPT/BOTH 时直接使用；
+     * - 为空/历史数据时回退 fileUrl.startsWith("html:") 判定。
+     */
+    private String deriveCoursewareType(CourseSection sec, String fileUrl) {
+        if (sec != null && sec.getCoursewareType() != null) {
+            String ct = sec.getCoursewareType();
+            if ("PPT".equals(ct) || "HTML".equals(ct)) return ct;
+            if ("BOTH".equals(ct)) {
+                return (fileUrl != null && fileUrl.startsWith("html:")) ? "HTML" : "PPT";
+            }
+        }
+        return (fileUrl != null && fileUrl.startsWith("html:")) ? "HTML" : "PPT";
     }
 
     private SlidePageVO toPageVO(SlidePage p) {
