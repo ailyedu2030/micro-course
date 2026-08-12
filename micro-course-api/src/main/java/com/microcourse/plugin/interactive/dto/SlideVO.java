@@ -11,6 +11,7 @@ public class SlideVO {
     private Long sectionId;
     private String lessonTitle;
     private String fileName;
+    private String coursewareType;
     private Integer totalPages;
     private Integer status;
     private String statusText;
@@ -34,6 +35,8 @@ public class SlideVO {
     public void setLessonTitle(String lessonTitle) { this.lessonTitle = lessonTitle; }
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getCoursewareType() { return coursewareType; }
+    public void setCoursewareType(String coursewareType) { this.coursewareType = coursewareType; }
     public Integer getTotalPages() { return totalPages; }
     public void setTotalPages(Integer totalPages) { this.totalPages = totalPages; }
     public Integer getStatus() { return status; }
