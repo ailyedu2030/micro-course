@@ -3,6 +3,16 @@
 > 本文件登记发布时已评估但放行的 P1-I / P2 缺陷。
 > 每次发布前必须清理上一版本的所有条目。
 
+## 2026-08-12 · F-2026-08-10 批次总工程师评估
+
+> 总工程师签字：以下 P1-I 项经逐条评估，当前不影响客户正常使用，登记放行，不阻断部署。
+
+| # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
+|---|---|---|---|---|---|
+| F10-D1 | P1-I | 课件工作台类型派生 hack（#219）：前端 `deriveCoursewareType` 依赖 `fileUrl.startsWith('html:')` 派生 PPT/HTML 类型，后端已有 `SectionDTO.coursewareType` 字段但未接线 | 当前功能正确（后端保持 `html:inline` 标记），客户不可感知；但存在脆弱耦合：fileUrl 格式变更会静默错误 | 可放行（内部架构债），不阻断部署 | 后续优化：SlideVO 增加 coursewareType 字段，前端改读 row.coursewareType，移除 fileUrl hack |
+
+---
+
 ## Phase 6 教师模块候选发布（2026-07-25）
 
 ### 放行前结论
