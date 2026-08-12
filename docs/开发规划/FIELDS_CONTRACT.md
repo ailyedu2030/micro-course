@@ -2,19 +2,19 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 287 | Vue 视图数: 62 | Controller 数: 77 | API 文件数: 47
+> 实体数: 288 | Vue 视图数: 62 | Controller 数: 77 | API 文件数: 47
 
 ---
 
 ## 总览
 
-- ✅ 前后端匹配: 161 字段
+- ✅ 前后端匹配: 162 字段
 
 - ⚠️ 前端孤儿 (有前端引用无后端实体): 20 字段
 
-- 后端实体字段总数: 2623
+- 后端实体字段总数: 2630
 
-- 前端引用字段总数: 446
+- 前端引用字段总数: 447
 
 
 ## ⚠️ 前端孤儿字段
@@ -805,13 +805,13 @@
 
 |-----------|---------|--------|--------|
 
-| AcademicStats | /api/academic/stats | 6 | - |
+| AcademicStats | /api/academic/stats | 7 | - |
 
 | AdminBanner | /api/admin/banners | 5 | - |
 
 | AdminSettings | /api/admin/settings | 7 | - |
 
-| AdminStats | /api/admin/stats | 8 | - |
+| AdminStats | /api/admin/stats | 9 | - |
 
 | Alias | /api/courses/{courseId} | 5 | - |
 
@@ -1054,7 +1054,7 @@
 
 | ChapterUpdateRequest | 8 | 0 |
 
-| ChapterVO | 19 | 0 |
+| ChapterVO | 20 | 0 |
 
 | CheckIn | 7 | 0 |
 
@@ -1135,6 +1135,8 @@
 | CourseUpdateRequest | 26 | 0 |
 
 | CourseVO | 43 | 0 |
+
+| CoursewareTypeDistributionVO | 5 | 0 |
 
 | CreateReportRequest | 3 | 0 |
 
@@ -1466,7 +1468,7 @@
 
 | TeacherRevenueVO | 13 | 0 |
 
-| TeacherStatsVO | 6 | 0 |
+| TeacherStatsVO | 7 | 0 |
 
 | TeacherStatusRequest | 2 | 0 |
 
