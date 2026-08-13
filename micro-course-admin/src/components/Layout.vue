@@ -31,11 +31,11 @@
           <el-sub-menu :index="group.group">
             <template #title>
               <el-icon><component :is="iconMap[group.icon]" /></el-icon>
-              <span v-show="!collapsed">{{ group.group }}</span>
+              <span v-show="!collapsed">{{ group.groupKey ? $t(group.groupKey) : group.group }}</span>
             </template>
             <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
               <el-icon><component :is="iconMap[item.icon]" /></el-icon>
-              <template #title>{{ item.label }}</template>
+              <template #title>{{ item.labelKey ? $t(item.labelKey) : item.label }}</template>
             </el-menu-item>
           </el-sub-menu>
         </template>

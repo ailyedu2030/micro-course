@@ -207,6 +207,15 @@
           </button>
         </div>
       </div>
+      <el-empty
+        v-else
+        class="recent-learning-empty"
+        :description="$t('learning.noRecentLearning')"
+      >
+        <el-button type="primary" @click="$router.push('/student/courses')">
+          {{ $t('learning.goExplore') }}
+        </el-button>
+      </el-empty>
 
       <!-- 两栏：本周学习 + 学习日历 -->
       <div class="chart-calendar-row">

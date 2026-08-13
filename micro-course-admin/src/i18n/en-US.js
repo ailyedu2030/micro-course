@@ -214,6 +214,8 @@ export default {
     statsError: 'Statistics unavailable, please retry',
     reload: 'Reload',
     retry: 'Retry',
+    noRecentLearning: 'No recent learning yet — explore courses to get started',
+    goExplore: 'Browse Course Square',
     studentsCount: 'enrolled',
     completed: 'Completed',
     heatmapLess: 'Less',
@@ -519,6 +521,9 @@ export default {
     grade: 'Grade',
     discussion: 'Discussion',
     confirmMarkAll: 'Mark all unread messages as read?'
+  },
+  favorite: {
+    noData: 'No favorites yet'
   },
   error: {
     notFound: 'Page not found',
