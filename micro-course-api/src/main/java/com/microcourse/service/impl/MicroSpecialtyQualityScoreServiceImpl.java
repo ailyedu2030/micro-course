@@ -285,6 +285,13 @@ public class MicroSpecialtyQualityScoreServiceImpl implements MicroSpecialtyQual
         if (o == null) return null;
         if (o instanceof Long) return (Long) o;
         if (o instanceof Number) return ((Number) o).longValue();
-        try { return Long.parseLong(Objects.toString(o)); } catch (Exception e) { return null; }
+        try {
+            return Long.parseLong(Objects.toString(o));
+        } catch (Exception e) {
+            // P1-I 修复 (2026-08-12): 静默吞 NumberFormatException 阻碍生产环境异常排查
+            // 改为 debug 日志，便于运维判断字段类型与原始值
+            log.debug("[QualityScore] toLong 解析失败 o={} type={}", o, o == null ? "null" : o.getClass().getName());
+            return null;
+        }
     }
 }

@@ -778,6 +778,8 @@ public class SlideServiceImpl implements SlideService {
             String name = shape.getShapeName();
             return name != null && (name.toLowerCase().contains("title") || name.contains("标题"));
         } catch (Exception e) {
+            // P1-I 修复 (2026-08-12): 静默吞 shape 元数据异常阻碍 PPT 异常排查
+            log.debug("[SlideServiceImpl] isTitlePlaceholder shape 元数据读取失败", e);
             return false;
         }
     }
