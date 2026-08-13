@@ -2,7 +2,7 @@
 
 > 部署失败或重大故障时执行。优先 5 分钟应用层回滚，如数据库结构变更导致问题则执行 30 分钟回滚。
 >
-> **最后更新**: 2026-08-07 (Phase 10 音频同步 P0-P3 + F-05~14 系列 + 增量 4b + 交叉审查 batch fix)
+> **最后更新**: 2026-08-12 (F-2026-08-10 批次 + 总工程师兜底审计 #225-#232 部署批次)
 
 ---
 
@@ -10,7 +10,8 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| **2026-08-07 增量 4b（最近）** | 2026-08-07 | 章节级课时课件概览（前端仅，bundle `index-DJyWWonr.js`）；CI backend/e2e job 移除 services 编排（**纯前端 + CI 配置，零后端 + 零 DB schema 变更，仅前端 dist 回滚 5 分钟即可**） |
+| **2026-08-12 F-2026-08-10 + 兜底审计 #225-#232（最近）** | 2026-08-12 | main HEAD `24dc8658`（PR #232）：F-2026-08-10 批次 11 个 PR（#219-#228 安全/UI/dashboard/PPT/HTML/V332/封面）+ 总工程师兜底审计 7 个 PR（#225-#232 契约/P1-C/P1-I 根因/权限治理/i18n CI 接入+菜单迁移+空状态/静默吞异常 debug）。**纯应用层 + 治理，零 DB 迁移**，前端 dist + 后端 jar 回滚 5 分钟即可。回滚到本批次前 = 回滚到 08-07 增量 4b |
+| **2026-08-07 增量 4b** | 2026-08-07 | 章节级课时课件概览（前端仅，bundle `index-DJyWWonr.js`）；CI backend/e2e job 移除 services 编排（**纯前端 + CI 配置，零后端 + 零 DB schema 变更，仅前端 dist 回滚 5 分钟即可**） |
 | **Phase 10 音频同步 P0-P3 系列** | 2026-08-07 | PPT/HTML 音频同步（origin 修复/父页 AudioHost/TtsWorker/getPages 聚合/flow 求值/HTML 段高亮/AI 讲述稿/字幕/mediaSession）+ F-05~14 课件管理架构统一（章节级支持/整节整章删除/渲染 chapter_id 派生/MMX 化）+ 交叉审查 batch fix（**零 DB 迁移**，前后端回滚见下方增量 1-4b 节） |
 | **全页面审查修复批次（E/F/G/D7.5/H + 回归）** | 2026-08-05 | 学生端 13 项 P1-C（评价姓名/进度比例/收藏409/训练入口/考试完成/讨论tab/错题定位/通知筛选/评价筛选删除/免费下单/订单筛选）、教务审批 5 项（跨院驳回约束/班级导入 jsonb+rollback-only+去重/批量审批UI）、组件系统 5 项（PPT四面板slide_ppt_pages/工作台onMounted/音频null scriptId/created_by/jsonb双实体/试卷编辑入口）、管理端 2 项（建课 teacher_id/建课表单教师选择器）、a11y 8 项（锁定徽章opacity/学生主色/互动徽章/未读标题/封面alt×5/轮播label×2）、i18n 1 项（playbackSpeed）、e2e 基建（夹具种子/认证/浏览器/超时/管理教务端a11y 12页）<br>**⚠️ 含 1 个 DB 迁移 V326：DROP CONSTRAINT chk_mst_invite_status（跨院驳回修复，原约束缺 REJECTED）**。回滚顺序：① 前端 dist 回滚 5 分钟；② 后端 jar 回滚 5 分钟（API 容器 bind-mount target jar，替换即生效）；③ 如回滚到 V326 之前版本，须手动 `ALTER TABLE micro_specialty_teachers ADD CONSTRAINT chk_mst_invite_status CHECK (invite_status IN ('INVITED','ACTIVE','PENDING_ACADEMIC','DECLINED','REMOVED'))` 恢复旧约束（**否则新代码仍依赖新约束，旧代码不受影响**）。**部署镜像需固化 ffmpeg + 中文字体（font-noto-cjk/wqy-zenhei）+ uploads 卷持久化**（LibreOffice 非必需：渲染走 Apache POI，生产实证 111 个课件无 LibreOffice 渲染成功 status=2；已在本轮 Dockerfile 固化字体） |
 | **HLS 播放签名通道修复** | 2026-08-03 | 前端（VideoPlayer/CourseDetail/useVideoSourceLifecycle/useVideoLoadOrchestrator）+ 后端（VideoStreamService 支持 `X-Video-Sign` 头 / WebMvcConfig 存储目录配置化）修复 3 个仍在线播放缺陷（hls.js 缺签名 403、播放器未初始化、流请求 401）；新增 CI 播放回归 E2E + ffmpeg 安装（**纯应用层，零 DB schema 变更，前端 dist + 后端 jar 回滚 5 分钟即可；CI 环境无 `/data` 时需 `MULTIPART_LOCATION`/`UPLOAD_BASE_DIR`/`VIDEO_STORAGE_BASE_DIR` 指向可写目录**） |
@@ -25,11 +26,29 @@
 | v1.21.0 | 2026-07-09 | Docker 部署适配（Hermes 共享 API Key） |
 | **R11 audit+monitor** | 2026-07-30 | 12 轮全栈多专家审查+修复：auth fail-closed、文件越权、API Key 明文清空、OrderService 811→78 拆分、22 个 Controller size=10000→200 收敛、QuestionController size=100000→200 修 DoS、UserRetentionCleanupJob 加 orders 级联、ProfileController 拆分 alias 路由、Profile.vue i18n 化、vue-i18n vitest setup 全局 install 修 6 个月 pre-existing 15 个测试失败、verify-secrets.sh / check-references-sync.py / generate-missing-tables.py / add-viewonly-tables.py 部署工具、contract-audit 0/0 完全清零、JaCoCo 真实 45.29% 覆盖率、admin nginx SPA fallback 修复、alertmanager CHANGE_ME 命名优化。**V324 迁移清空 api_key 明文列（DB 必跑），V325 清理 V135 冗余唯一索引（DB 必跑）**（**部分回滚必须包含迁移**）|
 
-## 当前生产状态（2026-08-07 增量 4b 部署后 · Phase 10 音频同步系列）
+## 当前生产状态（2026-08-12 F-2026-08-10 + 兜底审计部署后）
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
 
-### 2026-08-07 增量：PPT/HTML 音频同步 P0-P3 部署（用户批准，门禁 16/16 已开）
+### 2026-08-12 部署：F-2026-08-10 批次 + 总工程师兜底审计 #225-#232（门禁 16/16 已开，决策记录见 DEPLOYMENT_DECISION.md）
+
+| 项 | 变更 | 回滚 |
+|----|------|------|
+| API jar | 新 jar（基于 main HEAD `24dc8658` PR #232）含 27 个 PR 集成（#193-#232）| `cp /opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.<部署时间戳> /opt/micro-course/micro-course-api-1.0.0.jar && docker exec micro-course-micro-course-api-1 kill -s HUP 1` |
+| 前端 dist | 新 bundle（exceljs/echarts 6/quill 2.0.2 已上 + i18n 菜单/PlatformShareConfig 已迁移 + 离线课程 P1-C 已修 + 课件类型字段已接线）| `docker cp /opt/micro-course/backups/admin.dist.backup.<部署时间戳> /micro-course-admin/…` + `nginx -s reload`（同 deploy-frontend.sh 11 步 SOP）|
+| Flyway migrations | **零迁移**（本批次纯应用层 + 治理，所有代码层 + 契约层变更）| N/A |
+| 监控告警 | Prometheus 告警规则 #218 修复 + exporter 补全 | 已在 CI monitoring-lint 校验通过 |
+
+| 资产 | 路径（生产 100.74.122.13） | 说明 |
+|------|---------------------------|------|
+| 部署前 jar（08-07 增量 4b）| `/opt/micro-course/backups/micro-course-api-1.0.0.jar.backup.20260807_0130` | md5 `cbf0e785…`，**回滚首选** |
+| 部署前前端 dist（08-07 增量 4b）| `/opt/micro-course/backups/admin.dist.backup.20260807_013414` | bundle `index-y7MdGbbB.js`，**回滚首选** |
+| 新 jar（08-12 部署后运行）| `/opt/micro-course/micro-course-api-1.0.0.jar` | 部署时间戳 + jar md5（部署后回填）|
+| 新前端 dist（08-12 部署后运行）| 容器 `/usr/share/nginx/html` | bundle hash（部署后回填）|
+
+> **回滚原则**：本批次零 DB 迁移，回滚到 08-07 增量 4b 即可，所有功能可平滑回到上一稳定状态。
+
+### 历史：2026-08-07 增量：PPT/HTML 音频同步 P0-P3 部署（用户批准，门禁 16/16 已开）
 
 | 项 | 变更 | 回滚 |
 |----|------|------|
