@@ -27,7 +27,8 @@ export default {
     type: '类型',
     operation: '操作',
     detail: '详情',
-    toggleLang: '切换语言'
+    toggleLang: '切换语言',
+    saveSuccess: '保存成功'
   },
   common: {
     success: '操作成功',
@@ -524,6 +525,27 @@ export default {
   },
   favorite: {
     noData: '暂无收藏数据'
+  },
+  platformShare: {
+    title: '平台分账配置',
+    desc: '管理平台对各等级教师的分账比例，配置后即刻生效。',
+    noConfig: '暂无配置',
+    configKey: '配置标识',
+    ratio: '分账比例',
+    description: '描述',
+    status: '状态',
+    enabled: '启用',
+    disabled: '停用',
+    updatedBy: '最后更新人',
+    updatedAt: '更新时间',
+    actions: '操作',
+    editTitle: '编辑分账配置',
+    notEditable: '不可修改',
+    descriptionPlaceholder: '请输入配置说明',
+    ratioRequired: '请输入分账比例',
+    ratioRange: '分账比例应在 0-100 之间',
+    loadFailed: '加载配置列表失败',
+    saveFailed: '保存失败，请稍后重试'
   },
   error: {
     notFound: '页面不存在',
