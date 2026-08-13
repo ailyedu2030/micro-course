@@ -2,7 +2,7 @@
 
 > 部署失败或重大故障时执行。优先 5 分钟应用层回滚，如数据库结构变更导致问题则执行 30 分钟回滚。
 >
-> **最后更新**: 2026-08-12 (F-2026-08-10 批次 + 总工程师兜底审计 #225-#232 部署批次)
+> **最后更新**: 2026-08-13 (F-2026-08-10 + 兜底审计 #225-#233 生产部署 + 补录 08-11 批次)
 
 ---
 
@@ -10,7 +10,9 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
-| **2026-08-12 F-2026-08-10 + 兜底审计 #225-#232（最近）** | 2026-08-12 | main HEAD `24dc8658`（PR #232）：F-2026-08-10 批次 11 个 PR（#219-#228 安全/UI/dashboard/PPT/HTML/V332/封面）+ 总工程师兜底审计 7 个 PR（#225-#232 契约/P1-C/P1-I 根因/权限治理/i18n CI 接入+菜单迁移+空状态/静默吞异常 debug）。**纯应用层 + 治理，零 DB 迁移**，前端 dist + 后端 jar 回滚 5 分钟即可。回滚到本批次前 = 回滚到 08-07 增量 4b |
+| **2026-08-13 生产部署（最近）** | 2026-08-13 | 部署 main HEAD `320a3abb`（#225-#233 兜底审计批次）：jar md5 `3dc6a85d` + bundle `index-CaUkdtcp.js`。**零 DB 迁移**，回滚 5 分钟（备份 `jar.backup.20260813_170834` / `admin.dist.backup.20260813_171222`）|
+| **2026-08-11 生产部署（补录）** | 2026-08-11 | 部署 #218-#222 批次：Prometheus 监控修复 + 5 类型 dashboard + 前端 echarts6/quill2.0.2 + CI 升级。V329-V333 已应用（08-13 前生产为 V333）|
+| **2026-08-12 决策批次** | 2026-08-12 | main HEAD `24dc8658`（PR #232）部署决策记录（DEPLOYMENT_DECISION.md）|
 | **2026-08-07 增量 4b** | 2026-08-07 | 章节级课时课件概览（前端仅，bundle `index-DJyWWonr.js`）；CI backend/e2e job 移除 services 编排（**纯前端 + CI 配置，零后端 + 零 DB schema 变更，仅前端 dist 回滚 5 分钟即可**） |
 | **Phase 10 音频同步 P0-P3 系列** | 2026-08-07 | PPT/HTML 音频同步（origin 修复/父页 AudioHost/TtsWorker/getPages 聚合/flow 求值/HTML 段高亮/AI 讲述稿/字幕/mediaSession）+ F-05~14 课件管理架构统一（章节级支持/整节整章删除/渲染 chapter_id 派生/MMX 化）+ 交叉审查 batch fix（**零 DB 迁移**，前后端回滚见下方增量 1-4b 节） |
 | **全页面审查修复批次（E/F/G/D7.5/H + 回归）** | 2026-08-05 | 学生端 13 项 P1-C（评价姓名/进度比例/收藏409/训练入口/考试完成/讨论tab/错题定位/通知筛选/评价筛选删除/免费下单/订单筛选）、教务审批 5 项（跨院驳回约束/班级导入 jsonb+rollback-only+去重/批量审批UI）、组件系统 5 项（PPT四面板slide_ppt_pages/工作台onMounted/音频null scriptId/created_by/jsonb双实体/试卷编辑入口）、管理端 2 项（建课 teacher_id/建课表单教师选择器）、a11y 8 项（锁定徽章opacity/学生主色/互动徽章/未读标题/封面alt×5/轮播label×2）、i18n 1 项（playbackSpeed）、e2e 基建（夹具种子/认证/浏览器/超时/管理教务端a11y 12页）<br>**⚠️ 含 1 个 DB 迁移 V326：DROP CONSTRAINT chk_mst_invite_status（跨院驳回修复，原约束缺 REJECTED）**。回滚顺序：① 前端 dist 回滚 5 分钟；② 后端 jar 回滚 5 分钟（API 容器 bind-mount target jar，替换即生效）；③ 如回滚到 V326 之前版本，须手动 `ALTER TABLE micro_specialty_teachers ADD CONSTRAINT chk_mst_invite_status CHECK (invite_status IN ('INVITED','ACTIVE','PENDING_ACADEMIC','DECLINED','REMOVED'))` 恢复旧约束（**否则新代码仍依赖新约束，旧代码不受影响**）。**部署镜像需固化 ffmpeg + 中文字体（font-noto-cjk/wqy-zenhei）+ uploads 卷持久化**（LibreOffice 非必需：渲染走 Apache POI，生产实证 111 个课件无 LibreOffice 渲染成功 status=2；已在本轮 Dockerfile 固化字体） |
@@ -29,6 +31,18 @@
 ## 当前生产状态（2026-08-12 F-2026-08-10 + 兜底审计部署后）
 
 > 本段由部署执行时更新，回滚时优先使用以下备份资产。
+
+### 历史：2026-08-11 部署（#218-#222 批次，无部署决策记录 — 总工程师补录审计）
+
+> **补录说明**：08-11 生产部署了 #218-#222 批次（Prometheus 监控修复 + 5 类型 dashboard + 前端 echarts6/quill2.0.2 + CI 升级），当时无部署决策记录，此处按审计补录以完善回滚链。
+
+| 项 | 变更 | 回滚资产 |
+|----|------|---------|
+| API jar | 基于 #218-#222 的 jar（`app.jar.bak-20260811-pre90b00568` 之前的版本）| `/opt/micro-course/backups/app.jar.bak-20260811-pre90b00568` |
+| 前端 dist | bundle（08-11 部署）| `/opt/micro-course/backups/admin.dist.backup.20260811_034734` + `admin.dist.backup.20260811_045952` |
+| DB 迁移 | V329-V333（html unit is trusted / audio error / audit chapter backfill / ghost chapter fix / html ppt courseware types）| 已应用，回滚需注意（08-11 前为 V328）|
+
+> **回滚注意**：若从 08-13 版本回滚到 08-11 之前版本（V328 以下），需手动复核 Flyway 迁移（validate-on-migrate=false 兜底，不会自动失败）。
 
 ### 2026-08-12 部署：F-2026-08-10 批次 + 总工程师兜底审计 #225-#232（门禁 16/16 已开，决策记录见 DEPLOYMENT_DECISION.md）
 
