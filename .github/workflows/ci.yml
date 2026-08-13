@@ -89,6 +89,13 @@ jobs:
           npm run build
         working-directory: ./micro-course-admin
 
+      # i18n 完整性扫描（advisory，report-only 不阻断）；存量迁移完成后切换为硬阻断
+      - name: i18n integrity scan (advisory)
+        if: always()
+        run: |
+          node scripts/check-i18n-keys.mjs --report-only 2>&1 | tee -a i18n-scan.log
+        working-directory: ./
+
   # P1C-14: 恢复 E2E 测试 — API 冒烟测试 + Playwright 浏览器 E2E
   # 并行启动后端 API 服务 + 前端 Preview，覆盖 API 层面和浏览器 UI 层面
   e2e:

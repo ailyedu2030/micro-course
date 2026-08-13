@@ -231,6 +231,8 @@ export default {
     statsError: '统计信息获取异常，请重试',
     reload: '重新加载',
     retry: '重试',
+    noRecentLearning: '暂无最近学习记录，去发现感兴趣的课程吧',
+    goExplore: '去逛逛课程广场',
     studentsCount: '人在学',
     completed: '已完成',
     heatmapLess: '少',
@@ -519,6 +521,9 @@ export default {
     grade: '考试通知',
     discussion: '讨论通知',
     confirmMarkAll: '确认将所有未读消息标记为已读？'
+  },
+  favorite: {
+    noData: '暂无收藏数据'
   },
   error: {
     notFound: '页面不存在',
