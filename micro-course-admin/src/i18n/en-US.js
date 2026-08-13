@@ -27,7 +27,8 @@ export default {
     type: 'Type',
     operation: 'Actions',
     detail: 'Detail',
-    toggleLang: 'Language'
+    toggleLang: 'Language',
+    saveSuccess: 'Saved'
   },
   common: {
     success: 'Operation successful',
@@ -524,6 +525,27 @@ export default {
   },
   favorite: {
     noData: 'No favorites yet'
+  },
+  platformShare: {
+    title: 'Platform Revenue Share',
+    desc: 'Manage revenue share ratios for teachers at each tier. Changes take effect immediately.',
+    noConfig: 'No configuration yet',
+    configKey: 'Key',
+    ratio: 'Ratio (%)',
+    description: 'Description',
+    status: 'Status',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    updatedBy: 'Updated By',
+    updatedAt: 'Updated At',
+    actions: 'Actions',
+    editTitle: 'Edit Revenue Share',
+    notEditable: 'Not editable',
+    descriptionPlaceholder: 'Enter description',
+    ratioRequired: 'Please enter the ratio',
+    ratioRange: 'Ratio must be between 0 and 100',
+    loadFailed: 'Failed to load configurations',
+    saveFailed: 'Save failed, please try again later'
   },
   error: {
     notFound: 'Page not found',
