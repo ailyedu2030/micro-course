@@ -693,7 +693,15 @@ const handleEnroll = async () => {
       ElMessage.info(t('course.payCancelled'))
       return
     }
-    if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
+    if (e?.response?.data?.code === 8002 || e?.response?.status === 409) {
+      // 已选过该课程：提示用户并刷新选课状态（同步后端最新 enrollment 状态）
+      isEnrolled.value = true
+      ElMessage.info(t('course.alreadyEnrolled'))
+      checkEnrollment()
+    } else {
+      // 其他错误（网络异常 / 余额不足等）必须给用户可见反馈，禁止静默失败
+      ElMessage.error(e?.response?.data?.message || t('course.enrollFailed'))
+    }
   } finally { enrollLoading.value = false }
 }
 

@@ -1071,17 +1071,15 @@ async function handleSubmit() {
   }
   // P1-UX: 提交锁设置在 confirm 回调全部通过之后，避免 confirm 期间按钮锁定
   if (submitting.value) return // 幂等守卫
-  submitting.value = true
-  try {
-    await doSubmit()
-  } catch (e) {
-    submitting.value = false
-    throw e
-  }
+  // submitting 标志由 doSubmit 内部管理（doSubmit 同时被超时回调直接调用，
+  // 其入口幂等守卫 + 提交锁可防止手动提交与超时提交并发双提交）
+  await doSubmit()
 }
 
 async function doSubmit() {
-  // submitting 已由 handleSubmit 在 confirm 回调全部通过后设置为 true
+  // 幂等守卫：手动提交与超时自动提交可能同时触发（timer 到期直接调用 doSubmit），
+  // 防止双提交产生重复答题记录
+  if (submitting.value) return
   if (!currentExercise.value?.id) {
     ElMessage.error(t('exerciseTake.missingInfo'))
     submitting.value = false
@@ -1103,6 +1101,7 @@ async function doSubmit() {
       : (answers[qId] || '')
   }))
 
+  submitting.value = true
   try {
     const { data } = await submitExerciseRecord({
       exerciseId: currentExercise.value.id,

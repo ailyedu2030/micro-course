@@ -551,6 +551,11 @@ const handleCreate = () => {
   formData.difficulty = null
   // 【V333】固定类型页创建课程时预设类型
   formData.courseType = props.fixedCourseType || 'VIDEO'
+  // P1 修复: 重置定价相关字段，避免上次输入残留到新课程
+  formData.price = 0
+  formData.freeAccessScope = 'none'
+  formData.discountScope = 'none'
+  formData.discountPercent = 100
   // 重置封面
   handleRemoveCover()
   dialogVisible.value = true

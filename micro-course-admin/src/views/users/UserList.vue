@@ -620,7 +620,7 @@ const handleDialogSave = async () => {
   try {
     const submitData = {}
     const fields = ['realName', 'email', 'phone', 'gender', 'politicalStatus',
-                     'studentNo', 'teacherNo', 'grade', 'enrollmentYear', 'graduationYear']
+                     'studentNo', 'teacherNo', 'teacherStatus', 'grade', 'enrollmentYear', 'graduationYear']
     for (const f of fields) {
       const v = formData[f]
       if (v !== '' && v !== null && v !== undefined) submitData[f] = v

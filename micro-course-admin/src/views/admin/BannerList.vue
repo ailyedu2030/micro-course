@@ -154,7 +154,7 @@
           </div>
           <div class="form-tip">{{ $t('bannerList.formTip') }}</div>
         </el-form-item>
-        <el-form-item :label="$t('bannerList.linkUrl')" prop="link">
+        <el-form-item :label="$t('bannerList.linkUrl')" prop="linkUrl">
           <el-input
             v-model="form.linkUrl"
             :placeholder="$t('bannerList.linkPlaceholder')"

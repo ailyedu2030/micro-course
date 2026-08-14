@@ -12,7 +12,7 @@
 
     <el-card shadow="never">
       <!-- 订单状态筛选（后端 getMyOrders 支持 status） -->
-      <div v-if="orders.length > 0" class="order-filter-bar">
+      <div v-if="orders.length > 0 || statusFilter !== ''" class="order-filter-bar">
         <el-select
           v-model="statusFilter"
           :placeholder="$t('myOrders.allStatuses')"
@@ -36,6 +36,7 @@
         :image-size="120"
       >
         <el-button type="primary" @click="router.push('/student/courses')">{{ $t('myOrders.goCourseSquare') }}</el-button>
+        <el-button v-if="statusFilter !== ''" type="default" @click="handleClearFilter">{{ $t('course.clearFilter') }}</el-button>
       </el-empty>
 
       <!-- 订单列表 -->
@@ -162,6 +163,13 @@ const fetchOrders = async () => {
 }
 
 const handleStatusFilterChange = () => {
+  page.value = 1
+  fetchOrders()
+}
+
+// 空结果时通过"清除筛选"按钮恢复完整订单列表
+const handleClearFilter = () => {
+  statusFilter.value = ''
   page.value = 1
   fetchOrders()
 }

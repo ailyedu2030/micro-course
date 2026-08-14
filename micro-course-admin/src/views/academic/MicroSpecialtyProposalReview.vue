@@ -72,7 +72,11 @@
 
     <!-- 驳回原因 Dialog -->
     <el-dialog v-model="rejectVisible" :title="$t('microSpecialtyProposalReview.rejectReasonTitle')" width="480px">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyProposalReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit />
+      <el-form ref="rejectFormRef" :model="rejectForm" :rules="rejectRules" @submit.prevent>
+        <el-form-item prop="reason">
+          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyProposalReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit />
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="rejectVisible = false">{{ $t('common.cancel') }}</el-button>
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">{{ $t('microSpecialtyProposalReview.confirmReject') }}</el-button>
@@ -100,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -122,7 +126,14 @@ const size = ref(20)
 const total = ref(0)
 
 const rejectVisible = ref(false)
-const rejectReason = ref('')
+// P1-C 修复: 驳回原因必填校验（此前可空原因直接驳回）
+const rejectForm = reactive({ reason: '' })
+const rejectFormRef = ref(null)
+const rejectRules = {
+  reason: [
+    { required: true, message: t('microSpecialtyReview.rejectReasonRequired') || '请输入驳回原因', trigger: 'blur' }
+  ]
+}
 const rejectTarget = ref(null)
 const error = ref(false)
 const detailVisible = ref(false)
@@ -223,12 +234,16 @@ const handleReject = async (row) => {
   if (!hasAccess) return
   try { await ElMessageBox.confirm(t('microSpecialtyProposalReview.confirmRejectMsg', { title: row.title }), t('microSpecialtyProposalReview.confirmReject'), { type: 'warning', confirmButtonText: t('microSpecialtyProposalReview.reject'), cancelButtonText: t('common.cancel') }) }
   catch { return }
-  rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
+  rejectTarget.value = row; rejectForm.reason = ''; rejectFormRef.value?.clearValidate(); rejectVisible.value = true
 }
 const confirmReject = async () => {
   if (!hasAccess) return
+  if (!rejectFormRef.value) return
+  try {
+    await rejectFormRef.value.validate()
+  } catch { return }
   actingId.value = rejectTarget.value.id
-  try { await rejectProposal(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
+  try { await rejectProposal(rejectTarget.value.id, { reason: rejectForm.reason }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }

@@ -626,6 +626,15 @@ const handleSubmit = async () => {
   submitLoading.value = true
   await formRef.value.validate(async (valid) => {
     if (!valid) { submitLoading.value = false; return }
+    // P1-C 修复: 单选/多选题必须至少标记一个选项为正确答案，禁止提交零正确答案题目
+    if (formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE') {
+      const hasCorrectOption = optionList.value.some(o => o.correct)
+      if (!hasCorrectOption) {
+        ElMessage.error(t('question.correctAnswerRequired') || '请至少标记一个选项为正确答案')
+        submitLoading.value = false
+        return
+      }
+    }
     try {
       if (formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE') {
         // P2-14: 仅在 options 为对象时才 JSON.stringify，避免双重序列化

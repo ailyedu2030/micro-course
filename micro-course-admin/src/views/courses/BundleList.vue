@@ -31,12 +31,12 @@
         <el-table-column :label="$t('app.operation')" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <el-button size="small" @click="openDetail(row)">{{ $t('bundleList.manageItems') }}</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click="showEditDialog(row)">{{ $t('app.edit') }}</el-button>
-            <div v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" style="margin-top:4px">
+            <el-button v-if="canManage(row)" size="small" @click="showEditDialog(row)">{{ $t('app.edit') }}</el-button>
+            <div v-if="canManage(row)" style="margin-top:4px">
               <el-button v-if="row.status === 1" size="small" type="warning" @click="handleUnpublish(row)">{{ $t('course.unpublish') }}</el-button>
               <el-button v-else size="small" type="success" @click="handlePublish(row)">{{ $t('bundleList.publish') }}</el-button>
             </div>
-            <el-button v-if="(userRole === 'TEACHER' || userRole === 'ADMIN') && canDelete" size="small" type="danger" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
+            <el-button v-if="canDelete" size="small" type="danger" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>

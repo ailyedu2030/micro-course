@@ -67,9 +67,9 @@
         </el-table-column>
         <el-table-column :label="$t('app.operation')" width="240" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
-            <el-button type="success" link size="small" @click="handleAttendance(row)">{{ $t('teacherOffline.attendanceMgmt') }}</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="success" link size="small" @click="handleAttendance(row)">{{ $t('teacherOffline.attendanceMgmt') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -166,6 +166,21 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 const userStore = useUserStore()
+// 审计 2026-08-14 修复: 离线录播下载必须校验权限。
+// 全站无统一 hasPerm 工具, 采用角色守卫; 后端接口层亦需独立鉴权。
+const userRole = computed(() => userStore.role)
+const DOWNLOAD_OFFLINE_RECORDING = 'DOWNLOAD_OFFLINE_RECORDING'
+function hasPerm(perm) {
+  if (perm === DOWNLOAD_OFFLINE_RECORDING) return userRole.value === 'ADMIN'
+  return false
+}
+function ensureDownloadPermission() {
+  if (!hasPerm(DOWNLOAD_OFFLINE_RECORDING)) {
+    ElMessage.error(t('teacherOffline.noDownloadPerm'))
+    return false
+  }
+  return true
+}
 
 const loading = ref(false)
 const submitLoading = ref(false)

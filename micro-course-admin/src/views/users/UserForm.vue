@@ -484,7 +484,7 @@ const handleSubmit = async () => {
     if (!valid) { submitLoading.value = false; return }
     try {
       const submitData = { ...formData }
-      delete submitData.teacherStatus
+      // P1 修复: teacherStatus 保留在 payload 中，允许编辑时更新教师审核状态
       delete submitData.avatar
       if (isEdit.value) {
         delete submitData.username

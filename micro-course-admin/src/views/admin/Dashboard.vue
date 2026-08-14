@@ -804,7 +804,9 @@ onMounted(async () => {
     loadTrends(),
     loadCategoryStats(),
     loadActivity(),
-    loadLogs()
+    loadLogs(),
+    // P1-C 修复: 课件类型分布此前只在手动刷新/定时刷新时加载，首次进入仪表盘从不展示
+    loadCoursewareDistribution()
   ])
   window.addEventListener('resize', resizeCharts)
   loadHealth()

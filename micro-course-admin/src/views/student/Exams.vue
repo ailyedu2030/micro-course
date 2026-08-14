@@ -90,6 +90,19 @@
                 >
                   {{ $t('examCenter.expired') }}
                 </el-button>
+                <el-tooltip
+                  v-else-if="exam._notStarted"
+                  :content="$t('examCenter.notStartedTip', { startTime: formatTime(exam.examTime) })"
+                  placement="top"
+                >
+                  <el-button
+                    type="info"
+                    size="small"
+                    disabled
+                  >
+                    {{ $t('course.notStarted') }}
+                  </el-button>
+                </el-tooltip>
                 <el-button
                   v-else-if="!exam._passed"
                   type="primary"
@@ -198,6 +211,20 @@
           >
             {{ $t('examCenter.expired') }}
           </el-button>
+          <el-tooltip
+            v-else-if="exam._notStarted"
+            :content="$t('examCenter.notStartedTip', { startTime: formatTime(exam.examTime) })"
+            placement="top"
+          >
+            <el-button
+              type="info"
+              size="small"
+              class="h5-action-btn"
+              disabled
+            >
+              {{ $t('course.notStarted') }}
+            </el-button>
+          </el-tooltip>
           <el-button
             v-else-if="!exam._passed"
             type="primary"
@@ -325,7 +352,9 @@ const fetchExams = async () => {
         ? new Date(new Date(exam.examTime).getTime() + exam.timeLimit * 60000)
         : null
       const expired = examEnd !== null && examEnd < now
-      return { ...exam, _attempted: attempted, _passed: passed, _expired: expired }
+      // 未开考：开考时间在未来 → 按钮置灰"未开始"，禁止提前进入
+      const notStarted = exam.examTime !== null && new Date(exam.examTime).getTime() > now.getTime()
+      return { ...exam, _attempted: attempted, _passed: passed, _expired: expired, _notStarted: notStarted }
     })
   } catch {
     errorState.value = true
@@ -376,6 +405,12 @@ async function checkPrerequisiteChapters(exam) {
 }
 
 const handleJoinExam = async (exam) => {
+  // 深度防御：未开考考试禁止提前进入（按钮已置灰，此处兜底阻止直接导航/刷新场景）
+  if (exam._notStarted) {
+    ElMessage.warning(t('examCenter.notStartedTip', { startTime: formatTime(exam.examTime) }))
+    return
+  }
+
   // P0: 检查前置章节是否全部完成
   const canProceed = await checkPrerequisiteChapters(exam)
   if (!canProceed) {

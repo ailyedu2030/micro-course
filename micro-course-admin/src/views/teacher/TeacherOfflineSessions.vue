@@ -57,9 +57,9 @@
             </el-tooltip>
           </div>
           <div class="session-actions">
-            <el-button size="small" @click="openAttendanceDialog(session)">{{ $t('teacherOffline.attendanceMgmt') }}</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click="openEditDialog(session)">{{ $t('app.edit') }}</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" plain @click="handleDelete(session)">{{ $t('app.delete') }}</el-button>
+            <el-button size="small" @click.stop="openAttendanceDialog(session)">{{ $t('teacherOffline.attendanceMgmt') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click.stop="openEditDialog(session)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" plain @click.stop="handleDelete(session)">{{ $t('app.delete') }}</el-button>
           </div>
         </div>
       </el-card>
