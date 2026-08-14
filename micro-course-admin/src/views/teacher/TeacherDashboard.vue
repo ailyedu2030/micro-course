@@ -32,7 +32,7 @@
         <div class="welcome-date">{{ welcomeDate }}</div>
         <div class="welcome-greeting">
           <span class="greeting-name">{{ userName }}</span>
-          <span class="greeting-suffix">{{ greeting }}</span>
+          <span class="greeting-suffix">{{ $t(greeting) }}</span>
         </div>
       </div>
       <div class="welcome-right">
@@ -143,7 +143,7 @@
                 <el-skeleton-item class="skeleton-value" />
               </template>
               <template #default>
-                <div class="stat-value">{{ Number(stats.avgScore ?? 0).toFixed(1) }} 分</div>
+                <div class="stat-value">{{ Number(stats.avgScore ?? 0).toFixed(1) }} {{ $t('teacherDashboard.scoreUnit') }}</div>
               </template>
             </el-skeleton>
             <div class="stat-label">{{ $t('teacher.avgScore') }}</div>
@@ -156,14 +156,14 @@
     <div class="courseware-distribution" v-if="stats.coursewareDistribution">
       <h3 class="section-title">
         <el-icon><Grid /></el-icon>
-        <span>课件类型分布（5 维度）</span>
+        <span>{{ $t('teacherDashboard.coursewareDist') }}</span>
       </h3>
       <el-row :gutter="12" v-loading="statsLoading">
-        <el-col :xs="12" :sm="8" :md="4" v-for="t in coursewareTypeItems" :key="t.key">
-          <div class="courseware-type-card" :class="`type-${t.key}`">
-            <div class="ctc-label">{{ t.label }}</div>
-            <div class="ctc-value">{{ stats.coursewareDistribution[t.field] ?? 0 }}</div>
-            <div class="ctc-tag" v-if="t.note">{{ t.note }}</div>
+        <el-col :xs="12" :sm="8" :md="4" v-for="item in coursewareTypeItems" :key="item.key">
+          <div class="courseware-type-card" :class="`type-${item.key}`">
+            <div class="ctc-label">{{ $t(item.labelKey) }}</div>
+            <div class="ctc-value">{{ stats.coursewareDistribution[item.field] ?? 0 }}</div>
+            <div class="ctc-tag" v-if="item.noteKey">{{ $t(item.noteKey) }}</div>
           </div>
         </el-col>
       </el-row>
@@ -212,9 +212,9 @@
           <div class="revenue-course-list">
             <div v-for="item in revenueData.courseBreakdown.slice(0, 5)" :key="item.courseId" class="revenue-course-item">
               <span class="rc-title" :title="item.courseTitle">{{ item.courseTitle }}</span>
-              <span class="rc-orders">{{ item.orderCount }} 单</span>
+              <span class="rc-orders">{{ item.orderCount }} {{ $t('teacherDashboard.orderUnit') }}</span>
               <span class="rc-revenue">¥{{ formatRevenue(item.revenue) }}</span>
-              <span class="rc-earnings">净 ¥{{ formatRevenue(item.netEarnings) }}</span>
+              <span class="rc-earnings">{{ $t('teacherDashboard.netPrefix') }} ¥{{ formatRevenue(item.netEarnings) }}</span>
             </div>
           </div>
         </template>
@@ -256,7 +256,7 @@
             <div class="rating-score">{{ ratingData.ratingScore ?? 0 }}</div>
             <div class="rating-score-label">{{ $t('teacherDashboard.ratingScore') }}</div>
             <div class="rating-next" v-if="nextTierInfo">
-              {{ $t('teacherDashboard.distanceNext', { tier: nextTierInfo.label, gap: nextTierInfo.gap }) }}
+              {{ $t('teacherDashboard.distanceNext', { tier: $t(nextTierInfo.labelKey), gap: nextTierInfo.gap }) }}
             </div>
           </div>
           <div class="rating-share">
@@ -345,28 +345,28 @@
 
     <!-- 客户体验修复 v1.7.0: 教师快捷操作区,让"创建课程"等核心入口一目了然 -->
     <div class="quick-actions">
-      <router-link to="/teacher/courses" class="quick-action-card" aria-label="创建新课程">
+      <router-link to="/teacher/courses" class="quick-action-card" :aria-label="$t('teacher.createCourse')">
         <div class="qa-icon qa-icon-primary"><el-icon :size="22"><Plus /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">{{ $t('teacher.createCourse') }}</div>
           <div class="qa-desc">{{ $t('teacher.courseManagement') }}</div>
         </div>
       </router-link>
-      <router-link to="/teacher/teaching-classes" class="quick-action-card" aria-label="管理教学班">
+      <router-link to="/teacher/teaching-classes" class="quick-action-card" :aria-label="$t('teacher.teachingClassTitle')">
         <div class="qa-icon qa-icon-success"><el-icon :size="22"><OfficeBuilding /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">{{ $t('teacher.teachingClassTitle') }}</div>
           <div class="qa-desc">{{ $t('teacher.teachingClass') }}</div>
         </div>
       </router-link>
-      <router-link to="/teacher/students" class="quick-action-card" aria-label="查看学员列表">
+      <router-link to="/teacher/students" class="quick-action-card" :aria-label="$t('teacher.studentManagementTitle')">
         <div class="qa-icon qa-icon-warning"><el-icon :size="22"><User /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">{{ $t('teacher.studentManagementTitle') }}</div>
           <div class="qa-desc">{{ $t('teacher.studentManagement') }}</div>
         </div>
       </router-link>
-      <router-link to="/teacher/grades" class="quick-action-card" aria-label="查看成绩明细">
+      <router-link to="/teacher/grades" class="quick-action-card" :aria-label="$t('teacher.gradeDetail')">
         <div class="qa-icon qa-icon-danger"><el-icon :size="22"><DataAnalysis /></el-icon></div>
         <div class="qa-info">
           <div class="qa-title">{{ $t('teacher.gradeDetail') }}</div>
@@ -406,7 +406,7 @@
                 <el-icon><WarningFilled /></el-icon>
                 <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="studyChartRef" class="chart-container" role="img" aria-label="最近7天学情趋势图"></div>
+              <div v-else ref="studyChartRef" class="chart-container" role="img" :aria-label="$t('teacherDashboard.chartStudyAria')"></div>
             </template>
           </el-skeleton>
         </div>
@@ -423,7 +423,7 @@
                 <el-icon><WarningFilled /></el-icon>
                 <span>{{ $t('teacherDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="activeChartRef" class="chart-container" role="img" aria-label="最近30天学生活跃趋势图"></div>
+              <div v-else ref="activeChartRef" class="chart-container" role="img" :aria-label="$t('teacherDashboard.chartActiveAria')"></div>
             </template>
           </el-skeleton>
         </div>
@@ -512,7 +512,7 @@
               class="course-card-item"
               role="button"
               tabindex="0"
-              :aria-label="`打开课程 ${course.title}`"
+              :aria-label="$t('teacherDashboard.openCourse', { title: course.title })"
               @click="$router.push(`/teacher/courses/${course.id}`)"
               @keydown.enter.prevent="$router.push(`/teacher/courses/${course.id}`)"
               @keydown.space.prevent="$router.push(`/teacher/courses/${course.id}`)"
@@ -544,25 +544,29 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Reading, User, Document, QuestionFilled, VideoPlay, WarningFilled, Finished, Star, Plus, OfficeBuilding, ChatDotRound, Medal, TrendCharts, CircleCheckFilled, CircleCloseFilled, InfoFilled, Tickets, DataAnalysis } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getStats, getStudentActivity, getPendingTasks, getNotifications, getMyCourses } from '@/api/teacher'
 import { getMyRating, getMyTierHistory } from '@/api/teacher-rating'
 import { getTeacherRevenue } from '@/api/teacher'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 
 // 欢迎信息
 const now = new Date()
-const welcomeDate = `${now.getFullYear()}年${now.getMonth() + 1}月${now.getDate()}日 ${['周日', '周一', '周二', '周三', '周四', '周五', '周六'][now.getDay()]}`
-const userName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || '老师')
+const weekDayKeys = ['teachingClass.sun', 'teachingClass.mon', 'teachingClass.tue', 'teachingClass.wed', 'teachingClass.thu', 'teachingClass.fri', 'teachingClass.sat']
+const welcomeDate = `${t('academicDashboard.dateFormat', { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() })} ${t(weekDayKeys[now.getDay()])}`
+const userName = computed(() => userStore.userInfo?.realName || userStore.userInfo?.username || t('teacherDashboard.teacherFallback'))
 const greeting = computed(() => {
   const h = now.getHours()
-  if (h < 12) return '，上午好'
-  if (h < 14) return '，中午好'
-  if (h < 18) return '，下午好'
-  return '，晚上好'
+  if (h < 12) return 'teacher.greetingAM'
+  if (h < 14) return 'teacher.greetingNoon'
+  if (h < 18) return 'teacher.greetingPM'
+  return 'teacher.greetingEvening'
 })
 
 // U-010: 聚合 loading — 5 个分片全部加载完成后关闭全局骨架
@@ -583,11 +587,11 @@ const stats = ref({ courseCount: 0, studentCount: 0, pendingHomework: 0, pending
 
 // F-2026-08-10-06: 5 种课件类型展示项（标签与后端字段一一对应，UI 与契约对齐）
 const coursewareTypeItems = [
-  { key: 'html', label: 'HTML 课件', field: 'htmlCoursewareCourses', note: '可独立' },
-  { key: 'ppt',  label: 'PPT 课件',  field: 'pptCoursewareCourses',  note: '可独立' },
-  { key: 'video', label: '视频课件', field: 'videoCourses', note: '' },
-  { key: 'offline', label: '线下课程', field: 'offlineCourses', note: '' },
-  { key: 'exercise', label: '练习课件', field: 'coursesWithExercises', note: '章节聚合' },
+  { key: 'html', labelKey: 'admin.coursewareTypeLabels.html', field: 'htmlCoursewareCourses', noteKey: 'admin.coursewareTypeNotes.standalone' },
+  { key: 'ppt',  labelKey: 'admin.coursewareTypeLabels.ppt',  field: 'pptCoursewareCourses',  noteKey: 'admin.coursewareTypeNotes.standalone' },
+  { key: 'video', labelKey: 'admin.coursewareTypeLabels.video', field: 'videoCourses', noteKey: '' },
+  { key: 'offline', labelKey: 'admin.coursewareTypeLabels.offline', field: 'offlineCourses', noteKey: '' },
+  { key: 'exercise', labelKey: 'admin.coursewareTypeLabels.exercise', field: 'coursesWithExercises', noteKey: 'admin.coursewareTypeNotes.chapterAggregated' },
 ]
 
 // 学情图表
@@ -656,20 +660,20 @@ const tierIconComponent = computed(() => {
 const nextTierInfo = computed(() => {
   const score = Number(ratingData.value.ratingScore) || 0
   const thresholds = [
-    { tier: 'BRONZE', label: '青铜', min: 0 },
-    { tier: 'SILVER', label: '白银', min: 40 },
-    { tier: 'GOLD', label: '黄金', min: 60 },
-    { tier: 'PLATINUM', label: '铂金', min: 80 }
+    { tier: 'BRONZE', labelKey: 'teacherDashboard.tierBronze', min: 0 },
+    { tier: 'SILVER', labelKey: 'teacherDashboard.tierSilver', min: 40 },
+    { tier: 'GOLD', labelKey: 'teacherDashboard.tierGold', min: 60 },
+    { tier: 'PLATINUM', labelKey: 'teacherDashboard.tierPlatinum', min: 80 }
   ]
   const current = ratingData.value.tier
   const idx = thresholds.findIndex(t => t.tier === current)
   if (idx >= 0 && idx < thresholds.length - 1) {
     const next = thresholds[idx + 1]
-    return { label: next.label, gap: (next.min - score).toFixed(1) }
+    return { labelKey: next.labelKey, gap: (next.min - score).toFixed(1) }
   }
   if (idx === thresholds.length - 1) return null // 已达最高
   // NEW 等级
-  return { label: '青铜', gap: (40 - score).toFixed(1) }
+  return { labelKey: 'teacherDashboard.tierBronze', gap: (40 - score).toFixed(1) }
 })
 // P1-1 已移除重复的 platformShareRate，统一用 platformSharePercent (第 514 行)
 // 定时刷新
@@ -742,16 +746,16 @@ function renderStudyChart(data) {
       boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
       padding: [10, 14]
     },
-    legend: { data: ['学习时长(分钟)', '完成率(%)'], bottom: 0, textStyle: { color: '#909399', fontSize: 12 } },
+    legend: { data: [t('teacherDashboard.chartStudyMinutes'), t('teacherDashboard.chartCompletionRate')], bottom: 0, textStyle: { color: '#909399', fontSize: 12 } },
     grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
     yAxis: [
-      { type: 'value', name: '分钟', minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
+      { type: 'value', name: t('teacherDashboard.chartAxisMinute'), minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
       { type: 'value', name: '%', minInterval: 1, max: 100, axisLine: { show: false }, splitLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } }
     ],
     series: [
       {
-        name: '学习时长(分钟)',
+        name: t('teacherDashboard.chartStudyMinutes'),
         type: 'line',
         smooth: true,
         lineStyle: { width: 3 },
@@ -760,7 +764,7 @@ function renderStudyChart(data) {
         areaStyle: { opacity: 0.12 }
       },
       {
-        name: '完成率(%)',
+        name: t('teacherDashboard.chartCompletionRate'),
         type: 'line',
         smooth: true,
         yAxisIndex: 1,
@@ -790,9 +794,9 @@ function renderActiveChart(data) {
     },
     grid: { left: '3%', right: '4%', bottom: '3%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
-    yAxis: { type: 'value', name: '活跃学员', minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
+    yAxis: { type: 'value', name: t('teacherDashboard.chartActiveUsers'), minInterval: 1, axisLine: { show: false }, splitLine: { lineStyle: { color: '#ebeef5' } }, axisLabel: { color: '#909399' } },
     series: [{
-      name: '活跃学员',
+      name: t('teacherDashboard.chartActiveUsers'),
       type: 'bar',
       data: activeUsers,
       itemStyle: { color: '#409eff', borderRadius: [4, 4, 0, 0] },
@@ -901,7 +905,7 @@ async function startRefresh() {
 }
 
 onMounted(async () => {
-  document.title = '教师工作台 - 微课平台'
+  document.title = `${t('teacher.dashboard')} - ${t('app.title')}`
   await refreshAll()
   window.addEventListener('resize', debouncedResizeCharts)
   refreshTimer = setTimeout(startRefresh, refreshInterval.value)

@@ -7,36 +7,36 @@
 <template>
   <div class="tag-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>标签管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.TagList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏 -->
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
-        <span class="toolbar-title">标签管理</span>
-        <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">新增标签</el-button>
+        <span class="toolbar-title">{{ $t('tagList.title') }}</span>
+        <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">{{ $t('tagList.create') }}</el-button>
       </div>
     </el-card>
 
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无标签数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('tagList.noData')" />
       <el-table v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="name" label="标签名" min-width="150" />
-        <el-table-column prop="color" label="颜色" width="120" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="name" :label="$t('tagList.name')" min-width="150" />
+        <el-table-column prop="color" :label="$t('tagList.color')" width="120" align="center">
           <template #default="{ row }">
             <span class="color-swatch" :style="{ backgroundColor: row.color || '#409eff' }"></span>
             <span class="color-value">{{ row.color || '#409eff' }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="150" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -48,30 +48,30 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="dialogVisible" :title="$t(dialogTitle)" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="标签名" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入标签名" />
+        <el-form-item :label="$t('tagList.name')" prop="name">
+          <el-input v-model="formData.name" :placeholder="$t('tagList.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="颜色" prop="color">
+        <el-form-item :label="$t('tagList.color')" prop="color">
           <div class="color-picker-row">
             <el-color-picker v-model="formData.color" />
             <el-input v-model="formData.color" placeholder="#409eff" class="color-input" />
           </div>
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        <el-form-item :label="$t('tagList.description')" prop="description">
+          <el-input v-model="formData.description" type="textarea" :rows="3" :placeholder="$t('tagList.descriptionPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -79,12 +79,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getTags, createTag, updateTag, deleteTag } from '@/api/tag'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const { t } = useI18n()
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -94,7 +96,7 @@ const page = ref(1)
 const size = ref(10)
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增标签')
+const dialogTitle = ref('tagList.create')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -105,8 +107,8 @@ const formData = reactive({
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入标签名', trigger: 'blur' }],
-  color: [{ required: true, message: '请选择颜色', trigger: 'change' }]
+  name: [{ required: true, message: t('tagList.nameRequired'), trigger: 'blur' }],
+  color: [{ required: true, message: t('tagList.colorRequired'), trigger: 'change' }]
 }
 
 const fetchData = async () => {
@@ -117,7 +119,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取标签列表失败')
+    ElMessage.error(t('tagList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -133,7 +135,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '新增标签'
+  dialogTitle.value = 'tagList.create'
   isEdit.value = false
   currentId.value = null
   formData.name = ''
@@ -143,7 +145,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑标签'
+  dialogTitle.value = 'tagList.edit'
   isEdit.value = true
   currentId.value = row.id
   formData.name = row.name
@@ -154,13 +156,13 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该标签?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('tagList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteTag(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('tagList.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('tagList.deleteFailed'))
     }
   }
 }
@@ -175,15 +177,15 @@ const handleSubmit = async () => {
     try {
       if (isEdit.value) {
         await updateTag(currentId.value, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('tagList.editSuccess'))
       } else {
         await createTag(formData)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('tagList.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('tagList.editFailed') : t('tagList.createFailed'))
     } finally {
       submitLoading.value = false
     }

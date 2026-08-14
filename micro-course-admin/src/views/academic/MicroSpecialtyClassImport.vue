@@ -4,67 +4,67 @@
 -->
 <template>
   <div class="ms-class-import">
-    <el-page-header @back="$router.back()" content="班级导入" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('route.AcademicMicroSpecialtyClassImport')" class="mg-bottom-16" />
 
     <el-card shadow="never" class="import-card" v-loading="importing">
-      <template #header><span>班级导入 · {{ form.microSpecialtyId ? specialtyTitle : '选择微专业' }}</span></template>
+      <template #header><span>{{ $t('classImport.title') }} · {{ form.microSpecialtyId ? specialtyTitle : $t('classImport.selectSpecialty') }}</span></template>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px" class="import-form">
-        <el-form-item label="微专业" prop="microSpecialtyId">
-          <el-select v-model="form.microSpecialtyId" filterable placeholder="请选择微专业" class="full-width" :loading="loadingSpecialties" @change="onSpecialtyChange">
+        <el-form-item :label="$t('classImport.microSpecialty')" prop="microSpecialtyId">
+          <el-select v-model="form.microSpecialtyId" filterable :placeholder="$t('classImport.microSpecialtyPlaceholder')" class="full-width" :loading="loadingSpecialties" @change="onSpecialtyChange">
             <el-option v-for="ms in specialtyOptions" :key="ms.id" :label="ms.title" :value="ms.id" />
-            <template #empty><span class="no-data-hint">暂无可用微专业</span></template>
+            <template #empty><span class="no-data-hint">{{ $t('classImport.noSpecialties') }}</span></template>
           </el-select>
         </el-form-item>
         <!-- P1I-068 修复：添加院系列筛选项，避免班级列表全量加载 -->
-        <el-form-item label="院系列筛">
-          <el-select v-model="departmentFilter" filterable clearable placeholder="请选择院系（筛选）" class="full-width" @change="onDepartmentFilterChange">
+        <el-form-item :label="$t('classImport.departmentFilter')">
+          <el-select v-model="departmentFilter" filterable clearable :placeholder="$t('classImport.departmentPlaceholder')" class="full-width" @change="onDepartmentFilterChange">
             <el-option v-for="d in departmentOptions" :key="d.id" :label="d.name" :value="d.id" />
-            <template #empty><span class="no-data-hint">暂无院系</span></template>
+            <template #empty><span class="no-data-hint">{{ $t('classImport.noDepartments') }}</span></template>
           </el-select>
         </el-form-item>
-        <el-form-item label="班级" prop="classIds">
-          <el-select v-model="form.classIds" multiple filterable :placeholder="form.microSpecialtyId ? '请选择班级（可多选）' : '请先选择微专业'" class="full-width" :loading="loadingClasses" :disabled="!form.microSpecialtyId">
-            <el-option v-for="c in filteredClassOptions" :key="c.id" :label="`${c.name} (${c.departmentName || c.majorName || ''} ${c.studentCount || 0}人)`" :value="c.id" />
-            <template #empty><span class="no-data-hint">暂无可用班级</span></template>
+        <el-form-item :label="$t('classImport.classLabel')" prop="classIds">
+          <el-select v-model="form.classIds" multiple filterable :placeholder="form.microSpecialtyId ? $t('classImport.classPlaceholder') : $t('classImport.selectSpecialtyFirst')" class="full-width" :loading="loadingClasses" :disabled="!form.microSpecialtyId">
+            <el-option v-for="c in filteredClassOptions" :key="c.id" :label="`${c.name} (${c.departmentName || c.majorName || ''} ${c.studentCount || 0}${$t('classImport.personUnit')})`" :value="c.id" />
+            <template #empty><span class="no-data-hint">{{ $t('classImport.noClasses') }}</span></template>
           </el-select>
         </el-form-item>
       </el-form>
       <div class="submit-bar">
-        <el-button type="primary" :loading="importing" :disabled="!form.microSpecialtyId || !form.classIds.length" @click="handleImport">导入</el-button>
+        <el-button type="primary" :loading="importing" :disabled="!form.microSpecialtyId || !form.classIds.length" @click="handleImport">{{ $t('classImport.import') }}</el-button>
       </div>
     </el-card>
 
     <!-- 导入结果 -->
     <el-card v-if="result" shadow="never" class="mg-top-16 result-card">
-      <template #header><span>导入结果</span></template>
+      <template #header><span>{{ $t('classImport.resultTitle') }}</span></template>
       <el-row :gutter="16">
-        <el-col :span="8"><el-result icon="success" title="成功导入" :sub-title="`${successStudentCount} 人`" /></el-col>
-        <el-col :span="8"><el-result icon="success" title="成功班级" :sub-title="`${result.successCount || 0} 个`" /></el-col>
-        <el-col :span="8"><el-result icon="danger" title="失败班级" :sub-title="`${result.failedCount || 0} 个`" /></el-col>
+        <el-col :span="8"><el-result icon="success" :title="$t('classImport.successImport')" :sub-title="`${successStudentCount} ${$t('classImport.personUnit')}`" /></el-col>
+        <el-col :span="8"><el-result icon="success" :title="$t('classImport.successClass')" :sub-title="`${result.successCount || 0} ${$t('classImport.classUnit')}`" /></el-col>
+        <el-col :span="8"><el-result icon="danger" :title="$t('classImport.failedClass')" :sub-title="`${result.failedCount || 0} ${$t('classImport.classUnit')}`" /></el-col>
       </el-row>
-      <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">查看班级明细</el-button>
+      <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">{{ $t('classImport.viewDetail') }}</el-button>
       <div v-if="result.errors && result.errors.length" class="error-list mg-top-12">
-        <h4>失败详情</h4>
+        <h4>{{ $t('classImport.failedDetail') }}</h4>
         <div v-for="(err, i) in result.errors" :key="i" class="error-item">{{ err }}</div>
       </div>
     </el-card>
 
     <!-- 导入明细弹窗 -->
-    <el-dialog v-model="importResultDialogVisible" title="导入结果明细" width="700px">
+    <el-dialog v-model="importResultDialogVisible" :title="$t('classImport.resultDialogTitle')" width="700px">
       <el-tabs v-model="importResultTab">
-        <el-tab-pane label="成功" :name="'success'">
+        <el-tab-pane :label="$t('classImport.tabSuccess')" :name="'success'">
           <el-table :data="importResult.success" stripe border v-if="importResult.success.length">
-            <el-table-column prop="className" label="班级" min-width="120" />
-            <el-table-column prop="studentCount" label="成功导入人数" width="140" />
+            <el-table-column prop="className" :label="$t('classImport.className')" min-width="120" />
+            <el-table-column prop="studentCount" :label="$t('classImport.importedCount')" width="140" />
           </el-table>
-          <el-empty v-else description="暂无成功记录" />
+          <el-empty v-else :description="$t('classImport.noSuccess')" />
         </el-tab-pane>
-        <el-tab-pane label="失败" :name="'failed'">
+        <el-tab-pane :label="$t('classImport.tabFailed')" :name="'failed'">
           <el-table :data="importResult.failed" stripe border v-if="importResult.failed.length">
-            <el-table-column prop="className" label="班级" min-width="120" />
-            <el-table-column prop="errorMsg" label="失败原因" min-width="240" />
+            <el-table-column prop="className" :label="$t('classImport.className')" min-width="120" />
+            <el-table-column prop="errorMsg" :label="$t('classImport.failedReason')" min-width="240" />
           </el-table>
-          <el-empty v-else description="暂无失败记录" />
+          <el-empty v-else :description="$t('classImport.noFailed')" />
         </el-tab-pane>
       </el-tabs>
     </el-dialog>
@@ -73,10 +73,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, classImport } from '@/api/microSpecialty'
 import { getClasses } from '@/api/class'
 import { getDepartments } from '@/api/department'
+
+const { t } = useI18n()
 
 const importing = ref(false)
 const loadingSpecialties = ref(false)
@@ -84,8 +87,8 @@ const loadingClasses = ref(false)
 const formRef = ref(null)
 const form = ref({ microSpecialtyId: null, classIds: [] })
 const rules = {
-  microSpecialtyId: [{ required: true, message: '请选择微专业', trigger: 'change' }],
-  classIds: [{ type: 'array', required: true, message: '请至少选择一个班级', trigger: 'change' }]
+  microSpecialtyId: [{ required: true, message: t('classImport.microSpecialtyRequired'), trigger: 'change' }],
+  classIds: [{ type: 'array', required: true, message: t('classImport.classRequired'), trigger: 'change' }]
 }
 const specialtyOptions = ref([])
 const classOptions = ref([])
@@ -121,7 +124,7 @@ const fetchSpecialties = async () => {
   try {
     const { data } = await getMicroSpecialtyList({ size: 200 })
     specialtyOptions.value = data.items || data || []
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载微专业列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadSpecialtiesFailed')) }
   finally { loadingSpecialties.value = false }
 }
 
@@ -134,7 +137,7 @@ const onSpecialtyChange = async (id) => {
     // 加载所有班级 (学院级, 与微专业无关, 由用户筛选选择)
     const { data } = await getClasses({ size: 1000 })
     classOptions.value = data?.items || data || []
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载班级列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadClassesFailed')) }
   finally { loadingClasses.value = false }
 }
 
@@ -155,9 +158,9 @@ const handleImport = async () => {
   // 二次确认
   try {
     await ElMessageBox.confirm(
-      `确认将 ${form.value.classIds.length} 个班级导入该微专业？此操作会创建修读记录。`,
-      '确认导入',
-      { type: 'warning', confirmButtonText: '确认导入', cancelButtonText: '取消' }
+      t('classImport.confirmImportMsg', { count: form.value.classIds.length }),
+      t('classImport.confirmImportTitle'),
+      { type: 'warning', confirmButtonText: t('classImport.confirmImportTitle'), cancelButtonText: t('common.cancel') }
     )
   } catch { importing.value = false; return }
   try {
@@ -166,8 +169,8 @@ const handleImport = async () => {
     const successList = result.value.successList || []
     const failedList = result.value.failedList || []
     importResult.value = { success: successList, failed: failedList }
-    ElMessage.success('导入完成')
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '导入失败') }
+    ElMessage.success(t('classImport.importSuccess'))
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.importFailed')) }
   finally { importing.value = false }
 }
 
