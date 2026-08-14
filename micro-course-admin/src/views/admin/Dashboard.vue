@@ -22,7 +22,7 @@
           circle
           :loading="isRefreshing"
           class="refresh-btn"
-          aria-label="刷新数据"
+          :aria-label="$t('academicDashboard.refreshAria')"
           @click="handleRefresh"
         />
       </div>
@@ -182,8 +182,8 @@
     <el-card class="chart-card courseware-dist-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>课件类型分布（5 维度）</span>
-          <span class="card-header-tip">HTML / PPT / 视频 / 线下 / 练习（章节聚合）</span>
+          <span>{{ $t('admin.coursewareDist') }}</span>
+          <span class="card-header-tip">{{ $t('admin.coursewareDistTip') }}</span>
         </div>
       </template>
       <el-skeleton :loading="coursewareDistributionLoading" animated :rows="2">
@@ -193,14 +193,14 @@
         <template #default>
           <div v-if="!coursewareDistribution" class="courseware-empty">
             <el-icon><WarningFilled /></el-icon>
-            <span>5 种课件类型分布数据加载失败</span>
+            <span>{{ $t('admin.coursewareDistLoadFailed') }}</span>
           </div>
           <el-row v-else :gutter="12" class="courseware-dist-grid">
             <el-col :xs="12" :sm="8" :md="4" v-for="ct in coursewareTypeItems" :key="ct.key">
               <div class="courseware-dist-item" :class="`ctd-${ct.key}`">
-                <div class="ctd-label">{{ ct.label }}</div>
+                <div class="ctd-label">{{ $t(ct.labelKey) }}</div>
                 <div class="ctd-value">{{ coursewareDistribution[ct.field] ?? 0 }}</div>
-                <div class="ctd-note" v-if="ct.note">{{ ct.note }}</div>
+                <div class="ctd-note" v-if="ct.noteKey">{{ $t(ct.noteKey) }}</div>
               </div>
             </el-col>
           </el-row>
@@ -223,7 +223,7 @@
                 <span>{{ trendsErrorMsg || $t('admin.loadFailed') }}</span>
                 <el-button size="small" text type="primary" @click="loadTrends" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
-              <div v-else ref="trendsChartRef" class="chart-container" role="img" aria-label="核心指标趋势图表,展示用户与课程增长趋势"></div>
+              <div v-else ref="trendsChartRef" class="chart-container" role="img" :aria-label="$t('admin.trendsChartAria')"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -241,7 +241,7 @@
                 <span>{{ categoryErrorMsg || $t('admin.loadFailed') }}</span>
                 <el-button size="small" text type="primary" @click="loadCategoryStats" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
-              <div v-else ref="categoryChartRef" class="chart-container" role="img" aria-label="课程分类分布饼图"></div>
+              <div v-else ref="categoryChartRef" class="chart-container" role="img" :aria-label="$t('admin.categoryChartAria')"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -263,7 +263,7 @@
                 <span>{{ activityErrorMsg || $t('admin.loadFailed') }}</span>
                 <el-button size="small" text type="primary" @click="loadActivity" style="margin-top:8px">{{ $t('common.retry') }}</el-button>
               </div>
-              <div v-else ref="activityChartRef" class="chart-container" role="img" aria-label="最近30天活跃用户趋势图"></div>
+              <div v-else ref="activityChartRef" class="chart-container" role="img" :aria-label="$t('admin.activityChartAria')"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -323,13 +323,13 @@
               </span>
             </div>
             <div class="health-item">
-              <span class="health-label">磁盘</span>
+              <span class="health-label">{{ $t('admin.healthDisk') }}</span>
               <span class="health-value" :class="health.disk === 'OK' ? 'status-ok' : 'status-warn'">
                 {{ health.disk }}
               </span>
             </div>
             <div class="health-item">
-              <span class="health-label">内存</span>
+              <span class="health-label">{{ $t('admin.healthMemory') }}</span>
               <span class="health-value" :class="health.memory === 'OK' ? 'status-ok' : 'status-warn'">
                 {{ health.memory }}
               </span>
@@ -361,7 +361,7 @@ const router = useRouter()
 const now = ref(new Date())
 const welcomeDate = computed(() => {
   const d = now.value
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+  return t('academicDashboard.dateFormat', { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() })
 })
 const greeting = computed(() => {
   const h = now.value.getHours()
@@ -423,11 +423,11 @@ const statsLoading = ref(true)
 const coursewareDistributionLoading = ref(false)
 const coursewareDistribution = ref(null)
 const coursewareTypeItems = [
-  { key: 'html', label: 'HTML 课件', field: 'htmlCoursewareCourses', icon: 'Document', note: '可独立' },
-  { key: 'ppt',  label: 'PPT 课件',  field: 'pptCoursewareCourses',  icon: 'Picture',  note: '可独立' },
-  { key: 'video', label: '视频课件', field: 'videoCourses', icon: 'VideoPlay', note: '' },
-  { key: 'offline', label: '线下课程', field: 'offlineCourses', icon: 'Calendar', note: '' },
-  { key: 'exercise', label: '练习课件', field: 'coursesWithExercises', icon: 'Edit', note: '章节聚合' },
+  { key: 'html', labelKey: 'admin.coursewareTypeLabels.html', field: 'htmlCoursewareCourses', icon: 'Document', noteKey: 'admin.coursewareTypeNotes.standalone' },
+  { key: 'ppt',  labelKey: 'admin.coursewareTypeLabels.ppt',  field: 'pptCoursewareCourses',  icon: 'Picture',  noteKey: 'admin.coursewareTypeNotes.standalone' },
+  { key: 'video', labelKey: 'admin.coursewareTypeLabels.video', field: 'videoCourses', icon: 'VideoPlay', noteKey: '' },
+  { key: 'offline', labelKey: 'admin.coursewareTypeLabels.offline', field: 'offlineCourses', icon: 'Calendar', noteKey: '' },
+  { key: 'exercise', labelKey: 'admin.coursewareTypeLabels.exercise', field: 'coursesWithExercises', icon: 'Edit', noteKey: 'admin.coursewareTypeNotes.chapterAggregated' },
 ]
 
 const stats = ref({})
@@ -601,7 +601,7 @@ async function loadTrends() {
     renderTrendsChart(data)
   } catch (e) {
     trendsError.value = true
-    trendsErrorMsg.value = e?.message || e?.toString?.() || '趋势数据加载失败'
+    trendsErrorMsg.value = e?.message || e?.toString?.() || t('admin.trendsLoadFailed')
     ElMessage.error(t('admin.loadFailed'))
     trendsLoading.value = false
     await nextTick()
@@ -623,13 +623,13 @@ function renderTrendsChart(data) {
       textStyle: { color: '#1E293B' },
       extraCssText: 'border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.08);'
     },
-    legend: { data: ['用户', '课程', '学员'], bottom: 0, textStyle: { color: '#64748B' } },
+    legend: { data: [t('admin.trendLegendUsers'), t('admin.trendLegendCourses'), t('admin.trendLegendStudents')], bottom: 0, textStyle: { color: '#64748B' } },
     grid: { left: '3%', right: '4%', bottom: '12%', top: '8%', containLabel: true },
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
     yAxis: { type: 'value', name: t('admin.stats.courses'), minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [
       {
-        name: '用户',
+        name: t('admin.trendLegendUsers'),
         type: 'line',
         smooth: true,
         data: (data.users || []).map(item => item.newUsers ?? 0),
@@ -638,7 +638,7 @@ function renderTrendsChart(data) {
         areaStyle: { opacity: 0.12 }
       },
       {
-        name: '课程',
+        name: t('admin.trendLegendCourses'),
         type: 'line',
         smooth: true,
         data: (data.courses || []).map(item => item.newCourses ?? 0),
@@ -647,7 +647,7 @@ function renderTrendsChart(data) {
         areaStyle: { opacity: 0.12 }
       },
       {
-        name: '学员',
+        name: t('admin.trendLegendStudents'),
         type: 'line',
         smooth: true,
         data: (data.students || []).map(item => item.count ?? 0),
@@ -676,7 +676,7 @@ async function loadCategoryStats() {
     renderCategoryChart(items)
   } catch (e) {
     categoryError.value = true
-    categoryErrorMsg.value = e?.message || e?.toString?.() || '分类数据加载失败'
+    categoryErrorMsg.value = e?.message || e?.toString?.() || t('admin.categoryLoadFailed')
     categoryLoading.value = false
     await nextTick()
     renderCategoryChart([])
@@ -722,7 +722,7 @@ async function loadActivity() {
     renderActivityChart(items)
   } catch (e) {
     activityError.value = true
-    activityErrorMsg.value = e?.message || e?.toString?.() || '活跃数据加载失败'
+    activityErrorMsg.value = e?.message || e?.toString?.() || t('admin.activityLoadFailed')
     activityLoading.value = false
     await nextTick()
     renderActivityChart([])
@@ -748,7 +748,7 @@ function renderActivityChart(data) {
     xAxis: { type: 'category', data: dates, boundaryGap: false, axisLine: { lineStyle: { color: '#F1F5F9' } }, splitLine: { show: false } },
     yAxis: { type: 'value', name: t('admin.stats.activeUsers'), minInterval: 1, axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#F1F5F9' } }, axisLabel: { color: '#94A3B8' } },
     series: [{
-      name: '活跃用户',
+      name: t('admin.stats.activeUsers'),
       type: 'line',
       smooth: true,
       data: activeUsers,
@@ -798,7 +798,7 @@ function resizeCharts() {
 }
 
 onMounted(async () => {
-  document.title = '管理后台 - 微课平台'
+  document.title = `${t('route.AdminDashboard')} - ${t('app.title')}`
   await Promise.all([
     loadStats(),
     loadTrends(),

@@ -10,12 +10,12 @@
     <template v-if="!isMobile">
       <!-- 面包屑导航 -->
       <el-breadcrumb separator="→" class="page-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>我的评价</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('course.home') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ $t('student.myReviews') }}</el-breadcrumb-item>
       </el-breadcrumb>
 
       <div class="page-header">
-        <h2 class="page-title">我的评价</h2>
+        <h2 class="page-title">{{ $t('student.myReviews') }}</h2>
         <span v-if="pagination.totalElements > 0" class="count-badge">{{ pagination.totalElements }}</span>
       </div>
 
@@ -23,8 +23,8 @@
       <div class="filter-bar">
         <el-select
           v-model="filterCourseId"
-          placeholder="筛选课程"
-          aria-label="按课程筛选"
+          :placeholder="$t('myReviews.filterCoursePlaceholder')"
+          :aria-label="$t('myReviews.filterAria')"
           clearable
           class="course-filter"
           @change="handleFilterChange"
@@ -45,38 +45,38 @@
         </div>
         <template v-else>
           <el-table :data="reviews" class="data-table review-table" stripe border>
-            <el-table-column label="课程" min-width="180">
+            <el-table-column :label="$t('course.title')" min-width="180">
               <template #default="{ row }">
                 <router-link :to="`/student/courses/${row.courseId}`" class="course-link">
-                  {{ row.courseTitle || `课程 #${row.courseId}` }}
+                  {{ row.courseTitle || $t('myReviews.courseFallback', { id: row.courseId }) }}
                 </router-link>
               </template>
             </el-table-column>
-            <el-table-column label="评分" width="100" align="center">
+            <el-table-column :label="$t('course.rating')" width="100" align="center">
               <template #default="{ row }">
                 <el-rate v-model="row.rating" disabled size="small" />
               </template>
             </el-table-column>
-            <el-table-column label="类型" width="70" align="center">
+            <el-table-column :label="$t('app.type')" width="70" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.parentId" type="info" size="small">回复</el-tag>
-                <el-tag v-else type="info" size="small">评价</el-tag>
+                <el-tag v-if="row.parentId" type="info" size="small">{{ $t('course.reply') }}</el-tag>
+                <el-tag v-else type="info" size="small">{{ $t('course.review') }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="评价内容" min-width="200" show-overflow-tooltip>
+            <el-table-column :label="$t('myReviews.contentLabel')" min-width="200" show-overflow-tooltip>
               <template #default="{ row }">
-                {{ row.content || '暂无评价内容' }}
+                {{ row.content || $t('myReviews.noContent') }}
               </template>
             </el-table-column>
-            <el-table-column label="评价时间" width="120" align="center">
+            <el-table-column :label="$t('myReviews.timeLabel')" width="120" align="center">
               <template #default="{ row }">
                 {{ formatTime(row.createdAt) }}
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="80" align="center" fixed="right">
+            <el-table-column :label="$t('app.operation')" width="80" align="center" fixed="right">
               <template #default="{ row }">
                 <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
-                  删除
+                  {{ $t('app.delete') }}
                 </el-button>
               </template>
             </el-table-column>
@@ -84,13 +84,13 @@
         </template>
 
         <div v-if="reviews.length === 0 && !loading" class="empty-wrap">
-          <el-empty description="暂无评价记录" />
+          <el-empty :description="$t('myReviews.noData')" />
         </div>
 
         <div v-if="errorState" class="error-wrap">
-          <el-result icon="error" title="加载失败" sub-title="请稍后重试">
+          <el-result icon="error" :title="$t('myReviews.loadFailed')" :sub-title="$t('myReviews.loadFailedSubtitle')">
             <template #extra>
-              <el-button type="primary" @click="fetchMyReviews">重新加载</el-button>
+              <el-button type="primary" @click="fetchMyReviews">{{ $t('myReviews.reload') }}</el-button>
             </template>
           </el-result>
         </div>
@@ -103,7 +103,7 @@
             :page-sizes="[10, 20, 50]"
             layout="total, sizes, prev, pager, next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航"
+            @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         </div>
       </el-card>
@@ -113,12 +113,12 @@
     <template v-else>
       <!-- 面包屑导航 -->
       <el-breadcrumb separator="→" class="h5-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>我的评价</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('course.home') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ $t('student.myReviews') }}</el-breadcrumb-item>
       </el-breadcrumb>
 
       <div class="h5-header">
-        <h2 class="h5-title">我的评价</h2>
+        <h2 class="h5-title">{{ $t('student.myReviews') }}</h2>
         <span v-if="pagination.totalElements > 0" class="h5-count-badge">{{ pagination.totalElements }}</span>
       </div>
 
@@ -133,7 +133,7 @@
             role="button"
             tabindex="0"
             :aria-pressed="filterCourseId === item.id"
-            :aria-label="`筛选课程 ${item.title}`"
+            :aria-label="$t('myReviews.filterChipAria', { title: item.title })"
             @click="handleChipClick(item.id)"
             @keydown.enter="handleChipClick(item.id)"
             @keydown.space.prevent="handleChipClick(item.id)"
@@ -153,17 +153,17 @@
             <div v-for="row in reviews" :key="row.id" class="review-card">
               <div class="review-card-header">
                 <router-link :to="`/student/courses/${row.courseId}`" class="h5-course-link">
-                  {{ row.courseTitle || `课程 #${row.courseId}` }}
+                  {{ row.courseTitle || $t('myReviews.courseFallback', { id: row.courseId }) }}
                 </router-link>
                 <el-button type="danger" size="small" text class="btn-delete" @click="handleDelete(row)">
-                  删除
+                  {{ $t('app.delete') }}
                 </el-button>
               </div>
               <div class="review-card-rating">
                 <el-rate v-model="row.rating" disabled size="small" />
               </div>
               <div class="review-card-content">
-                {{ row.content || '暂无评价内容' }}
+                {{ row.content || $t('myReviews.noContent') }}
               </div>
               <div class="review-card-footer">
                 <span class="review-card-time">{{ formatTime(row.createdAt) }}</span>
@@ -171,14 +171,14 @@
             </div>
           </template>
           <div v-else-if="!errorState" class="h5-empty-wrap">
-            <el-empty description="暂无评价记录" />
+            <el-empty :description="$t('myReviews.noData')" />
           </div>
         </template>
 
         <div v-if="errorState" class="h5-error-wrap">
-          <el-result icon="error" title="加载失败" sub-title="请稍后重试">
+          <el-result icon="error" :title="$t('myReviews.loadFailed')" :sub-title="$t('myReviews.loadFailedSubtitle')">
             <template #extra>
-              <el-button type="primary" size="small" @click="fetchMyReviews">重新加载</el-button>
+              <el-button type="primary" size="small" @click="fetchMyReviews">{{ $t('myReviews.reload') }}</el-button>
             </template>
           </el-result>
         </div>
@@ -193,7 +193,7 @@
           :page-sizes="[10, 20, 50]"
           layout="prev, pager, next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </template>
@@ -202,12 +202,14 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviews, getMyReviews } from '@/api/course-review'
 import { deleteReview } from '@/api/review'
 import { useUserStore } from '@/store/user'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const loading = ref(false)
 const reviews = ref([])
@@ -285,7 +287,7 @@ const fetchMyReviews = async () => {
     reviews.value = filtered.slice(start, start + pagination.value.size)
   } catch {
     errorState.value = true
-    ElMessage.error('加载评价失败')
+    ElMessage.error(t('myReviews.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -293,18 +295,18 @@ const fetchMyReviews = async () => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除这条评价吗？', '提示', {
-      confirmButtonText: '删除',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('myReviews.confirmDelete'), t('course.hintTitle'), {
+      confirmButtonText: t('app.delete'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     // R1 P0 修复:必须真实调用删除 API
     await deleteReview(row.id)
-    ElMessage.success('评价已删除')
+    ElMessage.success(t('myReviews.deleteSuccess'))
     fetchMyReviews()
   } catch (err) {
     if (err === 'cancel') return
-    ElMessage.error('删除评价失败,请稍后重试')
+    ElMessage.error(t('myReviews.deleteFailed'))
   }
 }
 
