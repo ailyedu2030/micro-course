@@ -4,56 +4,56 @@
 -->
 <template>
   <div class="ms-proposal-review">
-    <el-page-header @back="$router.back()" content="申报审核" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('microSpecialtyProposalReview.pageTitle')" class="mg-bottom-16" />
 
     <el-tabs v-model="activeTab" @tab-change="() => { page = 1; fetchData() }">
-      <el-tab-pane label="待审批" name="PENDING" />
-      <el-tab-pane label="全部" name="ALL" />
+      <el-tab-pane :label="$t('microSpecialtyProposalReview.tabPending')" name="PENDING" />
+      <el-tab-pane :label="$t('app.all')" name="ALL" />
     </el-tabs>
 
     <el-card shadow="never">
-      <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
-        <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
+      <el-alert v-if="error" :title="$t('microSpecialtyManage.loadFailed')" type="error" show-icon :closable="false" class="mg-bottom-12">
+        <template #default><el-button size="small" @click="fetchData">{{ $t('common.retry') }}</el-button></template>
       </el-alert>
       <!-- P2-11: 批量审批操作栏（仅待审批状态可选） -->
       <div v-if="activeTab === 'PENDING'" class="batch-bar">
         <el-button size="small" type="success" :disabled="!selectedIds.length" :loading="batchActing" @click="handleBatchApprove">
-          批量批准（{{ selectedIds.length }}）
+          {{ $t('microSpecialtyProposalReview.batchApprove', { count: selectedIds.length }) }}
         </el-button>
         <el-button size="small" type="danger" :disabled="!selectedIds.length" :loading="batchActing" @click="handleBatchReject">
-          批量驳回（{{ selectedIds.length }}）
+          {{ $t('microSpecialtyProposalReview.batchReject', { count: selectedIds.length }) }}
         </el-button>
-        <span v-if="selectedIds.length" class="batch-hint">已选 {{ selectedIds.length }} 条待审批申报</span>
+        <span v-if="selectedIds.length" class="batch-hint">{{ $t('microSpecialtyProposalReview.batchHint', { count: selectedIds.length }) }}</span>
       </div>
       <el-table v-loading="loading" :data="items" stripe border @selection-change="handleSelectionChange">
         <template #empty>
-          <el-empty description="暂无待审批申报">
-            <el-button type="primary" @click="$router.push('/academic/micro-specialties/proposals?tab=ALL')">查看全部申报</el-button>
+          <el-empty :description="$t('microSpecialtyProposalReview.emptyPending')">
+            <el-button type="primary" @click="$router.push('/academic/micro-specialties/proposals?tab=ALL')">{{ $t('microSpecialtyProposalReview.viewAll') }}</el-button>
           </el-empty>
         </template>
         <el-table-column type="selection" width="50" :selectable="row => row.status === 'PENDING_REVIEW'" />
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="collegeName" label="学院" width="120" />
-        <el-table-column prop="applicantName" label="申请人" width="100" />
-        <el-table-column prop="semester" label="建议学期" width="120" />
-        <el-table-column label="状态" width="120" align="center">
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="collegeName" :label="$t('microSpecialtyProposalReview.college')" width="120" />
+        <el-table-column prop="applicantName" :label="$t('microSpecialtyProposalReview.applicant')" width="100" />
+        <el-table-column prop="semester" :label="$t('microSpecialtyProposalReview.suggestedSemester')" width="120" />
+        <el-table-column :label="$t('app.status')" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="提交时间" width="130" align="center" :formatter="$formatDateTime">
+        <el-table-column prop="createdAt" :label="$t('microSpecialtyProposalReview.submittedAt')" width="130" align="center" :formatter="$formatDateTime">
           <template #default="{ row }">{{ $formatDate(row.createdAt) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="320" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="320" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
-              <el-button size="small" @click="showDetail(row)">查看</el-button>
-              <el-button size="small" @click="goPreview(row)">预览</el-button>
-              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
-              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
+              <el-button size="small" @click="showDetail(row)">{{ $t('course.view') }}</el-button>
+              <el-button size="small" @click="goPreview(row)">{{ $t('microSpecialtyProposalReview.preview') }}</el-button>
+              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">{{ $t('microSpecialtyProposalReview.approve') }}</el-button>
+              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">{{ $t('microSpecialtyProposalReview.reject') }}</el-button>
             </template>
             <template v-else>
-              <el-button size="small" @click="goPreview(row)">预览</el-button>
+              <el-button size="small" @click="goPreview(row)">{{ $t('microSpecialtyProposalReview.preview') }}</el-button>
             </template>
           </template>
         </el-table-column>
@@ -71,29 +71,29 @@
     </el-card>
 
     <!-- 驳回原因 Dialog -->
-    <el-dialog v-model="rejectVisible" title="驳回原因" width="480px">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit />
+    <el-dialog v-model="rejectVisible" :title="$t('microSpecialtyProposalReview.rejectReasonTitle')" width="480px">
+      <el-input v-model="rejectReason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyProposalReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit />
       <template #footer>
-        <el-button @click="rejectVisible = false">取消</el-button>
-        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
+        <el-button @click="rejectVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">{{ $t('microSpecialtyProposalReview.confirmReject') }}</el-button>
       </template>
     </el-dialog>
     <!-- 查看详情 Dialog -->
-    <el-dialog v-model="detailVisible" title="申报详情" width="560px">
+    <el-dialog v-model="detailVisible" :title="$t('microSpecialtyProposalReview.detailTitle')" width="560px">
       <div class="detail-grid" v-if="detailRow">
-        <div class="detail-item"><label>标题</label><span>{{ detailRow.title }}</span></div>
-        <div class="detail-item"><label>学院</label><span>{{ detailRow.collegeName || '-' }}</span></div>
-        <div class="detail-item"><label>申请人</label><span>{{ detailRow.applicantName || '-' }}</span></div>
-        <div class="detail-item"><label>建议学期</label><span>{{ detailRow.semester || '-' }}</span></div>
-        <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
-        <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
-        <div class="detail-item full-width"><label>说明</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>培养目标</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>准入门槛</label><span>{{ detailRow.prerequisites || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('course.tableTitle') }}</label><span>{{ detailRow.title }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyProposalReview.college') }}</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyProposalReview.applicant') }}</label><span>{{ detailRow.applicantName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyProposalReview.suggestedSemester') }}</label><span>{{ detailRow.semester || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyProposalReview.maxStudents') }}</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('app.status') }}</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
+        <div class="detail-item full-width"><label>{{ $t('microSpecialtyManage.description') }}</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>{{ $t('microSpecialtyManage.trainingObjective') }}</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>{{ $t('microSpecialtyManage.admissionRequirement') }}</label><span>{{ detailRow.prerequisites || '-' }}</span></div>
       </div>
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
-        <el-button type="primary" @click="goPreview(detailRow); detailVisible = false">预览申报表</el-button>
+        <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
+        <el-button type="primary" @click="goPreview(detailRow); detailVisible = false">{{ $t('microSpecialtyProposalReview.previewProposal') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -101,6 +101,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllProposals, approveProposal, rejectProposal, batchApproveProposals, batchRejectProposals } from '@/api/microSpecialty'
@@ -111,6 +112,7 @@ const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
+const { t } = useI18n()
 // 直接读 role，不通过函数（避免 Vite tree-shake 把 userStore 去掉了）
 const userStore = useUserStore()
 const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
@@ -135,20 +137,20 @@ const handleSelectionChange = (rows) => {
 const handleBatchApprove = async () => {
   if (!selectedIds.value.length) return
   try {
-    await ElMessageBox.confirm(`确定批量批准选中的 ${selectedIds.value.length} 条申报？`, '批量批准', {
-      confirmButtonText: '批量批准',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('microSpecialtyProposalReview.confirmBatchApprove', { count: selectedIds.value.length }), t('microSpecialtyProposalReview.batchApproveTitle'), {
+      confirmButtonText: t('microSpecialtyProposalReview.batchApproveTitle'),
+      cancelButtonText: t('common.cancel'),
       type: 'info'
     })
   } catch { return }
   batchActing.value = true
   try {
     const { data } = await batchApproveProposals(selectedIds.value)
-    ElMessage.success(`批量批准完成：成功 ${data.successCount}，失败 ${data.failCount}`)
+    ElMessage.success(t('microSpecialtyProposalReview.batchApproveDone', { success: data.successCount, fail: data.failCount }))
     selectedIds.value = []
     fetchData()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '批量批准失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposalReview.batchApproveFailed'))
   } finally {
     batchActing.value = false
   }
@@ -158,22 +160,22 @@ const handleBatchReject = async () => {
   if (!selectedIds.value.length) return
   let reason
   try {
-    const res = await ElMessageBox.prompt('请输入统一的驳回原因（至少 10 字）', '批量驳回', {
-      confirmButtonText: '批量驳回',
-      cancelButtonText: '取消',
+    const res = await ElMessageBox.prompt(t('microSpecialtyProposalReview.batchRejectPrompt'), t('microSpecialtyProposalReview.batchRejectTitle'), {
+      confirmButtonText: t('microSpecialtyProposalReview.batchRejectTitle'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputValidator: v => (v && v.trim().length >= 10) ? true : '驳回原因至少 10 个字符'
+      inputValidator: v => (v && v.trim().length >= 10) ? true : t('microSpecialtyProposalReview.rejectReasonMin')
     })
     reason = res.value.trim()
   } catch { return }
   batchActing.value = true
   try {
     const { data } = await batchRejectProposals(selectedIds.value, reason)
-    ElMessage.success(`批量驳回完成：成功 ${data.successCount}，失败 ${data.failCount}`)
+    ElMessage.success(t('microSpecialtyProposalReview.batchRejectDone', { success: data.successCount, fail: data.failCount }))
     selectedIds.value = []
     fetchData()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '批量驳回失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposalReview.batchRejectFailed'))
   } finally {
     batchActing.value = false
   }
@@ -181,9 +183,9 @@ const handleBatchReject = async () => {
 
 const showDetail = (row) => { detailRow.value = row; detailVisible.value = true }
 
-const statusMap = { PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+const statusKeyMap = { PENDING_REVIEW: 'microSpecialtyProposalReview.statusPendingReview', APPROVED: 'course.approved', REJECTED: 'microSpecialtyManage.statusRejected', WITHDRAWN: 'microSpecialtyProposalReview.statusWithdrawn' }
 const statusTypeMap = { PENDING_REVIEW: 'warning', APPROVED: 'success', REJECTED: 'danger', WITHDRAWN: 'info' }
-const statusLabel = (s) => statusMap[s] || s
+const statusLabel = (s) => (statusKeyMap[s] ? t(statusKeyMap[s]) : s)
 const statusType = (s) => statusTypeMap[s] || 'info'
 
 const fetchData = async () => {
@@ -201,7 +203,7 @@ const fetchData = async () => {
     // 静默忽略,不显示错误也不报console
     if (e?.response?.status !== 403) {
       error.value = true
-      ElMessage.error('加载失败')
+      ElMessage.error(t('microSpecialtyManage.loadFailed'))
     }
   }
   finally { loading.value = false }
@@ -209,25 +211,25 @@ const fetchData = async () => {
 
 const handleApprove = async (row) => {
   if (!hasAccess) return
-  try { await ElMessageBox.confirm(`确定批准「${row.title}」的申报？`, '确认批准', { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyProposalReview.confirmApproveMsg', { title: row.title }), t('microSpecialtyProposalReview.confirmApproveTitle'), { type: 'info', confirmButtonText: t('microSpecialtyProposalReview.approve'), cancelButtonText: t('common.cancel') }) }
   catch { return }
   actingId.value = row.id
-  try { await approveProposal(row.id); ElMessage.success('已批准'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await approveProposal(row.id); ElMessage.success(t('microSpecialtyProposalReview.approved')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }
 
 const handleReject = async (row) => {
   if (!hasAccess) return
-  try { await ElMessageBox.confirm(`确定驳回「${row.title}」的申报？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyProposalReview.confirmRejectMsg', { title: row.title }), t('microSpecialtyProposalReview.confirmReject'), { type: 'warning', confirmButtonText: t('microSpecialtyProposalReview.reject'), cancelButtonText: t('common.cancel') }) }
   catch { return }
   rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
 }
 const confirmReject = async () => {
   if (!hasAccess) return
   actingId.value = rejectTarget.value.id
-  try { await rejectProposal(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await rejectProposal(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }
 
