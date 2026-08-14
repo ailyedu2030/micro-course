@@ -12,39 +12,39 @@
       <el-card class="toolbar-card" shadow="never">
         <div class="toolbar">
           <div class="left-info">
-            <h1 class="page-title">章节讨论</h1>
+            <h1 class="page-title">{{ $t('discussion.chapterDiscussion') }}</h1>
             <div v-if="!chapterId" class="chapter-selector">
-              <el-select v-model="selectedCourseId" placeholder="选择课程" clearable size="small" style="width:200px;margin-right:8px" aria-label="选择课程" @change="handleCourseChange">
+              <el-select v-model="selectedCourseId" :placeholder="$t('course.selectCourse')" clearable size="small" style="width:200px;margin-right:8px" :aria-label="$t('course.selectCourse')" @change="handleCourseChange">
                 <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
               </el-select>
-              <el-select v-model="routeQuery.chapterId" placeholder="选择章节" clearable size="small" style="width:200px" :disabled="!selectedCourseId" aria-label="选择章节" @change="handleChapterSelect">
+              <el-select v-model="routeQuery.chapterId" :placeholder="$t('course.selectChapter')" clearable size="small" style="width:200px" :disabled="!selectedCourseId" :aria-label="$t('course.selectChapter')" @change="handleChapterSelect">
                 <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
               </el-select>
             </div>
           </div>
-          <el-button type="primary" :disabled="!chapterId" @click="openPostDialog">发布帖子</el-button>
+          <el-button type="primary" :disabled="!chapterId" @click="openPostDialog">{{ $t('discussion.publishPost') }}</el-button>
         </div>
       </el-card>
 
       <!-- 帖子列表 -->
       <el-card class="table-card" shadow="never">
         <el-table v-loading="loading" :aria-busy="loading" :data="tableData" class="data-table" stripe border>
-          <el-table-column prop="title" label="标题" min-width="180">
+          <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180">
             <template #default="{ row }">
               <el-link type="primary" @click="viewDetail(row)">{{ row.title }}</el-link>
             </template>
           </el-table-column>
-          <el-table-column prop="authorName" label="作者" width="120" align="center">
+          <el-table-column prop="authorName" :label="$t('discussion.author')" width="120" align="center">
             <template #default="{ row }">
-              {{ row.isAnonymous ? '匿名用户' : row.authorName }}
+              {{ row.isAnonymous ? $t('course.anonymousUser') : row.authorName }}
             </template>
           </el-table-column>
-          <el-table-column prop="replyCount" label="回复数" width="100" align="center" />
-          <el-table-column prop="likeCount" label="点赞" width="80" align="center" />
-          <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime" />
+          <el-table-column prop="replyCount" :label="$t('discussion.replyCount')" width="100" align="center" />
+          <el-table-column prop="likeCount" :label="$t('discussion.likeCount')" width="80" align="center" />
+          <el-table-column prop="createdAt" :label="$t('discussion.publishedAt')" width="170" :formatter="$formatDateTime" />
         </el-table>
         <!-- P0-6: PC 端空状态 -->
-        <el-empty v-if="!loading && tableData.length === 0" description="暂无帖子" />
+        <el-empty v-if="!loading && tableData.length === 0" :description="$t('discussion.noPosts')" />
         <div class="pagination-wrap">
           <el-pagination
             v-model:current-page="page"
@@ -53,12 +53,12 @@
             :page-sizes="[10, 20, 50]"
             layout="total,prev,pager,next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航"
+            @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
           <div class="page-size-wrap">
-            <label for="disc-pc-page-size" class="sr-only">每页条数</label>
-            <el-select id="disc-pc-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
-              <el-option v-for="s in [10, 20, 50]" :key="s" :label="`${s}条/页`" :value="s" />
+            <label for="disc-pc-page-size" class="sr-only">{{ $t('course.perPage') }}</label>
+            <el-select id="disc-pc-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" :aria-label="$t('course.perPage')">
+              <el-option v-for="s in [10, 20, 50]" :key="s" :label="$t('course.perPageOption', { count: s })" :value="s" />
             </el-select>
           </div>
         </div>
@@ -69,8 +69,8 @@
     <template v-else>
       <!-- 紧凑顶栏 -->
       <div class="h5-toolbar">
-        <h1 class="page-title">章节讨论</h1>
-        <el-button type="primary" size="small" @click="openPostDialog">发布帖子</el-button>
+        <h1 class="page-title">{{ $t('discussion.chapterDiscussion') }}</h1>
+        <el-button type="primary" size="small" @click="openPostDialog">{{ $t('discussion.publishPost') }}</el-button>
       </div>
 
       <!-- 卡片列表 -->
@@ -86,18 +86,18 @@
             shadow="never"
             role="button"
             tabindex="0"
-            :aria-label="`帖子：${row.title}，${row.replyCount} 回复`"
+            :aria-label="$t('discussion.postCardAria', { title: row.title, count: row.replyCount })"
             @click="viewDetail(row)"
             @keydown.enter="viewDetail(row)"
             @keydown.space.prevent="viewDetail(row)"
           >
             <div class="post-card-title">{{ row.title }}</div>
             <div class="post-card-meta">
-              <span class="author">{{ row.isAnonymous ? '匿名用户' : row.authorName }}</span>
-              <span class="reply-count">{{ row.replyCount }} 回复</span>
+              <span class="author">{{ row.isAnonymous ? $t('course.anonymousUser') : row.authorName }}</span>
+              <span class="reply-count">{{ $t('discussion.replyCountSuffix', { count: row.replyCount }) }}</span>
             </div>
           </el-card>
-          <el-empty v-if="tableData.length === 0" description="暂无帖子" />
+          <el-empty v-if="tableData.length === 0" :description="$t('discussion.noPosts')" />
         </template>
       </div>
 
@@ -110,42 +110,42 @@
           :page-sizes="[10, 20, 50]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </template>
 
     <!-- 发帖弹窗 -->
-    <el-dialog v-model="postDialogVisible" title="发布帖子" width="500px" @close="resetPostForm" :close-on-press-escape="true">
+    <el-dialog v-model="postDialogVisible" :title="$t('discussion.publishPost')" width="500px" @close="resetPostForm" :close-on-press-escape="true">
       <el-form :model="postForm" :rules="postRules" ref="postFormRef" label-width="80px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="postForm.title" placeholder="请输入帖子标题" maxlength="200" show-word-limit aria-label="帖子标题" />
+        <el-form-item :label="$t('course.tableTitle')" prop="title">
+          <el-input v-model="postForm.title" :placeholder="$t('discussion.inputTitlePlaceholder')" maxlength="200" show-word-limit :aria-label="$t('discussion.postTitle')" />
         </el-form-item>
-        <el-form-item label="内容" prop="content">
+        <el-form-item :label="$t('discussion.content')" prop="content">
           <el-input
             v-model="postForm.content"
             type="textarea"
             :rows="5"
-            placeholder="请输入帖子内容"
+            :placeholder="$t('discussion.inputContentPlaceholder')"
             maxlength="5000"
             show-word-limit
-            aria-label="帖子内容"
+            :aria-label="$t('discussion.postContent')"
           />
         </el-form-item>
         <el-form-item>
-          <el-checkbox v-model="postForm.isAnonymous">匿名发布</el-checkbox>
+          <el-checkbox v-model="postForm.isAnonymous">{{ $t('discussion.anonymousPublish') }}</el-checkbox>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="postDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSubmitPost" :loading="submitting">发布</el-button>
+        <el-button @click="postDialogVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" @click="handleSubmitPost" :loading="submitting">{{ $t('discussion.publish') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 帖子详情弹窗 -->
     <el-dialog
       v-model="detailDialogVisible"
-      :title="isMobile ? '' : '帖子详情'"
+      :title="isMobile ? '' : $t('discussion.postDetail')"
       :width="isMobile ? '90vw' : '600px'"
       @close="resetDetail"
      :close-on-press-escape="true"
@@ -154,15 +154,15 @@
         <div class="post-header">
           <h2 class="post-title">{{ currentPost.title }}</h2>
           <div class="post-meta">
-            <span>{{ currentPost.isAnonymous ? '匿名用户' : currentPost.authorName }}</span>
+            <span>{{ currentPost.isAnonymous ? $t('course.anonymousUser') : currentPost.authorName }}</span>
             <span>{{ formatDateTime(currentPost.createdAt) }}</span>
-            <el-tag v-if="currentPost.status === 0" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="currentPost.status === 2" type="info" size="small">已驳回</el-tag>
+            <el-tag v-if="currentPost.status === 0" type="warning" size="small">{{ $t('course.pendingReview') }}</el-tag>
+            <el-tag v-else-if="currentPost.status === 2" type="info" size="small">{{ $t('discussion.rejected') }}</el-tag>
           </div>
         </div>
         <div class="post-content">{{ currentPost.content }}</div>
 
-        <el-divider>评论 ({{ comments.length }})</el-divider>
+        <el-divider>{{ $t('discussion.commentsCount', { count: comments.length }) }}</el-divider>
 
         <!-- 评论树 -->
         <div class="comments-section">
@@ -175,13 +175,13 @@
             @reply="handleReply"
             @like="handleLikeComment"
           />
-          <el-empty v-if="comments.length === 0" description="暂无评论，快来抢沙发吧" />
+          <el-empty v-if="comments.length === 0" :description="$t('discussion.noComments')" />
         </div>
 
         <!-- 回复输入框 -->
         <el-alert
           v-if="currentPost.status === 0 || currentPost.status === 2"
-          :title="currentPost.status === 0 ? '帖子审核通过后开放评论' : '帖子已被驳回，无法评论'"
+          :title="currentPost.status === 0 ? $t('discussion.commentPendingHint') : $t('discussion.postRejectedHint')"
           type="warning"
           :closable="false"
           show-icon
@@ -192,21 +192,21 @@
             v-model="replyContent"
             type="textarea"
             :rows="3"
-            placeholder="写下你的回复... (Ctrl+Enter 发送)"
-            aria-label="回复内容"
+            :placeholder="$t('discussion.replyPlaceholder')"
+            :aria-label="$t('discussion.replyContent')"
             @keyup.enter.ctrl="handleSubmitReply"
           />
           <div class="reply-input-footer">
-            <el-checkbox v-model="replyAnonymous">匿名回复</el-checkbox>
+            <el-checkbox v-model="replyAnonymous">{{ $t('discussion.anonymousReply') }}</el-checkbox>
             <el-button type="primary" @click="handleSubmitReply" :disabled="!replyContent.trim()" :loading="replySubmitting">
-              发送回复
+              {{ $t('discussion.sendReply') }}
             </el-button>
           </div>
         </div>
       </div>
       <template #footer v-if="currentPost">
         <div class="post-actions">
-          <el-button v-if="currentPost?.isOwner || userStore.userInfo?.role === 'ADMIN'" type="danger" link size="small" @click="handleDeletePost">删除帖子</el-button>
+          <el-button v-if="currentPost?.isOwner || userStore.userInfo?.role === 'ADMIN'" type="danger" link size="small" @click="handleDeletePost">{{ $t('discussion.deletePost') }}</el-button>
         </div>
       </template>
     </el-dialog>
@@ -225,6 +225,9 @@ import { getCourses } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
 import CommentNode from '@/components/CommentNode.vue'
 import { formatDateTime } from '@/utils/format'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const userStore = useUserStore()
 
@@ -255,8 +258,8 @@ const postFormRef = ref(null)
 const postForm = ref({ title: '', content: '', isAnonymous: false })
 const submitting = ref(false)
 const postRules = {
-  title: [{ required: true, message: '请输入标题', trigger: 'blur' }],
-  content: [{ required: true, message: '请输入内容', trigger: 'blur' }]
+  title: [{ required: true, message: t('discussion.inputTitleRequired'), trigger: 'blur' }],
+  content: [{ required: true, message: t('discussion.inputContentRequired'), trigger: 'blur' }]
 }
 
 // 帖子详情
@@ -283,7 +286,7 @@ async function fetchCourses() {
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data?.items || []
-  } catch { ElMessage.warning('课程列表加载失败') }
+  } catch { ElMessage.warning(t('discussion.courseListLoadFailed')) }
 }
 async function handleCourseChange(cid) {
   chapterOptions.value = []
@@ -292,7 +295,7 @@ async function handleCourseChange(cid) {
   try {
     const { data } = await getChapters({ courseId: cid })
     chapterOptions.value = data?.items || []
-  } catch { ElMessage.warning('章节列表加载失败') }
+  } catch { ElMessage.warning(t('discussion.chapterListLoadFailed')) }
 }
 function handleChapterSelect(chId) {
   if (chId) router.replace({ query: { ...route.query, chapterId: chId } })
@@ -304,7 +307,7 @@ watch(() => route.query.chapterId, async (val) => {
     try {
       const { data } = await getChapterById(val)
       if (data?.courseId) currentCourseId.value = data.courseId
-    } catch { ElMessage.warning('章节信息加载失败') }
+    } catch { ElMessage.warning(t('discussion.chapterInfoLoadFailed')) }
     fetchData()
   }
 }, { immediate: false })
@@ -314,7 +317,7 @@ onMounted(() => {
 
 const fetchData = async () => {
   if (!chapterId.value) {
-    ElMessage.warning('缺少章节ID参数')
+    ElMessage.warning(t('discussion.missingChapterId'))
     return
   }
   loading.value = true
@@ -326,9 +329,9 @@ const fetchData = async () => {
   } catch (error) {
     const status = error?.response?.status
     if (status === 403) {
-      ElMessage.warning('您当前角色无权访问该讨论区，请联系管理员获取权限')
+      ElMessage.warning(t('discussion.noAccess'))
     } else {
-      const msg = error?.response?.data?.message || '获取帖子列表失败'
+      const msg = error?.response?.data?.message || t('discussion.fetchPostsFailed')
       ElMessage.error(msg)
     }
   } finally {
@@ -366,7 +369,7 @@ const handleSubmitPost = async () => {
         }
       } catch (e) {
         console.warn('[DiscussionView] fetchCourses 获取课程列表失败', e)
-        ElMessage.warning('课程列表加载失败')
+        ElMessage.warning(t('discussion.courseListLoadFailed'))
       }
     }
     await createPost({
@@ -375,13 +378,13 @@ const handleSubmitPost = async () => {
       isAnonymous: postForm.value.isAnonymous,
       chapterId: Number(chapterId.value) || null
     })
-    ElMessage.success('发布成功')
+    ElMessage.success(t('discussion.publishSuccess'))
     postDialogVisible.value = false
     resetPostForm()
     page.value = 1
     fetchData()
   } catch (error) {
-    const msg = error?.response?.data?.message || '发布失败'
+    const msg = error?.response?.data?.message || t('discussion.publishFailed')
     ElMessage.error(msg)
   } finally {
     submitting.value = false
@@ -397,7 +400,7 @@ const viewDetail = async (row) => {
     comments.value = commentRes.data || []
     detailDialogVisible.value = true
   } catch (error) {
-    const msg = error?.response?.data?.message || '加载帖子详情失败'
+    const msg = error?.response?.data?.message || t('discussion.fetchDetailFailed')
     ElMessage.error(msg)
   }
 }
@@ -413,12 +416,12 @@ const handleReply = async ({ parentId, content }) => {
   replyingCommentId.value = parentId
   try {
     await createComment({ postId: currentPost.value.id, parentId, content, isAnonymous: replyAnonymous.value })
-    ElMessage.success('回复成功')
+    ElMessage.success(t('course.replySuccess'))
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
   } catch (error) {
-    const msg = error?.response?.data?.message || '回复失败'
+    const msg = error?.response?.data?.message || t('discussion.replyFailed')
     ElMessage.error(msg)
   } finally {
     replyingCommentId.value = null
@@ -430,13 +433,13 @@ const handleSubmitReply = async () => {
   replySubmitting.value = true
   try {
     await createComment({ postId: currentPost.value.id, content: replyContent.value.trim(), isAnonymous: replyAnonymous.value })
-    ElMessage.success('回复成功')
+    ElMessage.success(t('course.replySuccess'))
     replyContent.value = ''
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
   } catch (error) {
-    const msg = error?.response?.data?.message || '回复失败'
+    const msg = error?.response?.data?.message || t('discussion.replyFailed')
     ElMessage.error(msg)
   } finally {
     replySubmitting.value = false
@@ -446,27 +449,27 @@ const handleSubmitReply = async () => {
 const handleLikeComment = async (commentId) => {
   try {
     await likeComment(commentId)
-    ElMessage.success('点赞成功')
+    ElMessage.success(t('discussion.likeSuccess'))
     // 刷新评论
     const commentRes = await getComments(currentPost.value.id)
     comments.value = commentRes.data || []
   } catch (error) {
-    const msg = error?.response?.data?.message || '点赞失败'
+    const msg = error?.response?.data?.message || t('discussion.likeFailed')
     ElMessage.error(msg)
   }
 }
 
 const handleDeletePost = async () => {
   try {
-    await ElMessageBox.confirm('确定要删除此帖子吗？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussion.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deletePost(currentPost.value.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     detailDialogVisible.value = false
     page.value = 1
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      const msg = error?.response?.data?.message || '删除失败'
+      const msg = error?.response?.data?.message || t('course.deleteFailed')
       ElMessage.error(msg)
     }
   }
@@ -494,7 +497,7 @@ onMounted(async () => {
       if (data?.courseId) currentCourseId.value = data.courseId
     } catch (e) {
       console.warn('[DiscussionView] handleCourseChange 获取章节列表失败', e)
-      ElMessage.warning('章节列表加载失败')
+      ElMessage.warning(t('discussion.chapterListLoadFailed'))
     }
     fetchData()
   }

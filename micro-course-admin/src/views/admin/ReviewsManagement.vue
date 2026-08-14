@@ -6,8 +6,8 @@
 <template>
   <div class="reviews-page">
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>评价管理</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('reviewsManagement.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- P1C-078: 统计卡片 -->
@@ -15,25 +15,25 @@
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary">{{ totalElements }}</div>
-          <div class="stat-label">总评价数</div>
+          <div class="stat-label">{{ $t('reviewsManagement.totalReviews') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-warning">{{ avgRating }}</div>
-          <div class="stat-label">平均评分</div>
+          <div class="stat-label">{{ $t('reviewsManagement.avgRating') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-success">{{ ratingDistribution[4] + ratingDistribution[5] }}</div>
-          <div class="stat-label">高分评价 (4-5分)</div>
+          <div class="stat-label">{{ $t('reviewsManagement.highRating') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-danger">{{ ratingDistribution[1] + ratingDistribution[2] + ratingDistribution[3] }}</div>
-          <div class="stat-label">低分评价 (1-3分)</div>
+          <div class="stat-label">{{ $t('reviewsManagement.lowRating') }}</div>
         </div>
       </el-card>
     </div>
@@ -41,42 +41,42 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">全部评价</span>
-          <span class="card-total">共 {{ totalElements }} 条</span>
+          <span class="card-title">{{ $t('reviewsManagement.allReviews') }}</span>
+          <span class="card-total">{{ $t('course.rows', { count: totalElements }) }}</span>
         </div>
       </template>
 
       <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无评价数据" :image-size="120" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('reviewsManagement.noData')" :image-size="120" />
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="#" width="60" align="center" />
-        <el-table-column prop="realName" label="用户" width="120" show-overflow-tooltip />
-        <el-table-column label="评分" width="140" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="60" align="center" />
+        <el-table-column prop="realName" :label="$t('reviewsManagement.user')" width="120" show-overflow-tooltip />
+        <el-table-column :label="$t('reviewsManagement.rating')" width="140" align="center">
           <template #default="{ row }">
-            <el-rate v-if="row.rating" :model-value="row.rating" disabled show-score text-color="#ff9900" score-template="{value} 分" />
-            <span v-else class="text-muted">未评分</span>
+            <el-rate v-if="row.rating" :model-value="row.rating" disabled show-score text-color="#ff9900" :score-template="$t('reviewsManagement.scoreTemplate')" />
+            <span v-else class="text-muted">{{ $t('reviewsManagement.unrated') }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="评价内容" min-width="260" show-overflow-tooltip />
-        <el-table-column label="匿名" width="70" align="center">
+        <el-table-column prop="content" :label="$t('reviewsManagement.content')" min-width="260" show-overflow-tooltip />
+        <el-table-column :label="$t('reviewsManagement.anonymous')" width="70" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.isAnonymous" type="warning" size="small">匿名</el-tag>
+            <el-tag v-if="row.isAnonymous" type="warning" size="small">{{ $t('reviewsManagement.anonymous') }}</el-tag>
             <span v-else class="text-muted">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="提交时间" width="170">
+        <el-table-column prop="createdAt" :label="$t('reviewsManagement.submittedAt')" width="170">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="180" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleApprove(row)">
-              <el-icon><Select /></el-icon>通过
+              <el-icon><Select /></el-icon>{{ $t('reviewsManagement.approve') }}
             </el-button>
             <el-button type="danger" link size="small" @click="handleReject(row)">
-              <el-icon><Close /></el-icon>驳回
+              <el-icon><Close /></el-icon>{{ $t('reviewsManagement.reject') }}
             </el-button>
             <el-button type="danger" link size="small" @click="handleDelete(row)">
-              <el-icon><Delete /></el-icon>删除
+              <el-icon><Delete /></el-icon>{{ $t('app.delete') }}
             </el-button>
           </template>
         </el-table-column>
@@ -98,9 +98,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviews, approveReview, rejectReview, deleteReview } from '@/api/review'
 import { Select, Close, Delete } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -133,7 +136,7 @@ async function fetchData() {
     totalElements.value = data.totalElements || 0
   } catch (err) {
     tableData.value = []
-    ElMessage.error('获取数据失败')
+    ElMessage.error(t('reviewsManagement.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -141,35 +144,35 @@ async function fetchData() {
 
 async function handleApprove(row) {
   try {
-    await ElMessageBox.confirm('确认通过该评价？', '操作确认', { confirmButtonText: '通过', cancelButtonText: '取消', type: 'warning' })
+    await ElMessageBox.confirm(t('reviewsManagement.confirmApprove'), t('reviewsManagement.confirmTitle'), { confirmButtonText: t('reviewsManagement.approve'), cancelButtonText: t('common.cancel'), type: 'warning' })
     await approveReview(row.id)
-    ElMessage.success('已通过')
+    ElMessage.success(t('reviewsManagement.approved'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('common.failed'))
   }
 }
 
 async function handleReject(row) {
   try {
-    await ElMessageBox.confirm('确定驳回该评价？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('reviewsManagement.confirmReject'), t('course.hintTitle'), { type: 'warning' })
   } catch { return }
   try {
     await rejectReview(row.id)
-    ElMessage.success('已驳回')
+    ElMessage.success(t('reviewsManagement.rejected'))
     fetchData()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('reviewsManagement.rejectFailed')) }
 }
 
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm('确定删除该评价？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('reviewsManagement.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
   } catch { return }
   try {
     await deleteReview(row.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('reviewsManagement.deleted'))
     fetchData()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('reviewsManagement.deleteFailed')) }
 }
 
 function handleSizeChange() {

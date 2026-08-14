@@ -10,8 +10,8 @@
 <template>
   <div class="audit-ghost-chapter">
     <div class="page-header">
-      <h1>幽灵章节审计</h1>
-      <p class="page-desc">排查 V310 回填硬编码 chapter_id=1 产生的错误章节归属（D-1 闭环 · 数据完整性 = 体验保障）</p>
+      <h1>{{ $t('auditGhostChapter.title') }}</h1>
+      <p class="page-desc">{{ $t('auditGhostChapter.pageDesc') }}</p>
     </div>
 
     <!-- 操作行 -->
@@ -25,14 +25,14 @@
           @click="confirmRunFix"
         >
           <el-icon style="margin-right: 6px"><Tools /></el-icon>
-          {{ fixing ? '修复执行中…' : '运行 V332 修复' }}
+          {{ fixing ? $t('auditGhostChapter.fixing') : $t('auditGhostChapter.runFix') }}
         </el-button>
-        <el-tooltip content="V332 幂等修复：通过课时反查章节修正错误归属；无法判定的记录保留待人工 review" placement="top">
-          <el-icon class="hint-icon" aria-label="修复说明"><QuestionFilled /></el-icon>
+        <el-tooltip :content="$t('auditGhostChapter.fixTooltip')" placement="top">
+          <el-icon class="hint-icon" :aria-label="$t('auditGhostChapter.fixHintAria')"><QuestionFilled /></el-icon>
         </el-tooltip>
-        <span v-if="lastAuditAt" class="last-audit">上次审计：{{ lastAuditAt }}（每 5 秒自动刷新）</span>
+        <span v-if="lastAuditAt" class="last-audit">{{ $t('auditGhostChapter.lastAudit', { time: lastAuditAt }) }}</span>
       </div>
-      <el-button :icon="Refresh" circle aria-label="手动刷新审计" :loading="refreshing" @click="refreshNow" />
+      <el-button :icon="Refresh" circle :aria-label="$t('auditGhostChapter.refreshAria')" :loading="refreshing" @click="refreshNow" />
     </div>
 
     <!-- 加载骨架 -->
@@ -43,23 +43,22 @@
       <template #title>
         <div class="error-title">{{ error }}</div>
         <div class="error-guidance">
-          请确认：① V328 / V332 迁移已由 Flyway 应用（部署后自动执行）；② 当前账号为管理员。
-          如仍失败请联系管理员查看后端日志（关键字 GhostChapter-Audit / GhostChapter-Fix）。
+          {{ $t('auditGhostChapter.errorGuidance') }}
         </div>
       </template>
       <template #default>
-        <el-button size="small" type="primary" plain @click="fetchAudit(false)">重新加载</el-button>
+        <el-button size="small" type="primary" plain @click="fetchAudit(false)">{{ $t('teachingClass.reload') }}</el-button>
       </template>
     </el-alert>
 
     <!-- 空状态（L0：明确告知"无问题"，绿色正向反馈） -->
-    <el-empty v-else-if="reportTotal === 0" description="未发现幽灵章节数据，课件章节归属正常">
+    <el-empty v-else-if="reportTotal === 0" :description="$t('auditGhostChapter.noGhosts')">
       <template #image>
         <el-icon :size="64" class="empty-ok-icon"><CircleCheckFilled /></el-icon>
       </template>
       <template #default>
-        <p class="empty-sub">V310 硬编码兜底未产生错误归属，或 V332 已修复全部可自动修复项。</p>
-        <el-button size="small" type="primary" plain @click="fetchAudit(false)">刷新确认</el-button>
+        <p class="empty-sub">{{ $t('auditGhostChapter.noGhostsSub') }}</p>
+        <el-button size="small" type="primary" plain @click="fetchAudit(false)">{{ $t('auditGhostChapter.refreshConfirm') }}</el-button>
       </template>
     </el-empty>
 
@@ -68,33 +67,33 @@
       <el-row :gutter="16" class="kpi-row">
         <el-col :xs="24" :sm="8">
           <el-card shadow="never" class="kpi-card">
-            <div class="kpi-label">幽灵行总数</div>
-            <div class="kpi-value kpi-danger" role="status" aria-label="幽灵章节嫌疑行总数">{{ reportTotal }}</div>
-            <div class="kpi-sub">PPT + HTML 嫌疑行合计</div>
+            <div class="kpi-label">{{ $t('auditGhostChapter.kpiTotal') }}</div>
+            <div class="kpi-value kpi-danger" role="status" :aria-label="$t('auditGhostChapter.kpiTotalAria')">{{ reportTotal }}</div>
+            <div class="kpi-sub">{{ $t('auditGhostChapter.kpiTotalSub') }}</div>
           </el-card>
         </el-col>
         <el-col :xs="24" :sm="8">
           <el-card shadow="never" class="kpi-card">
-            <div class="kpi-label">受影响课程数</div>
-            <div class="kpi-value" role="status" aria-label="受影响课程数">{{ affectedCourses }}</div>
-            <div class="kpi-sub">按 course_id 去重</div>
+            <div class="kpi-label">{{ $t('auditGhostChapter.kpiAffected') }}</div>
+            <div class="kpi-value" role="status" :aria-label="$t('auditGhostChapter.kpiAffected')">{{ affectedCourses }}</div>
+            <div class="kpi-sub">{{ $t('auditGhostChapter.kpiAffectedSub') }}</div>
           </el-card>
         </el-col>
         <el-col :xs="24" :sm="8">
           <el-card shadow="never" class="kpi-card">
-            <div class="kpi-label">修复进度</div>
+            <div class="kpi-label">{{ $t('auditGhostChapter.kpiProgress') }}</div>
             <div class="kpi-progress">
               <el-progress
                 :percentage="fixProgress"
                 :status="fixProgress === 100 ? 'success' : undefined"
                 :stroke-width="10"
                 role="progressbar"
-                :aria-label="`幽灵章节修复进度 ${fixProgress}%`"
+                :aria-label="$t('auditGhostChapter.kpiProgressAria', { progress: fixProgress })"
               />
             </div>
             <div class="kpi-sub">
-              {{ fixedRows }} / {{ beforeTotal }} 行已修复
-              <span v-if="reviewLeft > 0" class="review-hint">，{{ reviewLeft }} 行待人工 review（课时缺失/跨课程）</span>
+              {{ $t('auditGhostChapter.fixedRows', { fixed: fixedRows, total: beforeTotal }) }}
+              <span v-if="reviewLeft > 0" class="review-hint">{{ $t('auditGhostChapter.reviewLeft', { count: reviewLeft }) }}</span>
             </div>
           </el-card>
         </el-col>
@@ -102,51 +101,51 @@
 
       <!-- 按课程分布 -->
       <el-card shadow="never" class="table-card">
-        <template #header><span>按课程分布</span></template>
-        <el-table :data="byCourseRows" size="small" border aria-label="幽灵章节按课程分布表">
-          <el-table-column prop="course_id" label="课程 ID" min-width="100" />
-          <el-table-column label="来源" min-width="100">
+        <template #header><span>{{ $t('auditGhostChapter.byCourseTitle') }}</span></template>
+        <el-table :data="byCourseRows" size="small" border :aria-label="$t('auditGhostChapter.byCourseTableAria')">
+          <el-table-column prop="course_id" :label="$t('auditGhostChapter.courseId')" min-width="100" />
+          <el-table-column :label="$t('auditGhostChapter.source')" min-width="100">
             <template #default="{ row }">
               <el-tag :type="row.source_type === 'PPT' ? 'primary' : 'success'" size="small">{{ row.source_type }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="cnt" label="嫌疑行数" min-width="100" sortable />
+          <el-table-column prop="cnt" :label="$t('auditGhostChapter.suspectCount')" min-width="100" sortable />
         </el-table>
       </el-card>
 
       <!-- 明细样例（≤200 行） -->
       <el-card shadow="never" class="table-card">
         <template #header>
-          <span>嫌疑行明细（样例 ≤200 行）</span>
-          <span class="table-sub">修复后自动刷新；actual_chapter_id 为按课时反查的真实章节</span>
+          <span>{{ $t('auditGhostChapter.sampleTitle') }}</span>
+          <span class="table-sub">{{ $t('auditGhostChapter.sampleSub') }}</span>
         </template>
-        <el-table :data="sampleRows" size="small" border max-height="480" aria-label="幽灵章节嫌疑行明细表">
-          <el-table-column label="来源" min-width="90">
+        <el-table :data="sampleRows" size="small" border max-height="480" :aria-label="$t('auditGhostChapter.sampleTableAria')">
+          <el-table-column :label="$t('auditGhostChapter.source')" min-width="90">
             <template #default="{ row }">
               <el-tag :type="row.source_type === 'PPT' ? 'primary' : 'success'" size="small">{{ row.source_type }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="row_id" label="行 ID" min-width="80" />
-          <el-table-column prop="course_id" label="课程" min-width="80" />
-          <el-table-column prop="current_chapter_id" label="当前章节" min-width="90" />
-          <el-table-column prop="section_id" label="课时" min-width="80">
+          <el-table-column prop="row_id" :label="$t('auditGhostChapter.rowId')" min-width="80" />
+          <el-table-column prop="course_id" :label="$t('auditGhostChapter.course')" min-width="80" />
+          <el-table-column prop="current_chapter_id" :label="$t('auditGhostChapter.currentChapter')" min-width="90" />
+          <el-table-column prop="section_id" :label="$t('auditGhostChapter.section')" min-width="80">
             <template #default="{ row }">
               <span>{{ row.section_id ?? '—' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="actual_chapter_id" label="实际章节" min-width="90">
+          <el-table-column prop="actual_chapter_id" :label="$t('auditGhostChapter.actualChapter')" min-width="90">
             <template #default="{ row }">
               <el-tag v-if="row.actual_chapter_id" type="warning" size="small">{{ row.actual_chapter_id }}</el-tag>
-              <span v-else>无法反查</span>
+              <span v-else>{{ $t('auditGhostChapter.cannotResolve') }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="section_title" label="课时标题" min-width="160" show-overflow-tooltip>
+          <el-table-column prop="section_title" :label="$t('auditGhostChapter.sectionTitle')" min-width="160" show-overflow-tooltip>
             <template #default="{ row }">{{ row.section_title ?? '—' }}</template>
           </el-table-column>
-          <el-table-column label="跨课程引用" min-width="110">
+          <el-table-column :label="$t('auditGhostChapter.crossCourse')" min-width="110">
             <template #default="{ row }">
-              <el-tag v-if="row.chapter1_cross_course" type="danger" size="small">是</el-tag>
-              <el-tag v-else type="info" size="small">否</el-tag>
+              <el-tag v-if="row.chapter1_cross_course" type="danger" size="small">{{ $t('app.yes') }}</el-tag>
+              <el-tag v-else type="info" size="small">{{ $t('app.no') }}</el-tag>
             </template>
           </el-table-column>
         </el-table>
@@ -157,9 +156,12 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Tools, QuestionFilled, CircleCheckFilled } from '@element-plus/icons-vue'
 import { getGhostChapterAudit, runV332Fix } from '@/api/audit'
+
+const { t } = useI18n()
 
 // ===== 状态 =====
 const loading = ref(true)       // 首次加载
@@ -236,8 +238,8 @@ async function fetchAudit(silent = true) {
     applyReport(parseReport(res.data))
   } catch (e) {
     // L0 铁律：错误消息告诉用户怎么办
-    const msg = e?.response?.data?.message || e?.message || '幽灵章节审计加载失败'
-    error.value = `审计加载失败：${msg}。请确认 V328/V332 迁移已由 Flyway 应用（部署后自动执行），且当前账号为管理员。`
+    const msg = e?.response?.data?.message || e?.message || t('auditGhostChapter.loadFailed')
+    error.value = t('auditGhostChapter.loadFailedMsg', { msg })
   } finally {
     loading.value = false
     refreshing.value = false
@@ -252,9 +254,9 @@ function refreshNow() {
 async function confirmRunFix() {
   try {
     await ElMessageBox.confirm(
-      '将按课时反查章节，修正 chapter_id=1 的错误归属；无法判定的记录（课时缺失/跨课程）保持原样并标记待人工 review。V332 幂等可重跑，是否继续？',
-      '确认运行 V332 修复',
-      { confirmButtonText: '运行修复', cancelButtonText: '取消', type: 'warning' }
+      t('auditGhostChapter.confirmFixMsg'),
+      t('auditGhostChapter.confirmFixTitle'),
+      { confirmButtonText: t('auditGhostChapter.runFixBtn'), cancelButtonText: t('app.cancel'), type: 'warning' }
     )
   } catch (e) {
     return // 用户取消
@@ -268,10 +270,10 @@ async function confirmRunFix() {
     }
     applyReport(parsed)
     const remaining = parsed?.total_ghost_rows ?? 0
-    ElMessage.success(`V332 修复完成：剩余幽灵行 ${remaining}（已修复 ${fixedRows.value} 行）`)
+    ElMessage.success(t('auditGhostChapter.fixSuccess', { remaining, fixed: fixedRows.value }))
   } catch (e) {
-    const msg = e?.response?.data?.message || e?.message || '修复执行失败'
-    ElMessage.error(`V332 修复失败：${msg}。请确认 V328 诊断对象已应用（v_ghost_chapter_audit 视图存在），可联系管理员查看日志`)
+    const msg = e?.response?.data?.message || e?.message || t('auditGhostChapter.fixFailed')
+    ElMessage.error(t('auditGhostChapter.fixFailedMsg', { msg }))
   } finally {
     fixing.value = false
   }

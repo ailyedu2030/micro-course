@@ -5,40 +5,40 @@
 -->
 <template>
   <div class="storage-review-page">
-    <el-page-header @back="$router.back()" content="存储申请表审批" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('route.AcademicStorageApplicationReview')" class="mg-bottom-16" />
 
     <el-card shadow="never">
-      <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
-        <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
+      <el-alert v-if="error" :title="$t('storageApplicationReview.loadFailed')" type="error" show-icon :closable="false" class="mg-bottom-12">
+        <template #default><el-button size="small" @click="fetchData">{{ $t('common.retry') }}</el-button></template>
       </el-alert>
       <el-table v-loading="loading" :data="items" stripe border>
         <template #empty>
-          <el-empty description="暂无待审批的申请表" />
+          <el-empty :description="$t('storageApplicationReview.noData')" />
         </template>
-        <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="proposerName" label="申请人" width="100" />
-        <el-table-column prop="departmentName" label="学院" width="120" />
-        <el-table-column prop="type" label="类型" width="100" align="center" />
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column prop="title" :label="$t('storageApplicationReview.titleCol')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="proposerName" :label="$t('storageApplicationReview.proposer')" width="100" />
+        <el-table-column prop="departmentName" :label="$t('storageApplicationReview.department')" width="120" />
+        <el-table-column prop="type" :label="$t('app.type')" width="100" align="center" />
+        <el-table-column :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'PENDING_REVIEW'" type="warning" size="small">待审批</el-tag>
-            <el-tag v-else-if="row.status === 'APPROVED'" type="success" size="small">已通过</el-tag>
-            <el-tag v-else-if="row.status === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
+            <el-tag v-if="row.status === 'PENDING_REVIEW'" type="warning" size="small">{{ $t('storageApplicationReview.statusPending') }}</el-tag>
+            <el-tag v-else-if="row.status === 'APPROVED'" type="success" size="small">{{ $t('storageApplicationReview.statusApproved') }}</el-tag>
+            <el-tag v-else-if="row.status === 'REJECTED'" type="danger" size="small">{{ $t('storageApplicationReview.statusRejected') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="提交时间" width="130" align="center" :formatter="$formatDateTime">
+        <el-table-column prop="updatedAt" :label="$t('storageApplicationReview.submittedAt')" width="130" align="center" :formatter="$formatDateTime">
           <template #default="{ row }">{{ $formatDate(row.updatedAt) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="300" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="300" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
-              <el-button size="small" type="primary" @click="goPreview(row)">预览</el-button>
-              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
-              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
+              <el-button size="small" type="primary" @click="goPreview(row)">{{ $t('storageApplicationReview.preview') }}</el-button>
+              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">{{ $t('storageApplicationReview.approve') }}</el-button>
+              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">{{ $t('storageApplicationReview.reject') }}</el-button>
             </template>
             <template v-else>
-              <el-button size="small" @click="goPreview(row)">查看</el-button>
+              <el-button size="small" @click="goPreview(row)">{{ $t('storageApplicationReview.view') }}</el-button>
             </template>
           </template>
         </el-table-column>
@@ -56,11 +56,11 @@
     </el-card>
 
     <!-- 驳回原因 Dialog -->
-    <el-dialog v-model="rejectVisible" title="驳回原因" width="480px">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit />
+    <el-dialog v-model="rejectVisible" :title="$t('storageApplicationReview.rejectTitle')" width="480px">
+      <el-input v-model="rejectReason" type="textarea" :rows="3" :placeholder="$t('storageApplicationReview.rejectPlaceholder')" maxlength="500" show-word-limit />
       <template #footer>
-        <el-button @click="rejectVisible = false">取消</el-button>
-        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
+        <el-button @click="rejectVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">{{ $t('storageApplicationReview.confirmReject') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -68,11 +68,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getPendingStorageApplications, approveStorageApplication, rejectStorageApplication } from '@/api/storageApplication'
 
 const router = useRouter()
+const { t } = useI18n()
 const loading = ref(false)
 const error = ref(false)
 const items = ref([])
@@ -93,7 +95,7 @@ const fetchData = async () => {
     total.value = data.totalElements || 0
   } catch (e) {
     error.value = true
-    ElMessage.error('加载申请表列表失败')
+    ElMessage.error(t('storageApplicationReview.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -105,9 +107,9 @@ const goPreview = (row) => {
 
 const handleApprove = async (row) => {
   try {
-    await ElMessageBox.confirm(`确认批准申请表《${row.title}》？`, '确认', {
-      confirmButtonText: '批准',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('storageApplicationReview.confirmApproveMsg', { title: row.title }), t('app.confirm'), {
+      confirmButtonText: t('storageApplicationReview.approve'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
   } catch {
@@ -116,10 +118,10 @@ const handleApprove = async (row) => {
   actingId.value = row.id
   try {
     await approveStorageApplication(row.id)
-    ElMessage.success('已批准')
+    ElMessage.success(t('storageApplicationReview.approved'))
     fetchData()
   } catch (e) {
-    ElMessage.error(e.message || '审批失败')
+    ElMessage.error(e.message || t('storageApplicationReview.approveFailed'))
   } finally {
     actingId.value = null
   }
@@ -133,17 +135,17 @@ const handleReject = (row) => {
 
 const confirmReject = async () => {
   if (!rejectReason.value.trim()) {
-    ElMessage.warning('请填写驳回原因')
+    ElMessage.warning(t('storageApplicationReview.rejectRequired'))
     return
   }
   actingId.value = rejectTarget.id
   try {
     await rejectStorageApplication(rejectTarget.id, rejectReason.value.trim())
-    ElMessage.success('已驳回')
+    ElMessage.success(t('storageApplicationReview.rejected'))
     rejectVisible.value = false
     fetchData()
   } catch (e) {
-    ElMessage.error(e.message || '驳回失败')
+    ElMessage.error(e.message || t('storageApplicationReview.rejectFailed'))
   } finally {
     actingId.value = null
   }

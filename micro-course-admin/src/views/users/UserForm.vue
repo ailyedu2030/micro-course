@@ -9,8 +9,8 @@
     <el-card shadow="never">
       <template #header>
         <div class="card-header">
-          <el-button :icon="Back" text @click="router.back()">返回</el-button>
-          <span>{{ isEdit ? '编辑用户' : '新增用户' }}</span>
+          <el-button :icon="Back" text @click="router.back()">{{ $t('app.back') }}</el-button>
+          <span>{{ isEdit ? $t('userForm.editTitle') : $t('userForm.createTitle') }}</span>
         </div>
       </template>
 
@@ -21,27 +21,27 @@
         label-position="top"
         class="user-form-body"
         v-loading="pageLoading"
-        element-loading-text="加载用户数据中..."
+        :element-loading-text="$t('userForm.loadingUserData')"
       >
         <!-- Section 1: 基础信息 -->
         <div class="form-section">
-          <div class="form-section-title">基础信息</div>
+          <div class="form-section-title">{{ $t('userList.basicInfo') }}</div>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="账号" prop="username">
+              <el-form-item :label="$t('userList.account')" prop="username">
                 <el-input
                   v-model="formData.username"
-                  :placeholder="isEdit ? '编辑时不可修改' : '请输入账号'"
+                  :placeholder="isEdit ? $t('userForm.editLocked') : $t('userList.accountRequired')"
                   :disabled="isEdit"
                 />
               </el-form-item>
             </el-col>
             <el-col v-if="!isEdit" :span="12">
-              <el-form-item label="密码" prop="password">
+              <el-form-item :label="$t('auth.password')" prop="password">
                 <el-input
                   v-model="formData.password"
                   type="password"
-                  placeholder="请输入密码"
+                  :placeholder="$t('userForm.passwordPlaceholder')"
                   show-password
                 />
               </el-form-item>
@@ -49,11 +49,11 @@
           </el-row>
           <el-row v-if="!isEdit" :gutter="20">
             <el-col :span="12">
-              <el-form-item label="确认密码" prop="confirmPassword">
+              <el-form-item :label="$t('auth.confirmPassword')" prop="confirmPassword">
                 <el-input
                   v-model="formData.confirmPassword"
                   type="password"
-                  placeholder="请再次输入密码"
+                  :placeholder="$t('userForm.confirmPasswordPlaceholder')"
                   show-password
                 />
               </el-form-item>
@@ -63,28 +63,28 @@
 
         <!-- Section 2: 所属信息 -->
         <div class="form-section">
-          <div class="form-section-title">所属信息</div>
+          <div class="form-section-title">{{ $t('userForm.departmentSection') }}</div>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="角色" prop="role">
+              <el-form-item :label="$t('user.role')" prop="role">
                 <el-select
                   v-model="formData.role"
-                  :placeholder="isEdit ? '编辑时不可修改' : '请选择角色'"
+                  :placeholder="isEdit ? $t('userForm.editLocked') : $t('userForm.selectRole')"
                   :disabled="isEdit"
                   class="full-width"
                 >
-                  <el-option label="学生" value="STUDENT" />
-                  <el-option label="教师" value="TEACHER" />
-                  <el-option label="管理员" value="ADMIN" />
-                  <el-option label="教务" value="ACADEMIC" />
+                  <el-option :label="$t('userSearch.student')" value="STUDENT" />
+                  <el-option :label="$t('userSearch.teacher')" value="TEACHER" />
+                  <el-option :label="$t('userSearch.admin')" value="ADMIN" />
+                  <el-option :label="$t('userSearch.academic')" value="ACADEMIC" />
                 </el-select>
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="院系" prop="departmentId">
+              <el-form-item :label="$t('userSearch.department')" prop="departmentId">
                 <el-select
                   v-model="formData.departmentId"
-                  placeholder="请选择院系"
+                  :placeholder="$t('userList.departmentPlaceholder')"
                   clearable
                   class="full-width"
                   @change="(val) => handleDeptChange(val, formData)"
@@ -101,10 +101,10 @@
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="专业" prop="majorId">
+              <el-form-item :label="$t('userSearch.major')" prop="majorId">
                 <el-select
                   v-model="formData.majorId"
-                  placeholder="请先选择院系"
+                  :placeholder="$t('userList.majorSelectDeptFirst')"
                   clearable
                   class="full-width"
                   :disabled="!formData.departmentId"
@@ -120,10 +120,10 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="班级" prop="classId">
+              <el-form-item :label="$t('userSearch.classLabel')" prop="classId">
                 <el-select
                   v-model="formData.classId"
-                  placeholder="请先选择专业"
+                  :placeholder="$t('userList.classSelectMajorFirst')"
                   clearable
                   class="full-width"
                   :disabled="!formData.majorId"
@@ -142,57 +142,57 @@
 
         <!-- Section 3: 个人信息 -->
         <div class="form-section">
-          <div class="form-section-title">个人信息</div>
+          <div class="form-section-title">{{ $t('userForm.personalInfo') }}</div>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="姓名" prop="realName">
-                <el-input v-model="formData.realName" placeholder="请输入姓名" />
+              <el-form-item :label="$t('user.realName')" prop="realName">
+                <el-input v-model="formData.realName" :placeholder="$t('userList.realNamePlaceholder')" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="性别" prop="gender">
-                <el-select v-model="formData.gender" placeholder="请选择" class="full-width" clearable>
-                  <el-option label="男" value="MALE" />
-                  <el-option label="女" value="FEMALE" />
-                  <el-option label="保密" value="SECRET" />
+              <el-form-item :label="$t('user.gender')" prop="gender">
+                <el-select v-model="formData.gender" :placeholder="$t('userSearch.pleaseSelect')" class="full-width" clearable>
+                  <el-option :label="$t('user.genderMale')" value="MALE" />
+                  <el-option :label="$t('user.genderFemale')" value="FEMALE" />
+                  <el-option :label="$t('user.genderSecret')" value="SECRET" />
                 </el-select>
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="邮箱" prop="email">
-                <el-input v-model="formData.email" placeholder="请输入邮箱" />
+              <el-form-item :label="$t('user.email')" prop="email">
+                <el-input v-model="formData.email" :placeholder="$t('user.pleaseInputEmail')" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="手机" prop="phone">
-                <el-input v-model="formData.phone" placeholder="请输入手机号" />
+              <el-form-item :label="$t('userList.phoneLabel')" prop="phone">
+                <el-input v-model="formData.phone" :placeholder="$t('userList.phonePlaceholder')" />
               </el-form-item>
             </el-col>
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="头像" prop="avatar">
-                <el-input v-model="formData.avatar" placeholder="请输入头像URL" />
+              <el-form-item :label="$t('userForm.avatar')" prop="avatar">
+                <el-input v-model="formData.avatar" :placeholder="$t('userForm.avatarUrlPlaceholder')" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="政治面貌" prop="politicalStatus">
-                <el-select v-model="formData.politicalStatus" placeholder="请选择" clearable class="full-width">
-                  <el-option label="群众" value="群众" />
-                  <el-option label="共青团员" value="共青团员" />
-                  <el-option label="中共党员" value="中共党员" />
-                  <el-option label="中共预备党员" value="中共预备党员" />
-                  <el-option label="民革党员" value="民革党员" />
-                  <el-option label="民盟盟员" value="民盟盟员" />
-                  <el-option label="民建会员" value="民建会员" />
-                  <el-option label="民进会员" value="民进会员" />
-                  <el-option label="农工党党员" value="农工党党员" />
-                  <el-option label="致公党党员" value="致公党党员" />
-                  <el-option label="九三学社社员" value="九三学社社员" />
-                  <el-option label="台盟盟员" value="台盟盟员" />
-                  <el-option label="无党派人士" value="无党派人士" />
+              <el-form-item :label="$t('userList.politicalStatus')" prop="politicalStatus">
+                <el-select v-model="formData.politicalStatus" :placeholder="$t('userSearch.pleaseSelect')" clearable class="full-width">
+                  <el-option :label="$t('userList.politicalMasses')" value="群众" />
+                  <el-option :label="$t('userList.politicalCYL')" value="共青团员" />
+                  <el-option :label="$t('userList.politicalCPC')" value="中共党员" />
+                  <el-option :label="$t('userList.politicalCPCProbationary')" value="中共预备党员" />
+                  <el-option :label="$t('userList.politicalRCC')" value="民革党员" />
+                  <el-option :label="$t('userList.politicalCDL')" value="民盟盟员" />
+                  <el-option :label="$t('userList.politicalCDNCA')" value="民建会员" />
+                  <el-option :label="$t('userList.politicalCAPD')" value="民进会员" />
+                  <el-option :label="$t('userList.politicalCPWDP')" value="农工党党员" />
+                  <el-option :label="$t('userList.politicalZS')" value="致公党党员" />
+                  <el-option :label="$t('userList.politicalJSS')" value="九三学社社员" />
+                  <el-option :label="$t('userList.politicalTWM')" value="台盟盟员" />
+                  <el-option :label="$t('userList.politicalNonPartisan')" value="无党派人士" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -200,18 +200,18 @@
 
           <!-- 学生专属字段 -->
           <template v-if="formData.role === 'STUDENT'">
-            <el-divider content-position="left">学生信息</el-divider>
+            <el-divider content-position="left">{{ $t('userList.studentInfo') }}</el-divider>
 <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="学号" prop="studentNo">
-                <el-input v-model="formData.studentNo" placeholder="请输入学号" />
+              <el-form-item :label="$t('userList.studentNo')" prop="studentNo">
+                <el-input v-model="formData.studentNo" :placeholder="$t('userList.studentNoPlaceholder')" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="入学年份" prop="enrollmentYear">
+              <el-form-item :label="$t('userList.enrollmentYear')" prop="enrollmentYear">
                 <el-input
                   v-model="formData.enrollmentYear"
-                  placeholder="如：2024"
+                  :placeholder="$t('userList.enrollmentYearPlaceholder')"
                   @input="handleEnrollmentYearChange"
                 />
               </el-form-item>
@@ -219,10 +219,10 @@
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="年级" prop="grade">
+              <el-form-item :label="$t('userList.grade')" prop="grade">
                 <el-input
                   v-model="formData.grade"
-                  placeholder="自动计算"
+                  :placeholder="$t('userList.gradeAuto')"
                   :disabled="!formData.enrollmentYear"
                 >
                   <template #append>
@@ -232,10 +232,10 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="毕业年份" prop="graduationYear">
+              <el-form-item :label="$t('userList.graduationYear')" prop="graduationYear">
                 <el-input
                   v-model="formData.graduationYear"
-                  placeholder="如：2028（4 年制本科）"
+                  :placeholder="$t('userList.graduationYearPlaceholder')"
                   @input="handleGraduationYearChange"
                 >
                   <template #append>
@@ -249,19 +249,19 @@
 
           <!-- 教师专属字段 -->
           <template v-if="formData.role === 'TEACHER'">
-            <el-divider content-position="left">教师信息</el-divider>
+            <el-divider content-position="left">{{ $t('userList.teacherInfo') }}</el-divider>
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="工号" prop="teacherNo">
-                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                <el-form-item :label="$t('userList.teacherNo')" prop="teacherNo">
+                  <el-input v-model="formData.teacherNo" :placeholder="$t('userList.teacherNoPlaceholder')" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="审核状态" prop="teacherStatus">
+                <el-form-item :label="$t('userList.teacherStatus')" prop="teacherStatus">
                   <el-select v-model="formData.teacherStatus" class="full-width">
-                    <el-option label="待审核" :value="0" />
-                    <el-option label="已通过" :value="1" />
-                    <el-option label="已驳回" :value="2" />
+                    <el-option :label="$t('userForm.teacherStatusPending')" :value="0" />
+                    <el-option :label="$t('userForm.teacherStatusApproved')" :value="1" />
+                    <el-option :label="$t('userList.teacherStatusRejected')" :value="2" />
                   </el-select>
                 </el-form-item>
               </el-col>
@@ -270,16 +270,16 @@
 
           <!-- 教务专属字段 -->
           <template v-if="formData.role === 'ACADEMIC'">
-            <el-divider content-position="left">教务信息</el-divider>
+            <el-divider content-position="left">{{ $t('userList.academicInfo') }}</el-divider>
             <el-row :gutter="20">
               <el-col :span="12">
-                <el-form-item label="工号" prop="teacherNo">
-                  <el-input v-model="formData.teacherNo" placeholder="请输入工号" />
+                <el-form-item :label="$t('userList.teacherNo')" prop="teacherNo">
+                  <el-input v-model="formData.teacherNo" :placeholder="$t('userList.teacherNoPlaceholder')" />
                 </el-form-item>
               </el-col>
               <el-col :span="12">
-                <el-form-item label="管辖院系">
-                  <el-select v-model="formData.departmentId" placeholder="请选择" clearable class="full-width">
+                <el-form-item :label="$t('userList.managedDepartments')">
+                  <el-select v-model="formData.departmentId" :placeholder="$t('userSearch.pleaseSelect')" clearable class="full-width">
                     <el-option
                       v-for="dept in departments"
                       :key="dept.id"
@@ -294,8 +294,8 @@
         </div>
 
         <el-form-item class="form-actions">
-          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">保存</el-button>
-          <el-button @click="handleCancel">取消</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('app.save') }}</el-button>
+          <el-button @click="handleCancel">{{ $t('app.cancel') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -305,6 +305,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Back } from '@element-plus/icons-vue'
 import { getUserById, createUser, updateUser } from '@/api/user'
@@ -313,6 +314,7 @@ import { useGradeCascade } from '@/composables/useGradeCascade'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 const formRef = ref(null)
 const submitLoading = ref(false)
@@ -348,9 +350,9 @@ const formData = reactive({
 
 const validateConfirmPassword = (rule, value, callback) => {
   if (!value) {
-    callback(new Error('请再次输入密码'))
+    callback(new Error(t('userForm.confirmPasswordPlaceholder')))
   } else if (value !== formData.password) {
-    callback(new Error('两次输入的密码不一致'))
+    callback(new Error(t('userForm.passwordMismatch')))
   } else {
     callback()
   }
@@ -358,24 +360,24 @@ const validateConfirmPassword = (rule, value, callback) => {
 
 const formRules = {
   username: [
-    { required: true, message: '请输入账号', trigger: ['blur', 'change'] },
-    { min: 3, max: 50, message: '账号长度为3-50个字符', trigger: ['blur', 'change'] }
+    { required: true, message: t('userList.accountRequired'), trigger: ['blur', 'change'] },
+    { min: 3, max: 50, message: t('userForm.usernameLength'), trigger: ['blur', 'change'] }
   ],
   password: [
-    { required: true, message: '请输入密码', trigger: ['blur', 'change'] },
-    { min: 6, max: 100, message: '密码长度为6-100个字符', trigger: ['blur', 'change'] }
+    { required: true, message: t('userForm.passwordPlaceholder'), trigger: ['blur', 'change'] },
+    { min: 6, max: 100, message: t('userForm.passwordLength'), trigger: ['blur', 'change'] }
   ],
   confirmPassword: [
     { required: true, validator: validateConfirmPassword, trigger: ['blur', 'change'] }
   ],
-  realName: [{ required: true, message: '请输入姓名', trigger: ['blur', 'change'] }],
-  role: [{ required: true, message: '请选择角色', trigger: ['blur', 'change'] }],
+  realName: [{ required: true, message: t('userList.realNamePlaceholder'), trigger: ['blur', 'change'] }],
+  role: [{ required: true, message: t('userForm.selectRole'), trigger: ['blur', 'change'] }],
   // P1-C 修复：B3.7 邮箱/手机格式校验此前完全缺失（非法值静默通过），补齐格式规则
   email: [
-    { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: '请输入正确的邮箱格式', trigger: ['blur', 'change'] }
+    { pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: t('user.pleaseInputValidEmail'), trigger: ['blur', 'change'] }
   ],
   phone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: ['blur', 'change'] }
+    { pattern: /^1[3-9]\d{9}$/, message: t('userList.phoneFormat'), trigger: ['blur', 'change'] }
   ]
 }
 
@@ -417,7 +419,7 @@ const handleGraduationYearChange = () => {
   const gy = parseYear(formData.graduationYear)
   if (ey === null || gy === null) return
   if (gy <= ey) {
-    ElMessage.warning('毕业年份必须大于入学年份')
+    ElMessage.warning(t('userList.graduationAfterEnrollment'))
     formData.graduationYear = String(ey + STUDY_YEARS_DEFAULT)
   }
   formData.grade = calcGradeFromEnrollment(formData.enrollmentYear, formData.graduationYear)
@@ -425,8 +427,8 @@ const handleGraduationYearChange = () => {
 const gradeHint = computed(() => {
   const ey = parseYear(formData.enrollmentYear)
   if (ey === null) return ''
-  if (formData.grade) return `当前${formData.grade}年级`
-  return '自动计算'
+  if (formData.grade) return t('userList.currentGrade', { grade: formData.grade })
+  return t('userList.gradeAuto')
 })
 const gradeHintType = computed(() => {
   const ey = parseYear(formData.enrollmentYear)
@@ -443,7 +445,7 @@ const studyYearsHint = computed(() => {
   if (ey === null || gy === null) return ''
   const years = gy - ey + 1
   if (years <= 0) return ''
-  return `${years} 年制`
+  return t('userList.yearsSystem', { years })
 })
 watch(() => formData.role, (newRole, oldRole) => {
   // 角色切换时清除上一角色的专属字段
@@ -469,7 +471,7 @@ const fetchDepartments = async () => {
     const { data } = await getDepartments({ size: 1000 })
     departments.value = data.items || []
   } catch {
-    ElMessage.error('获取院系列表失败')
+    ElMessage.error(t('userForm.fetchDepartmentsFailed'))
   }
 }
 
@@ -490,15 +492,15 @@ const handleSubmit = async () => {
         delete submitData.confirmPassword
         delete submitData.role
         await updateUser(route.params.id, submitData)
-        ElMessage.success('操作成功')
+        ElMessage.success(t('common.success'))
       } else {
         delete submitData.confirmPassword
         await createUser(submitData)
-        ElMessage.success('操作成功')
+        ElMessage.success(t('common.success'))
       }
       router.push('/users')
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败，请稍后重试' : '创建失败，请稍后重试')
+      ElMessage.error(isEdit.value ? t('userForm.editFailedRetry') : t('userForm.createFailedRetry'))
     } finally {
       submitLoading.value = false
     }
@@ -545,7 +547,7 @@ const loadUserData = async (id) => {
       await fetchClasses(data.majorId)
     }
   } catch {
-    ElMessage.error('获取用户信息失败')
+    ElMessage.error(t('userForm.fetchUserFailed'))
   }
 }
 

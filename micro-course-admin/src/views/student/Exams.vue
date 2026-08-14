@@ -11,16 +11,16 @@
       <!-- 面包屑导航 -->
       <div class="breadcrumb-wrap">
         <el-breadcrumb>
-          <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-          <el-breadcrumb-item>考试中心</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('course.home') }}</el-breadcrumb-item>
+          <el-breadcrumb-item>{{ $t('learning.examCenter') }}</el-breadcrumb-item>
         </el-breadcrumb>
       </div>
 
       <!-- 页面 Header -->
       <div class="page-header">
         <div class="header-content">
-          <h1 class="page-title">我的考试</h1>
-          <p class="page-subtitle">查看我的考试安排</p>
+          <h1 class="page-title">{{ $t('examCenter.myExams') }}</h1>
+          <p class="page-subtitle">{{ $t('examCenter.subtitle') }}</p>
         </div>
       </div>
 
@@ -45,20 +45,20 @@
         <el-result
           v-else-if="errorState"
           icon="error"
-          title="加载失败"
-          sub-title="考试数据加载异常，请稍后重试"
+          :title="$t('examCenter.loadFailed')"
+          :sub-title="$t('examCenter.loadErrorSubtitle')"
           class="error-state"
         >
           <template #extra>
-            <el-button type="primary" @click="fetchExams">重新加载</el-button>
+            <el-button type="primary" @click="fetchExams">{{ $t('learning.reload') }}</el-button>
           </template>
         </el-result>
 
         <!-- 考试列表（含分类 Tab） -->
         <div v-else class="exam-list">
           <el-tabs v-model="activeTab" class="exam-tabs">
-            <el-tab-pane label="待参加" name="pending" :disabled="loading" />
-            <el-tab-pane label="已完成" name="completed" :disabled="loading" />
+            <el-tab-pane :label="$t('examCenter.pending')" name="pending" :disabled="loading" />
+            <el-tab-pane :label="$t('learning.completed')" name="completed" :disabled="loading" />
           </el-tabs>
 
           <el-card
@@ -71,7 +71,7 @@
               <h3 class="exam-title">{{ exam.examTitle || exam.title }}</h3>
               <p class="exam-course">
                 <el-icon><Reading /></el-icon>
-                <span>{{ exam.courseName || exam.courseTitle || '未知课程' }}</span>
+                <span>{{ exam.courseName || exam.courseTitle || $t('examCenter.unknownCourse') }}</span>
               </p>
               <p v-if="exam.examTime" class="exam-time">
                 <el-icon><Clock /></el-icon>
@@ -79,7 +79,7 @@
               </p>
               <p v-if="exam.duration" class="exam-duration">
                 <el-icon><Timer /></el-icon>
-                <span>时长：{{ exam.duration }}分钟</span>
+                <span>{{ $t('examCenter.duration', { minutes: exam.duration }) }}</span>
               </p>
               <div class="exam-actions">
                 <el-button
@@ -88,7 +88,7 @@
                   size="small"
                   disabled
                 >
-                  已截止
+                  {{ $t('examCenter.expired') }}
                 </el-button>
                 <el-button
                   v-else-if="!exam._passed"
@@ -96,7 +96,7 @@
                   size="small"
                   @click="handleJoinExam(exam)"
                 >
-                  参加考试
+                  {{ $t('examCenter.joinExam') }}
                 </el-button>
                 <el-button
                   v-else
@@ -104,7 +104,7 @@
                   size="small"
                   disabled
                 >
-                  已完成
+                  {{ $t('learning.completed') }}
                 </el-button>
               </div>
             </div>
@@ -119,7 +119,7 @@
               <el-icon class="empty-icon"><Tickets /></el-icon>
             </template>
             <template #description>
-              <p>{{ activeTab === 'pending' ? '暂无待参加的考试' : activeTab === 'completed' ? '暂无已完成的考试' : '暂无已截止的考试' }}</p>
+              <p>{{ activeTab === 'pending' ? $t('examCenter.emptyPending') : activeTab === 'completed' ? $t('examCenter.emptyCompleted') : $t('examCenter.emptyExpired') }}</p>
             </template>
           </el-empty>
         </div>
@@ -131,13 +131,13 @@
       <!-- 面包屑导航 -->
       <div class="h5-breadcrumb-wrap">
         <el-breadcrumb separator="→">
-          <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-          <el-breadcrumb-item>考试中心</el-breadcrumb-item>
+          <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('course.home') }}</el-breadcrumb-item>
+          <el-breadcrumb-item>{{ $t('learning.examCenter') }}</el-breadcrumb-item>
         </el-breadcrumb>
       </div>
 
       <div class="h5-header">
-        <h1 class="h5-title">我的考试</h1>
+        <h1 class="h5-title">{{ $t('examCenter.myExams') }}</h1>
       </div>
 
       <!-- Loading -->
@@ -158,20 +158,20 @@
       <el-result
         v-else-if="errorState"
         icon="error"
-        title="加载失败"
-        sub-title="请稍后重试"
+        :title="$t('examCenter.loadFailed')"
+        :sub-title="$t('examCenter.retryLater')"
         class="error-state"
       >
         <template #extra>
-          <el-button type="primary" size="small" @click="fetchExams">重新加载</el-button>
+          <el-button type="primary" size="small" @click="fetchExams">{{ $t('learning.reload') }}</el-button>
         </template>
       </el-result>
 
       <!-- 考试列表（含分类 Tab） -->
       <div v-else class="h5-exam-list">
         <el-tabs v-model="activeTab" class="exam-tabs h5-tabs">
-          <el-tab-pane label="待参加" name="pending" :disabled="loading" />
-          <el-tab-pane label="已完成" name="completed" :disabled="loading" />
+          <el-tab-pane :label="$t('examCenter.pending')" name="pending" :disabled="loading" />
+          <el-tab-pane :label="$t('learning.completed')" name="completed" :disabled="loading" />
         </el-tabs>
 
         <el-card
@@ -183,7 +183,7 @@
           <h3 class="h5-exam-title">{{ exam.examTitle || exam.title }}</h3>
           <p class="h5-exam-course">
             <el-icon><Reading /></el-icon>
-            {{ exam.courseName || exam.courseTitle || '未知课程' }}
+            {{ exam.courseName || exam.courseTitle || $t('examCenter.unknownCourse') }}
           </p>
           <p v-if="exam.examTime" class="h5-exam-time">
             <el-icon><Clock /></el-icon>
@@ -196,7 +196,7 @@
             class="h5-action-btn"
             disabled
           >
-            已截止
+            {{ $t('examCenter.expired') }}
           </el-button>
           <el-button
             v-else-if="!exam._passed"
@@ -205,7 +205,7 @@
             class="h5-action-btn"
             @click="handleJoinExam(exam)"
           >
-            参加考试
+            {{ $t('examCenter.joinExam') }}
           </el-button>
           <el-button
             v-else
@@ -214,7 +214,7 @@
             class="h5-action-btn"
             disabled
           >
-            已完成
+            {{ $t('learning.completed') }}
           </el-button>
         </el-card>
 
@@ -227,7 +227,7 @@
             <el-icon class="empty-icon"><Tickets /></el-icon>
           </template>
           <template #description>
-            <p>{{ activeTab === 'pending' ? '暂无待参加的考试' : '暂无已完成的考试' }}</p>
+            <p>{{ activeTab === 'pending' ? $t('examCenter.emptyPending') : $t('examCenter.emptyCompleted') }}</p>
           </template>
         </el-empty>
       </div>
@@ -240,6 +240,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Tickets, Reading, Clock, Timer } from '@element-plus/icons-vue'
 import { useUserStore } from '../../store/user'
@@ -250,6 +251,7 @@ import { getMyAttemptCount } from '../../api/exercise-record'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 // 响应式设备检测
 const isMobile = ref(window.innerWidth <= 768)
@@ -283,7 +285,7 @@ const filteredExamList = computed(() => {
 })
 
 const formatTime = (timeStr) => {
-  if (!timeStr) return '未定'
+  if (!timeStr) return t('examCenter.undetermined')
   const d = new Date(timeStr)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
@@ -298,7 +300,7 @@ const fetchExams = async () => {
       ...exam,
       examId: exam.id,
       examTitle: exam.title,
-      courseTitle: exam.courseTitle || '未知课程',
+      courseTitle: exam.courseTitle || t('examCenter.unknownCourse'),
       // P1-C 修复 (2026-08-04): 未安排考试时间的试卷 startTime 为 null，
       // 原逻辑回退 createdAt（创建时刻）→ 新试卷立即被判定"已过期"，
       // 学生考试中心永远看不到新考试。未安排时间的考试应归入"待参加"（时间显示"未定"）。
@@ -327,7 +329,7 @@ const fetchExams = async () => {
     })
   } catch {
     errorState.value = true
-    ElMessage.error('加载考试信息失败')
+    ElMessage.error(t('examCenter.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -377,8 +379,8 @@ const handleJoinExam = async (exam) => {
   // P0: 检查前置章节是否全部完成
   const canProceed = await checkPrerequisiteChapters(exam)
   if (!canProceed) {
-    ElMessageBox.alert('请先完成前置章节的学习和练习，再参加本场考试', '章节未完成', {
-      confirmButtonText: '知道了',
+    ElMessageBox.alert(t('examCenter.prerequisiteAlert'), t('examCenter.prerequisiteTitle'), {
+      confirmButtonText: t('course.gotIt'),
       type: 'warning'
     })
     return

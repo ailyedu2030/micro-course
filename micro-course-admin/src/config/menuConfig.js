@@ -14,6 +14,7 @@
 const ADMIN = [
   {
     group: '数据看板',
+    groupKey: 'menu.group.数据看板',
     icon: 'DataAnalysis',
     children: [
       { labelKey: 'menu.adminDashboard', label: '数据总览', path: '/admin/dashboard', icon: 'Odometer' },
@@ -23,6 +24,7 @@ const ADMIN = [
   },
   {
     group: '基础数据',
+    groupKey: 'menu.group.基础数据',
     icon: 'Grid',
     children: [
       { labelKey: 'menu.departments', label: '院系管理', path: '/departments', icon: 'OfficeBuilding' },
@@ -33,6 +35,7 @@ const ADMIN = [
   },
   {
     group: '课程管理',
+    groupKey: 'menu.group.课程管理',
     icon: 'Notebook',
     children: [
       { labelKey: 'menu.courses', label: '全部课程', path: '/courses', icon: 'VideoCamera' },
@@ -45,6 +48,7 @@ const ADMIN = [
   },
   {
     group: '内容资源',
+    groupKey: 'menu.group.内容资源',
     icon: 'VideoPlay',
     children: [
       { labelKey: 'menu.chapters', label: '章节管理', path: '/chapters', icon: 'List' },
@@ -59,6 +63,7 @@ const ADMIN = [
   },
   {
     group: '教务管理',
+    groupKey: 'menu.group.教务管理',
     icon: 'UserFilled',
     children: [
       { labelKey: 'menu.teachingClasses', label: '教学班管理', path: '/admin/teaching-classes', icon: 'Reading' },
@@ -71,6 +76,7 @@ const ADMIN = [
   },
   {
     group: '微专业管理',
+    groupKey: 'menu.group.微专业管理',
     icon: 'Medal',
     children: [
       { labelKey: 'menu.microSpecialtyList', label: '微专业列表', path: '/teacher/micro-specialties', icon: 'Grid' },
@@ -81,6 +87,7 @@ const ADMIN = [
   },
   {
     group: '系统管理',
+    groupKey: 'menu.group.系统管理',
     icon: 'Setting',
     children: [
       { labelKey: 'menu.systemSettings', label: '系统设置', path: '/admin/settings', icon: 'Tools' },
@@ -97,6 +104,7 @@ const ADMIN = [
 const ACADEMIC = [
   {
     group: '数据看板',
+    groupKey: 'menu.group.数据看板',
     icon: 'DataAnalysis',
     children: [
       { labelKey: 'menu.academicDashboard', label: '驾驶舱总览', path: '/academic/dashboard', icon: 'Odometer' },
@@ -104,6 +112,7 @@ const ACADEMIC = [
   },
   {
     group: '基础数据',
+    groupKey: 'menu.group.基础数据',
     icon: 'Grid',
     children: [
       { labelKey: 'menu.departments', label: '院系管理', path: '/departments', icon: 'OfficeBuilding' },
@@ -113,6 +122,7 @@ const ACADEMIC = [
   },
   {
     group: '课程管理',
+    groupKey: 'menu.group.课程管理',
     icon: 'Notebook',
     children: [
       { labelKey: 'menu.courses', label: '全部课程', path: '/courses', icon: 'VideoCamera' },
@@ -127,6 +137,7 @@ const ACADEMIC = [
     // 【2026-08-12 P1-C 修复】ACADEMIC 无线下课程权限（后端 OfflineSessionController 仅 TEACHER/ADMIN），
     //  移除入口防 403；线下课程运营归教师/管理员（权限矩阵 §1.27）
     group: '内容资源',
+    groupKey: 'menu.group.内容资源',
     icon: 'VideoPlay',
     children: [
       { labelKey: 'menu.videoCourseware', label: '视频课件', path: '/videos', icon: 'VideoPlay' },
@@ -138,6 +149,7 @@ const ACADEMIC = [
   },
   {
     group: '教务管理',
+    groupKey: 'menu.group.教务管理',
     icon: 'UserFilled',
     children: [
       { labelKey: 'menu.teachingClasses', label: '教学班管理', path: '/admin/teaching-classes', icon: 'Reading' },
@@ -149,6 +161,7 @@ const ACADEMIC = [
   },
   {
     group: '微专业管理',
+    groupKey: 'menu.group.微专业管理',
     icon: 'Medal',
     children: [
       { labelKey: 'menu.proposalReview', label: '申报审批', path: '/academic/micro-specialties/proposals', icon: 'Document' },
@@ -158,6 +171,7 @@ const ACADEMIC = [
   },
   {
     group: '系统管理',
+    groupKey: 'menu.group.系统管理',
     icon: 'Setting',
     children: [
       { labelKey: 'menu.operationLogs', label: '操作日志', path: '/admin/logs', icon: 'Clock' },
@@ -169,6 +183,7 @@ const ACADEMIC = [
 const TEACHER = [
   {
     group: '教学看板',
+    groupKey: 'menu.group.教学看板',
     icon: 'DataAnalysis',
     children: [
       { labelKey: 'menu.teacherDashboard', label: '我的看板', path: '/teacher/dashboard', icon: 'Odometer' },
@@ -176,6 +191,7 @@ const TEACHER = [
   },
   {
     group: '课程管理',
+    groupKey: 'menu.group.课程管理',
     icon: 'Notebook',
     children: [
       { labelKey: 'menu.myCourses', label: '我的课程', path: '/teacher/courses', icon: 'VideoCamera' },
@@ -191,6 +207,7 @@ const TEACHER = [
   },
   {
     group: '题库管理',
+    groupKey: 'menu.group.题库管理',
     icon: 'Document',
     children: [
       { labelKey: 'menu.questionList', label: '题库列表', path: '/teacher/questions', icon: 'List' },
@@ -199,6 +216,7 @@ const TEACHER = [
   },
   {
     group: '学员管理',
+    groupKey: 'menu.group.学员管理',
     icon: 'UserFilled',
     children: [
       { labelKey: 'menu.studentList', label: '学员列表', path: '/teacher/students', icon: 'School' },
@@ -210,6 +228,7 @@ const TEACHER = [
   },
   {
     group: '微专业管理',
+    groupKey: 'menu.group.微专业管理',
     icon: 'Medal',
     children: [
       { labelKey: 'menu.myMicroSpecialties', label: '我的微专业', path: '/teacher/micro-specialties', icon: 'Grid' },
@@ -220,6 +239,7 @@ const TEACHER = [
   },
   {
     group: '个人设置',
+    groupKey: 'menu.group.个人设置',
     icon: 'Setting',
     children: [
       { labelKey: 'menu.profile', label: '个人资料 / API Key', path: '/teacher/profile', icon: 'User' },

@@ -213,10 +213,10 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
               :aria-label="$t('course.teacher')"
             >
               <el-option
-                v-for="t in teacherOptions"
-                :key="t.id"
-                :label="t.realName || t.username"
-                :value="t.id"
+                v-for="teacherOpt in teacherOptions"
+                :key="teacherOpt.id"
+                :label="teacherOpt.realName || teacherOpt.username"
+                :value="teacherOpt.id"
               />
             </el-select>
             <el-input v-else :model-value="teacherName" disabled :aria-label="$t('course.teacher')" />
@@ -256,7 +256,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item :label="$t('course.coursePrice') + '(¥)'">
-                <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=free" class="full-width" :aria-label="$t('course.coursePrice')" />
+                <el-input-number v-model="formData.price" :min="0" :precision="2" :placeholder="$t('course.pricePlaceholder')" class="full-width" :aria-label="$t('course.coursePrice')" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -267,9 +267,9 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
               <el-form-item :label="$t('course.freeAccess')">
                 <el-select v-model="formData.freeAccessScope" :placeholder="$t('course.freeAccess')" class="full-width" :aria-label="$t('course.freeAccess')">
                   <el-option :label="$t('app.no')" value="none" />
-                  <el-option label="Same Dept" value="same_department" />
-                  <el-option label="Same College" value="same_college" />
-                  <el-option label="Same School" value="same_school" />
+                  <el-option :label="$t('course.sameDepartment')" value="same_department" />
+                  <el-option :label="$t('course.sameCollege')" value="same_college" />
+                  <el-option :label="$t('course.sameSchool')" value="same_school" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -277,8 +277,8 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
               <el-form-item :label="$t('course.discountScope')">
                 <el-select v-model="formData.discountScope" :placeholder="$t('course.discountScope')" class="full-width" :aria-label="$t('course.discountScope')">
                   <el-option :label="$t('app.no')" value="none" />
-                  <el-option label="Same College" value="same_college" />
-                  <el-option label="Same School" value="same_school" />
+                  <el-option :label="$t('course.sameCollege')" value="same_college" />
+                  <el-option :label="$t('course.sameSchool')" value="same_school" />
                 </el-select>
               </el-form-item>
             </el-col>
@@ -297,7 +297,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
         <el-form label-width="100px">
           <el-form-item :label="$t('course.courseDescription')" prop="description">
             <div class="quill-editor-wrapper">
-              <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '180px' }" />
+              <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" :placeholder="$t('course.descriptionPlaceholder')" :style="{ minHeight: '180px' }" />
             </div>
           </el-form-item>
         </el-form>
@@ -315,7 +315,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
             </el-upload>
           </template>
           <div v-else class="cover-preview-wrap">
-            <img :src="coverPreviewUrl" class="cover-preview-img" alt="Cover preview" />
+            <img :src="coverPreviewUrl" class="cover-preview-img" :alt="$t('course.coverPreviewAlt')" />
             <el-button size="small" @click="handleRemoveCover">{{ $t('course.removeCover') }}</el-button>
           </div>
         </div>
@@ -345,7 +345,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
           </el-col>
           <el-col :span="12">
             <el-form-item :label="$t('course.duration')">
-              <el-input-number v-model="chapterFormData.duration" :min="0" placeholder="optional" class="full-width" :aria-label="$t('course.duration')" />
+              <el-input-number v-model="chapterFormData.duration" :min="0" :placeholder="$t('course.optional')" class="full-width" :aria-label="$t('course.duration')" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -369,6 +369,7 @@ v-if="isEditMode && userRole === 'ACADEMIC'"
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Sortable from 'sortablejs'
 import { useUserStore } from '@/store/user'
@@ -388,6 +389,7 @@ import { COURSE_TYPE_OPTIONS, getCourseTypeConfig, isCoursewareCourseType } from
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 const {
@@ -424,11 +426,11 @@ const categories = ref([])
 
 // P1-C: 修复 QuillEditor 工具栏按钮缺少 aria-label
 const QUILL_LABELS = {
-  'ql-bold': '粗体', 'ql-italic': '斜体', 'ql-underline': '下划线',
-  'ql-strike': '删除线', 'ql-link': '插入链接', 'ql-clean': '清除格式',
-  'ql-blockquote': '引用', 'ql-code-block': '代码块',
-  'ql-image': '插入图片', 'ql-list': '有序列表', 'ql-bullet': '无序列表',
-  'ql-header': '标题'
+  'ql-bold': t('microSpecialtyManage.quillBold'), 'ql-italic': t('microSpecialtyManage.quillItalic'), 'ql-underline': t('microSpecialtyManage.quillUnderline'),
+  'ql-strike': t('microSpecialtyManage.quillStrike'), 'ql-link': t('microSpecialtyManage.quillLink'), 'ql-clean': t('microSpecialtyManage.quillClean'),
+  'ql-blockquote': t('microSpecialtyManage.quillBlockquote'), 'ql-code-block': t('microSpecialtyManage.quillCodeBlock'),
+  'ql-image': t('microSpecialtyManage.quillImage'), 'ql-list': t('microSpecialtyManage.quillListOrdered'), 'ql-bullet': t('microSpecialtyManage.quillListUnordered'),
+  'ql-header': t('microSpecialtyManage.quillHeader')
 }
 function fixQuillAria() {
   setTimeout(() => {
@@ -442,7 +444,7 @@ function fixQuillAria() {
       if (!picker.hasAttribute('aria-label') && picker.classList.contains('ql-header')) {
         const labelBtn = picker.querySelector('.ql-picker-label')
         if (labelBtn && !labelBtn.getAttribute('aria-label')) {
-          labelBtn.setAttribute('aria-label', '标题')
+          labelBtn.setAttribute('aria-label', t('microSpecialtyManage.quillHeader'))
         }
       }
     })
@@ -460,10 +462,10 @@ const formData = reactive({
   discountPercent: 0
 })
 const formRules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
-  courseType: [{ required: true, message: '请选择课程类型', trigger: 'change' }]
+  title: [{ required: true, message: t('course.inputCourseTitle'), trigger: 'blur' }],
+  categoryId: [{ required: true, message: t('course.pleaseSelectCategory'), trigger: 'change' }],
+  teacherId: [{ required: true, message: t('course.selectTeacher'), trigger: 'change' }],
+  courseType: [{ required: true, message: t('course.pleaseSelectCourseType'), trigger: 'change' }]
 }
 const teacherName = computed(() => courseData.value.teacherName || '')
 
@@ -484,7 +486,7 @@ const isEditSection = ref(false)
 const currentChapterForSection = ref(null)
 const sectionSubmitLoading = ref(false)
 const chapterDialogVisible = ref(false)
-const chapterDialogTitle = ref('新增章节')
+const chapterDialogTitle = ref(t('course.addChapter'))
 const isChapterEdit = ref(false)
 const currentChapterId = ref(null)
 const chapterFormRef = ref(null)
@@ -533,7 +535,7 @@ const fetchCourse = async () => {
       formData.teacherId = data.teacherId || null
       if (data.coverUrl) coverPreviewUrl.value = data.coverUrl
     }
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取课程信息失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('course.fetchCourseFailed')) }
   finally { loading.value = false }
 }
 
@@ -549,7 +551,7 @@ const fetchChapters = async () => {
     }
   } catch {
     chapters.value = []
-    ElMessage.warning('章节列表加载失败')
+    ElMessage.warning(t('course.fetchChaptersFailed'))
   }
   finally { chapterLoading.value = false; await nextTick(); initSortable() }
 }
@@ -609,7 +611,7 @@ const previewAsStudent = () => {
 }
 const switchToEdit = () => {
   if (courseData.value?.status === 4) {
-    ElMessage.warning('已发布课程不可编辑，请先下架')
+    ElMessage.warning(t('course.editingDisabled'))
     return
   }
   router.push(courseEditPath(courseId.value))
@@ -624,55 +626,55 @@ const handleSubmitForReview = async () => {
   if (submitLoading.value) return
   // 提交前预检：封面必须已上传
   if (!courseData.value?.coverUrl) {
-    ElMessage.warning('请先上传课程封面再提交审核（点击「编辑」按钮，在封面区域上传）')
+    ElMessage.warning(t('course.coverRequired'))
     return
   }
-  try { await ElMessageBox.confirm('确定提交审核？', '提示', { type: 'info' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmSubmitReview'), t('course.hintTitle'), { type: 'info' }) } catch { return }
   submitLoading.value = true
-  try { await submitCourseForReview(courseId.value); ElMessage.success('已提交审核'); fetchCourse() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await submitCourseForReview(courseId.value); ElMessage.success(t('course.submittedForReview')); fetchCourse() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { submitLoading.value = false }
 }
 const handleApprove = async () => {
-  try { await ElMessageBox.confirm('确定审核通过？', '提示', { type: 'info' }) } catch { return }
-  try { await approveCourse(courseId.value); ElMessage.success('审核通过'); fetchCourse() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await ElMessageBox.confirm(t('course.confirmApprove'), t('course.hintTitle'), { type: 'info' }) } catch { return }
+  try { await approveCourse(courseId.value); ElMessage.success(t('course.approve')); fetchCourse() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 const handleReject = async () => {
   // eslint-disable-next-line no-useless-assignment -- reason 在 try 块内被用户输入覆盖
   let reason = ''
-  try { const res = await ElMessageBox.prompt('请输入驳回原因', '驳回', { confirmButtonText: '确定', inputType: 'textarea', inputProps: { maxlength: 500, showWordLimit: true }, inputValidator: (v) => { if (!v || v.trim().length < 10) { return '驳回原因至少10个字' } if (v.trim().length > 500) { return '驳回原因不能超过500字' } return true } }); reason = res.value }
+  try { const res = await ElMessageBox.prompt(t('course.inputRejectReason'), t('course.rejectTitle'), { confirmButtonText: t('course.dialogConfirm'), inputType: 'textarea', inputProps: { maxlength: 500, showWordLimit: true }, inputValidator: (v) => { if (!v || v.trim().length < 10) { return t('course.rejectReasonMin10') } if (v.trim().length > 500) { return t('course.rejectReasonMax500') } return true } }); reason = res.value }
   catch { return }
-  try { await rejectCourse(courseId.value, reason); ElMessage.success('已驳回'); fetchCourse() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await rejectCourse(courseId.value, reason); ElMessage.success(t('course.rejectedSuccess')); fetchCourse() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 const handlePublish = async () => {
-  try { await ElMessageBox.confirm('确定发布？', '提示', { type: 'info' }) } catch { return }
-  try { await publishCourse(courseId.value); ElMessage.success('已发布'); fetchCourse() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await ElMessageBox.confirm(t('course.confirmPublish'), t('course.hintTitle'), { type: 'info' }) } catch { return }
+  try { await publishCourse(courseId.value); ElMessage.success(t('course.published')); fetchCourse() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 const handleUnpublish = async () => {
-  try { await ElMessageBox.confirm('确定下架？', '提示', { type: 'info' }) } catch { return }
-  try { await unpublishCourse(courseId.value); ElMessage.success('已下架'); fetchCourse() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await ElMessageBox.confirm(t('course.confirmUnpublish'), t('course.hintTitle'), { type: 'info' }) } catch { return }
+  try { await unpublishCourse(courseId.value); ElMessage.success(t('course.unpublished')); fetchCourse() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 
 const handleCopy = async () => {
-  try { await ElMessageBox.confirm('复制课程后,视频需手动重新上传。是否继续?', '提示', { type: 'info' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmCopy'), t('course.hintTitle'), { type: 'info' }) } catch { return }
   try {
     const res = await copyCourse(courseId.value)
-    ElMessage.success('已复制,视频需手动上传')
+    ElMessage.success(t('course.copySuccess'))
     if (res.data?.videoCopied === false) {
-      ElMessageBox.alert('副本课程已创建,但视频内容未复制,请逐个章节手动上传', '提示')
+      ElMessageBox.alert(t('course.videoNotCopied'), t('course.hintTitle'))
     }
     router.push(courseDetailPath(res.data.id))
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '复制失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('course.copyFailed')) }
 }
 
 // ===== 编辑提交 =====
 const handleCoverChange = (file) => {
   if (file.raw && file.raw.size > 2 * 1024 * 1024) {
-    ElMessage.warning('封面图片不能超过 2MB')
+    ElMessage.warning(t('course.coverTooBig'))
     coverUploadRef.value?.clearFiles()
     return
   }
@@ -714,31 +716,31 @@ const handleSubmit = async () => {
       const newCourseId = res?.data?.id
       if (newCourseId && coverFile.value) {
         try { await updateCourseCover(newCourseId, coverFile.value) }
-        catch { ElMessage.warning('课程已创建，封面上传失败，请稍后到编辑页重试') }
+        catch { ElMessage.warning(t('course.createdCoverFailed')) }
       }
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
       if (newCourseId) router.push(courseDetailPath(newCourseId))
       return
     }
     await updateCourse(courseId.value, payload)
     if (coverFile.value) {
       try { await updateCourseCover(courseId.value, coverFile.value) }
-      catch { ElMessage.warning('信息已保存，封面上传失败') }
+      catch { ElMessage.warning(t('course.savedCoverFailed')) }
     }
-    ElMessage.success('保存成功')
+    ElMessage.success(t('course.saveSuccess'))
     router.push(courseDetailPath(courseId.value))
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '保存失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('course.saveFailed')) }
   finally { submitLoading.value = false }
 }
 
 // ===== 章节操作 =====
 const handleCreateChapter = () => {
-  chapterDialogTitle.value = '新增章节'; isChapterEdit.value = false
+  chapterDialogTitle.value = t('course.addChapter'); isChapterEdit.value = false
   chapterFormData.title = ''; chapterFormData.sortOrder = 0; chapterFormData.duration = 0
   chapterDialogVisible.value = true
 }
 const handleEditChapter = (row) => {
-  chapterDialogTitle.value = '编辑章节'; isChapterEdit.value = true; currentChapterId.value = row.id
+  chapterDialogTitle.value = t('course.chapterEdit'); isChapterEdit.value = true; currentChapterId.value = row.id
   chapterFormData.title = row.title || ''; chapterFormData.sortOrder = row.sortOrder ?? 0
   chapterFormData.duration = row.duration ?? 0
   chapterDialogVisible.value = true
@@ -774,12 +776,12 @@ const handleEditSection = (chapter, section) => {
 
 const handleDeleteSection = async (chapter, section) => {
   try {
-    await ElMessageBox.confirm(`确定删除课时「${section.title}」？`, '确认删除', { type: 'warning' })
+    await ElMessageBox.confirm(t('course.confirmDeleteSection', { title: section.title }), t('course.confirmDeleteTitle'), { type: 'warning' })
     await deleteSection(courseId.value, chapter.id, section.id, true)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     await loadSections(chapter.id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '删除失败')
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
   }
 }
 
@@ -788,15 +790,15 @@ const handleSubmitSection = async (form) => {
   try {
     if (isEditSection.value) {
       await updateSection(courseId.value, currentChapterForSection.value.id, editingSection.value.id, form)
-      ElMessage.success('更新成功')
+      ElMessage.success(t('course.updateSuccess'))
     } else {
       await createSection(courseId.value, currentChapterForSection.value.id, form)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
     }
     showSectionDialog.value = false
     await loadSections(currentChapterForSection.value.id)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '操作失败')
+    ElMessage.error(e?.response?.data?.message || t('course.operationFailed'))
   } finally {
     sectionSubmitLoading.value = false
   }
@@ -804,17 +806,17 @@ const handleSubmitSection = async (form) => {
 
 const handleDeleteChapter = async (row) => {
   const videoCount = row.videoCount ?? 0
-  const contentHint = videoCount > 0 ? `（含 ${videoCount} 个视频内容）` : ''
-  try { await ElMessageBox.confirm(`确定删除章节「${row.title || ''}」？${contentHint}删除后不可恢复。`, '提示', { type: 'warning', confirmButtonText: '确认删除', cancelButtonText: '取消' }) } catch { return }
-  try { await deleteChapter(row.id); ElMessage.success('已删除'); fetchChapters() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+  const contentHint = videoCount > 0 ? t('course.videoCountHint', { count: videoCount }) : ''
+  try { await ElMessageBox.confirm(t('course.confirmDeleteChapter', { title: row.title || '' }) + contentHint, t('course.hintTitle'), { type: 'warning', confirmButtonText: t('course.confirmDeleteTitle'), cancelButtonText: t('app.cancel') }) } catch { return }
+  try { await deleteChapter(row.id); ElMessage.success(t('course.deleted')); fetchChapters() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.deleteFailed')) }
 }
 const handleSaveSort = async () => {
   if (saveSortLoading.value) return
   saveSortLoading.value = true
   const sorts = chapters.value.map((c, i) => ({ id: c.id, sortOrder: i + 1 }))
-  try { await sortChapters(sorts); ElMessage.success('排序已保存'); fetchChapters() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '保存排序失败') }
+  try { await sortChapters(sorts); ElMessage.success(t('course.sortSaved')); fetchChapters() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.saveSortFailed')) }
   finally { saveSortLoading.value = false }
 }
 const handleChapterSubmit = async () => {
@@ -829,10 +831,10 @@ const handleChapterSubmit = async () => {
     } else {
       await createChapter({ ...chapterFormData, courseId: Number(courseId.value) })
     }
-    ElMessage.success(isChapterEdit.value ? '更新成功' : '创建成功')
+    ElMessage.success(isChapterEdit.value ? t('course.updateSuccess') : t('course.createSuccess'))
     chapterDialogVisible.value = false
     await fetchChapters()
-  } catch (e) { ElMessage.error(e?.response?.data?.message || e?.message || '操作失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || e?.message || t('course.operationFailed')) }
   finally { chapterSubmitLoading.value = false }
 }
 const handleChapterCancel = () => { chapterDialogVisible.value = false }

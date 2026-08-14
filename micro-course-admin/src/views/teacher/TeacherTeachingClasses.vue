@@ -11,17 +11,17 @@
         <el-card class="course-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">我的课程</span>
+              <span class="card-title">{{ $t('course.myCourses') }}</span>
             </div>
           </template>
           <div v-if="loadingCourses" class="loading-wrap">
             <el-skeleton :rows="6" animated />
           </div>
           <div v-else-if="coursesError" class="error-state">
-            <el-empty description="课程加载失败" :image-size="80" />
-            <el-button type="primary" size="small" @click="fetchCourses">重新加载</el-button>
+            <el-empty :description="$t('course.loadFailed')" :image-size="80" />
+            <el-button type="primary" size="small" @click="fetchCourses">{{ $t('teachingClass.reload') }}</el-button>
           </div>
-          <el-empty v-else-if="courseOptions.length === 0" description="暂无课程" :image-size="80" />
+          <el-empty v-else-if="courseOptions.length === 0" :description="$t('course.noCourses')" :image-size="80" />
           <div v-else class="course-list">
             <div
               v-for="course in courseOptions"
@@ -30,7 +30,7 @@
               :class="{ 'is-active': selectedCourseId === course.id }"
               role="button"
               tabindex="0"
-              :aria-label="`查看课程 ${course.title} 的教学班`"
+              :aria-label="$t('teachingClass.courseClassesAria', { title: course.title })"
               @click="handleSelectCourse(course)"
               @keydown.enter="handleSelectCourse(course)"
               @keydown.space.prevent="handleSelectCourse(course)"
@@ -47,12 +47,12 @@
         <el-card class="class-card" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">{{ selectedCourse ? selectedCourse.title + ' - 教学班' : '请选择课程' }}</span>
+              <span class="card-title">{{ selectedCourse ? $t('teachingClass.courseClassesTitle', { title: selectedCourse.title }) : $t('teachingClass.pleaseSelectCourse') }}</span>
             </div>
           </template>
 
           <div v-if="!selectedCourseId" class="empty-tip">
-            <el-empty description="请从左侧选择课程" :image-size="100" />
+            <el-empty :description="$t('teachingClass.selectFromLeft')" :image-size="100" />
           </div>
 
           <div v-else-if="loadingClasses" class="loading-wrap">
@@ -60,19 +60,19 @@
           </div>
 
           <div v-else-if="classesError" class="error-state">
-            <el-empty description="教学班加载失败" :image-size="80" />
-            <el-button type="primary" size="small" @click="fetchClasses">重新加载</el-button>
+            <el-empty :description="$t('teachingClass.loadFailed')" :image-size="80" />
+            <el-button type="primary" size="small" @click="fetchClasses">{{ $t('teachingClass.reload') }}</el-button>
           </div>
 
           <div v-else-if="groupedClasses.length === 0" class="empty-tip">
-            <el-empty description="该课程暂无教学班" :image-size="100" />
+            <el-empty :description="$t('teachingClass.noClassesForCourse')" :image-size="100" />
           </div>
 
           <div v-else class="class-groups">
             <div v-for="group in groupedClasses" :key="group.semester" class="class-group">
               <div class="group-header">
                 <el-tag type="primary" size="small">{{ group.semester }}</el-tag>
-                <span class="group-count">共 {{ group.list.length }} 个班</span>
+                <span class="group-count">{{ $t('teachingClass.classCount', { count: group.list.length }) }}</span>
               </div>
               <div class="group-classes">
                 <div
@@ -82,7 +82,7 @@
                   :class="{ 'is-expanded': expandedClassId === cls.id }"
                   style="cursor:pointer"
                 >
-                  <div class="class-summary" role="button" tabindex="0" :aria-label="`展开班级详情 ${cls.name}`" :aria-expanded="expandedClassId === cls.id" @click="handleExpandClass(cls)" @keydown.enter="handleExpandClass(cls)" @keydown.space.prevent="handleExpandClass(cls)">
+                  <div class="class-summary" role="button" tabindex="0" :aria-label="$t('teachingClass.expandClassAria', { name: cls.name })" :aria-expanded="expandedClassId === cls.id" @click="handleExpandClass(cls)" @keydown.enter="handleExpandClass(cls)" @keydown.space.prevent="handleExpandClass(cls)">
                     <div class="class-info">
                       <span class="class-name">{{ cls.name }}</span>
                       <el-tag :type="getStatusType(cls.status)" size="small" class="status-tag">
@@ -90,7 +90,7 @@
                       </el-tag>
                     </div>
                     <div class="class-meta">
-                      <span>容量 {{ cls.studentCount ?? 0 }}{{ cls.maxStudents ? '/' + cls.maxStudents : ' 人' }}</span>
+                      <span>{{ $t('teachingClass.capacityLabel') }} {{ cls.studentCount ?? 0 }}{{ cls.maxStudents ? '/' + cls.maxStudents : $t('teachingClass.personSuffix') }}</span>
                       <span class="expand-icon">
                         <el-icon><ArrowRight v-if="expandedClassId !== cls.id" /><ArrowDown v-else /></el-icon>
                       </span>
@@ -100,11 +100,11 @@
                   <!-- 展开：学生管理 -->
                   <div v-if="expandedClassId === cls.id" class="class-detail">
                     <div class="detail-actions">
-                      <el-button type="primary" size="small" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleAddStudent(cls)" aria-label="添加学生">
-<el-icon><Plus /></el-icon>添加学生
+                      <el-button type="primary" size="small" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleAddStudent(cls)" :aria-label="$t('teachingClass.addStudent')">
+<el-icon><Plus /></el-icon>{{ $t('teachingClass.addStudent') }}
                       </el-button>
-                      <el-button size="small" @click="handleRefreshStudents(cls)" aria-label="刷新">
-<el-icon><RefreshRight /></el-icon>刷新
+                      <el-button size="small" @click="handleRefreshStudents(cls)" :aria-label="$t('common.refresh')">
+<el-icon><RefreshRight /></el-icon>{{ $t('common.refresh') }}
                       </el-button>
                     </div>
 
@@ -116,29 +116,29 @@
                       size="small"
                       class="student-table"
                     >
-                      <el-table-column type="index" label="序号" width="60" align="center" />
-                      <el-table-column prop="studentNo" label="学号" width="120" show-overflow-tooltip />
-                      <el-table-column prop="realName" label="姓名" width="100" show-overflow-tooltip />
-                      <el-table-column prop="status" label="状态" width="100" align="center">
+                      <el-table-column type="index" :label="$t('course.index')" width="60" align="center" />
+                      <el-table-column prop="studentNo" :label="$t('userList.studentNo')" width="120" show-overflow-tooltip />
+                      <el-table-column prop="realName" :label="$t('user.realName')" width="100" show-overflow-tooltip />
+                      <el-table-column prop="status" :label="$t('app.status')" width="100" align="center">
                         <template #default="{ row }">
                           <el-tag :type="getStudentStatusType(row.status)" size="small">
                             {{ getStudentStatusText(row.status) }}
                           </el-tag>
                         </template>
                       </el-table-column>
-                      <el-table-column prop="enrolledAt" label="加入时间" width="160" :formatter="$formatDateTime" />
-                      <el-table-column label="操作" width="140" fixed="right">
+                      <el-table-column prop="enrolledAt" :label="$t('teachingClass.enrolledAt')" width="160" :formatter="$formatDateTime" />
+                      <el-table-column :label="$t('app.operation')" width="140" fixed="right">
                         <template #default="{ row }">
                           <el-button type="primary" link size="small" @click="handleChangeStatus(cls, row)">
-                            修改状态
+                            {{ $t('teachingClass.changeStatus') }}
                           </el-button>
-                          <el-button type="danger" link size="small" @click="handleRemoveStudent(cls, row)">移除</el-button>
+                          <el-button type="danger" link size="small" @click="handleRemoveStudent(cls, row)">{{ $t('teachingClass.remove') }}</el-button>
                         </template>
                       </el-table-column>
                     </el-table>
 
                     <div v-if="!studentLoading[cls.id] && (studentData[cls.id] || []).length === 0" class="no-students">
-                      暂无学生
+                      {{ $t('teachingClass.noStudents') }}
                     </div>
                   </div>
                 </div>
@@ -150,51 +150,51 @@
     </el-row>
 
     <!-- 添加学生弹窗 -->
-    <el-dialog v-model="addStudentVisible" title="添加学生" width="560px" destroy-on-close :close-on-press-escape="true">
+    <el-dialog v-model="addStudentVisible" :title="$t('teachingClass.addStudent')" width="560px" destroy-on-close :close-on-press-escape="true">
       <el-form :model="addStudentForm" label-width="80px">
-        <el-form-item label="搜索学生">
-          <el-input v-model="addStudentForm.realName" placeholder="输入姓名或学号，按回车搜索" clearable @keyup.enter="handleSearchStudent">
+        <el-form-item :label="$t('teachingClass.searchStudent')">
+          <el-input v-model="addStudentForm.realName" :placeholder="$t('teachingClass.searchPlaceholder')" clearable @keyup.enter="handleSearchStudent">
             <template #append>
-              <el-button @click="handleSearchStudent">搜索</el-button>
+              <el-button @click="handleSearchStudent">{{ $t('app.search') }}</el-button>
             </template>
           </el-input>
         </el-form-item>
-        <el-form-item v-if="searchResults.length > 0" label="搜索结果">
+        <el-form-item v-if="searchResults.length > 0" :label="$t('teachingClass.searchResults')">
           <el-table :data="searchResults" size="small" highlight-current-row max-height="240" @current-change="handleSelectStudent" border>
-            <el-table-column prop="studentNo" label="学号" width="120" />
-            <el-table-column prop="realName" label="姓名" width="100" />
-            <el-table-column prop="departmentName" label="院系" show-overflow-tooltip />
+            <el-table-column prop="studentNo" :label="$t('userList.studentNo')" width="120" />
+            <el-table-column prop="realName" :label="$t('user.realName')" width="100" />
+            <el-table-column prop="departmentName" :label="$t('userSearch.department')" show-overflow-tooltip />
           </el-table>
         </el-form-item>
-        <el-form-item v-if="addStudentForm.userId" label="已选学生">
+        <el-form-item v-if="addStudentForm.userId" :label="$t('teachingClass.selectedStudent')">
           <el-tag type="success" closable @close="addStudentForm.userId = null">
             {{ selectedStudentLabel }}
           </el-tag>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="addStudentVisible = false">取消</el-button>
-        <el-button type="primary" :loading="addingStudent" :disabled="!addStudentForm.userId" @click="confirmAddStudent">添加</el-button>
+        <el-button @click="addStudentVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="addingStudent" :disabled="!addStudentForm.userId" @click="confirmAddStudent">{{ $t('teachingClass.add') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 修改状态弹窗 -->
-    <el-dialog v-model="changeStatusVisible" title="修改学生状态" width="400px" destroy-on-close :close-on-press-escape="true">
+    <el-dialog v-model="changeStatusVisible" :title="$t('teachingClass.changeStudentStatus')" width="400px" destroy-on-close :close-on-press-escape="true">
       <el-form label-width="80px">
-        <el-form-item label="当前学生">
+        <el-form-item :label="$t('teachingClass.currentStudent')">
           <el-input :model-value="currentStudentItem?.realName || ''" disabled />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item :label="$t('app.status')">
           <el-select v-model="changeStatusForm.status" class="full-width">
-            <el-option label="在读" value="ENROLLED" />
-            <el-option label="已退课" value="DROPPED" />
-            <el-option label="已结业" value="COMPLETED" />
+            <el-option :label="$t('teachingClass.studentStatusEnrolled')" value="ENROLLED" />
+            <el-option :label="$t('teachingClass.studentStatusDropped')" value="DROPPED" />
+            <el-option :label="$t('teachingClass.studentStatusCompleted')" value="COMPLETED" />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="changeStatusVisible = false">取消</el-button>
-        <el-button type="primary" :loading="changingStatus" :disabled="changingStatus" @click="confirmChangeStatus">确定</el-button>
+        <el-button @click="changeStatusVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="changingStatus" :disabled="changingStatus" @click="confirmChangeStatus">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -202,6 +202,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, RefreshRight, ArrowRight, ArrowDown } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -215,6 +216,7 @@ import {
 import { searchStudents } from '@/api/teaching-class'
 import { getCourses } from '@/api/course'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
@@ -242,19 +244,19 @@ const studentData = reactive({})
 
 // 状态映射
 const statusMap = {
-  0: { text: '已停开', type: 'info' },
-  1: { text: '开课中', type: 'success' },
-  2: { text: '已结课', type: 'warning' }
+  0: { text: t('teachingClass.statusStopped'), type: 'info' },
+  1: { text: t('teachingClass.statusActive'), type: 'success' },
+  2: { text: t('teachingClass.statusCompleted'), type: 'warning' }
 }
 
 const studentStatusMap = {
-  ENROLLED: { text: '在读', type: 'success' },
-  DROPPED: { text: '已退课', type: 'info' },
-  COMPLETED: { text: '已结业', type: 'warning' }
+  ENROLLED: { text: t('teachingClass.studentStatusEnrolled'), type: 'success' },
+  DROPPED: { text: t('teachingClass.studentStatusDropped'), type: 'info' },
+  COMPLETED: { text: t('teachingClass.studentStatusCompleted'), type: 'warning' }
 }
 
 function getStatusText(status) {
-  return statusMap[status]?.text || '未知'
+  return statusMap[status]?.text || t('course.unknown')
 }
 
 function getStatusType(status) {
@@ -262,7 +264,7 @@ function getStatusType(status) {
 }
 
 function getStudentStatusText(status) {
-  return studentStatusMap[status]?.text || status || '未知'
+  return studentStatusMap[status]?.text || status || t('course.unknown')
 }
 
 function getStudentStatusType(status) {
@@ -280,7 +282,7 @@ function formatDate(isoString) {
 const groupedClasses = computed(() => {
   const groups = {}
   tableData.value.forEach(cls => {
-    const sem = cls.semester || '未知学期'
+    const sem = cls.semester || t('teachingClass.unknownSemester')
     if (!groups[sem]) groups[sem] = { semester: sem, list: [] }
     groups[sem].list.push(cls)
   })
@@ -294,7 +296,7 @@ async function fetchCourses() {
   try {
     const teacherId = userStore.userId
     if (!teacherId) {
-      ElMessage.error('无法获取当前用户信息')
+      ElMessage.error(t('teachingClass.getUserFailed'))
       return
     }
     const { data } = await getCourses({ size: 100, teacherId })
@@ -360,7 +362,7 @@ async function fetchStudents(cls, force = false) {
   } catch (error) {
 // eslint-disable-next-line no-console
     console.debug('[TeacherTeachingClasses] 获取班级学生列表失败', error)
-    ElMessage.error(`获取班级学生列表失败`)
+    ElMessage.error(t('teachingClass.fetchStudentsFailed'))
     studentData[cls.id] = []
   } finally {
     studentLoading[cls.id] = false
@@ -396,7 +398,7 @@ function handleAddStudent(cls) {
 
 async function handleSearchStudent() {
   if (!addStudentForm.realName || addStudentForm.realName.trim().length < 2) {
-    ElMessage.warning('请输入至少2个字符进行搜索')
+    ElMessage.warning(t('teachingClass.searchMinChars'))
     return
   }
   try {
@@ -407,21 +409,21 @@ async function handleSearchStudent() {
     const items = Array.isArray(data) ? data : (data?.items || [])
     searchResults.value = items
     if (items.length === 0) {
-      ElMessage.info('未找到匹配的学生')
+      ElMessage.info(t('teachingClass.noStudentMatch'))
       addStudentForm.userId = null
       return
     }
     if (items.length === 1) {
       addStudentForm.userId = items[0].id
-      ElMessage.success(`已找到学生：${items[0].realName}`)
+      ElMessage.success(t('teachingClass.studentFound', { name: items[0].realName }))
     } else {
-      ElMessage.info(`找到 ${items.length} 名学生，请在列表中选择`)
+      ElMessage.info(t('teachingClass.studentsFound', { count: items.length }))
       addStudentForm.userId = null
     }
   } catch (error) {
 // eslint-disable-next-line no-console
     console.debug('[TeacherTeachingClasses] 搜索学生失败', error)
-    ElMessage.error('搜索学生失败')
+    ElMessage.error(t('teachingClass.searchFailed'))
   }
 }
 
@@ -433,14 +435,14 @@ function handleSelectStudent(row) {
 
 async function confirmAddStudent() {
   if (!addStudentForm.userId) {
-    ElMessage.warning('请先搜索并选择学生')
+    ElMessage.warning(t('teachingClass.selectStudentFirst'))
     return
   }
   if (!currentClassForAdd.value) return
   addingStudent.value = true
   try {
     await addStudentToClass(currentClassForAdd.value.id, addStudentForm.userId)
-    ElMessage.success('添加成功')
+    ElMessage.success(t('teachingClass.addSuccess'))
     addStudentVisible.value = false
     // 清除缓存以便刷新
     delete studentData[currentClassForAdd.value.id]
@@ -448,7 +450,7 @@ async function confirmAddStudent() {
   } catch (error) {
 // eslint-disable-next-line no-console
     console.debug('[TeacherTeachingClasses] 添加学生失败', error)
-    ElMessage.error('添加失败')
+    ElMessage.error(t('teachingClass.addFailed'))
   } finally {
     addingStudent.value = false
   }
@@ -457,9 +459,9 @@ async function confirmAddStudent() {
 // 移除学生
 async function handleRemoveStudent(cls, student) {
   try {
-    await ElMessageBox.confirm('确定移除该学生？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('teachingClass.confirmRemoveStudent'), t('course.hintTitle'), { type: 'warning' })
     await removeStudentFromClass(cls.id, student.userId)
-    ElMessage.success('移除成功')
+    ElMessage.success(t('teachingClass.removeSuccess'))
     // 清除缓存以便刷新
     delete studentData[cls.id]
     await fetchStudents(cls)
@@ -467,7 +469,7 @@ async function handleRemoveStudent(cls, student) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[TeacherTeachingClasses] 移除学生失败', e)
-      ElMessage.error('移除失败')
+      ElMessage.error(t('teachingClass.removeFailed'))
     }
   }
 }
@@ -490,7 +492,7 @@ async function confirmChangeStatus() {
   changingStatus.value = true
   try {
     await updateStudentStatus(currentClassForStatus.value.id, currentStudentItem.value.userId, changeStatusForm.status)
-    ElMessage.success('状态修改成功')
+    ElMessage.success(t('teachingClass.statusChangeSuccess'))
     changeStatusVisible.value = false
     // 清除缓存以便刷新
     delete studentData[currentClassForStatus.value.id]
@@ -498,7 +500,7 @@ async function confirmChangeStatus() {
   } catch (error) {
 // eslint-disable-next-line no-console
     console.debug('[TeacherTeachingClasses] 修改学生状态失败', error)
-    ElMessage.error('状态修改失败')
+    ElMessage.error(t('teachingClass.statusChangeFailed'))
   } finally {
     changingStatus.value = false
   }

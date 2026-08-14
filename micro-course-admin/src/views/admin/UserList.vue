@@ -24,17 +24,17 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="toolbar-left">
-          <span class="card-count">共 {{ totalElements }} 条记录</span>
+          <span class="card-count">{{ $t('adminUserList.totalRecords', { count: totalElements }) }}</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleCreate" aria-label="新增用户">
-            <el-icon><Plus /></el-icon>新增用户
+          <el-button type="primary" @click="handleCreate" :aria-label="$t('admin.quickActions.addUser')">
+            <el-icon><Plus /></el-icon>{{ $t('admin.quickActions.addUser') }}
           </el-button>
-          <el-button type="success" @click="handleImport" aria-label="确认">
-            <el-icon><Upload /></el-icon>Excel 导入
+          <el-button type="success" @click="handleImport" :aria-label="$t('app.confirm')">
+            <el-icon><Upload /></el-icon>{{ $t('admin.excelImport') }}
           </el-button>
-          <el-button type="primary" @click="handleExport" aria-label="下载">
-            <el-icon><Download /></el-icon>导出
+          <el-button type="primary" @click="handleExport" :aria-label="$t('adminUserList.download')">
+            <el-icon><Download /></el-icon>{{ $t('admin.export') }}
           </el-button>
         </div>
       </div>
@@ -58,28 +58,28 @@
     />
 
     <!-- 重置密码弹窗（A1.7 忘记密码兜底链路） -->
-    <el-dialog v-model="resetVisible" title="重置密码" width="420px" destroy-on-close>
+    <el-dialog v-model="resetVisible" :title="$t('adminUserList.resetPassword')" width="420px" destroy-on-close>
       <el-form ref="resetFormRef" :model="resetForm" :rules="resetRules" label-width="90px">
-        <el-form-item label="用户">
+        <el-form-item :label="$t('adminUserList.user')">
           <el-input :model-value="resetTarget ? (resetTarget.realName || resetTarget.username) : ''" disabled />
         </el-form-item>
-        <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="resetForm.newPassword" type="password" show-password placeholder="至少 8 位且包含字母和数字" />
+        <el-form-item :label="$t('adminUserList.newPassword')" prop="newPassword">
+          <el-input v-model="resetForm.newPassword" type="password" show-password :placeholder="$t('adminUserList.newPasswordPlaceholder')" />
         </el-form-item>
-        <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="resetForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
+        <el-form-item :label="$t('auth.confirmPassword')" prop="confirmPassword">
+          <el-input v-model="resetForm.confirmPassword" type="password" show-password :placeholder="$t('adminUserList.confirmPasswordPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="resetVisible = false">取消</el-button>
-        <el-button type="primary" :loading="resetting" @click="confirmResetPassword">确定</el-button>
+        <el-button @click="resetVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="resetting" @click="confirmResetPassword">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- Excel 导入弹窗 -->
     <el-dialog
       v-model="importDialogVisible"
-      title="Excel 批量导入用户"
+      :title="$t('adminUserList.importUsersTitle')"
       width="520px"
       destroy-on-close
       :close-on-press-escape="true"
@@ -87,22 +87,22 @@
       <div class="import-guide">
         <el-alert type="info" :closable="false" show-icon>
           <template #title>
-            请上传 .xlsx/.xls 格式的 Excel 文件，每次最多导入 500 条记录。
+            {{ $t('adminUserList.importGuide') }}
           </template>
         </el-alert>
         <div class="import-template">
-          <p class="template-title">Excel 模板格式：</p>
+          <p class="template-title">{{ $t('adminUserList.templateTitle') }}</p>
           <el-table :data="[]" size="small" border class="template-table">
-            <el-table-column prop="username" label="username (必填)" />
-            <el-table-column prop="realName" label="realName (必填)" />
-            <el-table-column prop="password" label="password (可选，留空自动生成)" />
-            <el-table-column prop="role" label="role (STUDENT/TEACHER)" />
+            <el-table-column prop="username" :label="$t('adminUserList.usernameRequired')" />
+            <el-table-column prop="realName" :label="$t('adminUserList.realNameRequired')" />
+            <el-table-column prop="password" :label="$t('adminUserList.passwordOptional')" />
+            <el-table-column prop="role" :label="$t('adminUserList.roleHint')" />
             <el-table-column prop="departmentName" label="departmentName" />
             <el-table-column prop="majorName" label="majorName" />
             <el-table-column prop="className" label="className" />
           </el-table>
-          <el-button type="primary" text @click="handleDownloadTemplate" aria-label="编辑">
-            <el-icon><Download /></el-icon>下载模板文件
+          <el-button type="primary" text @click="handleDownloadTemplate" :aria-label="$t('app.edit')">
+            <el-icon><Download /></el-icon>{{ $t('adminUserList.downloadTemplate') }}
           </el-button>
         </div>
         <el-upload
@@ -116,16 +116,16 @@
           :on-remove="handleFileRemove"
         >
           <el-icon class="upload-icon"><UploadFilled /></el-icon>
-          <div class="upload-text">将 Excel 文件拖到此处，或 <em>点击上传</em></div>
+          <div class="upload-text">{{ $t('adminUserList.uploadDragText') }}<em>{{ $t('adminUserList.clickUpload') }}</em></div>
           <template #tip>
-            <div class="upload-tip">只能上传 xlsx/xls 文件，单个文件不超过 5MB</div>
+            <div class="upload-tip">{{ $t('adminUserList.uploadTip') }}</div>
           </template>
         </el-upload>
       </div>
       <template #footer>
-        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button @click="importDialogVisible = false">{{ $t('app.cancel') }}</el-button>
         <el-button type="primary" :loading="importing" :disabled="!uploadFile" @click="handleConfirmImport">
-          开始导入
+          {{ $t('adminUserList.startImport') }}
         </el-button>
       </template>
     </el-dialog>
@@ -133,7 +133,7 @@
     <!-- 导入结果弹窗 -->
     <el-dialog
       v-model="resultDialogVisible"
-      title="导入结果"
+      :title="$t('adminUserList.importResult')"
       width="600px"
       destroy-on-close
       :close-on-press-escape="true"
@@ -141,8 +141,8 @@
       <div class="result-content">
         <el-result
           :icon="importResult.successCount > 0 ? 'success' : 'warning'"
-          :title="importResult.successCount > 0 ? `成功导入 ${importResult.successCount} 条` : '导入失败'"
-          :sub-title="importResult.failCount > 0 ? `失败 ${importResult.failCount} 条，以下为失败条目` : ''"
+          :title="importResult.successCount > 0 ? $t('adminUserList.importSuccessCount', { count: importResult.successCount }) : $t('adminUserList.importFailed')"
+          :sub-title="importResult.failCount > 0 ? $t('adminUserList.importFailList', { count: importResult.failCount }) : ''"
         />
         <el-table
           v-if="importResult.errors && importResult.errors.length > 0"
@@ -152,13 +152,13 @@
           size="small"
           max-height="300"
         >
-          <el-table-column prop="row" label="行号" width="80" align="center" />
-          <el-table-column prop="username" label="账号" width="140" />
-          <el-table-column prop="reason" label="失败原因" show-overflow-tooltip />
+          <el-table-column prop="row" :label="$t('adminUserList.rowNumber')" width="80" align="center" />
+          <el-table-column prop="username" :label="$t('userList.account')" width="140" />
+          <el-table-column prop="reason" :label="$t('adminUserList.failReason')" show-overflow-tooltip />
         </el-table>
       </div>
       <template #footer>
-        <el-button type="primary" @click="resultDialogVisible = false">确定</el-button>
+        <el-button type="primary" @click="resultDialogVisible = false">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
@@ -185,6 +185,9 @@ import { Workbook } from 'exceljs'
 import UserSearchBar from '@/components/users/UserSearchBar.vue'
 import UserTable from '@/components/users/UserTable.vue'
 import UserDetailCard from '@/components/users/UserDetailCard.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 // 加载状态
 const loading = ref(false)
@@ -225,13 +228,13 @@ const resetFormRef = ref(null)
 const resetting = ref(false)
 const resetRules = {
   newPassword: [
-    { required: true, message: '请输入新密码', trigger: 'blur' },
-    { pattern: /^(?=.*[A-Za-z])(?=.*\d).{8,}$/, message: '密码需至少 8 位且包含字母和数字', trigger: 'blur' }
+    { required: true, message: t('adminUserList.inputNewPassword'), trigger: 'blur' },
+    { pattern: /^(?=.*[A-Za-z])(?=.*\d).{8,}$/, message: t('adminUserList.passwordPolicy'), trigger: 'blur' }
   ],
   confirmPassword: [
-    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { required: true, message: t('adminUserList.inputConfirmPassword'), trigger: 'blur' },
     {
-      validator: (rule, value, cb) => (value === resetForm.newPassword ? cb() : cb(new Error('两次输入的密码不一致'))),
+      validator: (rule, value, cb) => (value === resetForm.newPassword ? cb() : cb(new Error(t('userForm.passwordMismatch')))),
       trigger: 'blur'
     }
   ]
@@ -254,10 +257,10 @@ async function confirmResetPassword() {
   resetting.value = true
   try {
     await resetUserPassword(resetTarget.value.id, { newPassword: resetForm.newPassword })
-    ElMessage.success('密码重置成功，请通知用户使用新密码登录')
+    ElMessage.success(t('adminUserList.passwordResetSuccess'))
     resetVisible.value = false
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '重置失败')
+    ElMessage.error(e?.response?.data?.message || t('adminUserList.resetFailed'))
   } finally {
     resetting.value = false
   }
@@ -283,7 +286,7 @@ async function fetchData() {
     totalElements.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('获取用户列表失败')
+    ElMessage.error(t('userList.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -336,7 +339,7 @@ function handleFileRemove() {
 
 async function handleConfirmImport() {
   if (!uploadFile.value) {
-    ElMessage.warning('请先选择 Excel 文件')
+    ElMessage.warning(t('adminUserList.selectExcelFirst'))
     return
   }
   importing.value = true
@@ -353,15 +356,15 @@ async function handleConfirmImport() {
     importDialogVisible.value = false
     resultDialogVisible.value = true
     if (result.failCount === 0) {
-      ElMessage.success(`成功导入 ${result.successCount} 条用户记录`)
+      ElMessage.success(t('adminUserList.importSuccessUsers', { count: result.successCount }))
     }
     fetchData()
   } catch (err) {
-    ElMessage.error('导入失败，请检查文件格式')
+    ElMessage.error(t('adminUserList.importFailedCheck'))
     importResult.value = {
       successCount: 0,
       failCount: 0,
-      errors: [{ row: 0, username: '-', reason: err.message || '导入失败' }]
+      errors: [{ row: 0, username: '-', reason: err.message || t('adminUserList.importFailed') }]
     }
     importDialogVisible.value = false
     resultDialogVisible.value = true
@@ -377,7 +380,7 @@ async function handleDownloadTemplate() {
     ['lisi', '李四', '', 'STUDENT', '计算机学院', '软件工程', '软工 2023-2 班']
   ]
   const wb = new Workbook()
-  const ws = wb.addWorksheet('用户导入模板')
+  const ws = wb.addWorksheet(t('adminUserList.templateSheetName'))
   ws.addRows(template)
   const wbout = await wb.xlsx.writeBuffer()
   const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
@@ -391,38 +394,38 @@ async function handleDownloadTemplate() {
 
 async function handleExport() {
   if (!tableData.value.length) {
-    ElMessage.warning('暂无数据可导出')
+    ElMessage.warning(t('adminUserList.noDataToExport'))
     return
   }
-  ElMessage.info(`即将导出当前页 ${tableData.value.length} 条数据，如需全部导出请联系管理员`)
+  ElMessage.info(t('adminUserList.exportCurrentPage', { count: tableData.value.length }))
   const exportData = tableData.value.map((item, index) => ({
-    序号: index + 1,
+    [t('course.index')]: index + 1,
     ID: item.id,
-    账号: item.username || '',
-    姓名: item.realName || '',
-    角色: getRoleLabel(item.role),
-    院系: item.departmentName || '',
-    专业: item.majorName || '',
-    班级: item.className || '',
-    状态: getStatusLabel(item.status),
-    注册时间: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
+    [t('userList.account')]: item.username || '',
+    [t('user.realName')]: item.realName || '',
+    [t('userSearch.role')]: getRoleLabel(item.role),
+    [t('userSearch.department')]: item.departmentName || '',
+    [t('userSearch.major')]: item.majorName || '',
+    [t('userSearch.classLabel')]: item.className || '',
+    [t('userSearch.status')]: getStatusLabel(item.status),
+    [t('user.registerTime')]: item.createdAt ? new Date(item.createdAt).toLocaleString('zh-CN', { hour12: false }).replace(/\//g, '-') : '-'
   }))
   const wb = new Workbook()
-  const ws = wb.addWorksheet('用户列表')
+  const ws = wb.addWorksheet(t('adminUserList.userListSheetName'))
   ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
   await wb.xlsx.writeFile(`users-${date}.xlsx`)
-  ElMessage.success('导出成功')
+  ElMessage.success(t('adminUserList.exportSuccess'))
 }
 
 function getRoleLabel(role) {
-  const map = { STUDENT: '学生', TEACHER: '教师', ADMIN: '管理员', ACADEMIC: '教务' }
+  const map = { STUDENT: t('userSearch.student'), TEACHER: t('userSearch.teacher'), ADMIN: t('userSearch.admin'), ACADEMIC: t('userSearch.academic') }
   return map[role] || role || '-'
 }
 
 function getStatusLabel(status) {
-  const map = { 0: '未激活', 1: '启用', 2: '禁用', 3: '已删除' }
-  return map[status] || '未知'
+  const map = { 0: t('userSearch.statusInactive'), 1: t('userSearch.statusActive'), 2: t('userSearch.statusDisabled'), 3: t('userSearch.statusDeleted') }
+  return map[status] || t('course.unknown')
 }
 
 function handleCreate() {
@@ -436,16 +439,16 @@ function handleEdit(row) {
 async function handleSoftDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定删除用户「${row.realName || row.username}」吗？此操作将注销该用户。`,
-      '确认删除',
-      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+      t('adminUserList.deleteUserConfirm', { name: row.realName || row.username }),
+      t('adminUserList.confirmDeleteTitle'),
+      { confirmButtonText: t('course.dialogConfirm'), cancelButtonText: t('app.cancel'), type: 'warning' }
     )
     await updateUserStatus(row.id, { status: 3 })
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(e?.response?.data?.message || '删除失败')
+      ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
     }
   }
 }
