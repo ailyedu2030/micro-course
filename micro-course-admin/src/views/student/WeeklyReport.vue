@@ -252,6 +252,7 @@ import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyCheckIns } from '../../api/checkin'
 import { filterCourseCollectionEnrollments } from '../../utils/enrollmentFilters'
+import i18n from '@/i18n'
 
 const userStore = useUserStore()
 
@@ -430,7 +431,7 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
-  document.title = '学习报告 - 微课平台'
+  document.title = i18n.global.t('student.myReport') + ' - ' + i18n.global.t('app.title')
   window.addEventListener('resize', handleResize)
   loading.value = true
   try {

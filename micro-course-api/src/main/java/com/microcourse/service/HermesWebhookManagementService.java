@@ -1,10 +1,10 @@
 package com.microcourse.service;
 
+import com.microcourse.dto.hermes.HermesChapterRequest;
 import com.microcourse.dto.hermes.HermesChapterVO;
 import com.microcourse.dto.hermes.HermesCourseListVO;
+import com.microcourse.dto.hermes.HermesSectionRequest;
 import com.microcourse.dto.hermes.HermesSectionVO;
-import com.microcourse.entity.CourseChapter;
-import com.microcourse.entity.CourseSection;
 
 import java.util.List;
 
@@ -22,17 +22,17 @@ public interface HermesWebhookManagementService {
     /**
      * 创建课时。
      */
-    HermesSectionVO createSection(String hermesCourseId, String apiKey, CourseSection body);
+    HermesSectionVO createSection(String hermesCourseId, String apiKey, HermesSectionRequest body);
 
     /**
      * 更新课时。
      */
-    HermesSectionVO updateSection(String hermesCourseId, String apiKey, Long sectionId, CourseSection body);
+    HermesSectionVO updateSection(String hermesCourseId, String apiKey, Long sectionId, HermesSectionRequest body);
 
     /**
      * 更新章节。
      */
-    HermesChapterVO updateChapter(String hermesCourseId, String apiKey, Long chapterId, CourseChapter body);
+    HermesChapterVO updateChapter(String hermesCourseId, String apiKey, Long chapterId, HermesChapterRequest body);
 
     /**
      * 级联删除课程（含 Hermes 映射清理）。

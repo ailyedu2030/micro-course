@@ -459,7 +459,11 @@ const loadSettings = async () => {
       })
     }
     // 加载成功后同步到 localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
+    } catch (e) {
+      if (e.name !== 'QuotaExceededError') console.warn('Settings sync to localStorage failed:', e)
+    }
   } catch {
     // 后端不可用时回退到 localStorage
     try {

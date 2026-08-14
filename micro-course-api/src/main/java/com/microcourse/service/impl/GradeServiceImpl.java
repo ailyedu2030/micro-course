@@ -583,6 +583,37 @@ public class GradeServiceImpl implements GradeService {
             }
         }
 
+        // P1-C-Grade-N+1: 批量预加载 ExerciseRecord，避免 per-grade selectOne N+1
+        // 收集有 exerciseId 的 grades 的 (userId, exerciseId, attemptNo) 组合
+        List<ExerciseRecordKey> recordKeys = new ArrayList<>();
+        for (Grade g : grades) {
+            if (g.getExerciseId() != null && g.getUserId() != null) {
+                recordKeys.add(new ExerciseRecordKey(
+                        g.getUserId(),
+                        g.getExerciseId(),
+                        g.getAttemptNo() != null ? g.getAttemptNo() : 0));
+            }
+        }
+        // 批量查询所有相关 ExerciseRecord（按 id 倒序，取每个组合最近一条）
+        Map<ExerciseRecordKey, ExerciseRecord> recordMap = new HashMap<>();
+        if (!recordKeys.isEmpty()) {
+            Set<Long> recExerciseIds = recordKeys.stream().map(k -> k.exerciseId).collect(Collectors.toSet());
+            Set<Long> recUserIds = recordKeys.stream().map(k -> k.userId).collect(Collectors.toSet());
+            LambdaQueryWrapper<ExerciseRecord> recWrapper = new LambdaQueryWrapper<>();
+            recWrapper.in(ExerciseRecord::getExerciseId, recExerciseIds)
+                     .in(ExerciseRecord::getUserId, recUserIds)
+                     .isNull(ExerciseRecord::getDeletedAt)
+                     .orderByDesc(ExerciseRecord::getId);
+            List<ExerciseRecord> allRecords = exerciseRecordRepository.selectList(recWrapper);
+            for (ExerciseRecord r : allRecords) {
+                ExerciseRecordKey key = new ExerciseRecordKey(
+                        r.getUserId(), r.getExerciseId(),
+                        r.getAttemptNo() != null ? r.getAttemptNo() : 0);
+                // id 倒序，第一个遇到即最近
+                recordMap.putIfAbsent(key, r);
+            }
+        }
+
         return grades.stream().map(grade -> {
             GradeVO vo = new GradeVO();
             vo.setId(grade.getId());
@@ -602,15 +633,15 @@ public class GradeServiceImpl implements GradeService {
 
             // P1-C 修复 (2026-08-04): 关联练习作答记录，识别"待人工批改"的主观题，
             // 供前端成绩页展示批改入口与逐题批改（此前主观题永远 0 分且无批改入口）。
+            // P1-C-Grade-N+1 优化: 批量预加载替代 per-grade selectOne，从 recordMap 查找。
             try {
-                LambdaQueryWrapper<ExerciseRecord> recWrapper = new LambdaQueryWrapper<>();
-                // ExerciseRecord 无 courseId 列，按 exerciseId+userId+attemptNo 定位最近作答记录
-                recWrapper.eq(ExerciseRecord::getUserId, grade.getUserId())
-                          .eq(grade.getExerciseId() != null, ExerciseRecord::getExerciseId, grade.getExerciseId())
-                          .eq(grade.getAttemptNo() != null, ExerciseRecord::getAttemptNo, grade.getAttemptNo())
-                          .orderByDesc(ExerciseRecord::getId)
-                          .last("LIMIT 1");
-                ExerciseRecord record = exerciseRecordRepository.selectOne(recWrapper);
+                ExerciseRecord record = null;
+                if (grade.getExerciseId() != null && grade.getUserId() != null) {
+                    record = recordMap.get(new ExerciseRecordKey(
+                            grade.getUserId(),
+                            grade.getExerciseId(),
+                            grade.getAttemptNo() != null ? grade.getAttemptNo() : 0));
+                }
                 if (record != null) {
                     vo.setRecordId(record.getId());
                     boolean needsManual = Boolean.TRUE.equals(record.getNeedsManualGrading());
@@ -713,5 +744,33 @@ public class GradeServiceImpl implements GradeService {
         // 用 page 方法取最大 EXPORT_MAX_SIZE 条
         PageResult<GradeVO> result = page(courseId, null, 0, EXPORT_MAX_SIZE);
         return result.getItems();
+    }
+
+    /**
+     * P1-C-Grade-N+1: ExerciseRecord 复合键，用于批量查询结果去重
+     */
+    private static class ExerciseRecordKey {
+        final Long userId;
+        final Long exerciseId;
+        final int attemptNo;
+
+        ExerciseRecordKey(Long userId, Long exerciseId, int attemptNo) {
+            this.userId = userId;
+            this.exerciseId = exerciseId;
+            this.attemptNo = attemptNo;
+        }
+
+        @Override public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ExerciseRecordKey that = (ExerciseRecordKey) o;
+            return attemptNo == that.attemptNo
+                    && Objects.equals(userId, that.userId)
+                    && Objects.equals(exerciseId, that.exerciseId);
+        }
+
+        @Override public int hashCode() {
+            return Objects.hash(userId, exerciseId, attemptNo);
+        }
     }
 }

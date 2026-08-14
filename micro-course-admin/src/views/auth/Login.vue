@@ -164,6 +164,7 @@ import { register as registerApi, getRegistrationStatus } from '@/api/auth'
 import { PASSWORD_VALIDATORS, USERNAME_VALIDATORS } from '@/utils/constants'
 import { setToken, setRefreshToken } from '@/utils/auth'
 import { getRoleHomePage } from '@/router'
+import i18n from '@/i18n'
 
 const router = useRouter()
 const route = useRoute()
@@ -310,7 +311,7 @@ const checkMobile = () => {
 }
 
 onMounted(() => {
-  document.title = '登录 - 微课平台'
+  document.title = i18n.global.t('auth.login') + ' - ' + i18n.global.t('app.title')
   checkMobile()
   checkRegistrationStatus()
   window.addEventListener('resize', checkMobile)
