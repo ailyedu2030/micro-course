@@ -60,16 +60,23 @@ const saving = ref(false)
 const form = ref({})
 
 async function load() {
-  const res = await getPptPage(props.courseId, props.pageId)
-  page.value = res.data || res
-  form.value = {
-    pageTitle: page.value.pageTitle || '',
-    imageUrl: page.value.imageUrl || '',
-    thumbnailUrl: page.value.thumbnailUrl || '',
-    imageWidth: page.value.imageWidth || 1280,
-    imageHeight: page.value.imageHeight || 720,
-    hasAnimation: page.value.hasAnimation || false,
-    hasEmbeddedMedia: page.value.hasEmbeddedMedia || false
+  if (!props.pageId) return
+  try {
+    const res = await getPptPage(props.courseId, props.pageId)
+    page.value = res.data || res
+    form.value = {
+      pageTitle: page.value.pageTitle || '',
+      imageUrl: page.value.imageUrl || '',
+      thumbnailUrl: page.value.thumbnailUrl || '',
+      imageWidth: page.value.imageWidth || 1280,
+      imageHeight: page.value.imageHeight || 720,
+      hasAnimation: page.value.hasAnimation || false,
+      hasEmbeddedMedia: page.value.hasEmbeddedMedia || false
+    }
+  } catch (e) {
+    // P1-C 修复: 原 load() 无 try/catch → getPptPage 失败产生未处理 rejection + 空白面板
+    console.error('Failed to load PPT page:', e)
+    ElMessage.error('加载失败: ' + (e.message || '未知错误'))
   }
 }
 

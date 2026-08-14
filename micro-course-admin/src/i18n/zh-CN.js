@@ -2951,6 +2951,8 @@ export default {
     saveEdit: '保存修改',
     confirmAdd: '确认新增',
     imageRequired: '请上传轮播图图片',
+    onlyImageAllowed: '只能上传图片文件',
+    fileTooLarge: '图片大小不能超过 5MB',
     linkFormat: '请输入正确的 URL 格式（以 http:// 或 https:// 开头）',
     fetchFailed: '获取轮播图列表失败',
     updateFailedRetry: '修改失败，请稍后重试',

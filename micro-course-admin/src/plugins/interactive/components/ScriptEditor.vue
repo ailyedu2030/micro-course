@@ -106,22 +106,29 @@ async function loadActive() {
   // P0-A 修复: 新上传 PPT 页（无 currentScriptId）也允许进入加载流程 ——
   // getActivePptScript 无 active 脚本时后端返回 null → 空稿可输入,
   // 首次保存由 saveScript 契约自动创建 v1（PPT 与 HTML 行为一致）。
-  if (props.pageType === 'PPT') {
-    const [active, hist] = await Promise.all([
-      getActivePptScript(props.courseId, props.pageId),
-      listPptScriptHistory(props.courseId, props.pageId)
-    ])
-    currentScript.value = active.data || active
-    history.value = hist.data || hist
-    scriptText.value = currentScript.value?.scriptText || ''
-    activeVersion.value = currentScript.value?.scriptVersion || 0
-  } else {
-    // HTML
-    const active = await getActiveHtmlSegment(props.courseId, props.unitId, props.segmentIndex)
-    currentScript.value = active.data || active
-    history.value = currentScript.value ? [currentScript.value] : []
-    scriptText.value = currentScript.value?.scriptText || ''
-    activeVersion.value = currentScript.value?.scriptVersion || 0
+  try {
+    if (props.pageType === 'PPT') {
+      const [active, hist] = await Promise.all([
+        getActivePptScript(props.courseId, props.pageId),
+        listPptScriptHistory(props.courseId, props.pageId)
+      ])
+      currentScript.value = active.data || active
+      history.value = hist.data || hist
+      scriptText.value = currentScript.value?.scriptText || ''
+      activeVersion.value = currentScript.value?.scriptVersion || 0
+    } else {
+      // HTML
+      const active = await getActiveHtmlSegment(props.courseId, props.unitId, props.segmentIndex)
+      currentScript.value = active.data || active
+      history.value = currentScript.value ? [currentScript.value] : []
+      scriptText.value = currentScript.value?.scriptText || ''
+      activeVersion.value = currentScript.value?.scriptVersion || 0
+    }
+  } catch (e) {
+    // P1-C 修复: 原 loadActive() 无 try/catch → API 失败时静默失败,
+    // 编辑面板保持空白且无任何反馈
+    console.error('Failed to load active script:', e)
+    ElMessage.error('加载失败: ' + (e.message || '未知错误'))
   }
 }
 

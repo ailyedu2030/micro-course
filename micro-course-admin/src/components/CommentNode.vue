@@ -110,7 +110,12 @@ const emit = defineEmits(['reply', 'like'])
 const showReply = ref(false)
 const showChildren = ref(true)
 const replyContent = ref('')
-const liked = ref(props.comment.isLiked ?? false)
+// P1-C 修复: 点赞状态以服务端数据为唯一真相，不做乐观更新。
+// 根因: 父组件 handleLikeComment 成功后会重新拉取评论刷新本 prop
+// （isLiked/likeCount 为服务端最新值），失败时 prop 不变。
+// 原先本地 ref 乐观置位后无法感知失败 → API 失败时 UI 停留在错误的"已点赞"状态。
+// 改为 computed 派生 → 成功时随父组件刷新更新，失败时保持正确状态。
+const liked = computed(() => props.comment.isLiked ?? false)
 
 const hasChildren = computed(() => props.comment.children && props.comment.children.length > 0)
 const childrenCount = computed(() => props.comment.children?.length || 0)
@@ -133,7 +138,8 @@ const formatTime = (timeStr) => {
 }
 
 const handleLike = () => {
-  liked.value = !liked.value
+  // 不做乐观更新：父组件 API 成功后刷新评论（服务端真相）驱动 UI 更新，
+  // API 失败时由父组件弹错且 prop 不变 → UI 保持正确状态。
   emit('like', props.comment.id)
 }
 

@@ -193,8 +193,10 @@ const handleReopen = async (row) => {
     ElMessage.success(t('microSpecialtyManage.reopenSuccess'))
     fetchData()
   } catch (e) {
-// eslint-disable-next-line no-console
-    if (e !== 'cancel') console.debug(e)
+    // P1-C 修复: 原 catch 仅 console.debug 静默吞掉 API 失败，
+    // 用户点击"重新开启"失败时无任何反馈
+    if (e === 'cancel') return
+    ElMessage.error(e?.response?.data?.message || t('course.operationFailed'))
   }
 }
 

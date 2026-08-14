@@ -120,36 +120,43 @@ const quillOptions = {
 }
 
 async function load() {
-  if (!props.sectionId) {
-    unit.value = null
-    htmlContent.value = ''
-    return
-  }
-  const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
-  // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
-  // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
-  // （PUT /html/units/undefined → 500），导致单元永远无法创建。
-  const payload = res?.data
-  const unitData = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
-  unit.value = unitData || null
-  if (unit.value) {
-    htmlContent.value = unit.value.htmlSanitized || unit.value.htmlContent || ''
-    htmlDirty.value = false
-  } else {
-    htmlContent.value = ''
-    // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
-    // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
-    try {
-      const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
-      const pages = pagesRes?.data || []
-      const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
-      if (htmlPage?.htmlContent) {
-        htmlContent.value = htmlPage.htmlContent
-        htmlDirty.value = true
-      }
-    } catch (e) {
-      // 预载失败不阻断编辑器，保持空内容
+  try {
+    if (!props.sectionId) {
+      unit.value = null
+      htmlContent.value = ''
+      return
     }
+    const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
+    // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
+    // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
+    // （PUT /html/units/undefined → 500），导致单元永远无法创建。
+    const payload = res?.data
+    const unitData = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
+    unit.value = unitData || null
+    if (unit.value) {
+      htmlContent.value = unit.value.htmlSanitized || unit.value.htmlContent || ''
+      htmlDirty.value = false
+    } else {
+      htmlContent.value = ''
+      // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
+      // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
+      try {
+        const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
+        const pages = pagesRes?.data || []
+        const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
+        if (htmlPage?.htmlContent) {
+          htmlContent.value = htmlPage.htmlContent
+          htmlDirty.value = true
+        }
+      } catch (e) {
+        // 预载失败不阻断编辑器，保持空内容
+      }
+    }
+  } catch (e) {
+    // P1-C 修复: 原 load() 无 try/catch → getHtmlUnitBySection 失败时
+    // 编辑器静默空白且无任何反馈
+    console.error('Failed to load HTML unit:', e)
+    ElMessage.error('加载失败: ' + (e.message || '未知错误'))
   }
 }
 

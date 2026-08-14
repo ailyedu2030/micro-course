@@ -2951,6 +2951,8 @@ export default {
     saveEdit: 'Save Changes',
     confirmAdd: 'Confirm Add',
     imageRequired: 'Please upload a banner image',
+    onlyImageAllowed: 'Only image files are allowed',
+    fileTooLarge: 'Image size cannot exceed 5MB',
     linkFormat: 'Please enter a valid URL format (starting with http:// or https://)',
     fetchFailed: 'Failed to load the banner list',
     updateFailedRetry: 'Update failed, please try again later',

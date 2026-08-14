@@ -304,6 +304,22 @@ function handleImageChange(file) {
   form._rawFile = raw
 }
 
+// 上传前客户端校验（P1-C 修复: 此前 handleBeforeUpload 未定义导致
+// before-upload 绑定失效，图片选择无任何客户端校验）
+function handleBeforeUpload(file) {
+  const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isImage) {
+    ElMessage.error(t('bannerList.onlyImageAllowed') || '只能上传图片文件')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error(t('bannerList.fileTooLarge') || '图片大小不能超过 5MB')
+    return false
+  }
+  return true
+}
+
 // 移除图片
 function handleRemoveImage() {
   if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
