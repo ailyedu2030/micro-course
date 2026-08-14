@@ -678,7 +678,7 @@ const fetchEnrollments = async () => {
   try {
     // P0-5: 不再传 userId——后端从 JWT 中获取
     const res = await getMyEnrollments()
-    const list = filterCourseCollectionEnrollments(res.data || [])
+    const list = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
     const completionData = await getCompletion().catch(() => ({}))

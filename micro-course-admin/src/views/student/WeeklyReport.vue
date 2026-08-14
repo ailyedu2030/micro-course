@@ -358,7 +358,7 @@ const getWeekRange = () => {
 const fetchEnrollments = async (userId) => {
   try {
     const res = await getMyEnrollments({ userId })
-    enrollments.value = filterCourseCollectionEnrollments(res.data || [])
+    enrollments.value = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
   } catch {
     ElMessage.error('获取学习数据失败')
   }

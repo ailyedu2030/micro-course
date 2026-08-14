@@ -1,6 +1,6 @@
 <template>
   <div class="slide-preview">
-    <el-button class="close-btn" @click="$emit('close')" circle aria-label="关闭预览">
+    <el-button class="close-btn" @click="$emit('close')" circle :aria-label="t('slide.preview.closeAria')">
       <el-icon><Close /></el-icon>
     </el-button>
     <!-- P1-C-7/P1-C-8：in-preview 标记教师预览态（播放器显示预览 banner + 退出语义 emit close） -->
@@ -9,8 +9,11 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { Close } from '@element-plus/icons-vue'
 import SlidePlayerCore from '@/views/student/SlidePlayer.vue'
+
+const { t } = useI18n()
 
 defineProps({ 
   courseId: { type: [String, Number], required: true },

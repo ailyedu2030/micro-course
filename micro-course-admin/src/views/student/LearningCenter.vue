@@ -794,7 +794,7 @@ async function getStats(sharedEnrollments) {
       getMyCertificates().catch(() => ({ data: [] }))
     ])
 
-    const enrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData?.data) ? enrollmentData.data : [])
+    const enrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData?.data) ? enrollmentData.data : (enrollmentData?.data?.items || []))
     const completedCourses = enrollments.filter(e => e.completed).length
 
     // 总学习时长（从 total-time API 聚合所有课程）
@@ -846,7 +846,7 @@ async function getRecent(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 取第一个进行中的课程作为"继续学习"
@@ -947,7 +947,7 @@ async function getRecommendations(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 取进行中的课程作为推荐
@@ -998,7 +998,7 @@ async function getRecentRecords(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 按最近学习时间排序，取最近 5 条
@@ -1039,7 +1039,7 @@ async function loadData() {
     let sharedEnrollments = []
     try {
       const { data: enrollmentData } = await getMyEnrollments()
-      sharedEnrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData) ? enrollmentData : [])
+      sharedEnrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData) ? enrollmentData : (enrollmentData?.items || []))
     } catch (e) {
       sharedEnrollments = []
     }

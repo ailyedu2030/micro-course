@@ -9,11 +9,13 @@ import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
+import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.service.CourseAdminService;
+import com.microcourse.service.CourseChapterService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
@@ -39,18 +41,24 @@ public class CourseController {
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
     private final CourseAdminService courseAdminService;
+    private final CourseChapterService chapterService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
-                            CourseAdminService courseAdminService) {
+                            CourseAdminService courseAdminService,
+                            CourseChapterService chapterService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
         this.courseAdminService = courseAdminService;
+        this.chapterService = chapterService;
     }
 
-    private static final int MAX_PAGE_SIZE = 200;
+    // P1-C: MAX_PAGE_SIZE 从 200 提升到 1000 —— 前端 StudentList.vue 传 size=9999 期望拉全量课程，
+    // 原 200 上限导致静默截断（教师端课程列表不完整）。1000 覆盖平台实际课程规模，
+    // 同时保留 clamp 防超大数据集压垮 DB。
+    private static final int MAX_PAGE_SIZE = 1000;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -90,6 +98,21 @@ public class CourseController {
         query.setOfferDepartmentId(offerDepartmentId);
         PageResult<CourseVO> result = courseService.page(query);
         return R.ok(result);
+    }
+
+    /**
+     * P1-C: 跨课程关键字搜索章节（不要求 courseId）。
+     * 前端 GET /api/courses/chapters/search 调用（src/api/chapter.js searchChapters）。
+     * 与 /api/chapters 分页端点并存：本端点支持 keyword 搜索，courseId 可为空。
+     */
+    @GetMapping("/chapters/search")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "按关键字搜索章节（跨课程，不要求 courseId）")
+    public R<PageResult<ChapterVO>> searchChapters(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+        return R.ok(chapterService.searchChapters(keyword, page, size));
     }
 
     @GetMapping("/{id}")

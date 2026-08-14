@@ -145,6 +145,12 @@ public class EnrollmentServiceImpl implements EnrollmentService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<EnrollmentVO> getMyEnrollmentPage(Long userId, Boolean completed, int page, int size) {
+        return queryService.getMyEnrollmentPage(userId, completed, page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query) {
         // SECURITY: TEACHER 只能查自己课程的学员，强制覆写 teacherId
         if (SecurityUtil.hasRole("TEACHER")) {

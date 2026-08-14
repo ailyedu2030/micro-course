@@ -1,18 +1,18 @@
 <template>
   <div class="slide-editor-panel">
     <div v-if="page?.extractedText" class="extracted-section">
-      <span class="section-label">提取文本</span>
+      <span class="section-label">{{ t('slide.editorPanel.extractedText') }}</span>
       <p class="extracted-text">{{ page.extractedText }}</p>
     </div>
 
     <div class="narration-section">
-      <span class="section-label">讲述稿</span>
+      <span class="section-label">{{ t('slide.editorPanel.narration') }}</span>
       <div class="action-bar">
         <el-button size="small" :loading="aiLoading" @click="$emit('generateAI')">
-          <el-icon><MagicStick /></el-icon> AI 生成
+          <el-icon><MagicStick /></el-icon> {{ t('slide.editorPanel.aiGenerate') }}
         </el-button>
         <el-button size="small" type="success" :loading="ttsLoading" @click="$emit('generateTTS')" v-if="localScript">
-          <el-icon><Headset /></el-icon> 生成音频
+          <el-icon><Headset /></el-icon> {{ t('slide.editorPanel.generateAudio') }}
         </el-button>
       </div>
       <el-input v-model="localScript" type="textarea" :rows="6" @blur="$emit('saveScript', localScript)" resize="none" />
@@ -22,6 +22,10 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 const props = defineProps({
   page: { type: Object, default: () => ({}) },
   aiLoading: { type: Boolean, default: false },
