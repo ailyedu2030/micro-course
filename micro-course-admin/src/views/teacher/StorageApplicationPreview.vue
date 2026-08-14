@@ -382,7 +382,15 @@ const memberTypeLabel = (type) => {
 }
 
 const signLevelLabel = (level) => {
+  // 审计 2026-08-14 修复: 申报表签字的 signLevel 枚举为 LEAD/DEPT/SCHOOL,
+  // 原映射只有 DEPARTMENT/COLLEGE/ACADEMIC/UNIVERSITY/SHARED_UNIT,
+  // 导致显示原始英文代码(如 "LEAD")。补充真实枚举映射。
   const map = {
+    // 微专业申报表真实枚举 (MicroSpecialtyProposal.vue signatures)
+    LEAD: t('storagePreview.signLevelLead'),
+    DEPT: t('storagePreview.signLevelDept'),
+    SCHOOL: t('storagePreview.signLevelSchool'),
+    // 兼容其它存储单据的旧枚举
     DEPARTMENT: t('storagePreview.signLevelDepartment'),
     COLLEGE: t('storagePreview.signLevelCollege'),
     ACADEMIC: t('storagePreview.signLevelAcademic'),

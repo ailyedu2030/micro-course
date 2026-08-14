@@ -1975,6 +1975,9 @@ export default {
     signLevelAcademic: 'Academic Affairs Office Approval',
     signLevelUniversity: 'University Approval',
     signLevelSharedUnit: 'Sharing Unit Opinion',
+    signLevelLead: 'College Level',
+    signLevelDept: 'Department Level',
+    signLevelSchool: 'School Level',
     statusPendingReview: 'Under Review',
     statusRejected: 'Rejected',
     statusWithdrawn: 'Withdrawn',
@@ -2520,7 +2523,8 @@ export default {
     fetchAttendanceFailed: 'Failed to load attendance records',
     updateAttendanceSuccess: 'Attendance status updated',
     updateFailed: 'Update failed',
-    confirmDeleteSession: 'Delete this session?'
+    confirmDeleteSession: 'Delete this session?',
+    noDownloadPerm: 'No download permission'
   },
   // ---- teacher/TeacherOfflineSessions.vue (i18n additions) ----
   teacherOfflineSessions: {
@@ -2819,6 +2823,7 @@ export default {
     roleMember: 'Team Member',
     roleAssistant: 'Assistant',
     deadlineRemaining: '{days} days {hours} hours left',
+    deadlinePermanent: 'Permanent',
     searchFailed: 'Search failed',
     allChaptersNeedSource: 'All chapters must have a source selected',
     acceptSuccess: 'Invite accepted, chapter decisions saved',

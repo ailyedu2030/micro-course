@@ -147,7 +147,15 @@ const fetchData = async (tab) => {
       const remMs = dl ? Math.max(0, dl - now) : 0
       const remDays = Math.floor(remMs / 86400000)
       const remHours = Math.floor((remMs % 86400000) / 3600000)
-      return { ...i, expiring: remMs > 0 && remMs < 3 * 86400000, deadlineText: dl ? (remMs > 0 ? t('microSpecialtyInvites.deadlineRemaining', { days: remDays, hours: remHours }) : t('microSpecialtyList.deadlineExpired')) : '' }
+      return {
+        ...i,
+        // 审计 2026-08-14 修复: deadline 为空(null/undefined)= 无期限邀请,
+        // 必须显示"永久有效", 不得因 dl=null 落到"已过期"分支
+        expiring: dl ? (remMs > 0 && remMs < 3 * 86400000) : false,
+        deadlineText: dl
+          ? (remMs > 0 ? t('microSpecialtyInvites.deadlineRemaining', { days: remDays, hours: remHours }) : t('microSpecialtyList.deadlineExpired'))
+          : t('microSpecialtyInvites.deadlinePermanent')
+      }
     })
     if (tab === 'pending') list = list.filter(i => i.inviteStatus === 'INVITED' || i.inviteStatus === 'PENDING_ACADEMIC')
     else list = list.filter(i => i.inviteStatus !== 'INVITED' && i.inviteStatus !== 'PENDING_ACADEMIC')

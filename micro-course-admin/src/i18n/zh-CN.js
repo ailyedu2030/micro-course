@@ -1975,6 +1975,9 @@ export default {
     signLevelAcademic: '教务处审批',
     signLevelUniversity: '学校审批',
     signLevelSharedUnit: '共享单位意见',
+    signLevelLead: '院级',
+    signLevelDept: '系级',
+    signLevelSchool: '校级',
     statusPendingReview: '审核中',
     statusRejected: '已驳回',
     statusWithdrawn: '已撤回',
@@ -2520,7 +2523,8 @@ export default {
     fetchAttendanceFailed: '获取签到记录失败',
     updateAttendanceSuccess: '签到状态已更新',
     updateFailed: '更新失败',
-    confirmDeleteSession: '确定删除该场次?'
+    confirmDeleteSession: '确定删除该场次?',
+    noDownloadPerm: '无下载权限'
   },
   // ---- teacher/TeacherOfflineSessions.vue（i18n 化新增）----
   teacherOfflineSessions: {
@@ -2819,6 +2823,7 @@ export default {
     roleMember: '团队成员',
     roleAssistant: '助教',
     deadlineRemaining: '剩余{days} 天 {hours} 小时',
+    deadlinePermanent: '永久有效',
     searchFailed: '搜索失败',
     allChaptersNeedSource: '所有章节都必须选择来源',
     acceptSuccess: '已接受邀请, 章节决策已保存',
