@@ -322,9 +322,9 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         // 非管理员/教务/创建者/负责人不可查看 DRAFT / CANCELLED
         String status = ms.getStatus();
-        Long userId = SecurityUtil.getCurrentUserId();
+        Long userId = SecurityUtil.getCurrentUserIdOpt(); // permitAll 端点匿名用户返回 null（getCurrentUserId 会抛 401）
         boolean isAdminOrAcademic = SecurityUtil.isAdminOrAcademic();
-        boolean isCreator = ms.getCreatorId().equals(userId);
+        boolean isCreator = ms.getCreatorId() != null && ms.getCreatorId().equals(userId);
         if (("DRAFT".equals(status) || "CANCELLED".equals(status))
                 && !isAdminOrAcademic && !isCreator && !isLeadOf(id, userId)) {
             throw new BusinessException(ErrorCode.MS_NOT_FOUND);
@@ -449,7 +449,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         MicroSpecialty ms = msRepository.selectById(msId);
         if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
         String status = ms.getStatus();
-        Long userId = SecurityUtil.getCurrentUserId();
+        Long userId = SecurityUtil.getCurrentUserIdOpt();
         // 未登录用户（SecurityConfig permitAll）userId 为 null，isAdminOrAcademic/isLeadOf 均返回 false
         if (("DRAFT".equals(status) || "CANCELLED".equals(status))
                 && userId != null
@@ -486,7 +486,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
     // ====== 角色鉴权 ======
     @Override
     public boolean isLeadOf(Long msId, Long userId) {
-        return msTeacherRepository.selectCount(
+        return userId != null && msTeacherRepository.selectCount(
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getTeacherId, userId)
