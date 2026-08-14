@@ -354,7 +354,7 @@ import { useUserStore } from '@/store/user'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const { t } = useI18n()
+const { t: i18nT } = useI18n()
 
 const msId = computed(() => route.params.id)
 const ms = ref(null)
@@ -470,19 +470,19 @@ const handleApply = async () => {
   }
   try {
     await ElMessageBox.confirm(
-      t('microSpecialtyDetail.confirmApply', { title: ms.value.title }),
-      t('microSpecialtyDetail.applyConfirmTitle'),
-      { confirmButtonText: t('microSpecialtyDetail.confirmApplyBtn'), cancelButtonText: t('app.cancel'), type: 'info' }
+      i18nT('microSpecialtyDetail.confirmApply', { title: ms.value.title }),
+      i18nT('microSpecialtyDetail.applyConfirmTitle'),
+      { confirmButtonText: i18nT('microSpecialtyDetail.confirmApplyBtn'), cancelButtonText: i18nT('app.cancel'), type: 'info' }
     )
     applyLoading.value = true
     await applyEnrollment({ microSpecialtyId: msId.value })
-    ElMessage.success(t('course.signupSuccess'))
+    ElMessage.success(i18nT('course.signupSuccess'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 报名失败:', e)
-      ElMessage.error(e?.response?.data?.message || t('microSpecialtyDetail.applyFailed'))
+      ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.applyFailed'))
     }
   } finally {
     applyLoading.value = false
@@ -501,9 +501,9 @@ const handleReapply = async () => {
   }
   try {
     await ElMessageBox.confirm(
-      t('microSpecialtyDetail.confirmReapply'),
-      t('microSpecialtyDetail.reapply'),
-      { confirmButtonText: t('app.confirm'), cancelButtonText: t('app.cancel'), type: 'info' }
+      i18nT('microSpecialtyDetail.confirmReapply'),
+      i18nT('microSpecialtyDetail.reapply'),
+      { confirmButtonText: i18nT('app.confirm'), cancelButtonText: i18nT('app.cancel'), type: 'info' }
     )
     reapplyLoading.value = true
     await reapplyEnrollment(enrollmentId.value)
