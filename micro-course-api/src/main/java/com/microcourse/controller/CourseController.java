@@ -55,7 +55,10 @@ public class CourseController {
         this.chapterService = chapterService;
     }
 
-    private static final int MAX_PAGE_SIZE = 200;
+    // P1-C: MAX_PAGE_SIZE 从 200 提升到 1000 —— 前端 StudentList.vue 传 size=9999 期望拉全量课程，
+    // 原 200 上限导致静默截断（教师端课程列表不完整）。1000 覆盖平台实际课程规模，
+    // 同时保留 clamp 防超大数据集压垮 DB。
+    private static final int MAX_PAGE_SIZE = 1000;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
