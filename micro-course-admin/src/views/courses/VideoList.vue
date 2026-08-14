@@ -9,13 +9,13 @@
     <!-- 课程上下文头部 -->
     <div v-if="courseIdFromRoute && courseTitle" class="course-context">
       <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: courseListPath }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: courseListPath }">{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
         <el-breadcrumb-item :to="{ path: courseDetailPath(courseIdFromRoute) }">{{ courseTitle }}</el-breadcrumb-item>
-        <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || '章节视频' }}</el-breadcrumb-item>
-        <el-breadcrumb-item v-else>视频管理</el-breadcrumb-item>
+        <el-breadcrumb-item v-if="isContextualMode">{{ chapterTitle || $t('videoList.chapterVideos') }}</el-breadcrumb-item>
+        <el-breadcrumb-item v-else>{{ $t('videoList.videoManagement') }}</el-breadcrumb-item>
         <el-breadcrumb-item v-if="isContextualMode">
           <el-link type="primary" :underline="'never'" :to="{ path: courseDetailPath(courseIdFromRoute) }">
-            ← 返回课程
+            {{ $t('videoList.backToCourse') }}
           </el-link>
         </el-breadcrumb-item>
       </el-breadcrumb>
@@ -24,19 +24,19 @@
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="所属课程" v-if="!isContextualMode && !courseIdFromRoute">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200" @change="handleCourseChange">
+        <el-form-item :label="$t('videoList.belongCourse')" v-if="!isContextualMode && !courseIdFromRoute">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('videoList.selectCourse')" clearable class="filter-input-w200" @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" v-if="searchForm.courseId">
-          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable :disabled="isContextualMode" class="filter-input-w200">
+        <el-form-item :label="$t('course.chapter')" v-if="searchForm.courseId">
+          <el-select v-model="searchForm.chapterId" :placeholder="$t('course.pleaseSelectChapter')" clearable :disabled="isContextualMode" class="filter-input-w200">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('videoList.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -45,11 +45,11 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">{{ isContextualMode ? '本章节视频' : '视频列表' }}</span>
+          <span class="card-title">{{ isContextualMode ? $t('videoList.chapterVideoList') : $t('videoList.videoList') }}</span>
           <div class="header-actions">
             <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">
               <el-icon><Plus /></el-icon>
-              {{ isContextualMode ? '添加视频' : '新增视频' }}
+              {{ isContextualMode ? $t('videoList.addVideo') : $t('videoList.createVideo') }}
             </el-button>
           </div>
         </div>
@@ -57,18 +57,18 @@
 
       <el-table v-loading="loading" :aria-busy="loading" :data="tableData" stripe border class="data-table">
         <template #empty>
-          <el-empty description="暂无视频数据，选择课程和章节后点击「添加视频」上传" />
+          <el-empty :description="$t('videoList.emptyData')" />
         </template>
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="所属课程" min-width="120" />
-        <el-table-column prop="chapterName" label="所属章节" min-width="120" show-overflow-tooltip />
-        <el-table-column label="封面" width="90" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="courseName" :label="$t('videoList.belongCourse')" min-width="120" />
+        <el-table-column prop="chapterName" :label="$t('videoList.chapterColumn')" min-width="120" show-overflow-tooltip />
+        <el-table-column :label="$t('course.cover')" width="90" align="center">
           <template #default="{ row }">
             <el-image
               v-if="row.coverUrl"
               :src="row.coverUrl"
-              :alt="(row.title || '视频') + '封面'"
+              :alt="$t('course.coverAlt', { title: row.title || $t('course.typeVideo') })"
               fit="cover"
               class="table-thumb"
               :preview-src-list="[row.coverUrl]"
@@ -78,29 +78,29 @@
             <span v-else class="no-thumb">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="180" align="center">
+        <el-table-column prop="status" :label="$t('course.status')" width="180" align="center">
           <template #default="{ row }">
             <el-tooltip v-if="row.status === 3 && row.errorMessage" :content="row.errorMessage" placement="top">
-              <el-tag type="danger" size="small">失败（点查原因）</el-tag>
+              <el-tag type="danger" size="small">{{ $t('videoList.statusFailed') }}</el-tag>
             </el-tooltip>
-            <el-tag v-else-if="row.status === 0" type="warning" size="small">上传中</el-tag>
-            <el-tag v-else-if="row.status === 1" type="info" size="small">转码中 {{ row.progress || 0 }}%</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success" size="small">完成</el-tag>
+            <el-tag v-else-if="row.status === 0" type="warning" size="small">{{ $t('videoList.statusUploading') }}</el-tag>
+            <el-tag v-else-if="row.status === 1" type="info" size="small">{{ $t('videoList.statusTranscoding', { progress: row.progress || 0 }) }}</el-tag>
+            <el-tag v-else-if="row.status === 2" type="success" size="small">{{ $t('videoList.statusCompleted') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.status ?? '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="fileSize" label="大小" width="100" align="center">
+        <el-table-column prop="fileSize" :label="$t('videoList.fileSize')" width="100" align="center">
           <template #default="{ row }">
             {{ formatFileSize(row.fileSize) }}
           </template>
         </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-        <el-table-column label="操作" width="210" fixed="right" align="center">
+        <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="80" align="center" />
+        <el-table-column :label="$t('app.operation')" width="210" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="success" link size="small" @click="handleSetCover(row)">设置封面</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
-            <el-button v-if="row.status === 3 && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="warning" link size="small" :loading="retryingId === row.id" @click="handleRetry(row)">重试转码</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="success" link size="small" @click="handleSetCover(row)">{{ $t('videoList.setCover') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
+            <el-button v-if="row.status === 3 && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="warning" link size="small" :loading="retryingId === row.id" @click="handleRetry(row)">{{ $t('videoList.retryTranscode') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -112,21 +112,21 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         <div class="page-size-wrap">
-          <label for="page-size-select-video" class="sr-only">每页条数</label>
-          <el-select id="page-size-select-video" :model-value="size" class="page-size-select" @change="handleSizeChange" aria-label="每页条数">
-            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          <label for="page-size-select-video" class="sr-only">{{ $t('course.perPage') }}</label>
+          <el-select id="page-size-select-video" :model-value="size" class="page-size-select" @change="handleSizeChange" :aria-label="$t('course.perPage')">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="$t('course.perPageOption', { count: s })" :value="s" />
           </el-select>
         </div>
       </div>
     </el-card>
 
     <!-- 弹窗表单（统一：新增+编辑） -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="dialogVisible" :title="$t(dialogTitle)" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-        <el-form-item v-if="!isEdit" label="视频文件" prop="file">
+        <el-form-item v-if="!isEdit" :label="$t('videoList.videoFile')" prop="file">
           <el-upload
             :auto-upload="false"
             :limit="20"
@@ -138,11 +138,11 @@
           >
             <div class="upload-trigger">
               <el-icon class="upload-icon"><UploadFilled /></el-icon>
-              <div class="upload-text">点击或拖拽视频文件到此处</div>
-              <div class="upload-hint">支持 MP4/MOV/MKV，最大 2GB。选完后标题自动填充。</div>
+              <div class="upload-text">{{ $t('videoList.uploadText') }}</div>
+              <div class="upload-hint">{{ $t('videoList.uploadHint') }}</div>
             </div>
             <template #tip>
-              <div class="el-upload__tip">支持 MP4/MOV/MKV，最大 2GB。大文件建议使用浏览器支持的流式上传，上传过程可查看进度条。</div>
+              <div class="el-upload__tip">{{ $t('videoList.uploadTip') }}</div>
             </template>
           </el-upload>
         </el-form-item>
@@ -159,27 +159,27 @@
             <span class="queue-status" :class="`queue-status-${item.status}`">{{ formatQueueStatus(item) }}</span>
           </div>
           <div class="queue-summary">
-            {{ isBatchUpload ? '批量上传会沿用当前课程与章节，默认以文件名作为视频标题。' : '上传完成后可继续编辑标题、排序与封面。' }}
+            {{ isBatchUpload ? $t('videoList.batchUploadHint') : $t('videoList.uploadDoneHint') }}
           </div>
         </div>
-        <el-form-item label="标题" prop="title">
+        <el-form-item :label="$t('course.tableTitle')" prop="title">
           <el-input
             v-model="formData.title"
             :disabled="isBatchUpload"
-            :placeholder="isBatchUpload ? '批量上传默认使用文件名作为标题' : '选完文件后自动填充，或手动输入'"
+            :placeholder="isBatchUpload ? $t('videoList.batchTitlePlaceholder') : $t('videoList.titlePlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="所属课程" prop="courseId" v-if="!isContextualMode || isEdit">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" :disabled="isContextualMode || isEdit" @change="handleDialogCourseChange">
+        <el-form-item :label="$t('videoList.belongCourse')" prop="courseId" v-if="!isContextualMode || isEdit">
+          <el-select v-model="formData.courseId" :placeholder="$t('videoList.selectCourse')" class="full-width" :disabled="isContextualMode || isEdit" @change="handleDialogCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属章节" prop="chapterId">
-          <el-select v-model="formData.chapterId" placeholder="请选择章节" class="full-width" :disabled="isContextualMode">
+        <el-form-item :label="$t('videoList.chapterColumn')" prop="chapterId">
+          <el-select v-model="formData.chapterId" :placeholder="$t('course.pleaseSelectChapter')" class="full-width" :disabled="isContextualMode">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" :disabled="isBatchUpload" />
         </el-form-item>
       </el-form>
@@ -193,18 +193,18 @@
             class="footer-progress"
           />
           <div class="footer-buttons">
-            <el-button @click="dialogVisible = false" :disabled="submitLoading">取消</el-button>
-            <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+            <el-button @click="dialogVisible = false" :disabled="submitLoading">{{ $t('app.cancel') }}</el-button>
+            <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
           </div>
         </div>
       </template>
     </el-dialog>
 
     <!-- 封面设置弹窗 -->
-    <el-dialog v-model="coverDialogVisible" title="设置视频封面" width="400px" :close-on-press-escape="true" @close="handleCoverDialogClose">
+    <el-dialog v-model="coverDialogVisible" :title="$t('videoList.setCoverTitle')" width="400px" :close-on-press-escape="true" @close="handleCoverDialogClose">
       <div class="cover-preview">
-        <el-image v-if="currentCoverUrl" :src="currentCoverUrl" alt="视频封面预览" fit="contain" class="cover-img" />
-        <span v-else class="no-cover">暂无封面</span>
+        <el-image v-if="currentCoverUrl" :src="currentCoverUrl" :alt="$t('videoList.coverPreviewAlt')" fit="contain" class="cover-img" />
+        <span v-else class="no-cover">{{ $t('course.noCoverText') }}</span>
       </div>
       <el-upload
         :auto-upload="false"
@@ -212,18 +212,18 @@
         accept="image/*"
         :on-change="handleCoverChange"
       >
-        <el-button type="primary" size="small">选择图片</el-button>
+        <el-button type="primary" size="small">{{ $t('course.selectImage') }}</el-button>
       </el-upload>
       <template #footer>
-        <el-button @click="handleCoverDialogClose">取消</el-button>
-        <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">确定</el-button>
+        <el-button @click="handleCoverDialogClose">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="coverSubmitLoading" :disabled="coverSubmitLoading" @click="handleSubmitCover">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 封面预览弹窗 -->
-    <el-dialog v-model="previewDialogVisible" title="封面预览" width="600px" :close-on-press-escape="true">
-      <el-image v-if="previewCoverUrl" :src="previewCoverUrl" alt="封面预览" fit="contain" class="preview-img" />
-      <span v-else class="no-cover">无封面</span>
+    <el-dialog v-model="previewDialogVisible" :title="$t('course.coverPreviewAlt')" width="600px" :close-on-press-escape="true">
+      <el-image v-if="previewCoverUrl" :src="previewCoverUrl" :alt="$t('course.coverPreviewAlt')" fit="contain" class="preview-img" />
+      <span v-else class="no-cover">{{ $t('videoList.noCover') }}</span>
     </el-dialog>
   </div>
 </template>
@@ -231,6 +231,7 @@
 <script setup>
 import { ref, reactive, computed, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, UploadFilled } from '@element-plus/icons-vue'
 import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
@@ -242,6 +243,7 @@ import { getChapters, getChapterById } from '@/api/chapter'
 
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 const courseIdFromRoute = computed(() => route.params.courseId)
 const lockedChapterId = computed(() => {
   const id = route.params.chapterId || route.query.chapterId
@@ -277,7 +279,7 @@ const searchForm = reactive({
 })
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增视频')
+const dialogTitle = ref('videoList.createVideo')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -291,10 +293,10 @@ const formData = reactive({
 })
 
 const formRules = computed(() => ({
-  title: courseIdFromRoute.value || isBatchUpload.value ? [] : [{ required: true, message: '请输入视频标题', trigger: 'blur' }],
-  courseId: courseIdFromRoute.value ? [] : [{ required: true, message: '请选择所属课程', trigger: 'change' }],
-  chapterId: [{ required: true, message: '请选择所属章节', trigger: 'change' }],
-  file: isEdit.value ? [] : [{ required: true, message: '请选择视频文件', trigger: 'change' }]
+  title: courseIdFromRoute.value || isBatchUpload.value ? [] : [{ required: true, message: t('videoList.titleRequired'), trigger: 'blur' }],
+  courseId: courseIdFromRoute.value ? [] : [{ required: true, message: t('videoList.courseRequired'), trigger: 'change' }],
+  chapterId: [{ required: true, message: t('videoList.chapterRequired'), trigger: 'change' }],
+  file: isEdit.value ? [] : [{ required: true, message: t('videoList.fileRequired'), trigger: 'change' }]
 }))
 
 const videoUploadQueue = useVideoUploadQueue({
@@ -340,7 +342,7 @@ const fetchCourses = async () => {
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -363,7 +365,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
     startPollingIfNeeded()
   } catch {
-    ElMessage.error('获取视频列表失败')
+    ElMessage.error(t('videoList.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -420,7 +422,7 @@ const handleCourseChange = async (courseId) => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '添加视频'
+  dialogTitle.value = 'videoList.addVideo'
   isEdit.value = false
   currentId.value = null
   formData.title = ''
@@ -446,7 +448,7 @@ const handleDialogCourseChange = async (courseId) => {
 }
 
 const handleEdit = async (row) => {
-  dialogTitle.value = '编辑视频'
+  dialogTitle.value = 'videoList.editVideo'
   isEdit.value = true
   currentId.value = row.id
   formData.title = row.title
@@ -462,13 +464,13 @@ const handleEdit = async (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该视频?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('videoList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteVideo(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('course.deleteFailed'))
     }
   }
 }
@@ -483,7 +485,7 @@ const handleSubmit = async () => {
     try {
       if (isEdit.value) {
         await updateVideo(currentId.value, { title: formData.title, sortOrder: formData.sortOrder, chapterId: formData.chapterId })
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('question.editSuccess'))
         dialogVisible.value = false
         fetchData()
       } else {
@@ -497,21 +499,21 @@ const handleSubmit = async () => {
 
         if (result.failureCount === 0) {
           await new Promise((resolve) => setTimeout(resolve, 500))
-          ElMessage.success(result.successCount > 1 ? `批量上传成功，共 ${result.successCount} 个视频` : '创建成功')
+          ElMessage.success(result.successCount > 1 ? t('videoList.batchUploadSuccess', { count: result.successCount }) : t('course.createSuccess'))
           dialogVisible.value = false
           fetchData()
           nextTick(() => startPollingIfNeeded())
         } else if (result.successCount > 0) {
-          ElMessage.warning(`已上传 ${result.successCount} 个视频，失败 ${result.failureCount} 个，请处理后重试`)
+          ElMessage.warning(t('videoList.uploadPartialSuccess', { successCount: result.successCount, failureCount: result.failureCount }))
           fetchData()
           nextTick(() => startPollingIfNeeded())
         } else {
-          ElMessage.error('上传失败，请检查文件或网络后重试')
+          ElMessage.error(t('videoList.uploadFailed'))
         }
       }
     } catch (e) {
       // P1-C 修复: 显示真实错误而不是通用"创建失败"
-      const msg = e?.response?.data?.message || e?.message || (isEdit.value ? '编辑失败' : '创建失败')
+      const msg = e?.response?.data?.message || e?.message || (isEdit.value ? t('question.editFailed') : t('course.createFailed'))
       ElMessage.error(msg)
     } finally {
       submitLoading.value = false
@@ -596,27 +598,27 @@ const handleCoverDialogClose = () => {
 
 const handleSubmitCover = async () => {
   if (!coverFile.value) {
-    ElMessage.warning('请选择封面图片')
+    ElMessage.warning(t('videoList.selectCoverImage'))
     return
   }
   coverSubmitLoading.value = true
   try {
     await uploadVideoCover(currentVideoId.value, coverFile.value)
-    ElMessage.success('封面上传成功')
+    ElMessage.success(t('videoList.coverUploadSuccess'))
     await fetchData()
     handleCoverDialogClose()
   } catch {
-    ElMessage.error('上传失败')
+    ElMessage.error(t('userList.uploadFailed'))
   } finally {
     coverSubmitLoading.value = false
   }
 }
 
 const handleRetry = async (row) => {
-  try { await ElMessageBox.confirm('确定重新转码该视频？', '确认', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('videoList.confirmRetryTranscode'), t('app.confirm'), { type: 'warning' }) } catch { return }
   retryingId.value = row.id
-  try { await retryVideoTranscode(row.id); ElMessage.success('已重新提交转码'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '重试失败') }
+  try { await retryVideoTranscode(row.id); ElMessage.success(t('videoList.transcodeSubmitted')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('videoList.retryFailed')) }
   finally { retryingId.value = null }
 }
 
@@ -627,10 +629,10 @@ const handlePreviewCover = (row) => {
 }
 
 const formatQueueStatus = (item) => {
-  if (item.status === 'success') return '完成'
-  if (item.status === 'error') return '失败'
+  if (item.status === 'success') return t('videoList.statusCompleted')
+  if (item.status === 'error') return t('operationLogs.failed')
   if (item.status === 'uploading') return `${item.progress}%`
-  return '待上传'
+  return t('videoList.pendingUpload')
 }
 
 /* ================================================================
