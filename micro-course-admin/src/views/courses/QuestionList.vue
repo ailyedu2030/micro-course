@@ -7,16 +7,16 @@
 <template>
   <div class="question-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>题库管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('question.bankTitle') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 课程选择卡 -->
     <el-card class="course-select-card" shadow="never">
       <div class="course-select-header">
-        <span class="course-select-label">选择课程</span>
-        <el-select v-model="selectedCourseId" placeholder="请先选择课程" size="large" clearable filterable class="course-select-input" aria-label="选择课程" @change="onCourseChange">
+        <span class="course-select-label">{{ $t('question.selectCourse') }}</span>
+        <el-select v-model="selectedCourseId" :placeholder="$t('question.selectCourseFirst')" size="large" clearable filterable class="course-select-input" :aria-label="$t('question.selectCourse')" @change="onCourseChange">
           <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
         </el-select>
       </div>
@@ -24,7 +24,7 @@
 
     <!-- 未选课程时的提示 -->
     <el-card v-if="!selectedCourse" class="empty-card" shadow="never">
-      <el-empty description="请先在上方选择一个课程" />
+      <el-empty :description="$t('question.selectCourseEmpty')" />
     </el-card>
 
     <!-- 已选课程：筛选 + 题目列表 -->
@@ -32,45 +32,45 @@
       <!-- 当前课程信息 -->
       <div class="course-info-bar">
         <el-tag type="primary" size="large" effect="plain" class="course-tag">{{ selectedCourse.title }}</el-tag>
-        <span class="course-info-hint">题库管理</span>
+        <span class="course-info-hint">{{ $t('question.bankTitle') }}</span>
       </div>
 
       <!-- 搜索筛选卡 -->
       <el-card class="search-card filter-card" shadow="never">
         <el-form :inline="true" :model="searchForm" @submit.prevent>
-          <el-form-item label="题型">
-            <el-select v-model="searchForm.questionType" placeholder="请选择题型" clearable class="filter-input-w140">
-              <el-option label="单选题" value="SINGLE" />
-              <el-option label="多选题" value="MULTIPLE" />
-              <el-option label="判断题" value="JUDGE" />
-              <el-option label="简答题" value="SHORT_ANSWER" />
-              <el-option label="综合题" value="ESSAY" />
-              <el-option label="填空题" value="FILL" />
+          <el-form-item :label="$t('question.questionType')">
+            <el-select v-model="searchForm.questionType" :placeholder="$t('question.selectQuestionType')" clearable class="filter-input-w140">
+              <el-option :label="$t('question.typeSingle')" value="SINGLE" />
+              <el-option :label="$t('question.typeMultiple')" value="MULTIPLE" />
+              <el-option :label="$t('question.typeJudge')" value="JUDGE" />
+              <el-option :label="$t('question.typeShortAnswer')" value="SHORT_ANSWER" />
+              <el-option :label="$t('question.typeEssay')" value="ESSAY" />
+              <el-option :label="$t('question.typeFill')" value="FILL" />
             </el-select>
           </el-form-item>
-          <el-form-item label="难度">
-            <el-select v-model="searchForm.difficulty" placeholder="请选择难度" clearable class="filter-input-w120">
-              <el-option label="简单" value="EASY" />
-              <el-option label="中等" value="MEDIUM" />
-              <el-option label="困难" value="HARD" />
+          <el-form-item :label="$t('course.difficulty')">
+            <el-select v-model="searchForm.difficulty" :placeholder="$t('question.selectDifficulty')" clearable class="filter-input-w120">
+              <el-option :label="$t('course.difficultyEasy')" value="EASY" />
+              <el-option :label="$t('course.difficultyMedium')" value="MEDIUM" />
+              <el-option :label="$t('course.difficultyHard')" value="HARD" />
             </el-select>
           </el-form-item>
-          <el-form-item label="章节">
-            <el-select v-model="searchForm.chapterId" placeholder="全部章节" clearable class="filter-input-w160">
+          <el-form-item :label="$t('course.chapter')">
+            <el-select v-model="searchForm.chapterId" :placeholder="$t('question.allChapters')" clearable class="filter-input-w160">
               <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
             </el-select>
           </el-form-item>
-          <el-form-item label="分类">
-            <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160">
+          <el-form-item :label="$t('course.category')">
+            <el-select v-model="searchForm.categoryId" :placeholder="$t('question.selectCategory')" clearable class="filter-input-w160">
               <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
             </el-select>
           </el-form-item>
-          <el-form-item label="关键字">
-            <el-input v-model="searchForm.keyword" placeholder="题目内容" clearable class="filter-input-w160" />
+          <el-form-item :label="$t('question.keyword')">
+            <el-input v-model="searchForm.keyword" :placeholder="$t('question.questionContent')" clearable class="filter-input-w160" />
           </el-form-item>
           <el-form-item>
-            <el-button type="primary" @click="handleSearch">搜索</el-button>
-            <el-button @click="handleReset">重置</el-button>
+            <el-button type="primary" @click="handleSearch">{{ $t('app.search') }}</el-button>
+            <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
           </el-form-item>
         </el-form>
       </el-card>
@@ -79,7 +79,7 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">题目列表</span>
+          <span class="card-title">{{ $t('question.list') }}</span>
           <div class="header-actions">
             <el-upload
               :show-file-list="false"
@@ -87,52 +87,52 @@
               accept=".xlsx,.xls"
               class="upload-inline"
 >
-              <el-button type="success" size="small" :disabled="!selectedCourse">导入Excel</el-button>
+              <el-button type="success" size="small" :disabled="!selectedCourse">{{ $t('question.importExcel') }}</el-button>
             </el-upload>
-            <el-button type="warning" size="small" @click="handleExportExcel">导出Excel</el-button>
-            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" :disabled="!selectedCourse" @click="handleCreate">新增题目</el-button>
+            <el-button type="warning" size="small" @click="handleExportExcel">{{ $t('question.exportExcel') }}</el-button>
+            <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" :disabled="!selectedCourse" @click="handleCreate">{{ $t('question.create') }}</el-button>
           </div>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="当前课程暂无题目" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('question.noQuestions')" />
       <el-table v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="questionType" label="题型" width="120" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="questionType" :label="$t('question.questionType')" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
-            <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
-            <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
-            <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
-            <el-tag v-else-if="row.questionType === 'ESSAY'" type="danger" size="small">综合题</el-tag>
-            <el-tag v-else-if="row.questionType === 'FILL'" type="info" size="small">填空题</el-tag>
+            <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">{{ $t('question.typeSingle') }}</el-tag>
+            <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">{{ $t('question.typeMultiple') }}</el-tag>
+            <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">{{ $t('question.typeJudge') }}</el-tag>
+            <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">{{ $t('question.typeShortAnswer') }}</el-tag>
+            <el-tag v-else-if="row.questionType === 'ESSAY'" type="danger" size="small">{{ $t('question.typeEssay') }}</el-tag>
+            <el-tag v-else-if="row.questionType === 'FILL'" type="info" size="small">{{ $t('question.typeFill') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.questionType || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="difficulty" label="难度" width="100" align="center">
+        <el-table-column prop="difficulty" :label="$t('course.difficulty')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.difficulty === 1" type="success" size="small">简单</el-tag>
-            <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">中等</el-tag>
-            <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">困难</el-tag>
+            <el-tag v-if="row.difficulty === 1" type="success" size="small">{{ $t('course.difficultyEasy') }}</el-tag>
+            <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">{{ $t('course.difficultyMedium') }}</el-tag>
+            <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">{{ $t('course.difficultyHard') }}</el-tag>
             <span v-else>-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="categoryName" label="分类" width="120">
+        <el-table-column prop="categoryName" :label="$t('course.category')" width="120">
           <template #default="{ row }">
             {{ row.categoryName || '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="关联章节" min-width="120">
+        <el-table-column :label="$t('question.relatedChapter')" min-width="120">
           <template #default="{ row }">
             <span>{{ row.chapterTitles?.join(', ') || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="content" label="题目内容" min-width="250" show-overflow-tooltip />
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column prop="content" :label="$t('question.questionContent')" min-width="250" show-overflow-tooltip />
+        <el-table-column :label="$t('app.operation')" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="info" link size="small" @click="handlePreview(row)">预览</el-button>
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="info" link size="small" @click="handlePreview(row)">{{ $t('question.preview') }}</el-button>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -144,7 +144,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
@@ -153,82 +153,82 @@
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="600px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="所属课程">
+        <el-form-item :label="$t('question.belongCourse')">
           <el-tag type="primary" effect="plain">{{ selectedCourse?.title }}</el-tag>
         </el-form-item>
-        <el-form-item v-if="selectedCourse?.categoryName" label="课程分类">
+        <el-form-item v-if="selectedCourse?.categoryName" :label="$t('question.courseCategory')">
           <el-tag type="info" effect="plain">{{ selectedCourse.categoryName }}</el-tag>
         </el-form-item>
-        <el-form-item label="题型" prop="questionType">
-          <el-select v-model="formData.questionType" placeholder="请选择题型" class="full-width">
-            <el-option label="单选题" value="SINGLE" />
-            <el-option label="多选题" value="MULTIPLE" />
-            <el-option label="判断题" value="JUDGE" />
-            <el-option label="简答题" value="SHORT_ANSWER" />
-            <el-option label="综合题" value="ESSAY" />
-            <el-option label="填空题" value="FILL" />
+        <el-form-item :label="$t('question.questionType')" prop="questionType">
+          <el-select v-model="formData.questionType" :placeholder="$t('question.selectQuestionType')" class="full-width">
+            <el-option :label="$t('question.typeSingle')" value="SINGLE" />
+            <el-option :label="$t('question.typeMultiple')" value="MULTIPLE" />
+            <el-option :label="$t('question.typeJudge')" value="JUDGE" />
+            <el-option :label="$t('question.typeShortAnswer')" value="SHORT_ANSWER" />
+            <el-option :label="$t('question.typeEssay')" value="ESSAY" />
+            <el-option :label="$t('question.typeFill')" value="FILL" />
           </el-select>
         </el-form-item>
-        <el-form-item label="关联章节">
-          <el-select v-model="formData.chapterIds" placeholder="可多选" multiple collapse-tags clearable class="full-width" :disabled="!selectedCourse">
+        <el-form-item :label="$t('question.relatedChapter')">
+          <el-select v-model="formData.chapterIds" :placeholder="$t('question.multipleSelect')" multiple collapse-tags clearable class="full-width" :disabled="!selectedCourse">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="难度" prop="difficulty">
-          <el-select v-model="formData.difficulty" placeholder="请选择难度" class="full-width">
-            <el-option label="简单" :value="1" />
-            <el-option label="中等" :value="2" />
-            <el-option label="困难" :value="3" />
+        <el-form-item :label="$t('course.difficulty')" prop="difficulty">
+          <el-select v-model="formData.difficulty" :placeholder="$t('question.selectDifficulty')" class="full-width">
+            <el-option :label="$t('course.difficultyEasy')" :value="1" />
+            <el-option :label="$t('course.difficultyMedium')" :value="2" />
+            <el-option :label="$t('course.difficultyHard')" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="题目内容" prop="content">
-          <el-input v-model="formData.content" type="textarea" :rows="4" placeholder="请输入题目内容" />
+        <el-form-item :label="$t('question.questionContent')" prop="content">
+          <el-input v-model="formData.content" type="textarea" :rows="4" :placeholder="$t('question.inputContent')" />
         </el-form-item>
-        <el-form-item label="分值" prop="score">
+        <el-form-item :label="$t('question.score')" prop="score">
           <el-input-number v-model="formData.score" :min="0" :max="100" class="full-width" />
         </el-form-item>
-        <el-form-item label="答案解析" prop="explanation">
-          <el-input v-model="formData.explanation" type="textarea" :rows="2" placeholder="请输入答案解析" />
+        <el-form-item :label="$t('question.explanation')" prop="explanation">
+          <el-input v-model="formData.explanation" type="textarea" :rows="2" :placeholder="$t('question.inputExplanation')" />
         </el-form-item>
         <!-- 单选/多选选项编辑 -->
-        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" label="选项" prop="options">
+        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" :label="$t('question.options')" prop="options">
           <div class="options-editor">
             <div v-for="(opt, idx) in optionList" :key="idx" class="option-item">
               <span class="option-label">{{ ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][idx] }}.</span>
-              <el-input v-model="opt.label" placeholder="选项内容" class="option-input" />
-              <el-radio v-if="formData.questionType === 'SINGLE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" title="设为正确答案">√</el-radio>
-              <el-checkbox v-if="formData.questionType === 'MULTIPLE'" v-model="opt.correct" title="设为正确答案">√</el-checkbox>
-              <el-button type="danger" link @click="removeOption(idx)">删除</el-button>
+              <el-input v-model="opt.label" :placeholder="$t('question.optionContent')" class="option-input" />
+              <el-radio v-if="formData.questionType === 'SINGLE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" :title="$t('question.setCorrect')">√</el-radio>
+              <el-checkbox v-if="formData.questionType === 'MULTIPLE'" v-model="opt.correct" :title="$t('question.setCorrect')">√</el-checkbox>
+              <el-button type="danger" link @click="removeOption(idx)">{{ $t('app.delete') }}</el-button>
             </div>
-            <el-button type="primary" plain size="small" @click="addOption">添加选项</el-button>
+            <el-button type="primary" plain size="small" @click="addOption">{{ $t('question.addOption') }}</el-button>
           </div>
         </el-form-item>
         <!-- 单选/多选题答案 -->
-        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" label="正确答案" prop="answer">
-          <el-input v-model="formData.answer" placeholder="请在选项中勾选正确答案" disabled class="full-width" />
+        <el-form-item v-if="formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE'" :label="$t('question.correctAnswer')" prop="answer">
+          <el-input v-model="formData.answer" :placeholder="$t('question.selectCorrectHint')" disabled class="full-width" />
         </el-form-item>
         <!-- 判断题答案 -->
-        <el-form-item v-if="formData.questionType === 'JUDGE'" label="正确答案" prop="answer">
+        <el-form-item v-if="formData.questionType === 'JUDGE'" :label="$t('question.correctAnswer')" prop="answer">
           <el-radio-group v-model="formData.answer">
-            <el-radio value="true">正确</el-radio>
-            <el-radio value="false">错误</el-radio>
+            <el-radio value="true">{{ $t('question.correct') }}</el-radio>
+            <el-radio value="false">{{ $t('question.wrong') }}</el-radio>
           </el-radio-group>
         </el-form-item>
         <!-- 填空题答案 -->
-        <el-form-item v-if="formData.questionType === 'SHORT_ANSWER'" label="正确答案" prop="answer">
-          <el-input v-model="formData.answer" placeholder="请输入正确答案" />
+        <el-form-item v-if="formData.questionType === 'SHORT_ANSWER'" :label="$t('question.correctAnswer')" prop="answer">
+          <el-input v-model="formData.answer" :placeholder="$t('question.inputCorrectAnswer')" />
         </el-form-item>
         <!-- 多选题部分给分 -->
-        <el-form-item v-if="formData.questionType === 'MULTIPLE'" label="部分给分" prop="partialScore">
-          <el-switch v-model="formData.partialScore" active-text="启用" inactive-text="关闭" />
+        <el-form-item v-if="formData.questionType === 'MULTIPLE'" :label="$t('question.partialScore')" prop="partialScore">
+          <el-switch v-model="formData.partialScore" :active-text="$t('question.enable')" :inactive-text="$t('question.disable')" />
           <div v-if="formData.partialScore" class="partial-score-rule">
-            <el-input v-model="formData.partialScoreRule" type="textarea" :rows="2" placeholder="如: A=30;B=30;C=40;D=40 (选对部分得部分分)" />
+            <el-input v-model="formData.partialScoreRule" type="textarea" :rows="2" :placeholder="$t('question.partialScoreRulePlaceholder')" />
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
@@ -239,6 +239,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -250,6 +251,7 @@ import { getChapters } from '@/api/chapter'
 import { Workbook } from 'exceljs'
 import QuestionPreview from './QuestionPreview.vue'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 
@@ -321,7 +323,7 @@ const fetchChapterOptions = async () => {
 }
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增题目')
+const dialogTitle = ref(t('question.create'))
 const previewVisible = ref(false)
 const previewQuestion = ref(null)
 const isEdit = ref(false)
@@ -345,10 +347,10 @@ const formData = reactive({
 })
 
 const formRules = {
-  questionType: [{ required: true, message: '请选择题型', trigger: 'change' }],
-  difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }],
-  content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
-  score: [{ required: true, message: '请输入分值', trigger: 'blur' }]
+  questionType: [{ required: true, message: t('question.selectQuestionType'), trigger: 'change' }],
+  difficulty: [{ required: true, message: t('question.selectDifficulty'), trigger: 'change' }],
+  content: [{ required: true, message: t('question.inputContent'), trigger: 'blur' }],
+  score: [{ required: true, message: t('question.scoreRequired'), trigger: 'blur' }]
 }
 
 const fetchCategoryOptions = async () => {
@@ -356,7 +358,7 @@ const fetchCategoryOptions = async () => {
     const { data } = await getCategories({ size: 1000 })
     categoryOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取分类列表失败')
+    ElMessage.error(t('question.fetchCategoriesFailed'))
   }
 }
 
@@ -367,35 +369,37 @@ const fetchCourseOptions = async () => {
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('question.fetchCoursesFailed'))
   }
 }
 
 const handleImportExcel = async (file) => {
   if (!selectedCourse.value) {
-    ElMessage.warning('请先选择课程再导入题目')
+    ElMessage.warning(t('question.importCourseFirst'))
     return false
   }
   try {
     const { data } = await batchImportQuestion(file, selectedCourse.value.id)
     if (data.successCount > 0) {
-      ElMessage.success(`导入成功 ${data.successCount} 条${data.failCount > 0 ? `，失败 ${data.failCount} 条` : ''}`)
+      let msg = t('question.importSuccess', { count: data.successCount })
+      if (data.failCount > 0) msg += t('question.importFailPart', { count: data.failCount })
+      ElMessage.success(msg)
     } else {
-      ElMessage.warning('导入失败，请检查文件格式')
+      ElMessage.warning(t('question.importFailedCheck'))
     }
     if (data.errors && data.errors.length > 0) {
       data.errors.slice(0, 5).forEach(err => ElMessage.error(err))
     }
     fetchData()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '导入失败')
+    ElMessage.error(e?.response?.data?.message || t('question.importFailed'))
   }
   return false
 }
 
 const handleExportExcel = async () => {
   if (tableData.value.length === 0) {
-    ElMessage.warning('暂无题目数据可导出')
+    ElMessage.warning(t('question.noExportData'))
     return
   }
   // 优先使用后端导出接口（支持服务端全量导出）
@@ -413,10 +417,10 @@ const handleExportExcel = async () => {
     const link = document.createElement('a')
     link.href = url
     const date = new Date().toISOString().split('T')[0]
-    link.download = `questions-${date}.xlsx`
+    link.download = t('question.exportFileName', { date })
     link.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success(t('question.exportSuccess'))
     return
   } catch (err) {
     console.warn('[QuestionList] 后端导出失败，回退到客户端导出', err)
@@ -424,7 +428,7 @@ const handleExportExcel = async () => {
   }
   // 客户端 XLSX 兜底导出
   try {
-    ElMessage.info('正在获取全部题目数据，请稍候…')
+    ElMessage.info(t('question.exporting'))
     const allParams = {
       size: 10000,
       courseId: selectedCourseId.value || undefined,
@@ -436,42 +440,42 @@ const handleExportExcel = async () => {
     const { data } = await getQuestions(allParams)
     const allData = data.items || []
     if (allData.length === 0) {
-      ElMessage.warning('没有找到可导出的题目数据')
+      ElMessage.warning(t('question.noDataToExport'))
       return
     }
     const exportData = allData.map(q => ({
-      '题型': getQuestionTypeLabel(q.questionType),
-      '难度': getDifficultyLabel(q.difficulty),
-      '分类': q.categoryName || '',
-      '题目内容': q.content,
-      '分值': q.score,
-      '正确答案': q.answer,
-      '答案解析': q.explanation || ''
+      [t('question.questionType')]: getQuestionTypeLabel(q.questionType),
+      [t('course.difficulty')]: getDifficultyLabel(q.difficulty),
+      [t('course.category')]: q.categoryName || '',
+      [t('question.questionContent')]: q.content,
+      [t('question.score')]: q.score,
+      [t('question.correctAnswer')]: q.answer,
+      [t('question.explanation')]: q.explanation || ''
     }))
     const wb = new Workbook()
-    const ws = wb.addWorksheet('题目列表')
+    const ws = wb.addWorksheet(t('question.list'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(`题目导出_${Date.now()}.xlsx`)
-    ElMessage.success(`导出成功，共 ${exportData.length} 条`)
+    await wb.xlsx.writeFile(t('question.exportFileName', { date: Date.now() }))
+    ElMessage.success(t('question.exportSuccessCount', { count: exportData.length }))
   } catch {
-    ElMessage.error('导出失败')
+    ElMessage.error(t('question.exportFailed'))
   }
 }
 
 function getQuestionTypeLabel(type) {
   const map = {
-    'SINGLE': '单选题',
-    'MULTIPLE': '多选题',
-    'JUDGE': '判断题',
-    'SHORT_ANSWER': '简答题',
-    'ESSAY': '综合题',
-    'FILL': '填空题'
+    'SINGLE': t('question.typeSingle'),
+    'MULTIPLE': t('question.typeMultiple'),
+    'JUDGE': t('question.typeJudge'),
+    'SHORT_ANSWER': t('question.typeShortAnswer'),
+    'ESSAY': t('question.typeEssay'),
+    'FILL': t('question.typeFill')
   }
   return map[type] || type || ''
 }
 
 function getDifficultyLabel(diff) {
-  const map = { 'EASY': '简单', 'MEDIUM': '中等', 'HARD': '困难' }
+  const map = { 'EASY': t('course.difficultyEasy'), 'MEDIUM': t('course.difficultyMedium'), 'HARD': t('course.difficultyHard') }
   return map[diff] || diff || ''
 }
 
@@ -500,7 +504,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取题目列表失败')
+    ElMessage.error(t('question.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -532,7 +536,7 @@ const handlePageChange = () => {
 
 const handleCreate = () => {
   if (!selectedCourse.value) return
-  dialogTitle.value = '新增题目'
+  dialogTitle.value = t('question.create')
   isEdit.value = false
   currentId.value = null
   formData.questionType = ''
@@ -552,7 +556,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑题目'
+  dialogTitle.value = t('question.edit')
   isEdit.value = true
   currentId.value = row.id
   formData.questionType = row.questionType
@@ -588,11 +592,11 @@ function addOption() {
 
 async function removeOption(idx) {
   try {
-    await ElMessageBox.confirm('确定删除此选项?', '确认删除', {
-      type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消'
+    await ElMessageBox.confirm(t('question.confirmDeleteOption'), t('question.confirmDeleteTitle'), {
+      type: 'warning', confirmButtonText: t('app.delete'), cancelButtonText: t('common.cancel')
     })
     optionList.value.splice(idx, 1)
-    ElMessage.success('选项已删除')
+    ElMessage.success(t('question.optionDeleted'))
   } catch {}
 }
 
@@ -604,13 +608,13 @@ function setSingleCorrect(idx) {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该题目?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('question.confirmDeleteQuestion'), t('userList.confirmTitle'), { type: 'warning' })
     await deleteQuestion(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('question.deleteFailed'))
     }
   }
 }
@@ -646,15 +650,15 @@ const handleSubmit = async () => {
       }
       if (isEdit.value) {
         await updateQuestion(currentId.value, payload)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('question.editSuccess'))
       } else {
         await createQuestion(payload)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('question.editFailed') : t('question.createFailed'))
     } finally {
       submitLoading.value = false
     }
