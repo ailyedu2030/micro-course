@@ -164,6 +164,9 @@ import { getChapters } from '@/api/chapter'
 import { getSlides, listSlides, getSlidePages, deleteSlide, deleteSlideById, updateSlideName, uploadSlide } from '@/plugins/interactive/api/slide'
 import { ElInput } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -207,12 +210,12 @@ const stats = computed(() => {
 })
 
 const statusMap = {
-  0: { label: '上传中', type: 'warning' },
-  1: { label: '渲染中', type: 'warning' },
-  2: { label: '就绪', type: 'success' },
-  3: { label: '失败', type: 'danger' },
+  0: { labelKey: 'uploading', type: 'warning' },
+  1: { labelKey: 'rendering', type: 'warning' },
+  2: { labelKey: 'ready', type: 'success' },
+  3: { labelKey: 'failed', type: 'danger' },
 }
-function statusLabel(s) { return statusMap[s]?.label || '未知' }
+function statusLabel(s) { const m = statusMap[s]; return m ? t(`teacherSlideOverview.${m.labelKey}`) : t('course.unknown') }
 function statusType(s) { return statusMap[s]?.type || 'info' }
 function formatTime(t) {
   if (!t) return '-'
@@ -244,9 +247,9 @@ const displaySlides = computed(() => {
 
 const emptyDescription = computed(() => {
   if (searchForm.value.courseId) {
-    return '该课程尚未上传课件，可先上传 PPT 或切换查看其它课程。'
+    return t('teacherSlideOverview.emptyWithCourse')
   }
-  return '当前还没有课件，可直接上传或按课程筛选。'
+  return t('teacherSlideOverview.emptyAll')
 })
 
 async function loadData() {
@@ -259,7 +262,7 @@ async function loadData() {
   if (!userStore.userId) {
     courses.value = []
     slides.value = []
-    ElMessage.error('无法获取当前教师信息')
+    ElMessage.error(t('teacherSlideOverview.cannotGetTeacher'))
     return
   }
   loading.value = true
@@ -311,9 +314,9 @@ function goEdit(row) {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定删除课件「${row.fileName}」？此操作不可恢复。`,
-      '确认删除',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      t('teacherSlideOverview.confirmDeleteCourseware', { name: row.fileName }),
+      t('teacherSlideOverview.confirmDeleteTitle'),
+      { type: 'warning', confirmButtonText: t('app.delete'), cancelButtonText: t('app.cancel') }
     )
   } catch {
     return
@@ -321,10 +324,10 @@ async function handleDelete(row) {
   deleting.value = row.id
   try {
     await deleteSlideById(row.courseId, row.id)
-    ElMessage.success('课件已删除')
+    ElMessage.success(t('teacherSlideOverview.coursewareDeleted'))
     slides.value = slides.value.filter(s => s.id !== row.id)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '删除失败')
+    ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
   } finally {
     deleting.value = null
   }
@@ -336,14 +339,14 @@ function startRename(row) {
 }
 
 async function confirmRename(row) {
-  if (!renameValue.value.trim()) { ElMessage.warning('文件名不能为空'); return }
+  if (!renameValue.value.trim()) { ElMessage.warning(t('teacherSlideOverview.fileNameRequired')); return }
   try {
     await updateSlideName(row.courseId, row.id, renameValue.value.trim())
-    ElMessage.success('重命名成功')
+    ElMessage.success(t('teacherSlideOverview.renameSuccess'))
     row.fileName = renameValue.value.trim()
     renaming.value = null
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '重命名失败')
+    ElMessage.error(e?.response?.data?.message || t('teacherSlideOverview.renameFailed'))
   }
 }
 
@@ -379,7 +382,7 @@ function onFileChange(uploadFile) {
 
 async function submitUpload() {
   if (!uploadForm.value.courseId || !uploadForm.value.chapterId || !uploadForm.value.file) {
-    ElMessage.warning('请选择课程、章节和文件')
+    ElMessage.warning(t('teacherSlideOverview.selectCourseChapterFile'))
     return
   }
   uploading.value = true
@@ -389,11 +392,11 @@ async function submitUpload() {
     }, uploadForm.value.chapterId)
     // F-2026-08-10-08: 优先展示后端 message（包含锚点 section 提示等透明化信息）
     const backendMsg = res?.data?.message
-    ElMessage.success(backendMsg || '课件上传成功，后台渲染中...')
+    ElMessage.success(backendMsg || t('teacherSlideOverview.uploadSuccess'))
     uploadDialogVisible.value = false
     loadData()  // 刷新列表
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '上传失败')
+    ElMessage.error(e?.response?.data?.message || t('teacherSlideOverview.uploadFailed'))
   } finally {
     uploading.value = false
   }
