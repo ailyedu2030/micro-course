@@ -333,7 +333,7 @@ import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
-const { t } = useI18n()
+const { t: i18nT } = useI18n()
 // 【V333 简化方案】HTML 课件 / PPT 课件独立管理页复用本组件，fixedCourseType 强制类型维度
 const props = defineProps({
   fixedCourseType: { type: String, default: '' }
@@ -697,19 +697,19 @@ const handleExport = async () => {
     const { data } = await getCourses(exportParams)
     const allData = data.items || []
     const exportData = allData.map((item, index) => ({
-      [t('course.index')]: index + 1,
-      [t('course.tableTitle')]: item.title || '',
-      [t('app.type')]: courseTypeLabel(item.courseType) || (item.courseType === 'INTERACTIVE' ? t('course.courseware') : t('course.unknown')),
-      [t('course.category')]: item.categoryName || '',
-      [t('course.teacher')]: item.teacherName || '',
-      [t('course.studentCount')]: item.studentCount || 0,
-      [t('course.status')]: getStatusLabel(item.status)
+      [i18nT('course.index')]: index + 1,
+      [i18nT('course.tableTitle')]: item.title || '',
+      [i18nT('app.type')]: courseTypeLabel(item.courseType) || (item.courseType === 'INTERACTIVE' ? i18nT('course.courseware') : i18nT('course.unknown')),
+      [i18nT('course.category')]: item.categoryName || '',
+      [i18nT('course.teacher')]: item.teacherName || '',
+      [i18nT('course.studentCount')]: item.studentCount || 0,
+      [i18nT('course.status')]: getStatusLabel(item.status)
     }))
     const wb = new Workbook()
-    const ws = wb.addWorksheet(t('course.courseList'))
+    const ws = wb.addWorksheet(i18nT('course.courseList'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(t('course.exportFileName', { date: Date.now() }))
-    ElMessage.success(t('course.exportSuccess', { count: exportData.length }))
+    await wb.xlsx.writeFile(i18nT('course.exportFileName', { date: Date.now() }))
+    ElMessage.success(i18nT('course.exportSuccess', { count: exportData.length }))
   } catch {
     ElMessage.error(t('course.exportFailed'))
   }
