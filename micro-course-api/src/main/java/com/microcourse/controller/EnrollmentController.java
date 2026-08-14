@@ -54,7 +54,7 @@ public class EnrollmentController {
     public R<PageResult<EnrollmentVO>> getMyEnrollments(
             @RequestParam(required = false) Boolean completed,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "999") @Range(min = 1, max = 500) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 500) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
         PageResult<EnrollmentVO> result = enrollmentService.getMyEnrollmentPage(userId, completed, page, size);
         return R.ok(result);
