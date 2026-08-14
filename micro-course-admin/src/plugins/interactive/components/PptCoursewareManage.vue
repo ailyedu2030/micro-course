@@ -8,11 +8,11 @@
   <div class="ppt-courseware-manage">
     <div class="pcm-header">
       <el-tag :type="statusTagType(tree?.narrationStatus)" size="large" effect="plain">
-        {{ statusLabel(tree?.narrationStatus) }} · {{ tree?.audioReadyCount || 0 }} 音频就绪
+        {{ statusLabel(tree?.narrationStatus) }} · {{ t('ppt.manage.audioReadyCount', { count: tree?.audioReadyCount || 0 }) }}
       </el-tag>
       <div class="pcm-actions">
         <el-button type="primary" plain :icon="View" :disabled="!canPreview" @click="showPreview = true">
-          预览
+          {{ t('ppt.manage.preview') }}
         </el-button>
         <el-upload
           :show-file-list="false"
@@ -20,51 +20,51 @@
           accept=".pptx"
           :disabled="upload.uploading.value"
         >
-          <el-button :icon="UploadFilled" :loading="upload.uploading.value">替换 PPT</el-button>
+          <el-button :icon="UploadFilled" :loading="upload.uploading.value">{{ t('ppt.manage.replacePpt') }}</el-button>
         </el-upload>
-        <el-button :icon="Download" :loading="downloadAction.loading.value" :disabled="downloadAction.loading.value" @click="downloadAction.run">下载 PPT</el-button>
-        <el-button :icon="Select" :disabled="downloadAction.loading.value" @click="toggleBatchMode">{{ batchMode ? '退出批量' : '批量操作' }}</el-button>
+        <el-button :icon="Download" :loading="downloadAction.loading.value" :disabled="downloadAction.loading.value" @click="downloadAction.run">{{ t('ppt.manage.downloadPpt') }}</el-button>
+        <el-button :icon="Select" :disabled="downloadAction.loading.value" @click="toggleBatchMode">{{ batchMode ? t('ppt.manage.exitBatch') : t('ppt.manage.batchActions') }}</el-button>
         <el-popconfirm
- title="确定删除该课件的全部 PPT 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
+          :title="t('ppt.manage.confirmDeleteAll')" :confirm-button-text="t('ppt.manage.delete')" :cancel-button-text="t('ppt.manage.cancel')"
                         confirm-button-type="danger"
                         @confirm="deleteAction.run">
           <template #reference>
-            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">删除课件</el-button>
+            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">{{ t('ppt.manage.deleteCourseware') }}</el-button>
           </template>
         </el-popconfirm>
       </div>
     </div>
 
     <!-- 批量操作条 -->
-    <div v-if="batchMode" class="pcm-batch-bar" role="group" aria-label="批量操作">
-      <span>已选 <span aria-live="polite">{{ selectedBatch.size }}</span> 页</span>
-      <el-button size="small" :loading="batchAiLoading" :disabled="batchAiLoading || selectedBatch.size === 0" @click="handleBatchAI" :icon="MagicStick">批量 AI 生成</el-button>
-      <el-button size="small" type="success" :loading="batchTtsLoading" :disabled="batchTtsLoading || selectedBatch.size === 0" @click="handleBatchTTS" :icon="Headset">批量生成音频</el-button>
-      <el-button size="small" type="danger" plain :loading="batchDeleting" :disabled="batchDeleting || selectedBatch.size === 0" @click="handleBatchDelete" :icon="Delete">批量删除</el-button>
-      <el-button size="small" :disabled="batchAiLoading || batchTtsLoading || batchDeleting" @click="cancelBatch">取消选择</el-button>
+    <div v-if="batchMode" class="pcm-batch-bar" role="group" :aria-label="t('ppt.manage.batchActions')">
+      <span aria-live="polite">{{ t('ppt.manage.selectedCount', { count: selectedBatch.size }) }}</span>
+      <el-button size="small" :loading="batchAiLoading" :disabled="batchAiLoading || selectedBatch.size === 0" @click="handleBatchAI" :icon="MagicStick">{{ t('ppt.manage.batchAi') }}</el-button>
+      <el-button size="small" type="success" :loading="batchTtsLoading" :disabled="batchTtsLoading || selectedBatch.size === 0" @click="handleBatchTTS" :icon="Headset">{{ t('ppt.manage.batchTts') }}</el-button>
+      <el-button size="small" type="danger" plain :loading="batchDeleting" :disabled="batchDeleting || selectedBatch.size === 0" @click="handleBatchDelete" :icon="Delete">{{ t('ppt.manage.batchDelete') }}</el-button>
+      <el-button size="small" :disabled="batchAiLoading || batchTtsLoading || batchDeleting" @click="cancelBatch">{{ t('ppt.manage.cancelSelection') }}</el-button>
     </div>
 
     <div class="pcm-render-tip" v-if="upload.renderPending.value">
       <el-icon class="is-loading"><Loading /></el-icon>
-      PPT 正在后台渲染处理，完成后将自动显示页面…
+      {{ t('ppt.manage.renderPending') }}
     </div>
 
     <!-- 页列表 + 四面板 -->
     <div class="pcm-page-list">
-      <h4 class="pcm-section-title">页面列表 ({{ tree?.pages?.length || 0 }})</h4>
+      <h4 class="pcm-section-title">{{ t('ppt.manage.pageList', { count: tree?.pages?.length || 0 }) }}</h4>
       <!-- L0 Task 3: 0 页空状态 → 明确"该怎么办" -->
       <div v-if="!tree?.pages?.length" class="pcm-pages-empty">
         <template v-if="upload.renderPending.value">
           <el-icon class="is-loading" :size="20"><Loading /></el-icon>
-          <span>PPT 正在渲染中…完成后页面将自动出现，请稍候</span>
+          <span>{{ t('ppt.manage.renderPendingWait') }}</span>
         </template>
         <el-empty
           v-else
-          description="PPT 页面尚未生成"
+          :description="t('ppt.manage.pagesNotGenerated')"
           :image-size="60"
         >
           <div class="pcm-pages-empty-tip">
-            若上传后长时间无页面，请重新上传 .pptx 文件
+            {{ t('ppt.manage.pagesEmptyTip') }}
           </div>
         </el-empty>
       </div>
@@ -80,10 +80,10 @@
             <el-checkbox
               v-if="batchMode"
               :model-value="selectedBatch.has(page.pageId)"
-              :aria-label="`选择第 ${page.pageNumber} 页`"
+              :aria-label="t('ppt.manage.selectPage', { number: page.pageNumber })"
               @click.stop.prevent="toggleBatchSelect(page)"
             />
-            <span>第 {{ page.pageNumber }} 页</span>
+            <span>{{ t('ppt.manage.pageNumber', { number: page.pageNumber }) }}</span>
             <el-tag :type="statusTagType(page.narrationStatus)" size="small">
               {{ statusLabel(page.narrationStatus) }}
             </el-tag>
@@ -94,10 +94,10 @@
 
     <div v-if="activePage" class="pcm-panels">
       <el-tabs v-model="activePanel" type="card">
-        <el-tab-pane name="content" label="内容">
+        <el-tab-pane name="content" :label="t('ppt.manage.tabContent')">
           <PptPageEditor :course-id="courseId" :page-id="activePage.pageId" />
         </el-tab-pane>
-        <el-tab-pane name="script" label="讲述稿">
+        <el-tab-pane name="script" :label="t('ppt.manage.tabScript')">
           <ScriptEditor
             :course-id="courseId"
             page-type="PPT"
@@ -106,7 +106,7 @@
             @save-success="emit('changed')"
           />
         </el-tab-pane>
-        <el-tab-pane name="audio" label="音频">
+        <el-tab-pane name="audio" :label="t('ppt.manage.tabAudio')">
           <AudioManager
             :course-id="courseId"
             page-type="PPT"
@@ -114,20 +114,20 @@
             :script-id="activePage.activeScript?.id || null"
           />
         </el-tab-pane>
-        <el-tab-pane name="flow" label="跳转逻辑">
+        <el-tab-pane name="flow" :label="t('ppt.manage.tabFlow')">
           <PptFlowEditor
             v-if="sectionId"
             :course-id="courseId"
             :section-id="sectionId"
             :pages="(tree?.pages || []).map(p => ({ id: p.pageId, pageNumber: p.pageNumber, pageTitle: p.pageTitle }))"
           />
-          <el-alert v-else type="info" :closable="false" title="章节级课件暂不支持页间跳转规则" />
+          <el-alert v-else type="info" :closable="false" :title="t('ppt.manage.flowNotSupported')" />
         </el-tab-pane>
       </el-tabs>
     </div>
 
     <!-- 学生视角预览 -->
-    <el-dialog v-model="showPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
+    <el-dialog v-model="showPreview" :title="t('ppt.manage.studentPreviewTitle')" fullscreen :destroy-on-close="true">
       <SlidePreview v-if="showPreview" :course-id="courseId" :section-id="sectionId" @close="showPreview = false" />
     </el-dialog>
   </div>
@@ -135,6 +135,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { View, UploadFilled, Download, Select, Delete, MagicStick, Headset, Loading } from '@element-plus/icons-vue'
 import PptPageEditor from './PptPageEditor.vue'
@@ -147,6 +148,8 @@ import { useAsyncAction } from '../composables/useAsyncAction'
 import { getTtsOptions } from '../api/queryCourseware'
 import { deletePptPage, generatePptAudio, batchGeneratePptScripts } from '../api/pptCourseware'
 import { downloadOriginalSlide, deleteCourseware } from '../api/slide'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -202,11 +205,11 @@ const canPreview = computed(() =>
 // 均为 G3 后端聚合枚举；前端映射保证树级/页级状态文案与聚合视图一致
 function statusLabel(s) {
   return {
-    PENDING: '待生成',
-    AUDIO_PENDING: '待生成',
-    AUDIO_GENERATING: '生成中',
-    AUDIO_READY: '就绪',
-    AUDIO_FAILED: '失败'
+    PENDING: t('ppt.manage.status.pending'),
+    AUDIO_PENDING: t('ppt.manage.status.pending'),
+    AUDIO_GENERATING: t('ppt.manage.status.generating'),
+    AUDIO_READY: t('ppt.manage.status.ready'),
+    AUDIO_FAILED: t('ppt.manage.status.failed')
   }[s] || s
 }
 function statusTagType(s) {
@@ -239,7 +242,7 @@ function toggleBatchSelect(page) {
 
 async function handleBatchAI() {
   if (selectedBatch.value.size === 0) {
-    ElMessage.warning('请先选择页面')
+    ElMessage.warning(t('ppt.manage.selectPagesFirst'))
     return
   }
   if (batchAiLoading.value) return // L0 Task 2: 防重复触发
@@ -257,15 +260,14 @@ async function handleBatchAI() {
     const failed = results.filter(r => !r.success)
     if (failed.length > 0) {
       const pageNumOf = (id) => (props.tree.pages || []).find(p => p.pageId === id)?.pageNumber || id
-      ElMessage.warning(
-        `批量 AI 生成并保存：成功 ${ok} 页，失败 ${failed.length} 页（${failed.map(f => `第${pageNumOf(f.pageId)}页: ${f.error || '未知错误'}`).join('；')}）`
-      )
+      const detail = failed.map(f => t('ppt.manage.pageErrorDetail', { number: pageNumOf(f.pageId), err: f.error || t('ppt.manage.unknownError') })).join('；')
+      ElMessage.warning(t('ppt.manage.batchAiResultWarning', { ok, failed: failed.length, detail }))
     } else {
-      ElMessage.success(`批量 AI 生成并保存完成：成功 ${ok} 页`)
+      ElMessage.success(t('ppt.manage.batchAiSuccess', { ok }))
     }
     emit('changed') // 刷新课件树 → 页级 activeScript 更新 → 讲述稿/音频 tab 立即可见
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '批量 AI 生成失败，请稍后重试')
+    ElMessage.error(e?.response?.data?.message || e?.message || t('ppt.manage.batchAiFailed'))
   } finally {
     batchAiLoading.value = false
   }
@@ -273,7 +275,7 @@ async function handleBatchAI() {
 
 async function handleBatchTTS() {
   if (selectedBatch.value.size === 0) {
-    ElMessage.warning('请先选择页面')
+    ElMessage.warning(t('ppt.manage.selectPagesFirst'))
     return
   }
   if (batchTtsLoading.value) return // L0 Task 2: 防重复触发
@@ -290,7 +292,7 @@ async function handleBatchTTS() {
       if (!selectedBatch.value.has(page.pageId)) continue
       const scriptId = page.activeScript?.id
       if (!scriptId) {
-        failed.push({ page: page.pageNumber, err: '尚未保存讲述稿' })
+        failed.push({ page: page.pageNumber, err: t('ppt.manage.noScriptSaved') })
         continue
       }
       try {
@@ -301,12 +303,12 @@ async function handleBatchTTS() {
         })
         ok++
       } catch (e) {
-        failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || '未知错误' })
+        failed.push({ page: page.pageNumber, err: e?.response?.data?.message || e?.message || t('ppt.manage.unknownError') })
       }
     }
-    ElMessage[failed.length ? 'warning' : 'success'](
-      `批量音频生成：成功 ${ok} 页${failed.length ? `，失败 ${failed.length} 页（${failed.map(f => `第${f.page}页: ${f.err}`).join('；')}）` : ''}`
-    )
+    const detail = failed.map(f => t('ppt.manage.pageErrorDetail', { number: f.page, err: f.err })).join('；')
+    const failedText = failed.length ? t('ppt.manage.batchTtsFailedSuffix', { count: failed.length, detail }) : ''
+    ElMessage[failed.length ? 'warning' : 'success'](t('ppt.manage.batchTtsResult', { ok, failedText }))
   } finally {
     batchTtsLoading.value = false
   }
@@ -315,13 +317,13 @@ async function handleBatchTTS() {
 async function handleBatchDelete() {
   const ids = [...selectedBatch.value]
   if (ids.length === 0) {
-    ElMessage.warning('请先选择页面')
+    ElMessage.warning(t('ppt.manage.selectPagesFirst'))
     return
   }
   if (batchDeleting.value) return // L0 Task 2: 防重复触发
   try {
-    await ElMessageBox.confirm(`确定删除选中的 ${ids.length} 页吗？`, '批量删除', {
-      confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning'
+    await ElMessageBox.confirm(t('ppt.manage.confirmBatchDelete', { count: ids.length }), t('ppt.manage.batchDelete'), {
+      confirmButtonText: t('ppt.manage.delete'), cancelButtonText: t('ppt.manage.cancel'), type: 'warning'
     })
   } catch {
     return
@@ -331,7 +333,7 @@ async function handleBatchDelete() {
     for (const pageId of ids) {
       try { await deletePptPage(props.courseId, pageId) } catch (e) { /* 逐页失败不阻断 */ }
     }
-    ElMessage.success('批量删除完成')
+    ElMessage.success(t('ppt.manage.batchDeleteDone'))
     selectedBatch.value = new Set()
     batchMode.value = false
     emit('changed')
@@ -345,7 +347,7 @@ const downloadAction = useAsyncAction(async () => {
   const res = await downloadOriginalSlide(props.courseId)
   const blob = res?.data
   if (!blob || !(blob instanceof Blob) || blob.size === 0) {
-    ElMessage.info('暂无原始文件可下载')
+    ElMessage.info(t('ppt.manage.noOriginalFile'))
     return
   }
   const url = URL.createObjectURL(blob)
@@ -361,10 +363,10 @@ const downloadAction = useAsyncAction(async () => {
 async function handleDeleteCourseware() {
   try {
     await deleteCourseware(props.courseId, props.sectionId || null, props.sectionId ? null : props.chapterId)
-    ElMessage.success('课件已删除')
+    ElMessage.success(t('ppt.manage.coursewareDeleted'))
     emit('changed')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '删除失败')
+    ElMessage.error(e?.response?.data?.message || t('ppt.manage.deleteFailed'))
   }
 }
 

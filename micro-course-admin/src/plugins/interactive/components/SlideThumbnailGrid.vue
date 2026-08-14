@@ -11,7 +11,7 @@
         <img
           v-if="thumbSrc(page)"
           :src="thumbSrc(page)"
-          :alt="'第' + page.pageNumber + '页'"
+          :alt="t('slide.thumbnails.pageAlt', { number: page.pageNumber })"
           class="thumb-img"
           @error="onImgError(page)"
           @load="onImgLoad(page)"
@@ -28,7 +28,10 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { loadAuthResource } from '@/utils/authImage'
+
+const { t } = useI18n()
 
 const props = defineProps({
   pages: { type: Array, default: () => [] },
@@ -88,13 +91,13 @@ const statusClass = (p) => {
 }
 const statusText = (p) => {
   const m = {
-    PENDING: '待处理',
-    AUDIO_PENDING: '待生成',
-    AI_GENERATED: 'AI已生成',
-    TEACHER_EDITED: '已编辑',
-    AUDIO_GENERATING: '配音中',
-    AUDIO_READY: '音频就绪',
-    AUDIO_FAILED: '生成失败'
+    PENDING: t('slide.thumbnails.pending'),
+    AUDIO_PENDING: t('slide.thumbnails.audioPending'),
+    AI_GENERATED: t('slide.thumbnails.aiGenerated'),
+    TEACHER_EDITED: t('slide.thumbnails.teacherEdited'),
+    AUDIO_GENERATING: t('slide.thumbnails.generating'),
+    AUDIO_READY: t('slide.thumbnails.audioReady'),
+    AUDIO_FAILED: t('slide.thumbnails.failed')
   }
   return m[p.narrationStatus] || p.narrationStatus
 }

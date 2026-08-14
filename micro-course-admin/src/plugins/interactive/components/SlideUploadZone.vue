@@ -2,14 +2,17 @@
   <div class="slide-upload-zone">
     <el-upload drag :show-file-list="false" :before-upload="handleUpload" accept=".pptx,.html,.htm" :disabled="uploading">
       <el-icon class="upload-icon" :size="40"><UploadFilled /></el-icon>
-      <div class="upload-text">拖拽 .pptx 或 .html 文件到此处，或 <em>点击上传</em></div>
-      <div class="upload-hint">支持 .pptx (最大 50MB) 和 .html (最大 5MB)</div>
+      <div class="upload-text">{{ t('slide.upload.dragHint') }} <em>{{ t('slide.upload.clickToUpload') }}</em></div>
+      <div class="upload-hint">{{ t('slide.upload.hint') }}</div>
     </el-upload>
   </div>
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { UploadFilled } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 defineProps({ uploading: Boolean, handleUpload: { type: Function, required: true }, chapterId: { type: Number, default: null } })
 </script>

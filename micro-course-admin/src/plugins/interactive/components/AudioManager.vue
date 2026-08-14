@@ -22,12 +22,12 @@
     <div class="am-header">
       <h3 class="am-title">
         <el-icon><Headset /></el-icon>
-        音频管理
-        <el-tag v-if="totalReady > 0" type="success" size="small">{{ totalReady }} 已就绪</el-tag>
-        <el-tag v-else-if="hasGenerating" type="warning" size="small">生成中...</el-tag>
-        <el-tag v-else type="info" size="small">暂无音频</el-tag>
+        {{ t('audio.manage.title') }}
+        <el-tag v-if="totalReady > 0" type="success" size="small">{{ t('audio.manage.readyCount', { count: totalReady }) }}</el-tag>
+        <el-tag v-else-if="hasGenerating" type="warning" size="small">{{ t('audio.manage.generating') }}</el-tag>
+        <el-tag v-else type="info" size="small">{{ t('audio.manage.noAudio') }}</el-tag>
       </h3>
-      <el-tooltip :disabled="canGenerate" content="请先保存页面讲述稿，再生成音频" placement="top">
+      <el-tooltip :disabled="canGenerate" :content="t('audio.manage.saveScriptFirst')" placement="top">
         <span>
           <el-button
             :icon="Plus"
@@ -37,7 +37,7 @@
             :disabled="!canGenerate"
             @click="showGenerate = true"
           >
-            生成新音频
+            {{ t('audio.manage.generateNew') }}
           </el-button>
         </span>
       </el-tooltip>
@@ -50,11 +50,11 @@
       :closable="false"
       show-icon
       class="am-support-alert"
-      title="音频生成失败率较高"
-      description="连续多次生成失败，建议联系技术支持协助排查，避免反复消耗额度。"
+      :title="t('audio.manage.highFailureTitle')"
+      :description="t('audio.manage.highFailureDesc')"
     >
       <template #default>
-        <el-button size="small" type="danger" plain @click="openSupportTip">联系技术支持</el-button>
+        <el-button size="small" type="danger" plain @click="openSupportTip">{{ t('audio.manage.contactSupport') }}</el-button>
       </template>
     </el-alert>
 
@@ -73,7 +73,7 @@
       />
       <el-empty
         v-else
-        description="请先保存页面讲述稿，再生成音频"
+        :description="t('audio.manage.saveScriptFirst')"
         :image-size="60"
       />
     </div>
@@ -84,7 +84,7 @@
           v-for="seg in segments || []"
           :key="seg.idx"
           :name="seg.idx"
-          :label="`第 ${seg.idx} 段`"
+          :label="t('audio.manage.segmentLabel', { idx: seg.idx })"
         >
           <AudioPanel
             :course-id="courseId"
@@ -100,16 +100,16 @@
       </el-tabs>
       <el-empty
         v-if="!(segments && segments.length)"
-        description="暂无已保存讲述稿的段落，请先在「分段脚本」中保存任一讲述稿"
+        :description="t('audio.manage.noScriptSegments')"
         :image-size="60"
       />
     </div>
 
     <!-- 生成新音频对话框 -->
-    <el-dialog v-model="showGenerate" title="生成新音频" width="420px">
+    <el-dialog v-model="showGenerate" :title="t('audio.manage.generateNew')" width="420px">
       <el-form label-position="top">
-        <el-form-item label="音色">
-          <el-select v-model="generateVoice" placeholder="选择音色" style="width:100%">
+        <el-form-item :label="t('audio.manage.voiceLabel')">
+          <el-select v-model="generateVoice" :placeholder="t('audio.manage.selectVoice')" style="width:100%">
             <el-option
               v-for="v in voiceOptions"
               :key="v.id"
@@ -118,20 +118,20 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="TTS 模型">
+        <el-form-item :label="t('audio.manage.ttsModel')">
           <el-select v-model="generateModel" style="width:100%">
             <el-option
               v-for="m in modelOptions"
               :key="m"
-              :label="m === defaultTtsModel ? m + ' (推荐)' : m"
+              :label="m === defaultTtsModel ? t('audio.manage.recommended', { model: m }) : m"
               :value="m"
             />
           </el-select>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showGenerate = false">取消</el-button>
-        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">生成</el-button>
+        <el-button @click="showGenerate = false">{{ t('audio.manage.cancel') }}</el-button>
+        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">{{ t('audio.manage.generate') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -139,12 +139,15 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Headset, Plus } from '@element-plus/icons-vue'
 import { listPptAudios, generatePptAudio } from '../api/pptCourseware'
 import { listHtmlSegmentAudios, generateHtmlSegmentAudio } from '../api/htmlCourseware'
 import { getAudioStreamUrl, getTtsOptions } from '../api/queryCourseware'
 import AudioPanel from './AudioPanel.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -170,14 +173,14 @@ const MAX_RETRY = 3
 const voiceOptions = computed(() => {
   if (ttsOptions.value?.voices?.length) return ttsOptions.value.voices
   return [
-    { id: 'female-shaonv', label: '女声·甜美少女' },
-    { id: 'female-qingxin', label: '女声·清新' },
-    { id: 'female-yujie', label: '女声·御姐' },
-    { id: 'female-warm', label: '女声·温暖' },
-    { id: 'male-shaonian', label: '男声·少年' },
-    { id: 'male-qingnian', label: '男声·青年' },
-    { id: 'male-dashu', label: '男声·大叔' },
-    { id: 'male-chengzhao', label: '男声·沉稳' }
+    { id: 'female-shaonv', label: t('audio.manage.voice.femaleShaonv') },
+    { id: 'female-qingxin', label: t('audio.manage.voice.femaleQingxin') },
+    { id: 'female-yujie', label: t('audio.manage.voice.femaleYujie') },
+    { id: 'female-warm', label: t('audio.manage.voice.femaleWarm') },
+    { id: 'male-shaonian', label: t('audio.manage.voice.maleShaonian') },
+    { id: 'male-qingnian', label: t('audio.manage.voice.maleQingnian') },
+    { id: 'male-dashu', label: t('audio.manage.voice.maleDashu') },
+    { id: 'male-chengzhao', label: t('audio.manage.voice.maleChengzhao') }
   ]
 })
 
@@ -229,9 +232,9 @@ function htmlAudioUrl(audio) {
 
 function statusLabel(audio) {
   const map = {
-    GENERATING: '生成中',
-    READY: '就绪',
-    FAILED: '失败'
+    GENERATING: t('audio.manage.status.generating'),
+    READY: t('audio.manage.status.ready'),
+    FAILED: t('audio.manage.status.failed')
   }
   return map[audio.status] || audio.status
 }
@@ -287,7 +290,7 @@ onMounted(() => {
 async function handleGenerate() {
   if (generating.value) return // R-15：生成中禁用重复提交，防重复计费
   if (!canGenerate.value) {
-    ElMessage.warning('请先保存讲述稿，再生成音频')
+    ElMessage.warning(t('audio.manage.saveScriptFirstShort'))
     return
   }
   generating.value = true
@@ -307,13 +310,13 @@ async function handleGenerate() {
         ttsParams: '{}'
       })
     }
-    ElMessage.success('音频生成任务已提交,稍后刷新查看')
+    ElMessage.success(t('audio.manage.submitted'))
     showGenerate.value = false
     await refreshActiveAudios()
     pollUntilSettled() // R-10：3s 轮询直至 READY/FAILED
   } catch (e) {
     // F-2026-08-07-09：透传后端明确错误（如 TTS Key 未配置/超时），禁止吞成通用错误
-    ElMessage.error('生成失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+    ElMessage.error(t('audio.manage.generateFailed', { msg: e?.response?.data?.message || e?.message || t('audio.manage.unknownError') }))
   } finally {
     generating.value = false
   }
@@ -325,7 +328,7 @@ async function handleRetry({ audio, scriptId }) {
   // 防死循环: 同一 script 会话级最多重试 MAX_RETRY 次
   const recent = retryHistory.value.filter(h => h.scriptId === scriptId)
   if (recent.length >= MAX_RETRY) {
-    ElMessage.warning(`该音频已重试 ${MAX_RETRY} 次仍失败，建议联系技术支持排查，避免反复消耗额度`)
+    ElMessage.warning(t('audio.manage.retryLimitExceeded', { count: MAX_RETRY }))
     return
   }
   retryingId.value = audio.id
@@ -340,11 +343,11 @@ async function handleRetry({ audio, scriptId }) {
     retryHistory.value.push({ scriptId, voice, model, at: Date.now() })
     // 只保留最近 3 条（会话级）
     if (retryHistory.value.length > MAX_RETRY) retryHistory.value.shift()
-    ElMessage.success('已重新提交生成,稍后自动刷新')
+    ElMessage.success(t('audio.manage.retrySubmitted'))
     await refreshActiveAudios()
     pollUntilSettled()
   } catch (e) {
-    ElMessage.error('重试提交失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+    ElMessage.error(t('audio.manage.retryFailed', { msg: e?.response?.data?.message || e?.message || t('audio.manage.unknownError') }))
   } finally {
     retryingId.value = null
   }
@@ -354,15 +357,15 @@ async function handleRetry({ audio, scriptId }) {
 function openVoiceSettings() {
   if (ttsOptions.value?.defaultVoice) generateVoice.value = ttsOptions.value.defaultVoice
   showGenerate.value = true
-  ElMessage.info('已切换为默认音色，可直接点击「生成」重新生成')
+  ElMessage.info(t('audio.manage.voiceSwitched'))
 }
 
 // L0 Task 5: 失败率告警 → 联系技术支持指引
 function openSupportTip() {
   ElMessageBox.alert(
-    '音频连续生成失败（失败率超过 50%）。常见原因：TTS 服务账户余额不足 / API Key 失效 / 网络异常。请将课件信息与错误原因反馈给技术支持排查。',
-    '联系技术支持',
-    { confirmButtonText: '知道了', type: 'error' }
+    t('audio.manage.supportAlertBody'),
+    t('audio.manage.contactSupport'),
+    { confirmButtonText: t('audio.manage.gotIt'), type: 'error' }
   )
 }
 
@@ -393,11 +396,11 @@ function pollUntilSettled() {
       if (settled) {
         clearInterval(pollTimer)
         const failed = list.filter(a => a.status === 'FAILED').length
-        if (failed > 0) ElMessage.error(`${failed} 个音频生成失败，请查看列表`)
-        else ElMessage.success('音频生成完成')
+        if (failed > 0) ElMessage.error(t('audio.manage.pollFailedCount', { count: failed }))
+        else ElMessage.success(t('audio.manage.pollDone'))
       } else if (pollTries > 100) {
         clearInterval(pollTimer)
-        ElMessage.warning('生成时间较长，请稍后在列表中查看状态')
+        ElMessage.warning(t('audio.manage.pollSlow'))
       }
     } catch {
       if (pollTries > 100) clearInterval(pollTimer)

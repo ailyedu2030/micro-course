@@ -20,12 +20,12 @@
   <div class="audio-panel">
     <div v-if="loading" class="ap-loading">
       <el-icon class="is-loading"><Loading /></el-icon>
-      加载音频列表...
+      {{ t('audio.panel.loading') }}
     </div>
     <!-- L0 U-音频空: 从未生成过音频 → 明确引导如何开始 -->
     <el-empty
       v-else-if="audios.length === 0"
-      description="尚未生成音频，点击右上角「生成新音频」按钮开始"
+      :description="t('audio.panel.empty')"
       :image-size="80"
     />
     <div v-else class="ap-list">
@@ -56,13 +56,13 @@
               plain
               @click="togglePlay(audio)"
             >
-              {{ playingId === audio.id ? '暂停' : '试听' }}
+              {{ playingId === audio.id ? t('audio.panel.pause') : t('audio.panel.listen') }}
             </el-button>
             <span v-else-if="audio.status === 'GENERATING'" class="ap-pending">
               <el-icon class="is-loading"><Loading /></el-icon>
-              生成中
+              {{ t('audio.panel.generating') }}
             </span>
-            <span v-else class="ap-failed-badge">失败</span>
+            <span v-else class="ap-failed-badge">{{ t('audio.panel.failed') }}</span>
           </div>
         </div>
 
@@ -86,7 +86,7 @@
               :disabled="retryingId !== null"
               @click="openRechargeTip"
             >
-              联系管理员充值
+              {{ t('audio.panel.actionRecharge') }}
             </el-button>
             <el-button
               v-if="errorInfo(audio).action === 'voice'"
@@ -95,7 +95,7 @@
               :disabled="retryingId !== null"
               @click="emit('voice-settings', audio)"
             >
-              切换默认音色
+              {{ t('audio.panel.actionSwitchVoice') }}
             </el-button>
             <el-button
               v-if="errorInfo(audio).action === 'config'"
@@ -104,7 +104,7 @@
               :disabled="retryingId !== null"
               @click="openSupportTip"
             >
-              联系技术支持
+              {{ t('audio.panel.actionSupport') }}
             </el-button>
             <!-- G3-P1-C-2: 限流场景 → 5 分钟倒计时按钮（禁用 → 倒计时 → 自动启用）。
                  后端对 1002 限流立即置 FAILED，前端倒计时结束后才允许重试，避免无效点击 -->
@@ -117,7 +117,7 @@
               :disabled="retryingId !== null || rateLimitRemaining(audio.id) > 0"
               @click="emit('retry', { audio, scriptId: props.scriptId })"
             >
-              {{ rateLimitRemaining(audio.id) > 0 ? `${formatRateLimit(rateLimitRemaining(audio.id))} 后可重试` : errorInfo(audio).actionLabel }}
+              {{ rateLimitRemaining(audio.id) > 0 ? t('audio.panel.ratelimitWait', { time: formatRateLimit(rateLimitRemaining(audio.id)) }) : errorInfo(audio).actionLabel }}
             </el-button>
             <el-button
               v-if="errorInfo(audio).action !== 'ratelimit'"
@@ -139,9 +139,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Loading, VideoPlay, VideoPause } from '@element-plus/icons-vue'
 import { classifyAudioError } from '../composables/useAudioError'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -208,7 +211,7 @@ async function load() {
     maybeStartRateLimitCountdown(audios.value)
   } catch (e) {
     // F-2026-08-07-09：加载失败给出明确提示，避免未处理 rejection
-    ElMessage.warning('音频列表加载失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+    ElMessage.warning(t('audio.panel.loadFailed', { msg: e?.response?.data?.message || e?.message || t('audio.panel.unknownError') }))
   } finally {
     loading.value = false
   }
@@ -228,37 +231,56 @@ function togglePlay(audio) {
   audioEl.value.play().catch(err => {
     // 【BUG #11 修复】 用户可见错误提示 (不只 console.warn)
     console.warn('[AudioPanel] play failed', err)
-    ElMessage.error('试听失败: ' + (err?.message || '音频加载失败,请检查网络或重试'))
+    ElMessage.error(t('audio.panel.playFailed', { msg: err?.message || t('audio.panel.loadFailedRetry') }))
     playingId.value = null
   })
   audioEl.value.onerror = () => {
-    ElMessage.error('音频文件损坏或不存在 (token: ' + audio.audioToken?.substring(0, 8) + '...)')
+    ElMessage.error(t('audio.panel.fileCorrupted', { token: audio.audioToken?.substring(0, 8) }))
     playingId.value = null
   }
   playingId.value = audio.id
   audioEl.value.onended = () => { playingId.value = null }
 }
 
-// L0 铁律: 错误分类 → "该怎么办" + 行动按钮 (classifyAudioError 返回 advice + action)
+// L0 铁律: 错误分类 → "该怎么办" + 行动按钮 (classifyAudioError 返回 action, 前端 i18n 化文案)
 function errorInfo(audio) {
-  return classifyAudioError(audio.errorMessage)
+  const info = classifyAudioError(audio.errorMessage || '')
+  const adviceMap = {
+    retry: t('audio.panel.adviceRetry'),
+    recharge: t('audio.panel.adviceRecharge'),
+    ratelimit: t('audio.panel.adviceRatelimit'),
+    voice: t('audio.panel.adviceVoice'),
+    config: t('audio.panel.adviceConfig')
+  }
+  const labelMap = {
+    retry: t('audio.panel.actionRetry'),
+    recharge: t('audio.panel.actionRecharge'),
+    ratelimit: t('audio.panel.actionRetry'),
+    voice: t('audio.panel.actionSwitchVoice'),
+    config: t('audio.panel.actionRetry')
+  }
+  return {
+    ...info,
+    advice: adviceMap[info.action] || info.advice,
+    actionLabel: labelMap[info.action] || info.actionLabel
+  }
 }
 
 // 余额不足: 平台 TTS 由管理员统一充值, 给出明确指引
 function openRechargeTip() {
   ElMessageBox.alert(
-    '音频合成服务账户余额不足，需要由平台管理员为 TTS 服务充值后方可继续生成。请通过管理后台或联系管理员完成充值，充值后点击「重新生成」即可。',
-    '账户余额不足',
-    { confirmButtonText: '知道了', type: 'warning' }
+    t('audio.panel.rechargeAlertBody'),
+    t('audio.panel.rechargeAlertTitle'),
+    { confirmButtonText: t('audio.panel.gotIt'), type: 'warning' }
   )
 }
 
 // 配置/服务端异常: 引导联系技术支持
 function openSupportTip() {
   ElMessageBox.alert(
-    '音频合成服务配置异常（如 API Key 无效）。请将课件信息与错误原因反馈给平台技术支持排查，修复后点击「重新生成」即可。',
-    '需要技术支持',
-    { confirmButtonText: '知道了', type: 'error' }
+    t('audio.panel.supportAlertBody'),
+    t('audio.panel.supportAlertTitle'),
+    { confirmButtonText: t('audio.panel.gotIt'), type: 'error' }
   )
 }
 

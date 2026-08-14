@@ -21,13 +21,13 @@
     <div class="se-header">
       <h3 class="se-title">
         <el-icon><Document /></el-icon>
-        讲述稿编辑
-        <el-tag v-if="history.length > 1" size="small" type="info">v{{ history.length }} 历史</el-tag>
+        {{ t('script.editor.title') }}
+        <el-tag v-if="history.length > 1" size="small" type="info">{{ t('script.editor.historyCount', { count: history.length }) }}</el-tag>
       </h3>
       <div class="se-actions">
         <el-dropdown v-if="history.length > 1" trigger="click" @command="loadVersion">
           <el-button size="small" :icon="Clock">
-            版本切换
+            {{ t('script.editor.switchVersion') }}
             <span class="se-current">v{{ activeVersion }}</span>
           </el-button>
           <template #dropdown>
@@ -51,23 +51,23 @@
       v-model="scriptText"
       type="textarea"
       :rows="8"
-      placeholder="输入讲述稿内容...保存将创建新版本,旧版本永久保留。"
+      :placeholder="t('script.editor.placeholder')"
     />
 
     <div class="se-toolbar">
       <el-button :icon="MagicStick" plain size="small" @click="handleAiGenerate" :loading="aiLoading">
-        AI 生成讲述稿
+        {{ t('script.editor.aiGenerate') }}
       </el-button>
       <el-button type="primary" size="small" :icon="Check" @click="handleSave" :loading="saving" :disabled="!scriptText.trim()">
-        保存 (创建 v{{ history.length + 1 }})
+        {{ t('script.editor.saveWithVersion', { version: history.length + 1 }) }}
       </el-button>
     </div>
 
     <div v-if="aiPreview" class="se-ai-preview">
-      <el-alert type="info" :closable="false" title="AI 生成预览">
+      <el-alert type="info" :closable="false" :title="t('script.editor.aiPreviewTitle')">
         <pre>{{ aiPreview }}</pre>
-        <el-button size="small" type="primary" @click="applyAiPreview">应用此版本</el-button>
-        <el-button size="small" @click="aiPreview = null">取消</el-button>
+        <el-button size="small" type="primary" @click="applyAiPreview">{{ t('script.editor.applyVersion') }}</el-button>
+        <el-button size="small" @click="aiPreview = null">{{ t('script.editor.cancel') }}</el-button>
       </el-alert>
     </div>
   </div>
@@ -75,12 +75,15 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Document, Check, MagicStick, Clock } from '@element-plus/icons-vue'
 import { getActivePptScript, listPptScriptHistory, savePptScript } from '../api/pptCourseware'
 import { getActiveHtmlSegment, saveHtmlSegmentScript } from '../api/htmlCourseware'
 import { generatePptScriptAi, generateHtmlSegmentScriptAi } from '../api/queryCourseware'
 import { useUserStore } from '@/store/user'
+
+const { t, locale } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -128,7 +131,7 @@ async function loadActive() {
     // P1-C 修复: 原 loadActive() 无 try/catch → API 失败时静默失败,
     // 编辑面板保持空白且无任何反馈
     console.error('Failed to load active script:', e)
-    ElMessage.error('加载失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('script.editor.loadFailed', { msg: e.message || t('script.editor.unknownError') }))
   }
 }
 
@@ -141,14 +144,14 @@ function loadVersion(h) {
 
 async function handleSave() {
   if (!scriptText.value.trim()) {
-    ElMessage.warning('讲述稿不能为空')
+    ElMessage.warning(t('script.editor.scriptRequired'))
     return
   }
   // 【BUG #2 修复】从用户 store 获取真实 createdBy (审计追踪)
   const userStore = useUserStore()
   const createdBy = userStore.userInfo?.id || userStore.userId || 0
   if (!createdBy) {
-    ElMessage.warning('用户未登录,无法保存')
+    ElMessage.warning(t('script.editor.notLoggedIn'))
     return
   }
   saving.value = true
@@ -175,11 +178,11 @@ async function handleSave() {
         createdBy
       })
     }
-    ElMessage.success('新版本已保存')
+    ElMessage.success(t('script.editor.saved'))
     emit('save-success', res.data || res)
     await loadActive()
   } catch (e) {
-    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('script.editor.saveFailed', { msg: e.message || t('script.editor.unknownError') }))
   } finally {
     saving.value = false
   }
@@ -197,13 +200,13 @@ async function handleAiGenerate() {
     }
     const script = (res.data || res)?.scriptText
     if (!script) {
-      ElMessage.error('AI 生成返回为空，请重试')
+      ElMessage.error(t('script.editor.aiEmpty'))
       return
     }
     aiPreview.value = script
   } catch (e) {
     // F-2026-08-07-09：透传后端明确错误（如 LLM Key 未配置），禁止吞成"服务器错误"
-    ElMessage.error(e?.response?.data?.message || e?.message || 'AI 讲述稿生成失败，请稍后重试')
+    ElMessage.error(e?.response?.data?.message || e?.message || t('script.editor.aiFailed'))
   } finally {
     aiLoading.value = false
   }
@@ -213,13 +216,13 @@ function applyAiPreview() {
   if (aiPreview.value) {
     scriptText.value = aiPreview.value
     aiPreview.value = null
-    ElMessage.success('已应用 AI 预览')
+    ElMessage.success(t('script.editor.aiApplied'))
   }
 }
 
-function formatTime(t) {
-  if (!t) return ''
-  return new Date(t).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+function formatTime(time) {
+  if (!time) return ''
+  return new Date(time).toLocaleString(locale.value, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
 watch(() => [props.currentScriptId, props.pageId, props.unitId, props.segmentIndex], loadActive, { immediate: true })

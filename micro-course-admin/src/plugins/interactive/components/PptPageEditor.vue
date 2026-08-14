@@ -11,32 +11,32 @@
     <div class="pe-header">
       <h3 class="pe-title">
         <el-icon><Picture /></el-icon>
-        PPT 页面元数据
-        <el-tag v-if="page" size="small" type="info">第 {{ page.pageNumber }} 页</el-tag>
+        {{ t('ppt.page.title') }}
+        <el-tag v-if="page" size="small" type="info">{{ t('ppt.page.pageNumber', { number: page.pageNumber }) }}</el-tag>
       </h3>
     </div>
 
     <el-form v-if="page" label-position="top" :model="form" class="pe-form">
-      <el-form-item label="页面标题">
-        <el-input v-model="form.pageTitle" placeholder="(可选) 简短描述" />
+      <el-form-item :label="t('ppt.page.pageTitleLabel')">
+        <el-input v-model="form.pageTitle" :placeholder="t('ppt.page.pageTitlePlaceholder')" />
       </el-form-item>
-      <el-form-item label="图片 URL">
-        <el-input v-model="form.imageUrl" placeholder="CDN 签名 URL" />
+      <el-form-item :label="t('ppt.page.imageUrlLabel')">
+        <el-input v-model="form.imageUrl" :placeholder="t('ppt.page.imageUrlPlaceholder')" />
       </el-form-item>
-      <el-form-item label="缩略图 URL">
-        <el-input v-model="form.thumbnailUrl" placeholder="缩略图 URL (可选)" />
+      <el-form-item :label="t('ppt.page.thumbnailUrlLabel')">
+        <el-input v-model="form.thumbnailUrl" :placeholder="t('ppt.page.thumbnailUrlPlaceholder')" />
       </el-form-item>
-      <el-form-item label="尺寸">
+      <el-form-item :label="t('ppt.page.dimensions')">
         <el-input-number v-model="form.imageWidth" :min="100" :max="4096" controls-position="right" />
         <span class="pe-times">×</span>
         <el-input-number v-model="form.imageHeight" :min="100" :max="4096" controls-position="right" />
       </el-form-item>
-      <el-form-item label="特征">
-        <el-checkbox v-model="form.hasAnimation">包含动画</el-checkbox>
-        <el-checkbox v-model="form.hasEmbeddedMedia">包含嵌入媒体</el-checkbox>
+      <el-form-item :label="t('ppt.page.features')">
+        <el-checkbox v-model="form.hasAnimation">{{ t('ppt.page.hasAnimation') }}</el-checkbox>
+        <el-checkbox v-model="form.hasEmbeddedMedia">{{ t('ppt.page.hasEmbeddedMedia') }}</el-checkbox>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" :icon="Check" :loading="saving" @click="handleSave">保存元数据</el-button>
+        <el-button type="primary" :icon="Check" :loading="saving" @click="handleSave">{{ t('ppt.page.saveMetadata') }}</el-button>
       </el-form-item>
     </el-form>
   </div>
@@ -44,9 +44,12 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Picture, Check } from '@element-plus/icons-vue'
 import { getPptPage, updatePptPage } from '../api/pptCourseware'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -76,7 +79,7 @@ async function load() {
   } catch (e) {
     // P1-C 修复: 原 load() 无 try/catch → getPptPage 失败产生未处理 rejection + 空白面板
     console.error('Failed to load PPT page:', e)
-    ElMessage.error('加载失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('ppt.page.loadFailed', { msg: e.message || t('ppt.page.unknownError') }))
   }
 }
 
@@ -84,11 +87,11 @@ async function handleSave() {
   saving.value = true
   try {
     await updatePptPage(props.courseId, props.pageId, form.value)
-    ElMessage.success('已保存')
+    ElMessage.success(t('ppt.page.saved'))
     emit('page-updated', form.value)
     await load()
   } catch (e) {
-    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('ppt.page.saveFailed', { msg: e.message || t('ppt.page.unknownError') }))
   } finally {
     saving.value = false
   }
