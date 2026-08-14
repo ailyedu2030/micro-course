@@ -6,6 +6,7 @@ import com.microcourse.plugin.interactive.dto.PptFlowDTO;
 import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,7 +43,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> createPage(@PathVariable Long courseId,
                                @PathVariable Long sectionId,
-                               @RequestBody SlidePptPageDTO dto) {
+                               @Valid @RequestBody SlidePptPageDTO dto) {
         // P0-1 IDOR: section 必须属于该课程 + 当前用户是 owner
         pptService.verifySectionOwner(courseId, sectionId);
         dto.setCourseId(courseId);

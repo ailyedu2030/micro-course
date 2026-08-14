@@ -2,14 +2,14 @@ package com.microcourse.controller;
 
 import com.microcourse.dto.R;
 import com.microcourse.dto.hermes.BatchPushScriptsRequest;
+import com.microcourse.dto.hermes.HermesChapterRequest;
 import com.microcourse.dto.hermes.HermesChapterVO;
 import com.microcourse.dto.hermes.HermesCourseDetailVO;
 import com.microcourse.dto.hermes.HermesCourseListVO;
+import com.microcourse.dto.hermes.HermesSectionRequest;
 import com.microcourse.dto.hermes.HermesSectionVO;
 import com.microcourse.dto.hermes.HermesWebhookRequest;
 import com.microcourse.dto.hermes.NarrationUpdateRequest;
-import com.microcourse.entity.CourseChapter;
-import com.microcourse.entity.CourseSection;
 import com.microcourse.entity.HermesCourseMapping;
 import com.microcourse.entity.User;
 import com.microcourse.exception.BusinessException;
@@ -81,7 +81,7 @@ public class HermesWebhookController {
     @PostMapping("/courses/{hermesCourseId}/sections")
     public R<HermesSectionVO> createSection(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                           @PathVariable String hermesCourseId,
-                                          @Valid @RequestBody CourseSection body) {
+                                          @Valid @RequestBody HermesSectionRequest body) {
         return R.ok(managementService.createSection(hermesCourseId, apiKey, body));
     }
 
@@ -90,7 +90,7 @@ public class HermesWebhookController {
     public R<HermesSectionVO> updateSection(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                           @PathVariable String hermesCourseId,
                                           @PathVariable Long sectionId,
-                                          @Valid @RequestBody CourseSection body) {
+                                          @Valid @RequestBody HermesSectionRequest body) {
         return R.ok(managementService.updateSection(hermesCourseId, apiKey, sectionId, body));
     }
 
@@ -111,7 +111,7 @@ public class HermesWebhookController {
     public R<HermesChapterVO> updateChapter(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                           @PathVariable String hermesCourseId,
                                           @PathVariable Long chapterId,
-                                          @Valid @RequestBody CourseChapter body) {
+                                          @Valid @RequestBody HermesChapterRequest body) {
         return R.ok(managementService.updateChapter(hermesCourseId, apiKey, chapterId, body));
     }
 

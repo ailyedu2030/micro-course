@@ -36,7 +36,7 @@ public class CourseVideoController {
             @PathVariable Long courseId,
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = 500, message = "size 不能超过 500") int size) {
         return R.ok(videoService.page(courseId, chapterId, page, size));
     }
 

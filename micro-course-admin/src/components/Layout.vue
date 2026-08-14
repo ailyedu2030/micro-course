@@ -195,16 +195,16 @@ function toggleTheme() {
   isDark.value = !isDark.value
   if (isDark.value) {
     document.documentElement.setAttribute('data-theme', 'dark')
-    localStorage.setItem('theme', 'dark')
+    try { localStorage.setItem('theme', 'dark') } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   } else {
     document.documentElement.removeAttribute('data-theme')
-    localStorage.setItem('theme', 'light')
+    try { localStorage.setItem('theme', 'light') } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   }
 }
 
 function toggleLang() {
   locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
-  localStorage.setItem('lang', locale.value)
+  try { localStorage.setItem('lang', locale.value) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
 }
 
 // 侧边栏折叠状态
@@ -320,7 +320,7 @@ function slotPageTitle(r) {
 const sidebarTransitioning = ref(false)
 function toggleCollapse() {
   collapsed.value = !collapsed.value
-  localStorage.setItem('sidebar_collapsed', String(collapsed.value))
+  try { localStorage.setItem('sidebar_collapsed', String(collapsed.value)) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   // 显示淡入遮罩，300ms 后自动消失
   sidebarTransitioning.value = true
   setTimeout(() => { sidebarTransitioning.value = false }, 300)
