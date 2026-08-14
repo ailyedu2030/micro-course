@@ -7,33 +7,33 @@
 <template>
   <div class="discussion-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>讨论管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.DiscussionList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="关键字">
-          <el-input v-model="searchForm.keyword" placeholder="标题/内容" clearable class="filter-input-w160" aria-label="关键字" />
+        <el-form-item :label="$t('course.keyword')">
+          <el-input v-model="searchForm.keyword" :placeholder="$t('discussionList.keywordPlaceholder')" clearable class="filter-input-w160" :aria-label="$t('course.keyword')" />
         </el-form-item>
-        <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w180" aria-label="课程">
+        <el-form-item :label="$t('course.title')">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('discussionList.selectCourse')" clearable class="filter-input-w180" :aria-label="$t('course.title')">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120" aria-label="状态">
-            <el-option label="待审核" value="PENDING" />
-            <el-option label="已发布" value="PUBLISHED" />
-            <el-option label="已驳回" value="REJECTED" />
-            <el-option label="已删除" value="DELETED" />
+        <el-form-item :label="$t('app.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('discussionList.selectStatus')" clearable class="filter-input-w120" :aria-label="$t('app.status')">
+            <el-option :label="$t('course.pendingReview')" value="PENDING" />
+            <el-option :label="$t('course.published')" value="PUBLISHED" />
+            <el-option :label="$t('discussion.rejected')" value="REJECTED" />
+            <el-option :label="$t('course.deleted')" value="DELETED" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('common.search') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -42,45 +42,45 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">讨论列表</span>
+          <span class="card-title">{{ $t('discussionList.title') }}</span>
         </div>
       </template>
-      <el-result v-if="error" icon="error" title="加载失败" sub-title="网络异常，请稍后重试">
+      <el-result v-if="error" icon="error" :title="$t('discussionList.loadFailed')" :sub-title="$t('discussionList.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
       <template v-else>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无讨论数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('discussionList.empty')" />
       <el-table v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="authorName" label="作者" width="120" />
-        <el-table-column prop="courseName" label="课程" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="replyCount" label="回复数" width="100" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="authorName" :label="$t('discussion.author')" width="120" />
+        <el-table-column prop="courseName" :label="$t('course.title')" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="replyCount" :label="$t('discussion.replyCount')" width="100" align="center">
           <template #default="{ row }">
             {{ row.replyCount ?? 0 }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="发布时间" width="170" :formatter="$formatDateTime" />
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="createdAt" :label="$t('discussion.publishedAt')" width="170" :formatter="$formatDateTime" />
+        <el-table-column prop="status" :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.statusStr === 'PENDING'" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.statusStr === 'APPROVED' || row.statusStr === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="row.statusStr === 'REJECTED'" type="danger" size="small">已驳回</el-tag>
-            <el-tag v-else-if="row.statusStr === 'DELETED'" type="info" size="small">已删除</el-tag>
+            <el-tag v-if="row.statusStr === 'PENDING'" type="warning" size="small">{{ $t('course.pendingReview') }}</el-tag>
+            <el-tag v-else-if="row.statusStr === 'APPROVED' || row.statusStr === 'PUBLISHED'" type="success" size="small">{{ $t('course.published') }}</el-tag>
+            <el-tag v-else-if="row.statusStr === 'REJECTED'" type="danger" size="small">{{ $t('discussion.rejected') }}</el-tag>
+            <el-tag v-else-if="row.statusStr === 'DELETED'" type="info" size="small">{{ $t('course.deleted') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.statusStr || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleView(row)">查看</el-button>
-            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="success" link size="small" @click="handleApprove(row)">通过</el-button>
-            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="danger" link size="small" @click="handleReject(row)">驳回</el-button>
-            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="warning" link size="small" @click="handleTogglePin(row)">{{ row.isPinned ? '取消置顶' : '置顶' }}</el-button>
-            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="success" link size="small" @click="handleToggleEssence(row)">{{ row.isEssence ? '取消精华' : '精华' }}</el-button>
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleView(row)">{{ $t('course.view') }}</el-button>
+            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="success" link size="small" @click="handleApprove(row)">{{ $t('course.statusApproved') }}</el-button>
+            <el-button v-if="(row.status === 'PENDING' || row.statusStr === 'PENDING')" type="danger" link size="small" @click="handleReject(row)">{{ $t('course.reject') }}</el-button>
+            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="warning" link size="small" @click="handleTogglePin(row)">{{ row.isPinned ? $t('discussionList.unpin') : $t('discussionList.pin') }}</el-button>
+            <el-button v-if="row.status === 'PUBLISHED' || row.statusStr === 'PUBLISHED'" type="success" link size="small" @click="handleToggleEssence(row)">{{ row.isEssence ? $t('discussionList.unessence') : $t('discussionList.essence') }}</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -92,12 +92,12 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         <div class="page-size-wrap">
-          <label for="disc-list-page-size" class="sr-only">每页条数</label>
-          <el-select id="disc-list-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
-            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          <label for="disc-list-page-size" class="sr-only">{{ $t('course.perPage') }}</label>
+          <el-select id="disc-list-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" :aria-label="$t('course.perPage')">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="$t('course.perPageOption', { count: s })" :value="s" />
           </el-select>
         </div>
       </div>
@@ -111,11 +111,13 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getDiscussions, approveDiscussion, rejectDiscussion, deleteDiscussion, updatePostPin, updatePostEssence } from '@/api/discussion'
 import { getCourses } from '@/api/course'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 // P1-C 修复 (2026-08-04): userRole 未定义 → 管理员/教务删除讨论按钮隐藏，
@@ -147,7 +149,7 @@ const fetchCourseOptions = async () => {
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('discussionList.fetchCourseOptionsFailed'))
   }
 }
 
@@ -169,7 +171,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('获取讨论列表失败')
+    ElMessage.error(t('discussionList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -203,13 +205,13 @@ const handleView = (row) => {
 
 const handleApprove = async (row) => {
   try {
-    await ElMessageBox.confirm('确定通过该讨论?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussionList.confirmApprove'), t('course.hintTitle'), { type: 'warning' })
     await approveDiscussion(row.id)
-    ElMessage.success('审核通过')
+    ElMessage.success(t('discussionList.approveSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
@@ -217,19 +219,19 @@ const handleApprove = async (row) => {
 const handleReject = async (row) => {
   let reason = ''
   try {
-    await ElMessageBox.prompt('确定驳回该讨论？请填写驳回原因：', '驳回确认', {
-      confirmButtonText: '确定驳回',
-      cancelButtonText: '取消',
+    await ElMessageBox.prompt(t('discussionList.rejectPromptMsg'), t('discussionList.rejectConfirmTitle'), {
+      confirmButtonText: t('discussionList.confirmRejectBtn'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputPlaceholder: '请填写驳回原因（必填）',
-      inputValidator: (val) => !!val.trim() || '驳回原因不能为空'
+      inputPlaceholder: t('discussionList.rejectReasonPlaceholder'),
+      inputValidator: (val) => !!val.trim() || t('discussionList.rejectReasonRequired')
     }).then(({ value }) => { reason = value })
     await rejectDiscussion(row.id, reason)
-    ElMessage.success('驳回成功')
+    ElMessage.success(t('discussionList.rejectSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
@@ -237,13 +239,13 @@ const handleReject = async (row) => {
 const handleTogglePin = async (row) => {
   const newPinned = !row.isPinned
   try {
-    await ElMessageBox.confirm(newPinned ? '确定置顶该讨论？' : '确定取消置顶？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t(newPinned ? 'discussionList.confirmPin' : 'discussionList.confirmUnpin'), t('course.hintTitle'), { type: 'warning' })
     await updatePostPin(row.id, newPinned)
-    ElMessage.success(newPinned ? '置顶成功' : '已取消置顶')
+    ElMessage.success(t(newPinned ? 'discussionList.pinSuccess' : 'discussionList.unpinSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
@@ -251,26 +253,26 @@ const handleTogglePin = async (row) => {
 const handleToggleEssence = async (row) => {
   const newEssence = !row.isEssence
   try {
-    await ElMessageBox.confirm(newEssence ? '确定设为精华？' : '确定取消精华？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t(newEssence ? 'discussionList.confirmEssence' : 'discussionList.confirmUnessence'), t('course.hintTitle'), { type: 'warning' })
     await updatePostEssence(row.id, newEssence)
-    ElMessage.success(newEssence ? '已设为精华' : '已取消精华')
+    ElMessage.success(t(newEssence ? 'discussionList.essenceSuccess' : 'discussionList.unessenceSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该讨论?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussionList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteDiscussion(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('discussionList.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('discussionList.deleteFailed'))
     }
   }
 }
