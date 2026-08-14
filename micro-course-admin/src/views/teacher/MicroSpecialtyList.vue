@@ -4,41 +4,41 @@
 -->
 <template>
   <div class="ms-list-page">
-    <el-page-header @back="$router.back()" content="微专业" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('course.microSpecialty')" class="mg-bottom-16" />
 
     <el-result
       v-if="error"
       icon="error"
-      title="加载失败"
-      sub-title="请稍后重试"
+      :title="$t('microSpecialtyManage.loadFailed')"
+      :sub-title="$t('microSpecialtyManage.loadFailedSubtitle')"
     >
       <template #extra>
-        <el-button type="primary" @click="fetchList(activeTab)">重试</el-button>
+        <el-button type="primary" @click="fetchList(activeTab)">{{ $t('common.retry') }}</el-button>
       </template>
     </el-result>
 
     <el-tabs v-else v-model="activeTab" @tab-change="handleTabChange">
-      <el-tab-pane label="我负责的" name="leading">
+      <el-tab-pane :label="$t('microSpecialtyList.tabLeading')" name="leading">
         <div v-loading="loading" class="card-grid">
-          <el-empty v-if="!loading && list.length === 0" description="暂无负责的微专业">
+          <el-empty v-if="!loading && list.length === 0" :description="$t('microSpecialtyList.emptyLeading')">
             <template #image><el-icon :size="64" style="color: var(--el-text-color-placeholder);"><Notebook /></el-icon></template>
-            <p class="empty-guide">微专业课程管理流程：</p>
+            <p class="empty-guide">{{ $t('microSpecialtyList.emptyGuide') }}</p>
             <ol class="empty-steps">
-              <li>在「<el-link type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">微专业申报</el-link>」提交申报材料</li>
-              <li>教务处审核通过后，微专业将出现在本列表</li>
-              <li>点击卡片上的「编排课程」添加课程并指派授课教师</li>
-              <li>点击「团队」邀请其他教师并分配归属课程</li>
+              <li>{{ $t('microSpecialtyList.step1Prefix') }}<el-link type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">{{ $t('microSpecialtyList.proposalLink') }}</el-link>{{ $t('microSpecialtyList.step1Suffix') }}</li>
+              <li>{{ $t('microSpecialtyList.step2') }}</li>
+              <li>{{ $t('microSpecialtyList.step3') }}</li>
+              <li>{{ $t('microSpecialtyList.step4') }}</li>
             </ol>
-            <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">立即申报微专业</el-button>
+            <el-button type="primary" class="mg-top-12" @click="$router.push('/teacher/micro-specialties/proposals')">{{ $t('microSpecialtyList.applyNow') }}</el-button>
           </el-empty>
             <div
               v-for="item in list" :key="item.id" class="ms-card"
               role="button" tabindex="0"
-              :aria-label="'微专业：' + item.title + '，状态：' + statusLabel(item.status)"
+              :aria-label="$t('microSpecialtyList.cardAria', { title: item.title, status: statusLabel(item.status) })"
               @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               style="cursor:pointer">
-              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="'微专业封面：' + item.title" />
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="$t('microSpecialtyList.coverAlt', { title: item.title })" />
             <div class="card-body">
               <div class="card-header-row">
                 <span class="card-title">{{ item.title }}</span>
@@ -46,33 +46,33 @@
               </div>
               <div class="card-meta">
                  <span>{{ item.departmentName || '-' }}</span>
-                 <span>{{ item.totalEnrollments || 0 }} 人选修</span>
-                 <span>{{ item.courseCount || 0 }} 门课</span>
+                 <span>{{ $t('microSpecialtyList.enrollmentCount', { count: item.totalEnrollments || 0 }) }}</span>
+                 <span>{{ $t('microSpecialtyList.courseCount', { count: item.courseCount || 0 }) }}</span>
                </div>
                <div class="card-actions">
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">管理</el-button>
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">编排课程</el-button>
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/team`)">团队</el-button>
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyList.manage') }}</el-button>
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">{{ $t('microSpecialtyList.arrangeCourses') }}</el-button>
+                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/team`)">{{ $t('microSpecialtyList.team') }}</el-button>
                </div>
                <el-badge v-if="item.pendingEnrollmentCount" :value="item.pendingEnrollmentCount" class="pending-badge">
-                 <el-button size="small" type="warning" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">待审报名</el-button>
+                 <el-button size="small" type="warning" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyManage.statPending') }}</el-button>
                </el-badge>
              </div>
            </div>
          </div>
        </el-tab-pane>
 
-       <el-tab-pane label="我参与的" name="participating">
+       <el-tab-pane :label="$t('microSpecialtyList.tabParticipating')" name="participating">
          <div v-loading="loading" class="card-grid">
-           <el-empty v-if="!loading && list.length === 0" description="暂无参与的微专业" />
+           <el-empty v-if="!loading && list.length === 0" :description="$t('microSpecialtyList.emptyParticipating')" />
             <div
               v-for="item in list" :key="item.id" class="ms-card"
               role="button" tabindex="0"
-              :aria-label="'微专业：' + item.title + '，状态：' + statusLabel(item.status)"
+              :aria-label="$t('microSpecialtyList.cardAria', { title: item.title, status: statusLabel(item.status) })"
               @click="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               @keydown.enter="$router.push('/teacher/micro-specialties/' + item.id + '/courses')"
               style="cursor:pointer">
-              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="'微专业封面：' + item.title" />
+              <el-image :src="item.coverUrl" fit="cover" class="card-cover" :alt="$t('microSpecialtyList.coverAlt', { title: item.title })" />
               <div class="card-body">
                 <div class="card-header-row">
                   <span class="card-title">{{ item.title }}</span>
@@ -80,11 +80,11 @@
                 </div>
                 <div class="card-meta">
                   <span>{{ item.departmentName || '-' }}</span>
-                  <span>{{ item.totalEnrollments || 0 }} 人选修</span>
-                  <span>{{ item.courseCount || 0 }} 门课</span>
+                  <span>{{ $t('microSpecialtyList.enrollmentCount', { count: item.totalEnrollments || 0 }) }}</span>
+                  <span>{{ $t('microSpecialtyList.courseCount', { count: item.courseCount || 0 }) }}</span>
                 </div>
                                 <div class="card-actions">
-                  <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">查看详情</el-button>
+                  <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('course.viewDetail') }}</el-button>
                 </div>
              </div>
            </div>
@@ -93,32 +93,32 @@
 
       <el-tab-pane name="invites">
         <template #label>
-          <span>待处理邀请 <el-badge v-if="pendingInviteCount" :value="pendingInviteCount" class="tab-badge" /></span>
+          <span>{{ $t('microSpecialtyList.tabInvites') }} <el-badge v-if="pendingInviteCount" :value="pendingInviteCount" class="tab-badge" /></span>
         </template>
         <div v-loading="inviteLoading" class="invite-section">
           <el-result
             v-if="inviteError"
             icon="error"
-            title="加载失败"
-            sub-title="请稍后重试"
+            :title="$t('microSpecialtyManage.loadFailed')"
+            :sub-title="$t('microSpecialtyManage.loadFailedSubtitle')"
           >
             <template #extra>
-              <el-button type="primary" @click="fetchInvites">重试</el-button>
+              <el-button type="primary" @click="fetchInvites">{{ $t('common.retry') }}</el-button>
             </template>
           </el-result>
-          <el-empty v-else-if="!inviteLoading && invites.length === 0" description="暂无待处理邀请" />
+          <el-empty v-else-if="!inviteLoading && invites.length === 0" :description="$t('microSpecialtyList.emptyInvites')" />
           <div v-for="inv in invites" :key="inv.id" class="invite-card">
             <div class="invite-info">
               <span class="invite-ms">{{ inv.microSpecialtyTitle }}</span>
-               <span class="invite-role">{{ roleMap[inv.role] || inv.role || '教师' }}</span>
-              <span class="invite-from">来自 {{ inv.inviterName }}</span>
+               <span class="invite-role">{{ $t(roleMap[inv.role] || inv.role || 'role.TEACHER') }}</span>
+              <span class="invite-from">{{ $t('microSpecialtyList.inviteFrom', { name: inv.inviterName }) }}</span>
               <span class="invite-deadline" :class="{ 'expiring': inv.expiring }">
                 {{ inv.deadlineText }}
               </span>
             </div>
             <div class="invite-actions">
-              <el-button size="small" type="primary" @click="handleAccept(inv)">接受</el-button>
-              <el-button size="small" @click="handleDecline(inv)">拒绝</el-button>
+              <el-button size="small" type="primary" @click="handleAccept(inv)">{{ $t('microSpecialtyList.accept') }}</el-button>
+              <el-button size="small" @click="handleDecline(inv)">{{ $t('microSpecialtyList.decline') }}</el-button>
             </div>
           </div>
         </div>
@@ -126,34 +126,34 @@
     </el-tabs>
 
     <div class="action-bar mg-top-16">
-      <el-button type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">提交申报</el-button>
-      <el-button v-if="userStore.role === 'ACADEMIC'" @click="showCreateDialog">新增微专业</el-button>
+      <el-button type="primary" @click="$router.push('/teacher/micro-specialties/proposals')">{{ $t('microSpecialtyList.submitProposal') }}</el-button>
+      <el-button v-if="userStore.role === 'ACADEMIC'" @click="showCreateDialog">{{ $t('microSpecialtyList.createTitle') }}</el-button>
     </div>
 
     <!-- 创建微专业 Dialog -->
-    <el-dialog v-model="createVisible" title="新增微专业" width="560px" @closed="resetCreateForm">
+    <el-dialog v-model="createVisible" :title="$t('microSpecialtyList.createTitle')" width="560px" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="createForm.title" placeholder="微专业名称" />
+        <el-form-item :label="$t('course.tableTitle')" prop="title">
+          <el-input v-model="createForm.title" :placeholder="$t('microSpecialtyList.titlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="副标题">
-          <el-input v-model="createForm.subtitle" placeholder="副标题（选填）" />
+        <el-form-item :label="$t('microSpecialtyManage.subtitle')">
+          <el-input v-model="createForm.subtitle" :placeholder="$t('microSpecialtyList.subtitlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="描述">
+        <el-form-item :label="$t('microSpecialtyList.description')">
           <el-input v-model="createForm.description" type="textarea" :rows="3" />
         </el-form-item>
-        <el-form-item label="开课学院" prop="offerDepartmentId">
-          <el-select v-model="createForm.offerDepartmentId" placeholder="选择学院" class="full-width">
+        <el-form-item :label="$t('microSpecialtyManage.collegeName')" prop="offerDepartmentId">
+          <el-select v-model="createForm.offerDepartmentId" :placeholder="$t('microSpecialtyList.selectCollegePlaceholder')" class="full-width">
             <el-option v-for="c in colleges" :key="c.id" :label="c.name" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="学期">
-          <el-input v-model="createForm.semester" placeholder="如 2025-2026-1" />
+        <el-form-item :label="$t('course.semester')">
+          <el-input v-model="createForm.semester" :placeholder="$t('microSpecialtyList.semesterPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="createVisible = false">取消</el-button>
-        <el-button type="primary" :loading="creating" :disabled="creating" @click="handleCreate">新增</el-button>
+        <el-button @click="createVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="creating" :disabled="creating" @click="handleCreate">{{ $t('microSpecialtyList.create') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -161,6 +161,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getMicroSpecialtyList, createMicroSpecialty } from '@/api/microSpecialty'
@@ -168,6 +169,7 @@ import { getPendingInvites, acceptInvite, declineInvite } from '@/api/microSpeci
 import { getDepartments } from '@/api/department'
 import { Notebook } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const activeTab = ref('leading')
 const loading = ref(false)
@@ -178,16 +180,16 @@ const list = ref([])
 const invites = ref([])
 const pendingInviteCount = ref(0)
 
-const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
+const roleMap = { LEAD: 'microSpecialtyTeamEdit.roleLead', MEMBER: 'microSpecialtyTeamEdit.roleMember', ASSISTANT: 'microSpecialtyTeamEdit.roleAssistant' }
 
 const createVisible = ref(false)
 const creating = ref(false)
 const createFormRef = ref(null)
 const createForm = ref({ title: '', subtitle: '', description: '', offerDepartmentId: null, semester: '' })
-const createRules = { title: [{ required: true, message: '请输入标题', trigger: 'blur' }], offerDepartmentId: [{ required: true, message: '请选择学院', trigger: 'change' }] }
+const createRules = { title: [{ required: true, message: t('microSpecialtyManage.titleRequired'), trigger: 'blur' }], offerDepartmentId: [{ required: true, message: t('microSpecialtyList.selectCollegeRequired'), trigger: 'change' }] }
 const colleges = ref([])
 
-const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
+const statusMap = { DRAFT: t('course.draft'), PENDING_REVIEW: t('course.pendingReview'), APPROVED: t('course.approved'), RECRUITING: t('courseSquare.msRecruiting'), COMPLETED: t('microSpecialtyDetail.completed'), REJECTED: t('microSpecialtyManage.statusRejected'), CANCELLED: t('microSpecialtyManage.statusCancelled'), ARCHIVED: t('course.archived') }
 const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: 'success', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
 const statusLabel = (s) => statusMap[s] || s
 const statusType = (s) => statusTypeMap[s] || 'info'
@@ -198,7 +200,7 @@ const fetchList = async (role) => {
   try {
     const { data } = await getMicroSpecialtyList({ role, page: 0, size: 50 })
     list.value = data.items || data || []
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取微专业列表失败'); error.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyList.fetchListFailed')); error.value = true }
   finally { loading.value = false }
 }
 
@@ -215,11 +217,11 @@ const fetchInvites = async () => {
       return {
         ...i,
         expiring: remaining !== null && remaining < 3,
-        deadlineText: deadline ? (remaining > 0 ? `剩余 ${remaining} 天` : '已过期') : ''
+        deadlineText: deadline ? (remaining > 0 ? t('microSpecialtyList.remainingDays', { count: remaining }) : t('microSpecialtyList.deadlineExpired')) : ''
       }
     })
     pendingInviteCount.value = invites.value.filter(i => i.inviteStatus === 'INVITED' || i.inviteStatus === 'PENDING_ACADEMIC').length
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取邀请列表失败'); inviteError.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyList.fetchInvitesFailed')); inviteError.value = true }
   finally { inviteLoading.value = false }
 }
 
@@ -229,15 +231,15 @@ const handleTabChange = (name) => {
 }
 
 const handleAccept = async (inv) => {
-  try { await acceptInvite(inv.id); ElMessage.success('已接受'); fetchInvites() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await acceptInvite(inv.id); ElMessage.success(t('microSpecialtyList.acceptSuccess')); fetchInvites() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 
 const handleDecline = async (inv) => {
-  try { await ElMessageBox.confirm('确定拒绝该邀请？', '提示', { type: 'warning' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyList.confirmDecline'), t('course.hintTitle'), { type: 'warning' }) }
   catch { return }
-  try { await declineInvite(inv.id); ElMessage.success('已拒绝'); fetchInvites() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await declineInvite(inv.id); ElMessage.success(t('microSpecialtyList.declineSuccess')); fetchInvites() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 
 const showCreateDialog = () => { createVisible.value = true }
@@ -254,8 +256,8 @@ const handleCreate = async () => {
     const valid = await createFormRef.value.validate()
     if (!valid) { creating.value = false; return }
   } catch { creating.value = false; return }
-  try { await createMicroSpecialty(createForm.value); ElMessage.success('创建成功'); createVisible.value = false; fetchList(activeTab.value) }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '创建失败') }
+  try { await createMicroSpecialty(createForm.value); ElMessage.success(t('course.createSuccess')); createVisible.value = false; fetchList(activeTab.value) }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.createFailed')) }
   finally { creating.value = false }
 }
 
@@ -263,7 +265,7 @@ const fetchColleges = async () => {
   try {
     const { data } = await getDepartments({ size: 1000 })
     colleges.value = data.items || data || []
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取学院列表失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyList.fetchCollegesFailed')) }
 }
 
 onMounted(() => { fetchList('leading'); fetchColleges() })

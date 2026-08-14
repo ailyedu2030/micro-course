@@ -2601,6 +2601,7 @@ export default {
     emptyGuide: 'Micro-specialty course management process:',
     step1Prefix: 'Submit application materials in "',
     step1Suffix: '"',
+    proposalLink: 'Micro-Specialty Application',
     step2: 'Once approved by the Academic Affairs Office, the micro-specialty will appear in this list',
     step3: 'Click "Arrange Courses" on the card to add courses and assign instructors',
     step4: 'Click "Team" to invite other teachers and assign courses',

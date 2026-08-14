@@ -2601,6 +2601,7 @@ export default {
     emptyGuide: '微专业课程管理流程：',
     step1Prefix: '在「',
     step1Suffix: '」提交申报材料',
+    proposalLink: '微专业申报',
     step2: '教务处审核通过后，微专业将出现在本列表',
     step3: '点击卡片上的「编排课程」添加课程并指派授课教师',
     step4: '点击「团队」邀请其他教师并分配归属课程',
