@@ -51,11 +51,13 @@ public class EnrollmentController {
 
     @GetMapping("/my")
     @PreAuthorize("isAuthenticated()")
-    public R<List<EnrollmentVO>> getMyEnrollments(
-            @RequestParam(required = false) Boolean completed) {
+    public R<PageResult<EnrollmentVO>> getMyEnrollments(
+            @RequestParam(required = false) Boolean completed,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "999") @Range(min = 1, max = 10000) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
-        List<EnrollmentVO> list = enrollmentService.getMyEnrollments(userId, completed);
-        return R.ok(list);
+        PageResult<EnrollmentVO> result = enrollmentService.getMyEnrollmentPage(userId, completed, page, size);
+        return R.ok(result);
     }
 
     @GetMapping
