@@ -1,111 +1,111 @@
 <template>
   <div class="slide-overview">
     <header class="page-header">
-      <button class="back-btn" @click="$router.push('/teacher/courses')" aria-label="返回">
+      <button class="back-btn" @click="$router.push('/teacher/courses')" :aria-label="$t('app.back')">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
-      <h1>课件工作台</h1>
-      <span class="page-subtitle" v-if="!loading">{{ filteredSlides.length }} 份课件</span>
+      <h1>{{ $t('teacherSlideOverview.workbench') }}</h1>
+      <span class="page-subtitle" v-if="!loading">{{ $t('teacherSlideOverview.coursewareCount', { count: filteredSlides.length }) }}</span>
       <div class="header-actions">
-        <el-button type="primary" :icon="Plus" @click="openUploadDialog">上传课件</el-button>
+        <el-button type="primary" :icon="Plus" @click="openUploadDialog">{{ $t('teacherSlideOverview.uploadCourseware') }}</el-button>
       </div>
     </header>
 
     <section class="stats-row" v-if="!loading">
-      <div class="stat-card"><span class="stat-num">{{ slides.length }}</span><span class="stat-label">全部课件</span></div>
-      <div class="stat-card stat-success"><span class="stat-num">{{ stats.ready }}</span><span class="stat-label">就绪</span></div>
-      <div class="stat-card stat-warning"><span class="stat-num">{{ stats.rendering }}</span><span class="stat-label">渲染中</span></div>
-      <div class="stat-card stat-danger"><span class="stat-num">{{ stats.failed }}</span><span class="stat-label">失败</span></div>
+      <div class="stat-card"><span class="stat-num">{{ slides.length }}</span><span class="stat-label">{{ $t('teacherSlideOverview.allCourseware') }}</span></div>
+      <div class="stat-card stat-success"><span class="stat-num">{{ stats.ready }}</span><span class="stat-label">{{ $t('teacherSlideOverview.ready') }}</span></div>
+      <div class="stat-card stat-warning"><span class="stat-num">{{ stats.rendering }}</span><span class="stat-label">{{ $t('teacherSlideOverview.rendering') }}</span></div>
+      <div class="stat-card stat-danger"><span class="stat-num">{{ stats.failed }}</span><span class="stat-label">{{ $t('teacherSlideOverview.failed') }}</span></div>
     </section>
 
     <section class="content-card">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="全部课程" clearable class="filter-input-w200" @change="loadData">
+        <el-form-item :label="$t('teacherSlideOverview.course')">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('teacherSlideOverview.allCourses')" clearable class="filter-input-w200" @change="loadData">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable class="filter-input-w160" @change="applyFilter">
-            <el-option label="上传中" :value="0" />
-            <el-option label="渲染中" :value="1" />
-            <el-option label="就绪" :value="2" />
-            <el-option label="失败" :value="3" />
+        <el-form-item :label="$t('course.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('teacherSlideOverview.allStatuses')" clearable class="filter-input-w160" @change="applyFilter">
+            <el-option :label="$t('teacherSlideOverview.uploading')" :value="0" />
+            <el-option :label="$t('teacherSlideOverview.rendering')" :value="1" />
+            <el-option :label="$t('teacherSlideOverview.ready')" :value="2" />
+            <el-option :label="$t('teacherSlideOverview.failed')" :value="3" />
           </el-select>
         </el-form-item>
-        <el-form-item label="课件类型">
-          <el-select v-model="searchForm.coursewareType" placeholder="全部类型" clearable class="filter-input-w160" @change="applyFilter">
-            <el-option label="PPT 课件" value="PPT" />
-            <el-option label="HTML 课件" value="HTML" />
+        <el-form-item :label="$t('teacherSlideOverview.coursewareType')">
+          <el-select v-model="searchForm.coursewareType" :placeholder="$t('course.allTypes')" clearable class="filter-input-w160" @change="applyFilter">
+            <el-option :label="$t('course.typePptCourseware')" value="PPT" />
+            <el-option :label="$t('course.typeHtmlCourseware')" value="HTML" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="loadData">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="loadData">{{ $t('app.search') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </section>
 
     <section class="content-card">
       <div v-if="!loading && filteredSlides.length === 0" class="empty-tip">
-        <el-empty v-if="courses.length === 0" description="您还没有课件课程，去课程列表创建。">
-          <el-button type="primary" @click="router.push('/teacher/courses')">前往课程列表</el-button>
+        <el-empty v-if="courses.length === 0" :description="$t('teacherSlideOverview.noCoursewareCourses')">
+          <el-button type="primary" @click="router.push('/teacher/courses')">{{ $t('teacherSlideOverview.goCourseList') }}</el-button>
         </el-empty>
         <el-empty v-else :description="emptyDescription">
-          <el-button v-if="searchForm.courseId" @click="handleReset">查看全部课程</el-button>
-          <el-button v-else type="primary" @click="openUploadDialog">上传课件</el-button>
+          <el-button v-if="searchForm.courseId" @click="handleReset">{{ $t('teacherSlideOverview.viewAllCourses') }}</el-button>
+          <el-button v-else type="primary" @click="openUploadDialog">{{ $t('teacherSlideOverview.uploadCourseware') }}</el-button>
         </el-empty>
       </div>
       <el-table v-else :data="displaySlides" stripe v-loading="loading">
-        <el-table-column prop="courseTitle" label="所属课程" min-width="160" show-overflow-tooltip />
-        <el-table-column prop="chapterTitle" label="所属章节" min-width="160" show-overflow-tooltip>
+        <el-table-column prop="courseTitle" :label="$t('teacherSlideOverview.belongCourse')" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="chapterTitle" :label="$t('teacherSlideOverview.belongChapter')" min-width="160" show-overflow-tooltip>
           <template #default="{ row }">{{ row.chapterTitle || '-' }}</template>
         </el-table-column>
-        <el-table-column label="课件类型" width="110">
+        <el-table-column :label="$t('teacherSlideOverview.coursewareType')" width="110">
           <template #default="{ row }">
             <el-tag v-if="row._coursewareType === 'PPT'" size="small" type="primary">PPT</el-tag>
             <el-tag v-else size="small" type="success">HTML</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column :label="$t('course.status')" width="100">
           <template #default="{ row }">
             <el-tooltip v-if="row.status === 3 && row.errorMessage" :content="row.errorMessage" placement="top">
-              <el-tag size="small" type="danger">失败</el-tag>
+              <el-tag size="small" type="danger">{{ $t('teacherSlideOverview.failed') }}</el-tag>
             </el-tooltip>
             <el-tag v-else size="small" :type="statusType(row.status)">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="总页数" width="90" align="center">
+        <el-table-column :label="$t('teacherSlideOverview.totalPages')" width="90" align="center">
           <template #default="{ row }">{{ row.totalPages || '-' }}</template>
         </el-table-column>
-        <el-table-column label="AI 讲解" width="100" align="center">
+        <el-table-column :label="$t('teacherSlideOverview.aiNarration')" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.narrationReadyCount" size="small" type="success">{{ row.narrationReadyCount }}/{{ row.totalPages }}</el-tag>
-            <span v-else class="muted">未生成</span>
+            <span v-else class="muted">{{ $t('teacherSlideOverview.notGenerated') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="TTS 音频" width="100" align="center">
+        <el-table-column :label="$t('teacherSlideOverview.ttsAudio')" width="100" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.audioReadyCount" size="small" type="success">{{ row.audioReadyCount }}/{{ row.totalPages }}</el-tag>
-            <span v-else class="muted">未生成</span>
+            <span v-else class="muted">{{ $t('teacherSlideOverview.notGenerated') }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" label="最后更新" width="170" :formatter="$formatDateTime" />
-        <el-table-column label="文件名" min-width="180" show-overflow-tooltip>
+        <el-table-column prop="updatedAt" :label="$t('teacherSlideOverview.lastUpdated')" width="170" :formatter="$formatDateTime" />
+        <el-table-column :label="$t('teacherSlideOverview.fileName')" min-width="180" show-overflow-tooltip>
           <template #default="{ row }">
             <template v-if="renaming === row.id">
               <el-input v-model="renameValue" size="small" style="width:140px" @keyup.enter="confirmRename(row)" @keyup.esc="cancelRename" />
-              <el-button link size="small" type="primary" @click="confirmRename(row)">确定</el-button>
-              <el-button link size="small" @click="cancelRename">取消</el-button>
+              <el-button link size="small" type="primary" @click="confirmRename(row)">{{ $t('course.dialogConfirm') }}</el-button>
+              <el-button link size="small" @click="cancelRename">{{ $t('app.cancel') }}</el-button>
             </template>
             <span v-else>{{ row.fileName }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">查看</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" @click.stop="startRename(row)">重命名</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.id" @click.stop="handleDelete(row)">{{ deleting === row.id ? '删除中…' : '删除' }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click.stop="goEdit(row)">{{ $t('course.view') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" @click.stop="startRename(row)">{{ $t('teacherSlideOverview.rename') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :disabled="deleting === row.id" @click.stop="handleDelete(row)">{{ deleting === row.id ? $t('teacherSlideOverview.deleting') : $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -122,33 +122,33 @@
     </section>
 
     <!-- 上传课件对话框 -->
-    <el-dialog v-model="uploadDialogVisible" title="上传课件" width="500px" @close="resetUploadDialog">
+    <el-dialog v-model="uploadDialogVisible" :title="$t('teacherSlideOverview.uploadTitle')" width="500px" @close="resetUploadDialog">
       <el-form label-width="100px">
-        <el-form-item label="所属课程" prop="courseId">
-          <el-select v-model="uploadForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onCourseChange">
+        <el-form-item :label="$t('teacherSlideOverview.belongCourse')" prop="courseId">
+          <el-select v-model="uploadForm.courseId" :placeholder="$t('course.selectCourse')" class="full-width" filterable @change="onCourseChange">
             <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="所属章节" prop="chapterId">
-          <el-select v-model="uploadForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!uploadForm.courseId">
+        <el-form-item :label="$t('teacherSlideOverview.belongChapter')" prop="chapterId">
+          <el-select v-model="uploadForm.chapterId" :placeholder="$t('course.selectChapter')" class="full-width" :disabled="!uploadForm.courseId">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="课件文件" prop="file">
+        <el-form-item :label="$t('teacherSlideOverview.coursewareFile')" prop="file">
           <el-upload :show-file-list="true" accept=".pptx,.html,.htm" :auto-upload="false" :on-change="onFileChange">
-            <el-button type="primary" :icon="UploadFilled">选择文件</el-button>
+            <el-button type="primary" :icon="UploadFilled">{{ $t('teacherSlideOverview.chooseFile') }}</el-button>
             <template #tip>
               <div class="el-upload__tip">
-                支持 .pptx (最大 50MB) 和 .html (最大 5MB)；
-                <strong>章节级上传</strong>会自动创建「PPT 课件节」/「HTML 课件节」锚点 section 以承载渲染数据（与课时级上传共享同一个课件工作区）
+                {{ $t('teacherSlideOverview.uploadTipPart1') }}
+                <strong>{{ $t('teacherSlideOverview.chapterLevelUpload') }}</strong>{{ $t('teacherSlideOverview.anchorHint') }}
               </div>
             </template>
           </el-upload>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="uploadDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="uploading" :disabled="uploading" @click="submitUpload">开始上传</el-button>
+        <el-button @click="uploadDialogVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="uploading" :disabled="uploading" @click="submitUpload">{{ $t('teacherSlideOverview.startUpload') }}</el-button>
       </template>
     </el-dialog>
 </div>
