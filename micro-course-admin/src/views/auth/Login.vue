@@ -233,6 +233,8 @@ const fillAccount = (acc) => {
 }
 
 const handleLogin = async () => {
+  // P2 修复: 与 handleRegister 一致的幂等守卫，防止登录按钮连点触发并发请求
+  if (loading.value) return
   if (!formRef.value) return
   await formRef.value.validate(async (valid) => {
     if (!valid) return
@@ -241,13 +243,15 @@ const handleLogin = async () => {
       await userStore.login(form)
       // 客户体验修复 v1.7.0: 短时长 1.5s,避免 toast 滞留挡住导航
       ElMessage.success({ message: '登录成功', duration: 1500 })
+      // P3 安全修复: redirect 来自 URL query，防止 open redirect
+      // 仅接受站内绝对路径（/ 开头且非 // 协议相对），否则按角色回退首页
+      // （不直接回退到 '/'，因为路由表将 '/' 重定向到 /admin/dashboard，
+      //   学生/教师会误触发"无权访问该页面"提示 — L0 UX 约束）
       const redirect = route.query.redirect
-      if (redirect) {
-        router.push(redirect)
-      } else {
-        const home = getRoleHomePage(userStore.role)
-        router.push(home)
-      }
+      const safeRedirect = typeof redirect === 'string' && redirect.startsWith('/') && !redirect.startsWith('//')
+        ? redirect
+        : getRoleHomePage(userStore.role)
+      router.push(safeRedirect)
     } catch (e) {
       // 拦截器已处理 401/500/423，这里兜底 + 差异化展示
       if (e.response?.status === 423) {

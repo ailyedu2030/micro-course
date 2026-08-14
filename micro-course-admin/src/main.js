@@ -80,6 +80,20 @@ app.use(i18n)
 const pluginStore = usePluginStore()
 pluginStore.registerPlugins()
 
+// P2 修复: Vue Router 4 在导航失败时返回 rejected promise，全项目 171 处
+// router.push/replace 调用未挂 .catch → 未处理 Promise rejection。
+// 在全局层 monkey-patch push，自动吞掉无害导航错误（重复/中止/取消），
+// 其余错误降级为 console.warn，避免每次调用点重复 .catch。
+const originalPush = router.push.bind(router)
+router.push = (to) => {
+  return originalPush(to).catch((err) => {
+    if (err.type === 'NavigationDuplicated' ||
+        err.type === 'NavigationAborted' ||
+        err.type === 'NavigationCancelled') return
+    console.warn('Navigation failed:', err)
+  })
+}
+
 app.mount('#app')
 
 // P3-9：启动后后台同步后端枚举（非阻塞、可选）。

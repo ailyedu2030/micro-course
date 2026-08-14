@@ -48,7 +48,13 @@ export const useCartStore = defineStore('cart', () => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(items.value))
     } catch (e) {
       // 离线/未登录：降级到 localStorage
-      items.value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      // P1 修复: 本地数据损坏时 JSON.parse 可能抛错，内层 try/catch 兜底为 []
+      try {
+        items.value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      } catch {
+        items.value = []
+      }
+      if (!Array.isArray(items.value)) items.value = []
       synced.value = false
     }
   }
