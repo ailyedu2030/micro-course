@@ -289,13 +289,11 @@ const messageForm = reactive({ content: '' })
 
 // 课程变化
 function handleCourseChange() {
+  // 审计 2026-08-14 修复: 清空课程后必须继续应用班级/专业/状态筛选,
+  // 不能直接清空表格 —— fetchData 在无 courseId 时走 getEnrollments
+  // (teacherId + className/majorName/status), 筛选与课程独立生效
   page.value = 1
-  if (searchForm.courseId) {
-    fetchData()
-  } else {
-    tableData.value = []
-    totalElements.value = 0
-  }
+  fetchData()
 }
 
 // 搜索

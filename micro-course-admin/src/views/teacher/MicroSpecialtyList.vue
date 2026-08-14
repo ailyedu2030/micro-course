@@ -50,12 +50,12 @@
                  <span>{{ $t('microSpecialtyList.courseCount', { count: item.courseCount || 0 }) }}</span>
                </div>
                <div class="card-actions">
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyList.manage') }}</el-button>
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">{{ $t('microSpecialtyList.arrangeCourses') }}</el-button>
-                 <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/team`)">{{ $t('microSpecialtyList.team') }}</el-button>
+                 <el-button size="small" @click.stop="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyList.manage') }}</el-button>
+                 <el-button size="small" @click.stop="$router.push(`/teacher/micro-specialties/${item.id}/courses`)">{{ $t('microSpecialtyList.arrangeCourses') }}</el-button>
+                 <el-button size="small" @click.stop="$router.push(`/teacher/micro-specialties/${item.id}/team`)">{{ $t('microSpecialtyList.team') }}</el-button>
                </div>
                <el-badge v-if="item.pendingEnrollmentCount" :value="item.pendingEnrollmentCount" class="pending-badge">
-                 <el-button size="small" type="warning" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyManage.statPending') }}</el-button>
+                 <el-button size="small" type="warning" @click.stop="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('microSpecialtyManage.statPending') }}</el-button>
                </el-badge>
              </div>
            </div>
@@ -84,7 +84,7 @@
                   <span>{{ $t('microSpecialtyList.courseCount', { count: item.courseCount || 0 }) }}</span>
                 </div>
                                 <div class="card-actions">
-                  <el-button size="small" @click="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('course.viewDetail') }}</el-button>
+                  <el-button size="small" @click.stop="$router.push(`/teacher/micro-specialties/${item.id}/manage`)">{{ $t('course.viewDetail') }}</el-button>
                 </div>
              </div>
            </div>

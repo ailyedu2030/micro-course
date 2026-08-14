@@ -47,7 +47,7 @@
         </el-table-column>
         <el-table-column :label="$t('platformShare.actions')" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'ADMIN'" type="primary" link size="small" @click.stop="handleEdit(row)">
+            <el-button v-if="isAdmin" type="primary" link size="small" @click.stop="handleEdit(row)">
               {{ $t('app.edit') }}
             </el-button>
           </template>
@@ -101,7 +101,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">{{ $t('app.cancel') }}</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">
+        <el-button v-if="isAdmin" type="primary" :loading="saving" @click="handleSave">
           {{ $t('app.save') }}
         </el-button>
       </template>
@@ -121,6 +121,9 @@ const { t } = useI18n()
 const loading = ref(false)
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+// 审计 2026-08-14 修复: 平台分账配置仅 ADMIN 可编辑,
+// 行点击 / 编辑按钮 / 保存按钮统一以 isAdmin 守卫
+const isAdmin = computed(() => userRole.value === 'ADMIN')
 const saving = ref(false)
 const configList = ref([])
 const dialogVisible = ref(false)
@@ -177,6 +180,8 @@ async function fetchList() {
 }
 
 function handleRowClick(row) {
+  // 审计 2026-08-14 修复: 行点击仅 ADMIN 可触发编辑
+  if (!isAdmin.value) return
   handleEdit(row)
 }
 

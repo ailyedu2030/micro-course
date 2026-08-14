@@ -1073,11 +1073,7 @@ async function handleSubmit() {
   if (submitting.value) return // 幂等守卫
   // submitting 标志由 doSubmit 内部管理（doSubmit 同时被超时回调直接调用，
   // 其入口幂等守卫 + 提交锁可防止手动提交与超时提交并发双提交）
-  try {
-    await doSubmit()
-  } catch (e) {
-    throw e
-  }
+  await doSubmit()
 }
 
 async function doSubmit() {

@@ -863,9 +863,11 @@ function buildSavePayload() {
     chapterAssignments: chapterAssignments.value.map(a => {
       // V202 P0-2 修复: 不传 teacherId 字段,让后端用 NULL 写入
       // 即使前端 toggleChapter 误设了 teacherId 旧值,这里也强制清掉
+      // 审计 2026-08-14 修复: teamMemberIndex 必须保留,否则章节-教师分配无法持久化
       return {
         courseId: a.courseId,
         chapterId: a.chapterId,
+        teamMemberIndex: a.teamMemberIndex,
         source: a.source || 'TBD',
         acceptStatus: a.acceptStatus || 'PENDING'
         // teacherId 故意不传
