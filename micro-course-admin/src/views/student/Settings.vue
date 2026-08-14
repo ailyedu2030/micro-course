@@ -445,7 +445,9 @@ const loadSettings = async () => {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      settings.value = {
+      // 用 Object.assign 合并而非整体替换，避免丢失后端加载的
+      // wechatNotification / quietHoursEnabled / quietHoursStart / quietHoursEnd 字段
+      Object.assign(settings.value, {
         playbackSpeed: parsed.playbackSpeed || settings.value.playbackSpeed,
         autoPlayNext: parsed.autoPlayNext !== false,
         notificationEnabled: settings.value.notificationEnabled,
@@ -454,7 +456,7 @@ const loadSettings = async () => {
         showProgress: parsed.showProgress !== false,
         reducedMotion: parsed.reducedMotion === true,
         highContrast: parsed.highContrast === true
-      }
+      })
     }
     // 加载成功后同步到 localStorage
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
@@ -464,7 +466,8 @@ const loadSettings = async () => {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        settings.value = {
+        // 合并而非替换，保留免打扰时段/微信通知等字段的默认值
+        Object.assign(settings.value, {
           playbackSpeed: parsed.playbackSpeed || '1',
           autoPlayNext: parsed.autoPlayNext !== false,
           notificationEnabled: parsed.notificationEnabled !== false,
@@ -473,7 +476,7 @@ const loadSettings = async () => {
           showProgress: parsed.showProgress !== false,
           reducedMotion: parsed.reducedMotion === true,
           highContrast: parsed.highContrast === true
-        }
+        })
       }
     } catch {
       error.value = true

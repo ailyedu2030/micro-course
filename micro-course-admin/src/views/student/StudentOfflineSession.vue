@@ -117,6 +117,13 @@ function isCurrentSession(session) {
   return sDate.getTime() === today.getTime()
 }
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return null
+  const parts = String(timeStr).split(':').map(Number)
+  if (parts.length < 2 || parts.some(n => Number.isNaN(n))) return null
+  return parts[0] * 60 + parts[1]
+}
+
 function getAttendanceStatus(session) {
   const record = attendanceMap.value[session.id]
   if (record) return 'CHECKED_IN'
@@ -130,20 +137,28 @@ function getAttendanceStatus(session) {
 
   const diffDays = Math.floor((sDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
-  // 仅当天可签到；非当天显示为不可签到
-  if (diffDays !== 0) return 'OUTSIDE'
-
   // P1C-020: 检查签到时间窗口（与后端一致：课前15分钟~课后30分钟，相对于 startTime）
   if (!session.startTime) return 'OUTSIDE'
   const CHECKIN_BEFORE = 15  // 课前分钟数
   const CHECKIN_AFTER = 30   // 课后分钟数
-  const startParts = session.startTime.split(':').map(Number)
-  if (startParts.length < 2) return 'OUTSIDE'
-  const startMinutes = startParts[0] * 60 + startParts[1]
+  const startMinutes = parseTimeToMinutes(session.startTime)
+  if (startMinutes === null) return 'OUTSIDE'
+  const endMinutes = session.endTime ? parseTimeToMinutes(session.endTime) : null
+
+  // 签到窗口是否跨午夜：会话开始晚于结束（跨天场次，如 23:50 → 00:20），
+  // 或课后 30 分钟窗口越过 24:00（如 23:50 开始，窗口到次日 00:20）
+  const windowEndMinutes = startMinutes + CHECKIN_AFTER
+  const crossesMidnight = (endMinutes !== null && startMinutes > endMinutes) || windowEndMinutes >= 1440
+
+  // 仅当天可签到；跨午夜场次额外允许次日（会话日 +1 天）在窗口剩余时间内签到
+  if (diffDays !== 0 && !(crossesMidnight && diffDays === -1)) return 'OUTSIDE'
+
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  // 归一化到"会话日"的分钟坐标：跨午夜次日 00:00-00:59 记为 1440 + nowMinutes
+  // （例如 23:50 开场的窗口为 1415-1460，次日 00:10 对应 1450，仍在窗口内）
+  const normalizedNow = diffDays === -1 ? 1440 + nowMinutes : nowMinutes
   const windowStart = startMinutes - CHECKIN_BEFORE
-  const windowEnd = startMinutes + CHECKIN_AFTER
-  if (nowMinutes < windowStart || nowMinutes > windowEnd) return 'OUTSIDE'
+  if (normalizedNow < windowStart || normalizedNow > windowEndMinutes) return 'OUTSIDE'
 
   return 'CAN_CHECKIN'
 }

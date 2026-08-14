@@ -1116,6 +1116,7 @@ async function doCheckIn() {
     ElMessage.success(t('learning.checkInSuccess'))
     } catch (e) {
       console.warn("[LearningCenter]", e)
+      ElMessage.error(t('learning.checkInFailed'))
     } finally {
     checkInLoading.value = false
   }

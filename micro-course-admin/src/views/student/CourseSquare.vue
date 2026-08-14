@@ -675,6 +675,12 @@ const handlePageChange = (newPage) => {
   fetchCourses()
 }
 
+// 排序 Tab 切换（推荐/热门/最新）→ 回到第一页并重新拉取课程
+watch(courseSort, () => {
+  page.value = 1
+  fetchCourses()
+})
+
 // 跳详情/学习
 const handleCourseClick = (course) => {
   if (!course?.id) return
