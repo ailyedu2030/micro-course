@@ -7,27 +7,27 @@
 <template>
   <div class="exercise-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>练习列表</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('exercise.list') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w200" @change="handleCourseChange">
+        <el-form-item :label="$t('course.title')">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('exercise.selectCourse')" clearable class="filter-input-w200" @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节">
-          <el-select v-model="searchForm.chapterId" placeholder="请选择章节" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
+        <el-form-item :label="$t('course.chapter')">
+          <el-select v-model="searchForm.chapterId" :placeholder="$t('exercise.selectChapter')" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
             <el-option v-for="item in chapterOptions" :key="item.id" :label="`${item.title}${item.sectionType ? `（${chapterTypeLabel(item.sectionType)}）` : ''}`" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('userSearch.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -36,37 +36,37 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">练习列表</span>
-          <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增练习</el-button>
+          <span class="card-title">{{ $t('exercise.list') }}</span>
+          <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">{{ $t('exercise.create') }}</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无练习数据，请先选择课程和章节后点击「新增练习」" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('exercise.emptyData')" />
       <el-table v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="courseTitle" label="课程" min-width="120" />
-        <el-table-column prop="chapterTitle" label="章节" min-width="120" />
-        <el-table-column prop="questionCount" label="题目数" width="100" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="courseTitle" :label="$t('course.title')" min-width="120" />
+        <el-table-column prop="chapterTitle" :label="$t('course.chapter')" min-width="120" />
+        <el-table-column prop="questionCount" :label="$t('exercise.questionCount')" width="100" align="center">
           <template #default="{ row }">
             {{ row.questionCount ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="timeLimit" label="时长(分钟)" width="120" align="center">
+        <el-table-column prop="timeLimit" :label="$t('exercise.timeLimitMin')" width="120" align="center">
           <template #default="{ row }">
-            {{ row.timeLimit ? `${row.timeLimit}分钟` : '-' }}
+            {{ row.timeLimit ? $t('exercise.minutes', { count: row.timeLimit }) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="passScore" label="及格分数" width="100" align="center">
+        <el-table-column prop="passScore" :label="$t('exercise.passScore')" width="100" align="center">
           <template #default="{ row }">
             {{ row.passScore ?? '-' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="200" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleSelectQuestions(row)">选题</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleSelectQuestions(row)">{{ $t('exercise.selectQuestions') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -78,7 +78,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
@@ -86,18 +86,18 @@
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="640px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" @change="handleFormCourseChange">
+        <el-form-item :label="$t('course.title')" prop="courseId">
+          <el-select v-model="formData.courseId" :placeholder="$t('exercise.selectCourse')" class="full-width" @change="handleFormCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" prop="chapterIds">
-          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
+        <el-form-item :label="$t('course.chapter')" prop="chapterIds">
+          <el-select v-model="formData.chapterIds" :placeholder="$t('exercise.selectChaptersMulti')" multiple collapse-tags class="full-width" :disabled="!formData.courseId">
             <el-option v-for="item in formChapterOptions" :key="item.id" :label="`${item.title}${item.sectionType ? `（${chapterTypeLabel(item.sectionType)}）` : ''}`" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入练习标题" />
+        <el-form-item :label="$t('course.tableTitle')" prop="title">
+          <el-input v-model="formData.title" :placeholder="$t('exercise.titlePlaceholder')" />
         </el-form-item>
 
         <!-- 题库统计 + 随机选题 -->
