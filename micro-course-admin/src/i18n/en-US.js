@@ -1726,6 +1726,7 @@ export default {
     backToList: 'Back to Exercise List',
     answerSheet: 'Answer Sheet',
     openSheet: 'Open answer sheet',
+    closeSheet: 'Close answer sheet',
     sheetAria: 'Mobile answer sheet',
     jumpTo: 'Jump to question {n}',
     answered: 'Answered',

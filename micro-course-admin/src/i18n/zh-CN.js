@@ -1726,6 +1726,7 @@ export default {
     backToList: '返回练习列表',
     answerSheet: '答题卡',
     openSheet: '打开答题卡',
+    closeSheet: '关闭答题卡',
     sheetAria: '移动端答题卡',
     jumpTo: '跳转到第 {n} 题',
     answered: '已答',

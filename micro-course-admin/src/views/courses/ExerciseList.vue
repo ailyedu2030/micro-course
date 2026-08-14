@@ -102,90 +102,90 @@
 
         <!-- 题库统计 + 随机选题 -->
         <el-divider v-if="formData.courseId" />
-        <el-form-item v-if="formData.courseId" label="题库统计">
+        <el-form-item v-if="formData.courseId" :label="$t('exercise.bankStats')">
           <div class="bank-stats">
             <el-tag v-for="s in bankStats" :key="s.type" :type="s.count > 0 ? 'primary' : 'info'" size="small" class="stat-tag" style="margin:2px">
-              {{ s.label }}: {{ s.count }} 题
+              {{ $t('exercise.statCount', { label: s.label, count: s.count }) }}
             </el-tag>
-            <el-tag type="primary" size="small" effect="dark" style="margin:2px">共 {{ totalBankCount }} 题</el-tag>
+            <el-tag type="primary" size="small" effect="dark" style="margin:2px">{{ $t('exercise.totalCount', { count: totalBankCount }) }}</el-tag>
           </div>
         </el-form-item>
-        <el-form-item v-if="formData.courseId" label="随机选题">
+        <el-form-item v-if="formData.courseId" :label="$t('exercise.randomPick')">
           <div class="random-pick" style="display:flex;flex-direction:column;gap:6px;width:100%">
-            <el-select v-model="pickDifficulty" placeholder="难度筛选" clearable size="small" style="width:120px">
-              <el-option label="简单" value="EASY" />
-              <el-option label="中等" value="MEDIUM" />
-              <el-option label="困难" value="HARD" />
+            <el-select v-model="pickDifficulty" :placeholder="$t('exercise.difficultyFilter')" clearable size="small" style="width:120px">
+              <el-option :label="$t('course.difficultyEasy')" value="EASY" />
+              <el-option :label="$t('course.difficultyMedium')" value="MEDIUM" />
+              <el-option :label="$t('course.difficultyHard')" value="HARD" />
             </el-select>
             <div v-for="s in bankStats" :key="s.type" class="pick-row" style="display:flex;align-items:center;gap:8px">
               <span class="pick-label" style="width:60px;font-size:13px">{{ s.label }}</span>
               <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" style="width:130px" />
-              <span style="font-size:12px;color:var(--el-text-color-secondary)">/ {{ s.count }} 题</span>
+              <span style="font-size:12px;color:var(--el-text-color-secondary)">{{ $t('exercise.countSuffix', { count: s.count }) }}</span>
             </div>
             <el-button type="success" size="small" :disabled="totalPickCount === 0" @click="handleRandomPick" style="width:160px">
-              随机抽取 {{ totalPickCount }} 题
+              {{ $t('exercise.randomPickCount', { count: totalPickCount }) }}
             </el-button>
           </div>
         </el-form-item>
-        <el-form-item v-if="formData.courseId && pickedQuestions.length > 0" label="已选">
-          <el-tag type="success">{{ pickedQuestions.length }} 题已随机选取</el-tag>
+        <el-form-item v-if="formData.courseId && pickedQuestions.length > 0" :label="$t('exercise.selected')">
+          <el-tag type="success">{{ $t('exercise.pickedCount', { count: pickedQuestions.length }) }}</el-tag>
         </el-form-item>
         <el-divider v-if="formData.courseId" />
 
-        <el-form-item label="及格分数" prop="passScore">
+        <el-form-item :label="$t('exercise.passScore')" prop="passScore">
           <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" />
         </el-form-item>
-        <el-form-item label="时间限制(分钟)" prop="timeLimit">
-          <el-input-number v-model="formData.timeLimit" :min="0" placeholder="0表示无限制" class="full-width" />
+        <el-form-item :label="$t('exercise.timeLimitLabel')" prop="timeLimit">
+          <el-input-number v-model="formData.timeLimit" :min="0" :placeholder="$t('exercise.unlimitedHint')" class="full-width" />
         </el-form-item>
-        <el-form-item label="答题次数" prop="maxAttempts">
-          <el-input-number v-model="formData.maxAttempts" :min="0" placeholder="0表示无限制" class="full-width" />
+        <el-form-item :label="$t('exercise.maxAttempts')" prop="maxAttempts">
+          <el-input-number v-model="formData.maxAttempts" :min="0" :placeholder="$t('exercise.unlimitedHint')" class="full-width" />
         </el-form-item>
-        <el-form-item label="题目乱序" prop="shuffleQuestions">
+        <el-form-item :label="$t('exercise.shuffleQuestions')" prop="shuffleQuestions">
           <el-switch v-model="formData.shuffleQuestions" />
         </el-form-item>
-        <el-form-item label="选项乱序" prop="shuffleOptions">
+        <el-form-item :label="$t('exercise.shuffleOptions')" prop="shuffleOptions">
           <el-switch v-model="formData.shuffleOptions" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" />
+        <el-form-item :label="$t('exercise.description')" prop="description">
+          <el-input v-model="formData.description" type="textarea" :placeholder="$t('exercise.descriptionPlaceholder')" :rows="3" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 选题组卷弹窗 -->
-    <el-dialog v-model="questionPickerVisible" title="选题组卷" width="900px" @close="handleQuestionPickerClose" :close-on-press-escape="true">
+    <el-dialog v-model="questionPickerVisible" :title="$t('exercise.pickQuestionsTitle')" width="900px" @close="handleQuestionPickerClose" :close-on-press-escape="true">
       <div class="question-picker">
         <!-- 筛选区 -->
         <el-card class="picker-filter-card" shadow="never">
           <el-form :inline="true" :model="questionSearchForm" @submit.prevent>
-            <el-form-item label="题型">
-              <el-select v-model="questionSearchForm.questionType" placeholder="请选择题型" clearable>
-                <el-option label="单选题" value="SINGLE" />
-                <el-option label="多选题" value="MULTIPLE" />
-                <el-option label="判断题" value="JUDGE" />
-                <el-option label="简答题" value="SHORT_ANSWER" />
+            <el-form-item :label="$t('question.questionType')">
+              <el-select v-model="questionSearchForm.questionType" :placeholder="$t('question.selectQuestionType')" clearable>
+                <el-option :label="$t('question.typeSingle')" value="SINGLE" />
+                <el-option :label="$t('question.typeMultiple')" value="MULTIPLE" />
+                <el-option :label="$t('question.typeJudge')" value="JUDGE" />
+                <el-option :label="$t('question.typeShortAnswer')" value="SHORT_ANSWER" />
               </el-select>
             </el-form-item>
-            <el-form-item label="难度">
-              <el-select v-model="questionSearchForm.difficulty" placeholder="请选择难度" clearable>
-                <el-option label="简单" value="EASY" />
-                <el-option label="中等" value="MEDIUM" />
-                <el-option label="困难" value="HARD" />
+            <el-form-item :label="$t('course.difficulty')">
+              <el-select v-model="questionSearchForm.difficulty" :placeholder="$t('question.selectDifficulty')" clearable>
+                <el-option :label="$t('course.difficultyEasy')" value="EASY" />
+                <el-option :label="$t('course.difficultyMedium')" value="MEDIUM" />
+                <el-option :label="$t('course.difficultyHard')" value="HARD" />
               </el-select>
             </el-form-item>
-            <el-form-item label="分类">
-              <el-select v-model="questionSearchForm.categoryId" placeholder="请选择分类" clearable>
+            <el-form-item :label="$t('course.category')">
+              <el-select v-model="questionSearchForm.categoryId" :placeholder="$t('question.selectCategory')" clearable>
                 <el-option v-for="cat in categoryOptions" :key="cat.id" :label="cat.name" :value="cat.id" />
               </el-select>
             </el-form-item>
             <el-form-item>
-              <el-button type="primary" @click="handleQuestionSearch">搜索</el-button>
-              <el-button @click="handleQuestionReset">重置</el-button>
+              <el-button type="primary" @click="handleQuestionSearch">{{ $t('common.search') }}</el-button>
+              <el-button @click="handleQuestionReset">{{ $t('common.reset') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -200,27 +200,27 @@
           @selection-change="handleQuestionSelectionChange"
         >
           <el-table-column type="selection" width="55" />
-          <el-table-column type="index" label="序号" width="60" align="center" />
-          <el-table-column prop="questionType" label="题型" width="100" align="center">
+          <el-table-column type="index" :label="$t('course.index')" width="60" align="center" />
+          <el-table-column prop="questionType" :label="$t('question.questionType')" width="100" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
-              <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
-              <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
-              <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">简答题</el-tag>
+              <el-tag v-if="row.questionType === 'SINGLE'" type="primary" size="small">{{ $t('question.typeSingle') }}</el-tag>
+              <el-tag v-else-if="row.questionType === 'MULTIPLE'" type="success" size="small">{{ $t('question.typeMultiple') }}</el-tag>
+              <el-tag v-else-if="row.questionType === 'JUDGE'" type="warning" size="small">{{ $t('question.typeJudge') }}</el-tag>
+              <el-tag v-else-if="row.questionType === 'SHORT_ANSWER'" type="info" size="small">{{ $t('question.typeShortAnswer') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="difficulty" label="难度" width="80" align="center">
+          <el-table-column prop="difficulty" :label="$t('course.difficulty')" width="80" align="center">
             <template #default="{ row }">
-              <el-tag v-if="row.difficulty === 1" type="success" size="small">简单</el-tag>
-              <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">中等</el-tag>
-              <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">困难</el-tag>
+              <el-tag v-if="row.difficulty === 1" type="success" size="small">{{ $t('course.difficultyEasy') }}</el-tag>
+              <el-tag v-else-if="row.difficulty === 2" type="warning" size="small">{{ $t('course.difficultyMedium') }}</el-tag>
+              <el-tag v-else-if="row.difficulty === 3" type="danger" size="small">{{ $t('course.difficultyHard') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="content" label="题目内容" min-width="300" show-overflow-tooltip />
-          <el-table-column prop="score" label="分值" width="70" align="center" />
+          <el-table-column prop="content" :label="$t('question.questionContent')" min-width="300" show-overflow-tooltip />
+          <el-table-column prop="score" :label="$t('question.score')" width="70" align="center" />
         </el-table>
         <div class="picker-footer">
-          <span class="selected-count">已选 {{ selectedQuestions.length }} 题</span>
+          <span class="selected-count">{{ $t('exercise.selectedCount', { count: selectedQuestions.length }) }}</span>
           <el-pagination
             v-model:current-page="questionPage"
             v-model:page-size="questionSize"
@@ -229,13 +229,13 @@
             layout="total,sizes,prev,pager,next"
             small
             @size-change="handleQuestionSizeChange"
-            @current-change="handleQuestionPageChange" aria-label="分页导航"
+            @current-change="handleQuestionPageChange" :aria-label="$t('course.paginationAria')"
 />
         </div>
       </div>
       <template #footer>
-        <el-button @click="questionPickerVisible = false">取消</el-button>
-        <el-button type="primary" :loading="questionSubmitLoading" :disabled="questionSubmitLoading" @click="handleAddQuestions">添加到练习</el-button>
+        <el-button @click="questionPickerVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="questionSubmitLoading" :disabled="questionSubmitLoading" @click="handleAddQuestions">{{ $t('exercise.addToExercise') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -243,6 +243,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -253,6 +254,7 @@ import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
 const isTeacher = computed(() => userStore.role === 'TEACHER')
@@ -277,7 +279,7 @@ const { bindToQuery } = useUrlPagination()
 bindToQuery(page, size, searchForm, ['courseId', 'chapterId'], ['courseId', 'chapterId'])
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增练习')
+const dialogTitle = ref(t('exercise.create'))
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -321,7 +323,7 @@ function resolveDifficulty(val) {
   return DIFFICULTY_MAP[key] || undefined
 }
 
-const TYPE_LABELS = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', SHORT_ANSWER: '简答题' }
+const TYPE_LABELS = { SINGLE: t('question.typeSingle'), MULTIPLE: t('question.typeMultiple'), JUDGE: t('question.typeJudge'), FILL: t('question.typeFill'), SHORT_ANSWER: t('question.typeShortAnswer') }
 const bankStats = ref([])
 const totalBankCount = ref(0)
 const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
@@ -344,7 +346,7 @@ watch(() => formData.courseId, async (val) => {
     bankStats.value = Object.entries(TYPE_LABELS)
       .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
       .filter(s => s.count > 0)
-  } catch { bankStats.value = []; totalBankCount.value = 0; ElMessage.warning('加载题库统计失败') }
+  } catch { bankStats.value = []; totalBankCount.value = 0; ElMessage.warning(t('exercise.bankStatsLoadFailed')) }
 })
 watch(pickDifficulty, () => {
   if (formData.courseId) { const cb = formData.courseId; formData.courseId = null; setTimeout(() => formData.courseId = cb, 0) }
@@ -368,14 +370,14 @@ async function handleRandomPick() {
     }
     pickedQuestions.value = picked
     bankStats.value.forEach(s => { s.pickCount = 0 })
-  } catch { ElMessage.warning('随机选题失败') }
+  } catch { ElMessage.warning(t('exercise.randomPickFailed')) }
 }
 
-const formRules = {
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  chapterIds: [{ required: true, message: '请选择章节', trigger: 'change' }],
-  title: [{ required: true, message: '请输入练习标题', trigger: 'blur' }]
-}
+const formRules = computed(() => ({
+  courseId: [{ required: true, message: t('exercise.selectCourse'), trigger: 'change' }],
+  chapterIds: [{ required: true, message: t('exercise.selectChapter'), trigger: 'change' }],
+  title: [{ required: true, message: t('exercise.titlePlaceholder'), trigger: 'blur' }]
+}))
 
 const fetchCourseOptions = async () => {
   try {
@@ -385,7 +387,7 @@ const fetchCourseOptions = async () => {
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -398,7 +400,7 @@ const fetchChapterOptions = async (courseId) => {
     const { data } = await getChapters({ courseId })
     chapterOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取章节列表失败')
+    ElMessage.error(t('exercise.fetchChaptersFailed'))
   }
 }
 
@@ -420,7 +422,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取练习列表失败')
+    ElMessage.error(t('exercise.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -439,8 +441,8 @@ const handleSearch = () => {
 }
 
 const chapterTypeLabel = (type) => {
-  const map = { VIDEO: '视频', INTERACTIVE: '课件', EXERCISE: '练习', OFFLINE: '线下' }
-  return map[type] || (type || '未知')
+  const map = { VIDEO: t('course.typeVideo'), INTERACTIVE: t('course.courseware'), EXERCISE: t('course.exercise'), OFFLINE: t('exercise.typeOffline') }
+  return map[type] || (type || t('course.unknown'))
 }
 
 const handleReset = () => {
@@ -461,7 +463,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = async () => {
-  dialogTitle.value = '新增练习'
+  dialogTitle.value = t('exercise.create')
   isEdit.value = false
   currentId.value = null
   formData.courseId = searchForm.courseId
@@ -480,7 +482,7 @@ const handleCreate = async () => {
 }
 
 const handleEdit = async (row) => {
-  dialogTitle.value = '编辑练习'
+  dialogTitle.value = t('exercise.edit')
   isEdit.value = true
   currentId.value = row.id
   formData.courseId = row.courseId
@@ -517,13 +519,13 @@ const handleFormCourseChange = async (val) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该练习?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('exercise.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteExercise(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('course.deleteFailed'))
     }
   }
 }
@@ -539,11 +541,11 @@ const handleSubmit = async () => {
       let exerciseId = currentId.value
       if (isEdit.value) {
         await updateExercise(exerciseId, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('question.editSuccess'))
       } else {
         const { data } = await createExercise(formData)
         exerciseId = data.id
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       // 自动保存随机选题
       if (pickedQuestions.value.length > 0) {
@@ -553,7 +555,7 @@ const handleSubmit = async () => {
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('exercise.editFailed') : t('course.createFailed'))
     } finally {
       submitLoading.value = false
       pickedQuestions.value = []
@@ -604,7 +606,7 @@ const fetchQuestionData = async () => {
     questionTableData.value = data.items || []
     questionTotal.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取题目列表失败')
+    ElMessage.error(t('question.fetchListFailed'))
   } finally {
     questionLoading.value = false
   }
@@ -638,18 +640,18 @@ const handleQuestionSelectionChange = (selection) => {
 
 const handleAddQuestions = async () => {
   if (selectedQuestions.value.length === 0) {
-    ElMessage.warning('请先选择题目')
+    ElMessage.warning(t('exercise.selectQuestionFirst'))
     return
   }
   questionSubmitLoading.value = true
   try {
     const questionIds = selectedQuestions.value.map(q => q.id)
     await addQuestionsToExercise(currentId.value, { questionIds })
-    ElMessage.success('添加成功')
+    ElMessage.success(t('exercise.addSuccess'))
     questionPickerVisible.value = false
     fetchData()
   } catch {
-    ElMessage.error('添加失败')
+    ElMessage.error(t('exercise.addFailed'))
   } finally {
     questionSubmitLoading.value = false
   }
