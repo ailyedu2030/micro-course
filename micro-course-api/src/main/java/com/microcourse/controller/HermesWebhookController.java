@@ -81,7 +81,7 @@ public class HermesWebhookController {
     @PostMapping("/courses/{hermesCourseId}/sections")
     public R<HermesSectionVO> createSection(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                           @PathVariable String hermesCourseId,
-                                          @Valid @RequestBody HermesSectionRequest body) {
+                                           @Valid @RequestBody HermesSectionRequest body) {
         return R.ok(managementService.createSection(hermesCourseId, apiKey, body));
     }
 
@@ -111,7 +111,7 @@ public class HermesWebhookController {
     public R<HermesChapterVO> updateChapter(@RequestHeader(value = "X-API-Key", required = false) String apiKey,
                                           @PathVariable String hermesCourseId,
                                           @PathVariable Long chapterId,
-                                          @Valid @RequestBody HermesChapterRequest body) {
+                                           @Valid @RequestBody HermesChapterRequest body) {
         return R.ok(managementService.updateChapter(hermesCourseId, apiKey, chapterId, body));
     }
 

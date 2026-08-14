@@ -40,7 +40,7 @@ public class CourseExerciseController {
             @RequestParam(required = false) Long chapterId,
             @RequestParam(required = false) Boolean isExam,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 500, message = "size 不能超过 500") int size) {
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
         PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, isExam, page, size);
         return R.ok(result);
     }
