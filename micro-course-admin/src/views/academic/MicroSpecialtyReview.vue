@@ -55,7 +55,11 @@
 
     <!-- 驳回原因 Dialog -->
     <el-dialog v-model="rejectVisible" :title="$t('microSpecialtyReview.rejectReasonTitle')" width="480px" @close="rejectTarget.value = null">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit :aria-label="$t('microSpecialtyReview.rejectReasonTitle')" />
+      <el-form ref="rejectFormRef" :model="rejectForm" :rules="rejectRules" @submit.prevent>
+        <el-form-item prop="reason">
+          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit :aria-label="$t('microSpecialtyReview.rejectReasonTitle')" />
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="rejectVisible = false; rejectTarget.value = null">{{ $t('common.cancel') }}</el-button>
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">{{ $t('microSpecialtyReview.confirmReject') }}</el-button>
@@ -81,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty, reopenMicroSpecialty } from '@/api/microSpecialty'
@@ -102,7 +106,14 @@ const size = ref(20)
 const total = ref(0)
 
 const rejectVisible = ref(false)
-const rejectReason = ref('')
+// P1-C 修复: 驳回原因必填校验（此前可空原因直接驳回）
+const rejectForm = reactive({ reason: '' })
+const rejectFormRef = ref(null)
+const rejectRules = {
+  reason: [
+    { required: true, message: t('microSpecialtyReview.rejectReasonRequired') || '请输入驳回原因', trigger: 'blur' }
+  ]
+}
 const rejectTarget = ref(null)
 const detailVisible = ref(false)
 const detailRow = ref(null)
@@ -144,11 +155,15 @@ const handleApprove = async (row) => {
 const handleReject = async (row) => {
   try { await ElMessageBox.confirm(t('microSpecialtyReview.confirmRejectMsg', { title: row.title }), t('microSpecialtyReview.confirmReject'), { type: 'warning', confirmButtonText: t('microSpecialtyReview.reject'), cancelButtonText: t('common.cancel') }) }
   catch { return }
-  rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
+  rejectTarget.value = row; rejectForm.reason = ''; rejectFormRef.value?.clearValidate(); rejectVisible.value = true
 }
 const confirmReject = async () => {
+  if (!rejectFormRef.value) return
+  try {
+    await rejectFormRef.value.validate()
+  } catch { return }
   actingId.value = rejectTarget.value.id
-  try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
+  try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectForm.reason }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }

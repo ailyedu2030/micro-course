@@ -146,6 +146,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCourses } from '@/api/course'
 import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
@@ -156,6 +157,8 @@ import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
 const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+// P1-C 修复: 使用角色感知路由，替代硬编码 /teacher/ 路径（非教师角色会 403/404）
+const { courseDetailPath } = useCourseWorkspaceRoutes({ userRoleRef: userRole })
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -223,7 +226,8 @@ const handleEditSection = (chapter, section) => {
 const handleSectionUpload = (chapter, section) => {
   // 【D-3 修复】SectionList「课件」按钮 @upload 死按钮 → 打开该课时的课件管理（上传/编辑入口）
   if (!searchForm.courseId) return
-  router.push({ path: `/teacher/courses/${searchForm.courseId}/slides/manage`, query: { sectionId: section.id } })
+  // P1-C 修复: 使用路由名替代硬编码 /teacher/ 路径
+  router.push({ name: 'TeacherSlideManage', params: { courseId: searchForm.courseId }, query: { sectionId: section.id } })
 }
 
 const handleDeleteSection = async (chapter, section) => {
@@ -332,7 +336,8 @@ const handlePageChange = () => {
 }
 
 const goBackToCourse = () => {
-  if (searchForm.courseId) router.push(`/teacher/courses/${searchForm.courseId}`)
+  // P1-C 修复: 角色感知路由（教师 → /teacher/courses/:id，其他角色 → /courses/:id）
+  if (searchForm.courseId) router.push(courseDetailPath(searchForm.courseId))
 }
 const handleCreate = () => {
   dialogTitle.value = t('course.addChapter')
