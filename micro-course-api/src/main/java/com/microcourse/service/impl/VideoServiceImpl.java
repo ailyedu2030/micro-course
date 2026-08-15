@@ -245,8 +245,9 @@ public class VideoServiceImpl implements VideoService {
         }
 
         video.setUpdatedAt(LocalDateTime.now());
-        // P2: @Version 由 MyBatis-Plus 乐观锁插件自动处理
-        videoRepository.updateById(video);
+        if (videoRepository.updateById(video) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "视频已被其他操作修改，请刷新后重试");
+        }
         return getById(id);
     }
 
@@ -479,7 +480,9 @@ public class VideoServiceImpl implements VideoService {
         String coverUrl = "/api/files/covers/" + videoId + "/" + savedFileName;
         video.setCoverUrl(coverUrl);
         video.setUpdatedAt(LocalDateTime.now());
-        videoRepository.updateById(video);
+        if (videoRepository.updateById(video) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "视频已被其他操作修改，请刷新后重试");
+        }
 
         return coverUrl;
     }

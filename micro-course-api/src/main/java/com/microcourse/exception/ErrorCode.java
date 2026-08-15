@@ -31,6 +31,7 @@ public enum ErrorCode {
     COURSE_HAS_ENROLLMENTS(6002, "该课程下有学生选课，无法关闭", 400),
     COURSE_ARCHIVED(6009, "已归档课程不可操作", 400),
     COURSE_CATEGORY_NOT_FOUND(6008, "课程分类不存在", 404),
+    COURSE_CATEGORY_HAS_COURSES(6010, "分类下有课程，无法删除", 409),
     COURSE_TEACHER_NOT_FOUND(6003, "教师不存在", 404),
     COURSE_INVALID_STATUS(6004, "无效的课程状态", 400),
     COURSE_STATUS_TRANSITION_NOT_ALLOWED(6005, "不允许的状态转换", 400),

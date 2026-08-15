@@ -385,7 +385,17 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, id)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
-        detail.setTeachers(teachers.stream().map(this::toTeacherVO).collect(Collectors.toList()));
+        if (!teachers.isEmpty()) {
+            java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+            java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
+            userRepository.selectBatchIds(teachers.stream().map(MicroSpecialtyTeacher::getTeacherId).filter(java.util.Objects::nonNull).collect(Collectors.toList()))
+                    .forEach(u -> userMap.put(u.getId(), u));
+            java.util.List<Long> courseIds = teachers.stream().map(MicroSpecialtyTeacher::getCourseId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+            if (!courseIds.isEmpty()) courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+            detail.setTeachers(teachers.stream().map(t -> toTeacherVO(t, userMap, courseMap)).collect(Collectors.toList()));
+        } else {
+            detail.setTeachers(java.util.Collections.emptyList());
+        }
         // 统计
         detail.setStats(buildStats(ms));
         return detail;
@@ -473,7 +483,7 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
                 new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                         .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                         .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
-        return teachers.stream().map(this::toTeacherVO).collect(Collectors.toList());
+         return toTeacherVOBatch(teachers);
     }
 
     @Override
@@ -481,7 +491,8 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         LambdaQueryWrapper<MicroSpecialtyTeacher> w = new LambdaQueryWrapper<MicroSpecialtyTeacher>()
                 .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, msId)
                 .orderByAsc(MicroSpecialtyTeacher::getCreatedAt);
-        return msTeacherRepository.selectList(w).stream().map(this::toTeacherVO).collect(Collectors.toList());
+        List<MicroSpecialtyTeacher> teachers = msTeacherRepository.selectList(w);
+        return toTeacherVOBatch(teachers);
     }
     // ====== 角色鉴权 ======
     @Override
@@ -700,32 +711,57 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
 
     @Override
     public MicroSpecialtyTeacherVO toTeacherVO(MicroSpecialtyTeacher t) {
+        if (t == null) return null;
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
+        if (t.getTeacherId() != null) {
+            User u = userRepository.selectById(t.getTeacherId());
+            if (u != null) userMap.put(u.getId(), u);
+        }
+        if (t.getCourseId() != null) {
+            Course c = courseRepository.selectById(t.getCourseId());
+            if (c != null) courseMap.put(c.getId(), c);
+        }
+        return toTeacherVO(t, userMap, courseMap);
+    }
+
+    private List<MicroSpecialtyTeacherVO> toTeacherVOBatch(List<MicroSpecialtyTeacher> teachers) {
+        if (teachers == null || teachers.isEmpty()) return java.util.Collections.emptyList();
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
+        userRepository.selectBatchIds(teachers.stream().map(MicroSpecialtyTeacher::getTeacherId).filter(java.util.Objects::nonNull).collect(Collectors.toList()))
+                .forEach(u -> userMap.put(u.getId(), u));
+        java.util.List<Long> courseIds = teachers.stream().map(MicroSpecialtyTeacher::getCourseId).filter(java.util.Objects::nonNull).collect(Collectors.toList());
+        if (!courseIds.isEmpty()) courseRepository.selectBatchIds(courseIds).forEach(c -> courseMap.put(c.getId(), c));
+        return teachers.stream().map(t -> toTeacherVO(t, userMap, courseMap)).collect(Collectors.toList());
+    }
+
+    private MicroSpecialtyTeacherVO toTeacherVO(MicroSpecialtyTeacher t,
+                                                 java.util.Map<Long, User> userMap,
+                                                 java.util.Map<Long, Course> courseMap) {
         MicroSpecialtyTeacherVO vo = new MicroSpecialtyTeacherVO();
         vo.setId(t.getId());
-        vo.setMicroSpecialtyId(t.getMicroSpecialtyId());
         vo.setTeacherId(t.getTeacherId());
-        vo.setRoleLabel(t.getRole());
-        vo.setRole(t.getRole());
         vo.setCourseId(t.getCourseId());
         vo.setResponsibility(t.getResponsibility());
         vo.setInviteStatus(t.getInviteStatus());
         vo.setInviteExpiresAt(t.getInviteExpiresAt());
         if (t.getTeacherId() != null) {
-            User u = userRepository.selectById(t.getTeacherId());
+            User u = userMap.get(t.getTeacherId());
             if (u != null) {
                 vo.setTeacherName(u.getRealName());
                 vo.setTeacherAvatar(u.getAvatar());
             }
         }
-        // Query course title for this teacher's assignment
         if (t.getCourseId() != null) {
-            Course course = courseRepository.selectById(t.getCourseId());
+            Course course = courseMap.get(t.getCourseId());
             if (course != null) {
                 vo.setCourseTitle(course.getTitle());
             }
         }
         return vo;
     }
+
     /**
      * P1-2/P1-C-4: 批量列表场景用预加载 map,避免 N+1 selectById。
      */

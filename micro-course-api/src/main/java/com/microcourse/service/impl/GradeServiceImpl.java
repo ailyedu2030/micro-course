@@ -144,7 +144,10 @@ public class GradeServiceImpl implements GradeService {
         // SECURITY: 只有课程教师、学生本人、ADMIN 或 ACADEMIC 可查看成绩
         if (grade.getCourseId() != null) {
             Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isAdminOrAcademic()
+            if (course == null) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+            if (!SecurityUtil.isAdminOrAcademic()
                     && !SecurityUtil.getCurrentUserId().equals(course.getTeacherId())
                     && !SecurityUtil.getCurrentUserId().equals(grade.getUserId())) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);

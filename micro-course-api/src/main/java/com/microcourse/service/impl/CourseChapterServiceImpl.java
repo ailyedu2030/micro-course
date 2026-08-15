@@ -308,7 +308,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getChapterHours() != null) chapter.setChapterHours(request.getChapterHours());
 
         chapter.setUpdatedAt(LocalDateTime.now());
-        chapterRepository.updateById(chapter);
+        if (chapterRepository.updateById(chapter) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "章节已被其他操作修改，请刷新后重试");
+        }
 
         ChapterVO vo = convertToVO(chapter);
         Long vc = videoRepository.selectCount(

@@ -136,7 +136,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
                 new LambdaQueryWrapper<Course>()
                         .eq(Course::getCategoryId, id));
         if (courseCount > 0) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+            throw new BusinessException(ErrorCode.COURSE_CATEGORY_HAS_COURSES,
                     "有 " + courseCount + " 门课程使用该分类，请先修改课程分类后再删除");
         }
         // 检查子分类下是否有课程引用
@@ -148,7 +148,7 @@ public class CourseCategoryServiceImpl implements CourseCategoryService {
                     new LambdaQueryWrapper<Course>()
                             .eq(Course::getCategoryId, child.getId()));
             if (childCourseCount > 0) {
-                throw new BusinessException(ErrorCode.MS_STATUS_INVALID,
+            throw new BusinessException(ErrorCode.COURSE_CATEGORY_HAS_COURSES,
                         "子分类「" + child.getName() + "」下有 " + childCourseCount + " 门课程使用该分类，请先修改课程分类后再删除");
             }
         }

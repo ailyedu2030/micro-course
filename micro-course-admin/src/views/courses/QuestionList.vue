@@ -413,7 +413,7 @@ const handleExportExcel = async () => {
   }
   try {
     const res = await exportQuestions(params)
-    const blob = res instanceof Blob ? res : new Blob([res])
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data])
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

@@ -1,9 +1,7 @@
 package com.microcourse.dto.order;
 
-/**
- * 创建订单请求 DTO
- * 替代原始 Map<String, Long> 请求体
- */
+import jakarta.validation.constraints.AssertTrue;
+
 public class OrderCreateRequest {
 
     private Long courseId;
@@ -12,11 +10,13 @@ public class OrderCreateRequest {
 
     public OrderCreateRequest() {}
 
+    @AssertTrue(message = "courseId 与 bundleId 必须二选一")
+    public boolean isExactlyOne() {
+        return (courseId != null) ^ (bundleId != null);
+    }
+
     public Long getCourseId() { return courseId; }
-
     public void setCourseId(Long courseId) { this.courseId = courseId; }
-
     public Long getBundleId() { return bundleId; }
-
     public void setBundleId(Long bundleId) { this.bundleId = bundleId; }
 }
