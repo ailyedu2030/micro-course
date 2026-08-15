@@ -350,7 +350,7 @@ public class TtsServiceImpl implements TtsService {
         bodyMap.put("voice_setting", voiceSetting);
 
         var audioSetting = new java.util.LinkedHashMap<String, Object>();
-        audioSetting.put("sample_rate", 32000);
+        audioSetting.put("sample_rate", com.microcourse.constants.ApiConstants.DEFAULT_SAMPLE_RATE);
         audioSetting.put("format", "mp3");
         audioSetting.put("bitrate", 128000);
         audioSetting.put("channel", 1);
@@ -655,7 +655,7 @@ public class TtsServiceImpl implements TtsService {
         bodyMap.put("voice_setting", voiceSetting);
 
         var audioSetting = new java.util.LinkedHashMap<String, Object>();
-        audioSetting.put("sample_rate", 32000);
+        audioSetting.put("sample_rate", com.microcourse.constants.ApiConstants.DEFAULT_SAMPLE_RATE);
         audioSetting.put("format", "mp3");
         audioSetting.put("bitrate", 128000);
         audioSetting.put("channel", 1);

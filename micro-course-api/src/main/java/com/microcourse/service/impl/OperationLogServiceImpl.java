@@ -175,7 +175,7 @@ public class OperationLogServiceImpl implements OperationLogService {
         }
         wrapper.orderByDesc(OperationLog::getCreatedAt);
         // 使用 MyBatis-Plus 分页代替 LIMIT 10000，支持真正的分页控制
-        Page<OperationLog> pg = new Page<>(1, 10000);
+        Page<OperationLog> pg = new Page<>(1, com.microcourse.constants.ApiConstants.OPERATION_LOG_LIMIT);
         return operationLogRepository.selectPage(pg, wrapper).getRecords();
     }
 

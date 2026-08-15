@@ -397,9 +397,9 @@ public class AdminStatsServiceImpl implements AdminStatsService {
         try {
             RuntimeMXBean runtimeMXBean = ManagementFactory.getRuntimeMXBean();
             long uptimeMs = runtimeMXBean.getUptime();
-            long uptimeDays = uptimeMs / 86400000;
-            long uptimeHours = (uptimeMs % 86400000) / 3600000;
-            long uptimeMinutes = (uptimeMs % 3600000) / 60000;
+            long uptimeDays = uptimeMs / com.microcourse.constants.ApiConstants.MILLIS_PER_DAY;
+            long uptimeHours = (uptimeMs % com.microcourse.constants.ApiConstants.MILLIS_PER_DAY) / com.microcourse.constants.ApiConstants.MILLIS_PER_HOUR;
+            long uptimeMinutes = (uptimeMs % com.microcourse.constants.ApiConstants.MILLIS_PER_HOUR) / com.microcourse.constants.ApiConstants.MILLIS_PER_MINUTE;
             health.put("uptime", String.format("%d天%d小时%d分钟", uptimeDays, uptimeHours, uptimeMinutes));
         } catch (Exception e) {
             log.warn("JVM uptime 获取失败: {}", e.getMessage());

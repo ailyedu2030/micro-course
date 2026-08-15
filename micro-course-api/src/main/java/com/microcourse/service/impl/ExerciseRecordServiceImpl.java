@@ -645,7 +645,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                .ge(ExerciseRecord::getSubmittedAt, since)
                .orderByAsc(ExerciseRecord::getSubmittedAt);
         // 使用 MyBatis-Plus 分页代替 LIMIT 2000，防止 OOM
-        Page<ExerciseRecord> pg = new Page<>(1, 2000);
+        Page<ExerciseRecord> pg = new Page<>(1, com.microcourse.constants.ApiConstants.STATS_LIMIT);
         List<ExerciseRecord> records = exerciseRecordRepository.selectPage(pg, wrapper).getRecords();
 
         // P0 修复: 基于逐题 isCorrect 统计正确率，而非基于整卷 passed

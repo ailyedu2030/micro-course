@@ -592,6 +592,9 @@ public class SlideServiceImpl implements SlideService {
     /** 章节级锚点 section 标题约定（既有数据即用此约定：course_sections.id=50 "HTML 课件节"）。 */
     private static final String CHAPTER_ANCHOR_SECTION_TITLE = "HTML 课件节";
 
+    /** P2-1-2026-08-15 · 页面重排序临时排序号间隔（避免相邻页交换时排序号冲突） */
+    private static final int PAGE_REORDER_OFFSET = 50000;
+
     /** F-2026-08-10-02：章节级 PPT 锚点 section 标题（与 HTML 锚点对称；slide_ppt_pages.section_id NOT NULL 需真实 section 承载）。 */
     private static final String PPT_ANCHOR_SECTION_TITLE = "PPT 课件节";
 
@@ -1915,7 +1918,7 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
         verifyOwner(courseId);
-        int TEMP_OFFSET = 50000;
+        int TEMP_OFFSET = PAGE_REORDER_OFFSET;
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;

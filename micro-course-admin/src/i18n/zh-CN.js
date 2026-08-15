@@ -477,6 +477,29 @@ export default {
     partialLoadFailed: '部分数据加载失败',
     trendDataLoadFailed: '学习趋势数据加载失败'
   },
+  // ---- AchievementWall.vue（i18n 化新增）----
+  achievementWall: {
+    title: '我的成就',
+    badgeCount: '已获得 {earned} 个徽章 / 共 {total} 种徽章',
+    earned: '已获得',
+    locked: '未解锁',
+    loadFailedTitle: '加载失败',
+    loadFailedSubtitle: '成就数据加载异常，请稍后重试',
+    noData: '暂无成就徽章数据',
+    noEarned: '暂无已获得徽章，继续加油！',
+    allUnlocked: '所有徽章已解锁！',
+    earnedAt: '获得于 {date}',
+    criteria: '条件：{criteria}',
+    unknownCriteria: '未知条件',
+    criteriaStreakDays: '连续学习打卡',
+    criteriaTotalCourses: '完成课程数',
+    criteriaTotalVideos: '观看视频数',
+    criteriaTotalExercises: '完成习题数',
+    criteriaReviewCount: '复习次数',
+    criteriaDiscussionCount: '发贴讨论数',
+    criteriaValue: '{type} {value} 次',
+    fetchFailed: '加载成就数据失败，请稍后重试'
+  },
   video: {
     playing: '视频播放',
     loading: '视频加载中',
@@ -517,7 +540,13 @@ export default {
     objectiveLabel: '本节目标',
     objectiveDefault: '掌握核心概念',
     back: '返回',
-    chapterList: '章节列表'
+    chapterList: '章节列表',
+    // ---- VideoPlayer.vue（i18n 化新增）----
+    subtitleTrackLabel: '中文字幕',
+    jumpToTime: '跳转到 {time}',
+    notesSaveFailed: '笔记保存失败',
+    chaptersLoadFailed: '章节列表加载失败，部分功能不可用',
+    progressLoadFailed: '学习进度加载失败，进度记忆不可用'
   },
   slidePlayer: {
     previewBanner: '教师预览模式 · 不会记录学习进度 · quiz 回答不影响分支跳转',
@@ -760,7 +789,20 @@ export default {
     courseCount: '课程数量',
     totalPrice: '合计',
     amount: '金额',
-    pendingPayment: '确认支付'
+    pendingPayment: '确认支付',
+    // ---- Checkout.vue（i18n 化新增）----
+    breadcrumbAria: '面包屑',
+    coverAlt: '{title} 封面',
+    paymentHint: '当前仅支持余额支付，其他支付方式即将开放',
+    cartEmptyOrOffline: '购物车为空或部分商品已下架',
+    pay: '支付',
+    confirmPayMessage: '确认支付 ¥{amount}？',
+    orderPendingMsg: '订单未完成支付',
+    failedOrdersWarning: '{count} 个订单支付异常，请查看详情',
+    batchFailedMsg: '批量处理失败，正在逐一处理…',
+    itemPayError: '「{title}」{msg}',
+    retrySummary: '重试完成：{success} 成功，{failed} 失败',
+    allPaidSuccess: '所有课程支付成功！'
   },
   order: {
     pay: '确认支付',
@@ -856,6 +898,15 @@ export default {
   },
   favorite: {
     noData: '暂无收藏数据'
+  },
+  // ---- StudentFavorites.vue（i18n 化新增）----
+  studentFavorites: {
+    courseAria: '课程：{title}',
+    coverAlt: '{title} 封面',
+    cancel: '取消收藏',
+    fetchFailed: '获取收藏列表失败',
+    confirmRemove: '确定取消收藏？',
+    removed: '已取消收藏'
   },
   platformShare: {
     title: '平台分账配置',
@@ -2367,6 +2418,33 @@ export default {
     addSuccess: '新增成功',
     addFailed: '新增失败',
     confirmRemoveItem: '确定从套餐中移除「{title}」？'
+  },
+  // ---- BundleDetail.vue（i18n 化新增）----
+  bundleDetail: {
+    subtitleCount: '套件子课（{count} 门）',
+    courseAria: '课程：{title}',
+    htmlCourseware: 'HTML 课件',
+    pptCourseware: 'PPT 课件',
+    offline: '线下',
+    video: '视频',
+    required: '必修',
+    elective: '选修',
+    studentsCount: '{count} 人已学习',
+    containsRequired: '含 {count} 门必修课',
+    electiveSuffix: ' + {count} 门选修课',
+    startNext: '开始学习（下一节）',
+    joinNow: '立即加入',
+    buyNowPrice: '立即购买 · ¥{price}',
+    learningPath: '套餐学习路径',
+    courseFallback: '课程 {id}',
+    notCompleted: '未完成',
+    loadFailed: '加载套件失败',
+    noCourses: '套餐内暂无课程',
+    allEnrolled: '已选修所有课程',
+    joinedSuccess: '加入成功',
+    confirmPayMessage: '确认支付 ¥{amount} 吗？',
+    payConfirmTitle: '支付确认',
+    purchaseSuccess: '购买成功'
   },
   // ---- DiscussionView.vue（i18n 化新增）----
   discussion: {

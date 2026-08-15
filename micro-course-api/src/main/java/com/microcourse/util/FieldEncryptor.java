@@ -52,7 +52,10 @@ public class FieldEncryptor {
         try {
             return encryptor.decrypt(payload);
         } catch (Exception e) {
-            return encrypted;
+            // P2-2-2026-08-15 · 解密失败返回 null 而非密文伪明文：让上层感知数据异常（如密钥轮换/数据损坏）
+            // 若静默返回密文，业务层会把它当"正常明文"展示/写入，造成不可感知的数据损坏。
+            log.warn("[FieldEncryptor] 解密失败，返回 null 标记异常（可能密钥轮换或数据损坏）: {}", e.getMessage());
+            return null;
         }
     }
 
