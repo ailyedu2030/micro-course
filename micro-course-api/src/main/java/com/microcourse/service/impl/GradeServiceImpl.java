@@ -161,9 +161,7 @@ public class GradeServiceImpl implements GradeService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权为该课程创建成绩");
-        }
+        assertCourseOwner(course, "无权为该课程创建成绩");
 
         // P1: 重复提交防护 — 同一课程+学生+练习只允许一条成绩
         LambdaQueryWrapper<Grade> dupWrapper = new LambdaQueryWrapper<>();
@@ -219,12 +217,7 @@ public class GradeServiceImpl implements GradeService {
         BigDecimal oldScore = grade.getScore();
 
         // EXAM-NEW-4 修复:教师越权校验 — 只有课程教师或 ADMIN 可修改成绩
-        if (grade.getCourseId() != null) {
-            Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION);
-            }
-        }
+        assertCourseOwnerByGrade(grade, "无权修改该成绩记录");
 
         // P1C-089: 成绩锁定 — COMPLETED 状态后禁止修改成绩
         if (grade.getCourseId() != null && grade.getUserId() != null) {
@@ -290,12 +283,7 @@ public class GradeServiceImpl implements GradeService {
             throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
         // P0-8: 删除权限校验 — 只有课程教师或 ADMIN 可删除
-        if (grade.getCourseId() != null) {
-            Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权删除该成绩记录");
-            }
-        }
+        assertCourseOwnerByGrade(grade, "无权删除该成绩记录");
         gradeRepository.deleteById(id);
     }
 
@@ -320,9 +308,7 @@ public class GradeServiceImpl implements GradeService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权批改该课程成绩");
-        }
+        assertCourseOwner(course, "无权批改该课程成绩");
 
         // 3. 查找是否已有成绩记录（同课程+同学生，无 exerciseId）
         LambdaQueryWrapper<Grade> existWrapper = new LambdaQueryWrapper<>();
@@ -772,5 +758,29 @@ public class GradeServiceImpl implements GradeService {
         @Override public int hashCode() {
             return Objects.hash(userId, exerciseId, attemptNo);
         }
+    }
+
+    /**
+     * I18-2026-08-15 · 统一成绩权限校验：只有课程授课教师或 ADMIN 可操作。
+     * 消除 create/update/delete/teacherGrade 四处逐字重复的"反查 course + isOwnerOrAdmin"代码块。
+     */
+    private void assertCourseOwner(Course course, String deniedMessage) {
+        if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, deniedMessage);
+        }
+    }
+
+    /**
+     * 通过成绩记录反查课程并校验权限。
+     *
+     * @param grade 成绩记录（须非空）
+     * @param deniedMessage 越权时的提示语
+     */
+    private void assertCourseOwnerByGrade(Grade grade, String deniedMessage) {
+        if (grade.getCourseId() == null) {
+            return;
+        }
+        Course course = courseRepository.selectById(grade.getCourseId());
+        assertCourseOwner(course, deniedMessage);
     }
 }

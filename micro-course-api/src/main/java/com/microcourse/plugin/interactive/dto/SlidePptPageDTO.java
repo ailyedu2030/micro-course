@@ -1,7 +1,5 @@
 package com.microcourse.plugin.interactive.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -19,11 +17,11 @@ import java.time.LocalDateTime;
  */
 public class SlidePptPageDTO {
 
-    @NotNull(message = "slideId 不能为空")
+    // slideId/pageNumber 仅 @Positive（允许 null）：updatePage 是 PATCH 部分更新，
+    // slideId 由 path 决定并被 BeanUtils.copyProperties 显式忽略；create 时由 Service 校验
     @Positive(message = "slideId 必须为正数")
     private Long slideId;
 
-    @NotNull(message = "pageNumber 不能为空")
     @Positive(message = "pageNumber 必须为正数")
     private Integer pageNumber;
 
