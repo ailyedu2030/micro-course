@@ -278,7 +278,7 @@ async function loadExams() {
 async function loadCourses() {
   try {
     // P1-修复: 不按 teacherId 过滤,管理员也能看到所有课程
-    const { data } = await getCourses({ size: 200 })
+    const { data } = await getCourses({ size: 100 })
     const list = data?.items || []
     courseOptions.value = list
     list.forEach(c => { courseTitleMap.value[c.id] = c.title })
@@ -319,7 +319,7 @@ function handleReset() {
 async function openScheduleDialog() {
   showSchedule.value = true
   try {
-    const { data } = await getExamList({ isExam: true, size: 200 })
+    const { data } = await getExamList({ isExam: true, size: 100 })
     scheduleExamOptions.value = data?.items || []
   } catch { scheduleExamOptions.value = [] }
 }

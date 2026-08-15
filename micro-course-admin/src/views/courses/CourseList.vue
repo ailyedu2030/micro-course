@@ -326,6 +326,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { COURSE_TYPE_OPTIONS, COURSE_TYPE_LABELS, getCourseTypeConfig, isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getChapters } from '@/api/chapter'
 import { createOfflineSession } from '@/api/offline-session'
 import { getCategories } from '@/api/course-category'
@@ -688,10 +689,9 @@ const handleExport = async () => {
   }
   try {
     ElMessage.info(t('course.exportFetching'))
-    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变，size 设为 5000(上限)
+    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变
+    // P1-I-2026-08-15（R3 审查）· 改用 fetchAllPages 循环分页，规避后端 size 上限触发 400
     const exportParams = {
-      page: 0,
-      size: 5000,
       keyword: searchForm.keyword || undefined,
       categoryId: searchForm.categoryId || undefined,
       teacherName: searchForm.teacherName || undefined,
@@ -699,8 +699,7 @@ const handleExport = async () => {
       courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
       teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
     }
-    const { data } = await getCourses(exportParams)
-    const allData = data.items || []
+    const allData = await fetchAllPages(getCourses, exportParams, 100)
     const exportData = allData.map((item, index) => ({
       [i18nT('course.index')]: index + 1,
       [i18nT('course.tableTitle')]: item.title || '',
@@ -814,7 +813,7 @@ const courseOptions = ref([])  // 线下课课程选择器
     watch(showOfflineDialog, async (v) => {
   if (v) {
     try {
-      const { data } = await getCourses({ size: 200 })
+      const { data } = await getCourses({ size: 100 })
       courseOptions.value = data?.items || []
     } catch { courseOptions.value = [] }
   }

@@ -250,6 +250,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getExercises, createExercise, updateExercise, deleteExercise, addQuestionsToExercise, removeQuestionFromExercise } from '@/api/exercise'
 import { getQuestions } from '@/api/question'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getCategories } from '@/api/course-category'
@@ -334,10 +335,9 @@ watch(() => formData.courseId, async (val) => {
   pickedQuestions.value = []
   if (!val) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
-    const params = { courseId: val, size: 1009 }
+    const params = { courseId: val }
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    const items = data?.items || []
+    const items = await fetchAllPages(getQuestions, params, 100)
     const filterDiff = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
     const filtered = filterDiff != null ? items.filter(q => q.difficulty === filterDiff) : items
     totalBankCount.value = filtered.length
@@ -356,10 +356,9 @@ async function handleRandomPick() {
   const picks = {}
   for (const s of bankStats.value) { if (s.pickCount > 0) picks[s.type] = s.pickCount }
   try {
-    const params = { courseId: formData.courseId, size: 1009 }
+    const params = { courseId: formData.courseId }
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    let all = data?.items || []
+    let all = await fetchAllPages(getQuestions, params, 100)
     const rd = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
     if (rd != null) all = all.filter(q => q.difficulty === rd)
     const picked = []

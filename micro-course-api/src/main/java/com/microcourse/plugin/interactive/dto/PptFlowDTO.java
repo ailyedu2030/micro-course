@@ -1,7 +1,5 @@
 package com.microcourse.plugin.interactive.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -14,20 +12,21 @@ import java.time.LocalDateTime;
  */
 public class PptFlowDTO {
 
-    @NotNull(message = "sectionId 不能为空")
+    // P0-2026-08-15 · 校验修正（R4 审查）：
+    // - sectionId 由 Controller 方法体 dto.setSectionId(sectionId) 从 path 填充，前端不传 → 允许 null
+    // - toPageId 允许 null（V306 DB 明确 to_page_id BIGINT NULL = "课件结束" 语义）
+    // - updateFlow 是 PATCH 部分更新 → 不允许 @NotNull 全字段必填
+    // - 必填校验下沉 Service 层 createFlow（见 PptCoursewareServiceImpl）
     @Positive(message = "sectionId 必须为正数")
     private Long sectionId;
 
-    @NotNull(message = "fromPageId 不能为空")
     @Positive(message = "fromPageId 必须为正数")
     private Long fromPageId;
 
-    @NotNull(message = "toPageId 不能为空")
     @Positive(message = "toPageId 必须为正数")
     private Long toPageId;
 
-    @NotBlank(message = "flowType 不能为空")
-    @Size(max = 50, message = "flowType 长度不能超过 50 字符")
+    @Size(max = 20, message = "flowType 长度不能超过 20 字符")
     private String flowType;
 
     @Positive(message = "priority 必须为正数")

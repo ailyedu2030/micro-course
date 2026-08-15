@@ -122,7 +122,7 @@ const specialtyTitle = computed(() => {
 const fetchSpecialties = async () => {
   loadingSpecialties.value = true
   try {
-    const { data } = await getMicroSpecialtyList({ size: 200 })
+    const { data } = await getMicroSpecialtyList({ size: 100 })
     specialtyOptions.value = data.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadSpecialtiesFailed')) }
   finally { loadingSpecialties.value = false }

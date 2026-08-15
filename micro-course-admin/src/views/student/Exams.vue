@@ -372,7 +372,7 @@ async function checkPrerequisiteChapters(exam) {
 
   try {
     // 1. 获取课程下所有章节（按 sortOrder 排序）
-    const chaptersRes = await getChapters({ courseId, page: 0, size: 200 })
+    const chaptersRes = await getChapters({ courseId, page: 0, size: 100 })
     const chapters = chaptersRes.data?.items || chaptersRes.data || []
     if (chapters.length === 0) return true
 

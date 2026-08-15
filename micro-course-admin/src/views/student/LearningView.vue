@@ -338,7 +338,7 @@ async function loadCourse(cid) {
     const [courseRes, progressRes, videosRes] = await Promise.all([
       getCourseById(cid),
       getLearningProgress({ courseId: cid }),
-      getVideos({ courseId: cid, size: 200 })
+      getVideos({ courseId: cid, size: 100 })
     ])
 
     course.value = courseRes.data || {}

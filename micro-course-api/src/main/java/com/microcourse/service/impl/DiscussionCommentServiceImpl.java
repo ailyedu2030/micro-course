@@ -75,7 +75,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         wrapper.eq(DiscussionComment::getPostId, postId)
                .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())
                .orderByAsc(DiscussionComment::getCreatedAt)
-               .last("LIMIT " + com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE); // P1-I-2026-08-15: 100 条硬上限（Controller 兼容旧调用）
+               .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM（R4 审查：恢复 500，避免评论树 >100 条时第 101+ 条丢失；分页走 pagePaged）
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);
 
         // 获取帖子 OP 的 userId 用于 isOp 标记
@@ -90,7 +90,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
     public PageResult<DiscussionCommentVO> pagePaged(Long postId, int page, int size) {
         // P1-I-2026-08-15 · 新分页契约：平铺查询（不做树构建——分页场景下树结构跨页无意义）
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<DiscussionComment> mpPage =
-            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page + 1, size); // MP 1-based，page 0-based → +1
         LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(DiscussionComment::getPostId, postId)
                .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())

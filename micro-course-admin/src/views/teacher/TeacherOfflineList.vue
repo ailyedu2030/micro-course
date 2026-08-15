@@ -229,7 +229,7 @@ const currentAttendanceSessionId = ref(null)
 
 const fetchCourses = async () => {
   try {
-    const params = { size: 200 }
+    const params = { size: 100 }
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data?.items || []
@@ -373,7 +373,7 @@ const handleAttendance = async (row) => {
   showAttendanceDialog.value = true
   attendanceLoading.value = true
   try {
-    const { data } = await getAttendance(row.id, { page: 0, size: 200 })
+    const { data } = await getAttendance(row.id, { page: 0, size: 100 })
     attendanceData.value = (data?.items || []).map(r => ({ ...r, editStatus: r.status }))
   } catch {
     ElMessage.error(t('teacherOffline.fetchAttendanceFailed'))

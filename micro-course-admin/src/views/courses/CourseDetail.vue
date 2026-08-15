@@ -506,7 +506,7 @@ const fetchCategories = async () => {
 // 管理员/教务创建课程需选择授课教师（P1-C：后端 teacher_id NOT NULL）
 const fetchTeachers = async () => {
   try {
-    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 500 })
+    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 100 })
     teacherOptions.value = data?.items || data || []
   } catch { teacherOptions.value = [] }
 }

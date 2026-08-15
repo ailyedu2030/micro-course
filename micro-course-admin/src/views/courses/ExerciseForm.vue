@@ -193,6 +193,7 @@ import { getExerciseById, createExercise, updateExercise, addQuestionsToExercise
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getQuestions } from '@/api/question'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
@@ -249,11 +250,10 @@ const pickDifficulty = ref('')
 async function refreshBankStats() {
   if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
-    const params = { courseId: formData.courseId, size: 1009 }
+    const params = { courseId: formData.courseId }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    const items = data?.items || []
+    const items = await fetchAllPages(getQuestions, params, 100)
     const filterDiff = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
     const filtered = filterDiff != null ? items.filter(q => q.difficulty === filterDiff) : items
     totalBankCount.value = filtered.length
@@ -276,11 +276,10 @@ async function handleRandomPick() {
     if (s.pickCount > 0) picks[s.type] = s.pickCount
   }
   try {
-    const params = { courseId: formData.courseId, size: 1009 }
+    const params = { courseId: formData.courseId }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    let all = data?.items || []
+    let all = await fetchAllPages(getQuestions, params, 100)
     // 如果后端不支持按难度过滤，前端再过滤一次
     if (pickDifficulty.value && all.some(q => q.difficulty)) {
       const rd = resolveDifficulty(pickDifficulty.value)

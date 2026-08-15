@@ -559,7 +559,7 @@ async function fetchDepartments() {
   if (!['ADMIN', 'ACADEMIC'].includes(userStore.role)) return
   deptLoading.value = true
   try {
-    const { data } = await getDepartments({ page: 0, size: 200 })
+    const { data } = await getDepartments({ page: 0, size: 100 })
     deptOptions.value = data?.items || []
   } catch {
     ElMessage.error(t('studentGrades.fetchDepartmentsFailed'))
