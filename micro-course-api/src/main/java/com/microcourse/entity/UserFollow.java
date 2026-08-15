@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("user_follows")
+@Deprecated
 public class UserFollow {
 
     @TableId(type = IdType.AUTO)
