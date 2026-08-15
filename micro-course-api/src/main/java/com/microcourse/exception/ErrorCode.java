@@ -26,7 +26,7 @@ public enum ErrorCode {
     STUDENT_NO_EXISTS(5003, "学号/工号已存在", 409),
     EMAIL_EXISTS(5004, "邮箱已存在", 409),
     DELETED_USER_RETENTION_EXPIRED(5005, "用户已删除超过 180 天，无法恢复", 400),
-    RATE_LIMITED(429, "请求过于频繁", 429),
+    RATE_LIMITED(4290, "请求过于频繁", 429),
     COURSE_NOT_FOUND(6001, "课程不存在", 404),
     COURSE_HAS_ENROLLMENTS(6002, "该课程下有学生选课，无法关闭", 400),
     COURSE_ARCHIVED(6009, "已归档课程不可操作", 400),
@@ -171,8 +171,8 @@ public enum ErrorCode {
     CANNOT_APPROVE_SELF(9010, "不能审批自己的申报", 403),
 
     // P1I-052: 补充常用系统级错误码
-    CONCURRENT_MODIFICATION(409, "数据已被其他操作修改，请刷新重试", 409),
-    INTERNAL_SERVER_ERROR(500, "服务器内部错误", 500),
+    CONCURRENT_MODIFICATION(4090, "数据已被其他操作修改，请刷新重试", 409),
+    INTERNAL_SERVER_ERROR(5000, "服务器内部错误", 500),
 
     // Hermes 集成错误码
     HERMES_INVALID_API_KEY(21001, "无效的 Hermes API Key", 401);

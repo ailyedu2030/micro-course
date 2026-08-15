@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import java.time.LocalDateTime;
 
 @TableName("attachments")
+@Deprecated
 public class Attachment {
 
     @TableId(type = IdType.AUTO)
