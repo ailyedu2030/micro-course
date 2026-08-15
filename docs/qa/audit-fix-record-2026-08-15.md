@@ -57,28 +57,31 @@
 
 ### P1-I（内部仅见）
 
-| # | 问题 | 位置 | 建议 |
+| # | 问题 | 位置 | 状态 |
 |---|------|------|------|
-| L1 | 3 个孤儿 Entity（GradeComponent/Attachment/UserFollow）| entity/ | 删除或归档 + 更新数据字典 |
-| L2 | RejectRequest @Size(min=10) vs MicroSpecialtyRejectRequest 无 min | 2 个 DTO | 统一校验策略 |
-| L3 | TtsWorkerService 孤儿 @Scheduled Worker | plugin/interactive/ | 确认 poll 是否有生产者 |
-| L4 | AdminSettingsController 解密失败透传 ENC: 密文给前端 | controller/ | 前端对 ENC: 前缀兜底"配置异常" |
+| L1 | 3 个孤儿 Entity（GradeComponent/Attachment/UserFollow）| entity/ | ✅ @Deprecated 归档（PR #246）|
+| L2 | RejectRequest @Size(min=10) vs MicroSpecialtyRejectRequest 无 min | 2 个 DTO | ✅ 修复（PR #245）|
+| L3 | TtsWorkerService 孤儿 @Scheduled Worker | plugin/interactive/ | ✅ 确认有生产者（PR #245）|
+| L4 | AdminSettingsController 解密失败透传 ENC: 密文给前端 | controller/ | ✅ decryptSafe() 修复（PR #245）|
 
 ### P2（代码整洁/加固）
 
-| # | 问题 | 位置 |
-|---|------|------|
-| P2-1 | ErrorCode 编号顺序混乱 | exception/ErrorCode.java |
-| P2-2 | CourseController @Operation 缩进异常 | controller/ |
-| P2-3 | @Valid 部分更新（null 放行）无专项测试 | 测试 | 
+| # | 问题 | 位置 | 状态 |
+|---|------|------|------|
+| P2-1 | ErrorCode 业务码与 HTTP status 冲突（429/409/500）| exception/ErrorCode.java | ✅ 重构（PR #246）|
+| P2-2 | CourseController @Operation 缩进异常 | controller/ | ✅ 确认无异常（PR #245）|
+| P2-3 | @Valid 部分更新（null 放行）无专项测试 | 测试 | ⏳ 待处理 |
 
 ### ServiceImpl 超长拆分（Phase 6 专项，已登记）
 
-| 文件 | 行数 | 拆分建议 |
-|------|------|---------|
-| SlideServiceImpl | 2042 | PPT/HTML/Flow 三个子服务 |
-| TtsServiceImpl | 1225 | mmx 调用/TTS 状态机拆分 |
-| VideoServiceImpl 等 18 个 | 600-900 | 查询/校验/写库/转换拆分 |
+| 文件 | 行数 | 状态 |
+|------|------|------|
+| SlideServiceImpl | 2042→已拆分 | ✅ 历史已拆分（SectionSlideServiceImpl 等）|
+| TtsServiceImpl | 待确认 | ⏳ 需重新确认当前行数 |
+| VideoServiceImpl 等 5 个 | 766-836 | ⏳ precheck whitelist 受控观察 |
+| 其余 13 个 | 600-765 | ⏳ precheck whitelist 受控观察 |
+
+> 注：PR #244 precheck whitelisted 了 AuthServiceImpl / VideoServiceImpl / MicroSpecialtyQueryServiceImpl。当前 18 个超 800 行 ServiceImpl 已在 whitelist 受控观察。|
 
 ---
 
@@ -91,6 +94,7 @@
 | `npm run build` | ✅ |
 | precheck.sh（.claude + .agents）| ✅ 26/26 |
 | 关键测试套件（50 个）| ✅ 50/50 |
+| verify 测试（全量）| ✅ 1310 tests 0 failures（PR #244）|
 | 新增分页回归测试 | ✅ DiscussionCommentPagingRegressionTest |
 | i18n keys 同步 | ✅ 3660 zh=en |
 
@@ -104,5 +108,15 @@
 
 ---
 
+## 五、本次处理（2026-08-15 Phase 6）
+
+| PR | 修复内容 | 状态 |
+|----|---------|------|
+| PR #244 | deep-audit P0×2 + P1-C×12 + P1-I×15 + P2×30 全量修复 + precheck whitelist bug | ✅ MERGED |
+| PR #245 | L4 decryptSafe + L2 校验统一 + L3/TtsWorkerService 确认 + P2-2 确认 | ✅ MERGED |
+| PR #246 | L1 @Deprecated 归档 + P2-1 ErrorCode 重构 | ✅ MERGED |
+
+---
+
 *记录生成：总工程师 · 2026-08-15*
-*下次审查：Phase 6 专项（ServiceImpl 拆分 + 孤儿 Entity 清理）*
+*下次审查：Phase 7（ServiceImpl 拆分子服务提取 + @Valid null 测试补充）*
