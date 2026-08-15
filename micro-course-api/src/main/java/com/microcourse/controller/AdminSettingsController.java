@@ -176,13 +176,24 @@ public class AdminSettingsController {
         dto.setServerUrl(adminSettingService.getByKey("cas_server_url"));
         dto.setServiceUrl(adminSettingService.getByKey("cas_service_url"));
         dto.setVersion(adminSettingService.getByKey("cas_version"));
-        dto.setAdminUsername(fieldEncryptor.decrypt(adminSettingService.getByKey("cas_admin_username")));
-        String superAdmins = fieldEncryptor.decrypt(adminSettingService.getByKey("cas_super_admins"));
+        dto.setAdminUsername(decryptSafe(adminSettingService.getByKey("cas_admin_username")));
+        String superAdmins = decryptSafe(adminSettingService.getByKey("cas_super_admins"));
         dto.setSuperAdmins(superAdmins != null && !superAdmins.isEmpty()
                 ? List.of(superAdmins.split(",")) : List.of());
         dto.setValidateSsl(Boolean.parseBoolean(
                 adminSettingService.getByKey("cas_validate_ssl") != null
                         ? adminSettingService.getByKey("cas_validate_ssl") : "true"));
         return R.ok(dto);
+    }
+
+    private String decryptSafe(String value) {
+        if (value == null || value.isBlank()) return value;
+        String decrypted = fieldEncryptor.decrypt(value);
+        if (decrypted.startsWith("ENC:")) {
+            org.slf4j.LoggerFactory.getLogger(getClass()).warn(
+                    "[AdminSettingsController] CAS 敏感字段解密失败，返回占位符（配置损坏或密钥变更）");
+            return "[配置异常]";
+        }
+        return decrypted;
     }
 }
