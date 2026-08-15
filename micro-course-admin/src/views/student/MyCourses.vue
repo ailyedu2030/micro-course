@@ -798,7 +798,7 @@ async function loadVideoProgress() {
   const inProgress = inProgressCourses.value
   if (inProgress.length === 0) return
   const chapterResults = await Promise.allSettled(
-    inProgress.map(e => getChapters({ courseId: e.courseId, size: 1000 }))
+    inProgress.map(e => getChapters({ courseId: e.courseId, size: 100 }))
   )
   const newVideoProgressMap = {}
   chapterResults.forEach((result, idx) => {

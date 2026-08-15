@@ -201,7 +201,7 @@ const showAddDialog = async () => {
   const maxOrder = courses.value.length > 0 ? Math.max(...courses.value.map(c => c.sortOrder || 0)) : 0
   addForm.value = { courseId: null, sortOrder: maxOrder + 1, isRequired: true, credits: 2, hours: 32, minScore: 60 }
   try {
-    const { data } = await getAllCourses({ page: 0, size: 1000 })
+    const { data } = await getAllCourses({ page: 0, size: 100 })
     availableCourses.value = data?.items || data || []
   } catch (e) {
     availableCourses.value = []

@@ -437,7 +437,7 @@ const formRules = {
 
 const fetchCategories = async () => {
   try {
-    const { data } = await getCategories({ size: 1000 })
+    const { data } = await getCategories({ size: 100 })
     categories.value = data.items || []
   } catch {
     ElMessage.error(t('course.fetchCategoriesFailed'))
@@ -447,7 +447,7 @@ const fetchTeachers = async () => {
   // TEACHER 角色无需下拉选自己（也无权限查用户列表）
   if (userStore.role === 'TEACHER') { teacherOptions.value = []; return }
   try {
-    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
+    const { data } = await getUsers({ role: 'TEACHER', size: 100 })
     teacherOptions.value = data.items || []
   } catch { teacherOptions.value = [] }
 }

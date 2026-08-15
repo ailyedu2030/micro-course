@@ -263,7 +263,7 @@ const handleCreate = async () => {
 
 const fetchColleges = async () => {
   try {
-    const { data } = await getDepartments({ size: 1000 })
+    const { data } = await getDepartments({ size: 100 })
     colleges.value = data.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyList.fetchCollegesFailed')) }
 }

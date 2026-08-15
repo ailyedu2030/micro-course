@@ -273,7 +273,7 @@ const fetchMyReviews = async () => {
     // 后端 getMyReviews(userId, page, size) 不支持 courseId 过滤，请求时不传 courseId
     const { data } = await getMyReviews({
       page: 0,
-      size: 1000  // 拉取大量数据，客户端侧过滤
+      size: 100  // 拉取大量数据，客户端侧过滤
     })
     const items = data?.items || data || []
     allReviews.value = items

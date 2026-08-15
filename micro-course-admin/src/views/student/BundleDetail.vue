@@ -111,7 +111,7 @@ onMounted(async () => {
     const promises = [getBundleById(bundleId.value)]
     if (isLoggedIn.value) {
       promises.push(getBundleEnrollmentStatus(bundleId.value))
-      promises.push(getMyEnrollments({ page: 0, size: 999 }))
+      promises.push(getMyEnrollments({ page: 0, size: 100 }))
     }
     const results = await Promise.all(promises)
     const bundleResp = results[0]
@@ -184,7 +184,7 @@ const handleBuy = async () => {
     } catch { buyLoading.value = false; return }
     await payOrder(order.id, 'BALANCE')
     // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
-    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 999 })
+    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 100 })
     const list = filterCourseCollectionEnrollments(Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || []))
     enrolledCourseIds.value = new Set(list.map(e => e.courseId))
     // 重新拉取最新状态

@@ -249,7 +249,7 @@ const pickDifficulty = ref('')
 async function refreshBankStats() {
   if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
-    const params = { courseId: formData.courseId, size: 9999 }
+    const params = { courseId: formData.courseId, size: 1009 }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
@@ -276,7 +276,7 @@ async function handleRandomPick() {
     if (s.pickCount > 0) picks[s.type] = s.pickCount
   }
   try {
-    const params = { courseId: formData.courseId, size: 9999 }
+    const params = { courseId: formData.courseId, size: 1009 }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
@@ -398,7 +398,7 @@ const handleSubmit = async () => {
 
 const fetchCourseOptions = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []

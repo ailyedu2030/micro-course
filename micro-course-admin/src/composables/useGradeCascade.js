@@ -29,7 +29,7 @@ export function useGradeCascade() {
       return
     }
     try {
-      const { data } = await getMajors({ departmentId, size: 1000 })
+      const { data } = await getMajors({ departmentId, size: 100 })
       majors.value = data.items || []
     } catch {
       majors.value = []
@@ -43,7 +43,7 @@ export function useGradeCascade() {
       return
     }
     try {
-      const { data } = await getClasses({ majorId, size: 1000 })
+      const { data } = await getClasses({ majorId, size: 100 })
       classes.value = data.items || []
     } catch {
       classes.value = []

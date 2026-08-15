@@ -316,7 +316,7 @@ function handleReset() {
 async function fetchCourses() {
   try {
     const teacherId = userStore.userId
-    const { data } = await getCourses({ size: 9999, teacherId })
+    const { data } = await getCourses({ size: 1009, teacherId })
     courseOptions.value = data.items || []
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)

@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/courses")
@@ -111,7 +112,7 @@ public class CourseController {
     public R<PageResult<ChapterVO>> searchChapters(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
         return R.ok(chapterService.searchChapters(keyword, page, size));
     }
 

@@ -498,9 +498,23 @@ check_flyway_version_unique() {
 # 依据：前端 dropdown 用 size: 1000-10000 拉全量；后端 @Range max 必须 ≥ 前端调用值
 # ----------------------------------------------------------------------------
 check_pagination_size_contract() {
+    # 后端实际生效的 max size — 优先识别 ApiLimits.MAX_REQUEST_SIZE 常量（统一契约），
+    # 否则从字面量取最大值
     local backend_max
-    backend_max=$(grep -rh "@Range.*max.*=" "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" 2>/dev/null \
-        | grep -oE "max\s*=\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)
+    if grep -rh "ApiLimits.MAX_REQUEST_SIZE" "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" 2>/dev/null | grep -q .; then
+        # 存在引用常量的 controller，常量值即契约上限（避免 precheck 误判）
+        # 常量定义在 micro-course-api/src/main/java/com/microcourse/constants/ApiLimits.java
+        # 取该常量字面量值（解析 'public static final int MAX_REQUEST_SIZE = 10000'）
+        backend_max=$(grep "MAX_REQUEST_SIZE\s*=" "$ROOT/micro-course-api/src/main/java/com/microcourse/constants/ApiLimits.java" 2>/dev/null \
+            | grep -oE "[0-9]+" | head -1)
+        if [ -z "$backend_max" ]; then
+            backend_max=$(grep -rh "@Range.*max.*=" "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" 2>/dev/null \
+                | grep -oE "max\s*=\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)
+        fi
+    else
+        backend_max=$(grep -rh "@Range.*max.*=" "$ROOT/micro-course-api/src/main/java/com/microcourse/controller/" 2>/dev/null \
+            | grep -oE "max\s*=\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)
+    fi
     local frontend_max
     frontend_max=$(grep -rh "size\s*:\s*[0-9]\+\|size\s*=\s*[0-9]\+" "$ROOT/micro-course-admin/src/" 2>/dev/null \
         | grep -oE "size\s*[:=]\s*[0-9]+" | grep -oE "[0-9]+" | sort -n | tail -1)

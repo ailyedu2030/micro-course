@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/majors")
@@ -35,7 +36,7 @@ public class MajorController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<MajorVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE) int size) {
         PageResult<MajorVO> result = majorService.page(page, size);
         return R.ok(result);
     }

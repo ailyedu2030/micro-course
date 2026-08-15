@@ -468,7 +468,7 @@ watch(() => formData.role, (newRole, oldRole) => {
 
 const fetchDepartments = async () => {
   try {
-    const { data } = await getDepartments({ size: 1000 })
+    const { data } = await getDepartments({ size: 100 })
     departments.value = data.items || []
   } catch {
     ElMessage.error(t('userForm.fetchDepartmentsFailed'))

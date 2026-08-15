@@ -141,7 +141,7 @@ const stats = reactive({
 async function fetchStats() {
   try {
     // 获取全量选课数据用于统计（不分页）
-    const { data } = await getEnrollments({ page: 0, size: 1000 })
+    const { data } = await getEnrollments({ page: 0, size: 100 })
     const items = data.items || []
     stats.totalEnrollments = data.totalElements || items.length
     stats.activeEnrollments = items.filter(i => i.status === 'ENROLLED').length

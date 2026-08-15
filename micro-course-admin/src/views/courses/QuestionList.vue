@@ -245,6 +245,7 @@ import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getQuestions, createQuestion, updateQuestion, deleteQuestion, batchImportQuestion, exportQuestions } from '@/api/question'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getCategories } from '@/api/course-category'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
@@ -355,7 +356,7 @@ const formRules = {
 
 const fetchCategoryOptions = async () => {
   try {
-    const { data } = await getCategories({ size: 1000 })
+    const { data } = await getCategories({ size: 100 })
     categoryOptions.value = data.items || []
   } catch {
     ElMessage.error(t('question.fetchCategoriesFailed'))
@@ -364,7 +365,7 @@ const fetchCategoryOptions = async () => {
 
 const fetchCourseOptions = async () => {
   try {
-    const params = { size: 1000 }
+    const params = { size: 100 }
     if (userRole.value === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
@@ -430,15 +431,14 @@ const handleExportExcel = async () => {
   try {
     ElMessage.info(t('question.exporting'))
     const allParams = {
-      size: 10000,
       courseId: selectedCourseId.value || undefined,
       questionType: searchForm.questionType || undefined,
       difficulty: resolveDifficulty(searchForm.difficulty),
       categoryId: searchForm.categoryId || undefined,
       keyword: searchForm.keyword || undefined
     }
-    const { data } = await getQuestions(allParams)
-    const allData = data.items || []
+    // P1-I-2026-08-15 · 使用 fetchAllPages 循环翻页，避免后端 size 上限触发 400
+    const allData = await fetchAllPages(getQuestions, allParams, 100)
     if (allData.length === 0) {
       ElMessage.warning(t('question.noDataToExport'))
       return

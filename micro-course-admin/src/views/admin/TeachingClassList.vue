@@ -239,7 +239,7 @@ function getStatusType(status) {
 // 获取课程列表
 async function fetchCourses() {
   try {
-    const params = { size: 1000 }
+    const params = { size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []

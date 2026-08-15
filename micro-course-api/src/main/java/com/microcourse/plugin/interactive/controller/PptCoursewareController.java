@@ -7,6 +7,9 @@ import com.microcourse.plugin.interactive.dto.PptScriptDTO;
 import com.microcourse.plugin.interactive.dto.SlidePptPageDTO;
 import com.microcourse.plugin.interactive.service.PptCoursewareService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,7 +67,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> updatePage(@PathVariable Long courseId,
                                @PathVariable Long pageId,
-                               @RequestBody SlidePptPageDTO dto) {
+                               @Valid @RequestBody SlidePptPageDTO dto) {
         // P0-1 IDOR: page 必须属于该课程 + 当前用户是 owner
         pptService.verifyPageOwner(courseId, pageId);
         pptService.updatePage(pageId, dto);
@@ -106,7 +109,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> saveScript(@PathVariable Long courseId,
                                @PathVariable Long pageId,
-                               @RequestBody SaveScriptRequest body) {
+                               @Valid @RequestBody SaveScriptRequest body) {
         // P0-1 IDOR: page 必须属于该课程 + 当前用户是 owner
         pptService.verifyPageOwner(courseId, pageId);
         return R.ok(pptService.saveScript(pageId, body.scriptText(),
@@ -145,7 +148,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> generateAudio(@PathVariable Long courseId,
                                   @PathVariable Long scriptId,
-                                  @RequestBody GenerateAudioRequest body) {
+                                  @Valid @RequestBody GenerateAudioRequest body) {
         // P0-1 IDOR: script 所属 page 必须属于该课程 + 当前用户是 owner
         // (TTS 计费端点 — 防止消耗他人 TTS 额度)
         pptService.verifyScriptOwner(courseId, scriptId);
@@ -176,7 +179,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> createFlow(@PathVariable Long courseId,
                                @PathVariable Long sectionId,
-                               @RequestBody PptFlowDTO dto) {
+                               @Valid @RequestBody PptFlowDTO dto) {
         // P0-1 IDOR: section 必须属于该课程 + 当前用户是 owner
         pptService.verifySectionOwner(courseId, sectionId);
         dto.setSectionId(sectionId);
@@ -187,7 +190,7 @@ public class PptCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> updateFlow(@PathVariable Long courseId,
                               @PathVariable Long flowId,
-                              @RequestBody PptFlowDTO dto) {
+                              @Valid @RequestBody PptFlowDTO dto) {
         // P0-1 IDOR: flow 所属 section 必须属于该课程 + 当前用户是 owner
         pptService.verifyFlowOwner(courseId, flowId);
         pptService.updateFlow(flowId, dto);
@@ -206,6 +209,26 @@ public class PptCoursewareController {
 
     // ====== Request bodies ======
 
-    public record SaveScriptRequest(String scriptText, String voice, String ttsModel, Long createdBy) {}
-    public record GenerateAudioRequest(String voice, String model, String ttsParams) {}
+    public record SaveScriptRequest(
+        @NotBlank(message = "scriptText 不能为空")
+        @Size(max = 50000, message = "scriptText 长度不能超过 50000 字符")
+        String scriptText,
+        @NotBlank(message = "voice 不能为空")
+        @Size(max = 50, message = "voice 长度不能超过 50 字符")
+        String voice,
+        @Size(max = 50, message = "ttsModel 长度不能超过 50 字符")
+        String ttsModel,
+        @Positive(message = "createdBy 必须为正数")
+        Long createdBy
+    ) {}
+
+    public record GenerateAudioRequest(
+        @NotBlank(message = "voice 不能为空")
+        @Size(max = 50, message = "voice 长度不能超过 50 字符")
+        String voice,
+        @Size(max = 50, message = "model 长度不能超过 50 字符")
+        String model,
+        @Size(max = 1000, message = "ttsParams 长度不能超过 1000 字符")
+        String ttsParams
+    ) {}
 }

@@ -337,7 +337,7 @@ const resetCoverDialogState = () => {
 
 const fetchCourses = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
@@ -414,7 +414,7 @@ const handleCourseChange = async (courseId) => {
   chapterOptions.value = []
   if (!courseId) return
   try {
-    const { data } = await getChapters({ courseId, size: 1000 })
+    const { data } = await getChapters({ courseId, size: 100 })
     chapterOptions.value = data.items || []
   } catch {
     // chapters are optional for search; silently fail
@@ -441,7 +441,7 @@ const handleDialogCourseChange = async (courseId) => {
   formData.chapterId = null
   if (!courseId) { chapterOptions.value = []; return }
   try {
-    const { data } = await getChapters({ courseId, size: 1000 })
+    const { data } = await getChapters({ courseId, size: 100 })
     // chapterType列已删除,显示所有章节
     chapterOptions.value = data.items || []
   } catch { chapterOptions.value = [] }

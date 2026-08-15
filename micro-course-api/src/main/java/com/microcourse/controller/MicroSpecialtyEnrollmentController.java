@@ -49,7 +49,7 @@ public class MicroSpecialtyEnrollmentController {
     /** 驳回报名 → REJECTED */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('TEACHER','ACADEMIC')")
-    public R<Void> reject(@PathVariable Long id, @RequestBody MicroSpecialtyRejectRequest request) {
+    public R<Void> reject(@PathVariable Long id, @Valid @RequestBody MicroSpecialtyRejectRequest request) {
         String reason = request.getReason() != null ? request.getReason() : "";
         enrollmentService.reject(id, reason);
         return R.ok();
@@ -74,7 +74,7 @@ public class MicroSpecialtyEnrollmentController {
     /** 退出修读 */
     @PostMapping("/{id}/drop")
     @PreAuthorize("hasAnyRole('STUDENT','ADMIN')")
-    public R<Void> drop(@PathVariable Long id, @RequestBody DropRequest request) {
+    public R<Void> drop(@PathVariable Long id, @Valid @RequestBody DropRequest request) {
         enrollmentService.drop(id, request.isCascade(), request.getReason() != null ? request.getReason() : "");
         return R.ok();
     }

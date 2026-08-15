@@ -334,7 +334,7 @@ function switchChapter(id) {
 async function loadChapters() {
   if (!courseId.value) return
   try {
-    const res = await getChapters({ courseId: courseId.value, size: 999 })
+    const res = await getChapters({ courseId: courseId.value, size: 100 })
     chapterOptions.value = res?.data?.items || res?.data || []
   } catch {
     chapterOptions.value = []

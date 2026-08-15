@@ -58,7 +58,9 @@
           <div class="header-breadcrumb" role="group" aria-label="面包屑">
             <el-breadcrumb separator="→">
               <el-breadcrumb-item :to="{ path: '/' }">{{ t('layout.home') }}</el-breadcrumb-item>
-              <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
+              <el-breadcrumb-item v-if="route.meta.titleKey || route.meta.title">
+                {{ route.meta.titleKey ? t(route.meta.titleKey) : route.meta.title }}
+              </el-breadcrumb-item>
             </el-breadcrumb>
           </div>
         </div>
@@ -303,6 +305,7 @@ const roleLabel = computed(() => {
 // routeNameTitleMap 已迁移到 i18n (route.* keys)，由 pageTitle/slotPageTitle 通过 $t('route.' + name) 调用
 
 const pageTitle = computed(() => {
+  if (route.meta?.titleKey) return t(route.meta.titleKey)
   if (route.meta?.title) return route.meta.title
   if (route.name) return t('route.' + route.name) || ''
   return ''
@@ -311,6 +314,7 @@ const pageTitle = computed(() => {
 // 基于 router-view slot route 计算页面标题（slot route 与当前渲染严格一致）
 function slotPageTitle(r) {
   if (!r) return ''
+  if (r.meta?.titleKey) return t(r.meta.titleKey)
   if (r.meta?.title) return r.meta.title
   if (r.name) return t('route.' + r.name) || ''
   return ''

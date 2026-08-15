@@ -334,7 +334,7 @@ watch(() => formData.courseId, async (val) => {
   pickedQuestions.value = []
   if (!val) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
-    const params = { courseId: val, size: 9999 }
+    const params = { courseId: val, size: 1009 }
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     const items = data?.items || []
@@ -356,7 +356,7 @@ async function handleRandomPick() {
   const picks = {}
   for (const s of bankStats.value) { if (s.pickCount > 0) picks[s.type] = s.pickCount }
   try {
-    const params = { courseId: formData.courseId, size: 9999 }
+    const params = { courseId: formData.courseId, size: 1009 }
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
     const { data } = await getQuestions(params)
     let all = data?.items || []
@@ -381,7 +381,7 @@ const formRules = computed(() => ({
 
 const fetchCourseOptions = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     // P2-15: 使用 userId getter 替代 userInfo?.id 以保持一致
     if (isTeacher.value) params.teacherId = userStore.userId
     const { data } = await getCourses(params)
@@ -496,7 +496,7 @@ const handleEdit = async (row) => {
   formData.shuffleOptions = row.shuffleOptions || false
   // P1-C: 始终按练习所属课程加载章节(不依赖搜索区缓存,避免课程错配)
   try {
-    const { data } = await getChapters({ courseId: row.courseId, size: 1000 })
+    const { data } = await getChapters({ courseId: row.courseId, size: 100 })
     formChapterOptions.value = data?.items || []
   } catch { formChapterOptions.value = [] }
   dialogVisible.value = true
@@ -584,7 +584,7 @@ const handleSelectQuestions = async (row) => {
 
 const fetchCategoryOptions = async () => {
   try {
-    const { data } = await getCategories({ size: 1000 })
+    const { data } = await getCategories({ size: 100 })
     categoryOptions.value = data.items || []
   } catch {
     // 忽略错误

@@ -499,7 +499,7 @@ let sortableInstance = null
 
 // ===== 数据加载 =====
 const fetchCategories = async () => {
-  try { const { data } = await getCategories({ size: 1000 }); categories.value = data.items || [] }
+  try { const { data } = await getCategories({ size: 100 }); categories.value = data.items || [] }
   catch { categories.value = [] }
 }
 
@@ -543,7 +543,7 @@ const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
   try {
-    const { data } = await getChapters({ courseId: courseId.value, size: 999 })
+    const { data } = await getChapters({ courseId: courseId.value, size: 100 })
     chapters.value = data?.items || data || []
     // 加载每个章节的课时
     for (const ch of chapters.value) {
