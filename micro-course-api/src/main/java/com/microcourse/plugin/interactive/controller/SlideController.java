@@ -190,7 +190,7 @@ public class SlideController {
         String etag = "W/\"" + pageNumber + "-" + imageBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=" + com.microcourse.constants.ApiConstants.HTTP_CACHE_MAX_AGE_DAY)
                 .header(HttpHeaders.ETAG, etag)
                 .body(imageBytes);
     }
@@ -204,7 +204,7 @@ public class SlideController {
         String etag = "W/\"" + pageNumber + "-" + thumbBytes.length + "\"";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, MediaType.IMAGE_PNG_VALUE)
-                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=" + com.microcourse.constants.ApiConstants.HTTP_CACHE_MAX_AGE_DAY)
                 .header(HttpHeaders.ETAG, etag)
                 .body(thumbBytes);
     }

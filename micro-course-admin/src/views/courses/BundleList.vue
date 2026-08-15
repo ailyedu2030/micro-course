@@ -258,7 +258,7 @@ const loadDetailData = async (bundleId) => {
   // 仅刷新数据，不重置 currentBundle（避免表单值丢失）
   const { data } = await getBundleById(bundleId)
   bundleItems.value = data.items || []
-  const params = { size: 200 }
+  const params = { size: 100 }
   if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
   const { data: coursesData } = await getCourses(params)
   const existingIds = new Set(bundleItems.value.map(i => i.courseId))

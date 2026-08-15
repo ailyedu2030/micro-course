@@ -205,6 +205,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getReviews, getMyReviews } from '@/api/course-review'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { deleteReview } from '@/api/review'
 import { useUserStore } from '@/store/user'
 
@@ -271,11 +272,8 @@ const fetchMyReviews = async () => {
   errorState.value = false
   try {
     // 后端 getMyReviews(userId, page, size) 不支持 courseId 过滤，请求时不传 courseId
-    const { data } = await getMyReviews({
-      page: 0,
-      size: 1000  // 拉取大量数据，客户端侧过滤
-    })
-    const items = data?.items || data || []
+    // P1-I-2026-08-15 · 循环分页拉全量（客户端侧过滤场景），规避后端 size 上限截断
+    const items = await fetchAllPages(getMyReviews, {}, 100)
     allReviews.value = items
 
     // 客户端侧按 courseId 过滤 + 分页

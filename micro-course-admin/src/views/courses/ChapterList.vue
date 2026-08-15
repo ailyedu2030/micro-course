@@ -301,7 +301,7 @@ const fetchData = async () => {
 
  const fetchCourseOptions = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []

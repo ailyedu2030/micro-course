@@ -45,7 +45,35 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 ## [Unreleased]
 
-### L0 兜底修复批次（2026-08-07 · D-1 / D-3 / Q-6 / C-3）
+### 全栈审查修复批次（2026-08-15 · audit-complete）
+
+> 全栈穷举扫描（153 Vue + 861 Java）+ R1-R4 交叉审查（reviewer 团队）发现并修复 P1-I/P2 级缺陷。
+> 用户铁律：体验至上 · 时间成本不限制 · 首席工程师兜底所有问题。
+
+#### P1-I 修复（audit-round1）
+- 分页上限统一：`ApiLimits.MAX_REQUEST_SIZE=10000`（@Range 契约）+ `MAX_PAGE_SIZE=100`（Service 硬限）
+- `PageSizeGuard` + MyBatis-Plus `setMaxLimit(100)` 全局兜底（DoS 双层防御）
+- `DiscussionCommentController` 双契约分页（List 兼容 + `pagePaged` PageResult）
+- 8 处 @RequestBody 补 `@Valid` + DTO 字段级校验（PptCourseware/MicroSpecialty）
+- 删除 5 个零引用死代码（AudioQueryService/AudioStorageService/3 Repository）
+- 28 个路由 `meta.titleKey` i18n 化 + `document.title` 设置
+- `EnrollmentController.getCourseRanking` limit 补 `@Range(1, 100)`
+- 27 处前端 size=999/1000 收敛
+
+#### P2 修复（audit-round2）
+- `ApiConstants` 统一 magic number（时间/Cookie/采样率/LIMIT/-1L）
+- `FieldEncryptor` 解密失败补 warn 日志
+- 删除 2 个前端零引用死代码
+- 学生端 5 页面 67 处硬编码中文 i18n 化（3660 keys 双向同步）
+
+#### 交叉审查阻塞项修复（audit-review）
+- **P0**：`PptFlowDTO` @NotNull 过度校验 → 必填下沉 Service（createFlow）
+- **P1-C**：`pagePaged` 分页偏移修复 + 回归测试
+- **P1-C**：`updatePage` copyProperties 补 pageNumber 排除（防 null 覆盖）
+- **P1-C**：MyBatis-Plus `setMaxLimit(100)` 全局 DoS 防护落地
+- **P1-I**：CourseController 双分页上限统一 + 前端 size>100 全部收敛/改 fetchAllPages
+
+
 
 > L0 宪法铁律（用户体验至上）兜底：存量数据 + CI 维护性 + 流程规范修到 0 遗留。
 > 本批次 4 个 commit 全部带 `Signed-off-by: jackie`（DCO，见上方 Sign-off 规范章节），不重写历史。

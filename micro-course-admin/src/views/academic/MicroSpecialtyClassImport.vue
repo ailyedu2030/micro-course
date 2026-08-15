@@ -122,7 +122,7 @@ const specialtyTitle = computed(() => {
 const fetchSpecialties = async () => {
   loadingSpecialties.value = true
   try {
-    const { data } = await getMicroSpecialtyList({ size: 200 })
+    const { data } = await getMicroSpecialtyList({ size: 100 })
     specialtyOptions.value = data.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadSpecialtiesFailed')) }
   finally { loadingSpecialties.value = false }
@@ -135,7 +135,7 @@ const onSpecialtyChange = async (id) => {
   loadingClasses.value = true
   try {
     // 加载所有班级 (学院级, 与微专业无关, 由用户筛选选择)
-    const { data } = await getClasses({ size: 1000 })
+    const { data } = await getClasses({ size: 100 })
     classOptions.value = data?.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadClassesFailed')) }
   finally { loadingClasses.value = false }

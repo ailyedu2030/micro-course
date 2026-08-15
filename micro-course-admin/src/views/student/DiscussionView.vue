@@ -282,7 +282,7 @@ const chapterOptions = ref([])
 // 无 chapterId 时加载课程列表供选择
 async function fetchCourses() {
   try {
-    const params = { page: 0, size: 999 }
+    const params = { page: 0, size: 100 }
     if (userStore.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data?.items || []

@@ -126,6 +126,7 @@ import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Top, Download } from '@element-plus/icons-vue'
 import { getEnrollments, updateEnrollment, exportEnrollments } from '@/api/enrollment'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 
 const { t } = useI18n()
 
@@ -193,16 +194,14 @@ const handleExport = async () => {
   exporting.value = true
   try {
     ElMessage.info(t('enrollment.exporting'))
-    // 获取全量数据（最多 5000 条）用于客户端导出
+    // 获取全量数据用于客户端导出
+    // P1-I-2026-08-15（R3 审查）· 改用 fetchAllPages 循环分页，规避后端 size 上限触发 400
     const exportParams = {
-      page: 0,
-      size: 5000,
       studentName: searchForm.studentName || undefined,
       courseName: searchForm.courseName || undefined,
       status: searchForm.status || undefined
     }
-    const { data } = await getEnrollments(exportParams)
-    const items = data?.items || []
+    const items = await fetchAllPages(getEnrollments, exportParams, 100)
 
     if (items.length === 0) {
       ElMessage.warning(t('enrollment.noExportData'))

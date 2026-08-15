@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.io.IOException;
 import jakarta.servlet.http.HttpServletResponse;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/enrollments")
@@ -54,7 +55,7 @@ public class EnrollmentController {
     public R<PageResult<EnrollmentVO>> getMyEnrollments(
             @RequestParam(required = false) Boolean completed,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE) int size) {
         Long userId = SecurityUtil.getCurrentUserId();
         PageResult<EnrollmentVO> result = enrollmentService.getMyEnrollmentPage(userId, completed, page, size);
         return R.ok(result);
@@ -64,7 +65,7 @@ public class EnrollmentController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN','ACADEMIC')")
     public R<PageResult<EnrollmentVO>> getEnrollments(
             @RequestParam(defaultValue = "0") @PositiveOrZero Integer page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000) Integer size,
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE) Integer size,
             @RequestParam(required = false) Long teacherId,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
@@ -119,7 +120,7 @@ public class EnrollmentController {
     @PreAuthorize("isAuthenticated()")
     public R<List<EnrollmentRankingVO>> getCourseRanking(
             @PathVariable Long courseId,
-            @RequestParam(defaultValue = "10") int limit) {
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = ApiLimits.MAX_RANKING_SIZE) int limit) {
         Long userId = SecurityUtil.getCurrentUserId();
         List<EnrollmentRankingVO> ranking = enrollmentService.getCourseRanking(courseId, limit, userId);
         return R.ok(ranking);

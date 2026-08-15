@@ -171,7 +171,16 @@ public class EnrollmentServiceImpl implements EnrollmentService {
         if (SecurityUtil.hasRole("TEACHER") && !SecurityUtil.isAdmin()) {
             assertCourseOwnership(courseId);
         }
-        return queryService.getCourseEnrollments(courseId);
+        List<EnrollmentVO> all = queryService.getCourseEnrollments(courseId);
+        // P1-I-2026-08-15 · DoS 防护：硬限 ApiLimits.MAX_PAGE_SIZE（100）防止大课一次返回上千学生
+        // 若课程 > 100 学生（实际罕见），需引导前端走分页端点 /api/enrollments/course/{id}
+        if (all.size() > com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE) {
+            org.slf4j.LoggerFactory.getLogger(EnrollmentServiceImpl.class)
+                .warn("[EnrollmentService] getCourseEnrollmentsWithOwnerCheck 课程 {} 学生数 {} 超过硬限 {}，截断；前端应改用分页端点",
+                    courseId, all.size(), com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE);
+            return new java.util.ArrayList<>(all.subList(0, com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE));
+        }
+        return all;
     }
 
     @Override

@@ -250,6 +250,7 @@ import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getCourseEnrollments, getEnrollments, getStudentDetail, exportEnrollments } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
@@ -316,8 +317,8 @@ function handleReset() {
 async function fetchCourses() {
   try {
     const teacherId = userStore.userId
-    const { data } = await getCourses({ size: 9999, teacherId })
-    courseOptions.value = data.items || []
+    // P1-I-2026-08-15（R3 审查）· 循环分页拉全量课程，规避后端 size 上限触发 400
+    courseOptions.value = await fetchAllPages(getCourses, { teacherId }, 100)
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
     }

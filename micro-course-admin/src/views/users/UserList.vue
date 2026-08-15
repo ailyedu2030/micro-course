@@ -463,7 +463,7 @@ watch(() => formData.role, (newRole) => {
 // ============== 数据获取 ==============
 const fetchDepartments = async () => {
   try {
-    const { data } = await getDepartments({ size: 1000 })
+    const { data } = await getDepartments({ size: 100 })
     departments.value = data.items || []
   } catch { departments.value = [] }
 }

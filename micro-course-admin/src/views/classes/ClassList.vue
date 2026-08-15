@@ -158,7 +158,7 @@ const formRules = {
 
 const fetchMajors = async () => {
   try {
-    const { data } = await getMajors({ page: 0, size: 1000 })
+    const { data } = await getMajors({ page: 0, size: 100 })
     majorOptions.value = data.items || []
   } catch {
     ElMessage.error(t('classList.fetchMajorsFailed'))

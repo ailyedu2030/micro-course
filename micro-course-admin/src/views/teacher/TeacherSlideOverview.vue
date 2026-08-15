@@ -267,7 +267,7 @@ async function loadData() {
   }
   loading.value = true
   try {
-    const { data } = await getCourses({ size: 1000, teacherId: userStore.userId })
+    const { data } = await getCourses({ size: 100, teacherId: userStore.userId })
     const courseList = data?.items || data?.content || data?.records || []
     courses.value = courseList
 

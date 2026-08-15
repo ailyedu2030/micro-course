@@ -46,7 +46,7 @@ export function getNotifications(size = 5) {
  * 响应: { items: [{ id, title, cover, studentCount, rating, status }] }
  */
 export function getMyCourses() {
-  return request({ method: 'GET', url: '/teachers/courses', params: { page: 0, size: 999 } })
+  return request({ method: 'GET', url: '/teachers/courses', params: { page: 0, size: 100 } })
 }
 
 /**

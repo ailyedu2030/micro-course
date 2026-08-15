@@ -499,14 +499,14 @@ let sortableInstance = null
 
 // ===== 数据加载 =====
 const fetchCategories = async () => {
-  try { const { data } = await getCategories({ size: 1000 }); categories.value = data.items || [] }
+  try { const { data } = await getCategories({ size: 100 }); categories.value = data.items || [] }
   catch { categories.value = [] }
 }
 
 // 管理员/教务创建课程需选择授课教师（P1-C：后端 teacher_id NOT NULL）
 const fetchTeachers = async () => {
   try {
-    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 500 })
+    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 100 })
     teacherOptions.value = data?.items || data || []
   } catch { teacherOptions.value = [] }
 }
@@ -543,7 +543,7 @@ const fetchChapters = async () => {
   if (!courseId.value) return
   chapterLoading.value = true
   try {
-    const { data } = await getChapters({ courseId: courseId.value, size: 999 })
+    const { data } = await getChapters({ courseId: courseId.value, size: 100 })
     chapters.value = data?.items || data || []
     // 加载每个章节的课时
     for (const ch of chapters.value) {

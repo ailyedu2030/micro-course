@@ -1,25 +1,58 @@
 package com.microcourse.plugin.interactive.dto;
 
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
+
 import java.time.LocalDateTime;
 
 /**
  * PPT 课件页面 DTO (V300 slide_ppt_pages).
+ *
+ * <p>P1-I-2026-08-15 · 补全字段级校验，配合 Controller {@code @Valid}：
+ * <ul>
+ *   <li>{@code slideId} + {@code pageNumber} 是必填主键</li>
+ *   <li>URL/UUID 字段长度限制防止 DoS</li>
+ *   <li>extractedText 限制 50000 字符（与 SlideServiceImpl TEMP_OFFSET 一致）</li>
+ * </ul>
  */
 public class SlidePptPageDTO {
+
+    // slideId/pageNumber 仅 @Positive（允许 null）：updatePage 是 PATCH 部分更新，
+    // slideId 由 path 决定并被 BeanUtils.copyProperties 显式忽略；create 时由 Service 校验
+    @Positive(message = "slideId 必须为正数")
+    private Long slideId;
+
+    @Positive(message = "pageNumber 必须为正数")
+    private Integer pageNumber;
+
+    @Size(max = 200, message = "pageTitle 长度不能超过 200 字符")
+    private String pageTitle;
+
+    @Size(max = 500, message = "imageUrl 长度不能超过 500 字符")
+    private String imageUrl;
+
+    @Size(max = 500, message = "thumbnailUrl 长度不能超过 500 字符")
+    private String thumbnailUrl;
+
+    @Positive(message = "imageWidth 必须为正数")
+    private Integer imageWidth;
+
+    @Positive(message = "imageHeight 必须为正数")
+    private Integer imageHeight;
+
+    @Size(max = 64, message = "fileUuid 长度不能超过 64 字符")
+    private String fileUuid;
+
+    @Positive(message = "fileSizeBytes 必须为正数")
+    private Long fileSizeBytes;
+
+    @Size(max = 50000, message = "extractedText 长度不能超过 50000 字符")
+    private String extractedText;
+
     private Long id;
     private Long courseId;
     private Long chapterId;
     private Long sectionId;
-    private Long slideId;
-    private Integer pageNumber;
-    private String pageTitle;
-    private String imageUrl;
-    private String thumbnailUrl;
-    private Integer imageWidth;
-    private Integer imageHeight;
-    private String fileUuid;
-    private Long fileSizeBytes;
-    private String extractedText;
     private Boolean hasAnimation;
     private Boolean hasEmbeddedMedia;
     private LocalDateTime createdAt;

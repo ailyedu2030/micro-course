@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/courses")
@@ -55,10 +56,9 @@ public class CourseController {
         this.chapterService = chapterService;
     }
 
-    // P1-C: MAX_PAGE_SIZE 从 200 提升到 1000 —— 前端 StudentList.vue 传 size=9999 期望拉全量课程，
-    // 原 200 上限导致静默截断（教师端课程列表不完整）。1000 覆盖平台实际课程规模，
-    // 同时保留 clamp 防超大数据集压垮 DB。
-    private static final int MAX_PAGE_SIZE = 1000;
+    // P1-I-2026-08-15（R1/R3 审查）· 统一分页上限：Service 层实际生效由 MyBatis-Plus setMaxLimit(ApiLimits.MAX_PAGE_SIZE=100) 兜底
+    // （原私有 MAX_PAGE_SIZE=1000 已移除，避免与 ApiLimits 双标准矛盾）
+    private static final int MAX_PAGE_SIZE = com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -111,7 +111,7 @@ public class CourseController {
     public R<PageResult<ChapterVO>> searchChapters(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
         return R.ok(chapterService.searchChapters(keyword, page, size));
     }
 

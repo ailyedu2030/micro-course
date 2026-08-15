@@ -153,7 +153,7 @@ const formRules = {
 
 const fetchDepartments = async () => {
   try {
-    const { data } = await getDepartments({ page: 0, size: 1000 })
+    const { data } = await getDepartments({ page: 0, size: 100 })
     departmentOptions.value = data.items || []
   } catch {
     ElMessage.error(t('majorList.fetchDepartmentsFailed'))

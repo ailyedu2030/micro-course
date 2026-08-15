@@ -274,7 +274,7 @@ async function fetchSessions() {
 
 async function fetchAttendanceSummary(sessionId) {
   try {
-    const { data } = await getAttendance(sessionId, { page: 0, size: 999 })
+    const { data } = await getAttendance(sessionId, { page: 0, size: 100 })
     const records = data?.items || data || []
     attendanceMap.value[sessionId] = Array.isArray(records) ? records : []
   } catch {
@@ -362,7 +362,7 @@ async function openAttendanceDialog(session) {
   attendanceDialogVisible.value = true
   attendanceLoading.value = true
   try {
-    const { data } = await getAttendance(session.id, { page: 0, size: 999 })
+    const { data } = await getAttendance(session.id, { page: 0, size: 100 })
     const records = data?.items || data || []
     attendanceRecords.value = Array.isArray(records) ? records : []
   } catch {

@@ -199,7 +199,7 @@ const fetchCandidates = () => {
   searchDebounceTimer = setTimeout(async () => {
     candidateLoading.value = true; searched.value = true
     try {
-      const params = { role: 'TEACHER', size: 200 }
+      const params = { role: 'TEACHER', size: 100 }
       if (searchKeyword.value) params.keyword = searchKeyword.value
       if (searchDept.value) params.departmentId = searchDept.value
       const { data } = await getUsers(params)

@@ -460,6 +460,29 @@ export default {
     partialLoadFailed: 'Some data failed to load',
     trendDataLoadFailed: 'Failed to load the study trend data'
   },
+  // ---- AchievementWall.vue (i18n added) ----
+  achievementWall: {
+    title: 'My Achievements',
+    badgeCount: 'Earned {earned} badges / {total} badge types in total',
+    earned: 'Earned',
+    locked: 'Locked',
+    loadFailedTitle: 'Failed to load',
+    loadFailedSubtitle: 'Failed to load achievement data, please try again later',
+    noData: 'No achievement badge data',
+    noEarned: 'No badges earned yet, keep going!',
+    allUnlocked: 'All badges unlocked!',
+    earnedAt: 'Earned on {date}',
+    criteria: 'Criteria: {criteria}',
+    unknownCriteria: 'Unknown criteria',
+    criteriaStreakDays: 'Streak study days',
+    criteriaTotalCourses: 'Courses completed',
+    criteriaTotalVideos: 'Videos watched',
+    criteriaTotalExercises: 'Exercises completed',
+    criteriaReviewCount: 'Reviews',
+    criteriaDiscussionCount: 'Discussion posts',
+    criteriaValue: '{type} {value} times',
+    fetchFailed: 'Failed to load achievement data, please try again later'
+  },
   video: {
     playing: 'Video Player',
     loading: 'Loading video...',
@@ -500,7 +523,13 @@ export default {
     objectiveLabel: 'Objective',
     objectiveDefault: 'Master core concepts',
     back: 'Back',
-    chapterList: 'Chapter List'
+    chapterList: 'Chapter List',
+    // ---- VideoPlayer.vue (i18n added) ----
+    subtitleTrackLabel: 'Chinese Subtitles',
+    jumpToTime: 'Jump to {time}',
+    notesSaveFailed: 'Failed to save note',
+    chaptersLoadFailed: 'Failed to load chapter list; some features unavailable',
+    progressLoadFailed: 'Failed to load learning progress; progress memory unavailable'
   },
   slidePlayer: {
     previewBanner: 'Teacher preview mode · Progress not recorded · Quiz answers do not affect branching',
@@ -760,7 +789,20 @@ export default {
     courseCount: 'Courses',
     totalPrice: 'Total',
     amount: 'Amount',
-    pendingPayment: 'Pending Payment'
+    pendingPayment: 'Pending Payment',
+    // ---- Checkout.vue (i18n added) ----
+    breadcrumbAria: 'Breadcrumb',
+    coverAlt: '{title} cover',
+    paymentHint: 'Only balance payment is supported for now; other payment methods coming soon',
+    cartEmptyOrOffline: 'Cart is empty or some items are unavailable',
+    pay: 'Pay',
+    confirmPayMessage: 'Confirm payment of ¥{amount}?',
+    orderPendingMsg: 'Order pending payment',
+    failedOrdersWarning: '{count} orders failed to pay, view details',
+    batchFailedMsg: 'Batch processing failed, processing one by one...',
+    itemPayError: '「{title}」{msg}',
+    retrySummary: 'Retry complete: {success} succeeded, {failed} failed',
+    allPaidSuccess: 'All courses paid successfully!'
   },
   order: {
     pay: 'Pay Now',
@@ -857,6 +899,15 @@ export default {
   favorite: {
     noData: 'No favorites yet'
   },
+  // ---- StudentFavorites.vue (i18n added) ----
+  studentFavorites: {
+    courseAria: 'Course: {title}',
+    coverAlt: '{title} cover',
+    cancel: 'Remove Favorite',
+    fetchFailed: 'Failed to load favorites',
+    confirmRemove: 'Remove this favorite?',
+    removed: 'Favorite removed'
+  },
   platformShare: {
     title: 'Platform Revenue Share',
     desc: 'Manage revenue share ratios for teachers at each tier. Changes take effect immediately.',
@@ -902,6 +953,8 @@ export default {
   route: {
     AcademicDashboard: 'Academic Dashboard',
     AcademicEnrollments: 'Enrollment Overview',
+    AdminOfflineSessionList: 'Offline Session Management',
+    AuditGhostChapter: 'Ghost Chapter Audit',
     AcademicMicroSpecialtyClassImport: 'Class Import',
     AcademicMicroSpecialtyCrossDeptReview: 'Cross-Dept Review',
     AcademicMicroSpecialtyFeaturedReview: 'Featured Review',
@@ -931,6 +984,8 @@ export default {
     CourseList: 'Course List',
     CourseVideoList: 'Course Videos',
     CourseView: 'Course Details',
+    CoursewareHtmlList: 'HTML Courseware',
+    CoursewarePptList: 'PPT Courseware',
     DepartmentList: 'Department',
     DiscussionDetail: 'Discussion Details',
     DiscussionList: 'Discussion Management',
@@ -966,6 +1021,7 @@ export default {
     StudentMyCourses: 'My Courses',
     StudentMyMicroSpecialties: 'My Micro-Specialties',
     StudentMyProposals: 'My Applications',
+    SystemHealth: 'System Health',
     StudentMyReviews: 'My Reviews',
     StudentNotifications: 'Notifications',
     StudentOfflineSession: 'Offline Session',
@@ -990,6 +1046,7 @@ export default {
     TeacherMicroSpecialtyProposal: 'Micro-Specialty Application',
     TeacherMicroSpecialtyTeamEdit: 'Team Management',
     TeacherMicroSpecialtyInvites: 'Micro-Specialty Invites',
+    TeacherMyProposals: 'My Applications',
     TeacherOfflineList: 'Offline Courses',
     TeacherOfflineSessions: 'Offline Sessions',
     TeacherProfile: 'Profile',
@@ -2361,6 +2418,33 @@ export default {
     addSuccess: 'Added successfully',
     addFailed: 'Failed to add',
     confirmRemoveItem: 'Remove "{title}" from the bundle?'
+  },
+  // ---- BundleDetail.vue (i18n added) ----
+  bundleDetail: {
+    subtitleCount: 'Bundle courses ({count})',
+    courseAria: 'Course: {title}',
+    htmlCourseware: 'HTML Courseware',
+    pptCourseware: 'PPT Courseware',
+    offline: 'Offline',
+    video: 'Video',
+    required: 'Required',
+    elective: 'Elective',
+    studentsCount: '{count} learners',
+    containsRequired: 'Contains {count} required courses',
+    electiveSuffix: ' + {count} elective courses',
+    startNext: 'Start Learning (Next)',
+    joinNow: 'Join Now',
+    buyNowPrice: 'Buy Now · ¥{price}',
+    learningPath: 'Learning Path',
+    courseFallback: 'Course {id}',
+    notCompleted: 'Not Completed',
+    loadFailed: 'Failed to load bundle',
+    noCourses: 'No courses in this bundle',
+    allEnrolled: 'You are enrolled in all courses',
+    joinedSuccess: 'Joined successfully',
+    confirmPayMessage: 'Confirm payment of ¥{amount}?',
+    payConfirmTitle: 'Payment Confirmation',
+    purchaseSuccess: 'Purchase successful'
   },
   // ---- DiscussionView.vue (i18n additions) ----
   discussion: {

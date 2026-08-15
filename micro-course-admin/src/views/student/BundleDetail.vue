@@ -6,11 +6,11 @@
       <el-row :gutter="24">
         <el-col :span="16">
           <el-card shadow="never">
-            <template #header><span>套件子课（{{ items.length }} 门）</span></template>
+            <template #header><span>{{ $t('bundleDetail.subtitleCount', { count: items.length }) }}</span></template>
             <div
 v-for="item in items" :key="item.id" class="course-row student-card-item"
               tabindex="0" role="button"
-              :aria-label="'课程：' + item.courseTitle"
+              :aria-label="$t('bundleDetail.courseAria', { title: item.courseTitle })"
               @click="goCourse(item.courseId)"
               @keydown.enter="goCourse(item.courseId)"
               @keydown.space.prevent="goCourse(item.courseId)"
@@ -19,14 +19,14 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
               <div class="course-info">
                 <span class="course-title">{{ item.courseTitle }}</span>
                 <span class="course-meta">{{ item.teacherName }} · 
-                  <el-tag v-if="isCoursewareCourseType(item.courseType)" type="success" size="small">{{ item.courseType === 'HTML_COURSEWARE' ? 'HTML 课件' : 'PPT 课件' }}</el-tag>
-                  <el-tag v-else-if="item.courseType === 'OFFLINE'" type="info" size="small">线下</el-tag>
-                  <el-tag v-else type="primary" size="small">视频</el-tag>
+                  <el-tag v-if="isCoursewareCourseType(item.courseType)" type="success" size="small">{{ item.courseType === 'HTML_COURSEWARE' ? $t('bundleDetail.htmlCourseware') : $t('bundleDetail.pptCourseware') }}</el-tag>
+                  <el-tag v-else-if="item.courseType === 'OFFLINE'" type="info" size="small">{{ $t('bundleDetail.offline') }}</el-tag>
+                  <el-tag v-else type="primary" size="small">{{ $t('bundleDetail.video') }}</el-tag>
                 </span>
               </div>
               <div class="course-tags">
-                <el-tag v-if="item.isRequired" type="danger" size="small">必修</el-tag>
-                <el-tag v-else type="info" size="small">选修</el-tag>
+                <el-tag v-if="item.isRequired" type="danger" size="small">{{ $t('bundleDetail.required') }}</el-tag>
+                <el-tag v-else type="info" size="small">{{ $t('bundleDetail.elective') }}</el-tag>
               </div>
               <el-icon class="go-icon"><ArrowRight /></el-icon>
             </div>
@@ -36,31 +36,31 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
         <el-col :span="8">
           <el-card shadow="never" class="purchase-card">
             <div class="price-display">
-              <span v-if="bundle?.isFree || !bundle?.price" class="free-text">免费</span>
+              <span v-if="bundle?.isFree || !bundle?.price" class="free-text">{{ $t('app.free') }}</span>
               <span v-else class="paid-text">¥{{ bundle.price }}</span>
             </div>
-            <p class="student-count" v-if="bundle?.studentCount">{{ bundle.studentCount }} 人已学习</p>
+            <p class="student-count" v-if="bundle?.studentCount">{{ $t('bundleDetail.studentsCount', { count: bundle.studentCount }) }}</p>
             <p class="desc-text" v-if="bundle?.description">{{ bundle.description }}</p>
-            <p class="desc-text">含 {{ requiredCount }} 门必修课{{ electiveCount > 0 ? ' + ' + electiveCount + ' 门选修课' : '' }}</p>
+            <p class="desc-text">{{ $t('bundleDetail.containsRequired', { count: requiredCount }) }}{{ electiveCount > 0 ? $t('bundleDetail.electiveSuffix', { count: electiveCount }) : '' }}</p>
 
             <el-button v-if="!isLoggedIn" type="primary" size="large" class="buy-btn" @click="goLogin">
-              请先登录
+              {{ $t('course.pleaseLogin') }}
             </el-button>
             <el-button v-else-if="isEnrolled" type="primary" size="large" class="buy-btn" @click="startLearning">
-              {{ firstUncompleted ? '开始学习（下一节）' : '开始学习' }}
+              {{ firstUncompleted ? $t('bundleDetail.startNext') : $t('course.startLearning') }}
             </el-button>
             <el-button v-else type="primary" size="large" class="buy-btn" :loading="buyLoading" @click="handleBuy">
-              {{ bundle?.isFree || !bundle?.price ? '立即加入' : '立即购买 · ¥' + bundle?.price }}
+              {{ bundle?.isFree || !bundle?.price ? $t('bundleDetail.joinNow') : $t('bundleDetail.buyNowPrice', { price: bundle?.price }) }}
             </el-button>
           </el-card>
 
           <el-card v-if="isEnrolled && requiredCourses.length" shadow="never" class="path-card">
-            <template #header><span>套餐学习路径</span></template>
+            <template #header><span>{{ $t('bundleDetail.learningPath') }}</span></template>
             <div v-for="(c, idx) in requiredCourses" :key="c.id" class="path-row" :class="{ completed: courseProgress[c.courseId || c.id], active: firstUncompleted?.courseId === c.courseId || firstUncompleted?.id === c.id }">
               <span class="path-order">{{ idx + 1 }}</span>
-              <span class="path-title">{{ c.courseTitle || `课程 ${c.courseId}` }}</span>
-              <el-tag v-if="courseProgress[c.courseId || c.id]" type="success" size="small">已完成</el-tag>
-              <el-tag v-else type="warning" size="small">未完成</el-tag>
+              <span class="path-title">{{ c.courseTitle || $t('bundleDetail.courseFallback', { id: c.courseId }) }}</span>
+              <el-tag v-if="courseProgress[c.courseId || c.id]" type="success" size="small">{{ $t('course.completed') }}</el-tag>
+              <el-tag v-else type="warning" size="small">{{ $t('bundleDetail.notCompleted') }}</el-tag>
             </div>
           </el-card>
         </el-col>
@@ -72,6 +72,7 @@ v-for="item in items" :key="item.id" class="course-row student-card-item"
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import { getBundleById, getBundleEnrollmentStatus } from '@/api/bundle'
@@ -82,6 +83,7 @@ import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getMyEnrollments } from '@/api/enrollment'
 import { filterCourseCollectionEnrollments } from '@/utils/enrollmentFilters'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -111,7 +113,7 @@ onMounted(async () => {
     const promises = [getBundleById(bundleId.value)]
     if (isLoggedIn.value) {
       promises.push(getBundleEnrollmentStatus(bundleId.value))
-      promises.push(getMyEnrollments({ page: 0, size: 999 }))
+      promises.push(getMyEnrollments({ page: 0, size: 100 }))
     }
     const results = await Promise.all(promises)
     const bundleResp = results[0]
@@ -138,7 +140,7 @@ onMounted(async () => {
         } catch { /* 静默 */ }
       }
     }
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '加载套件失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('bundleDetail.loadFailed')) }
   finally { loading.value = false }
 })
 
@@ -150,7 +152,7 @@ const startLearning = () => {
   if (target) {
     router.push(`/student/courses/${target.courseId || target.id}`)
   } else {
-    ElMessage.warning('套餐内暂无课程')
+    ElMessage.warning(t('bundleDetail.noCourses'))
   }
 }
 
@@ -160,14 +162,14 @@ const handleBuy = async () => {
     // P1C-012: 检查所有课程（不仅是必修课），找到第一个未选课未购买的课程
     const firstUnenrolled = items.value.find(i => !enrolledCourseIds.value.has(i.courseId || i.id))
     if (!firstUnenrolled) {
-      ElMessage.success('已选修所有课程')
+      ElMessage.success(t('bundleDetail.allEnrolled'))
       isEnrolled.value = true
       return
     }
     const { data: order } = await createOrder({ courseId: firstUnenrolled.courseId, bundleId: bundleId.value })
     if (order.status === 'PAID') {
       isEnrolled.value = true
-      ElMessage.success('加入成功')
+      ElMessage.success(t('bundleDetail.joinedSuccess'))
       // 重新拉取套餐数据，更新 studentCount 等
       const { data } = await getBundleById(bundleId.value)
       bundle.value = data
@@ -177,14 +179,14 @@ const handleBuy = async () => {
     const amount = bundle.value?.price || order.amount || 0
     try {
       await ElMessageBox.confirm(
-        `确认支付 ¥${amount} 吗？`,
-        '支付确认',
-        { confirmButtonText: '确认支付', cancelButtonText: '取消', type: 'warning' }
+        t('bundleDetail.confirmPayMessage', { amount }),
+        t('bundleDetail.payConfirmTitle'),
+        { confirmButtonText: t('order.pay'), cancelButtonText: t('common.cancel'), type: 'warning' }
       )
     } catch { buyLoading.value = false; return }
     await payOrder(order.id, 'BALANCE')
     // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
-    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 999 })
+    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 100 })
     const list = filterCourseCollectionEnrollments(Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || []))
     enrolledCourseIds.value = new Set(list.map(e => e.courseId))
     // 重新拉取最新状态
@@ -195,8 +197,8 @@ const handleBuy = async () => {
       bundle.value = bundleData
       items.value = bundleData.items || []
     } catch { /* 静默 */ }
-    ElMessage.success('购买成功')
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+    ElMessage.success(t('bundleDetail.purchaseSuccess'))
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('common.failed')) }
   finally { buyLoading.value = false }
 }
 </script>
