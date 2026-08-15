@@ -1,12 +1,12 @@
 package com.microcourse.dto;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.Set;
 
 public class CoursePageQuery {
 
-    /** 有效排序字段白名单：studentCount / avgRating / updatedAt */
     public static final Set<String> VALID_SORT_BY = Set.of("studentCount", "avgRating", "updatedAt");
-    /** 有效排序方向白名单：asc / desc */
     public static final Set<String> VALID_SORT_ORDER = Set.of("asc", "desc");
 
     private String title;
@@ -16,7 +16,12 @@ public class CoursePageQuery {
     private Integer status;
     private Boolean recommended;
     private Integer difficulty;
+
+    @Min(value = 0, message = "页码不能为负数")
     private int page;
+
+    @Min(value = 1, message = "每页条数至少为1")
+    @Max(value = 100, message = "每页条数不能超过100")
     private int size;
     private String sortBy;
     private String sortOrder;

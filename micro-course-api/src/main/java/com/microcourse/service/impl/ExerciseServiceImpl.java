@@ -302,7 +302,9 @@ public class ExerciseServiceImpl implements ExerciseService {
             }
         }
         exercise.setUpdatedAt(LocalDateTime.now());
-        exerciseRepository.updateById(exercise);
+        if (exerciseRepository.updateById(exercise) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "题目已被其他操作修改，请刷新后重试");
+        }
         return getById(id);
     }
     @Override
@@ -725,7 +727,9 @@ public class ExerciseServiceImpl implements ExerciseService {
         exercise.setTotalScore(total);
         exercise.setQuestionCount(eqs.size());
         exercise.setUpdatedAt(LocalDateTime.now());
-        exerciseRepository.updateById(exercise);
+        if (exerciseRepository.updateById(exercise) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "题目已被其他操作修改，请刷新后重试");
+        }
     }
     @Override
     @Transactional(readOnly = true)

@@ -162,6 +162,12 @@ const fetchOrders = async () => {
   }
 }
 
+// P1-C-修复: bindToQuery 在 onMounted 中从 URL 同步 page/size，
+// 必须等 URL 同步完成后再 fetch（否则 setup 中 fetch 走 initial page=1）
+onMounted(() => {
+  fetchOrders()
+})
+
 const handleStatusFilterChange = () => {
   page.value = 1
   fetchOrders()
@@ -225,9 +231,6 @@ const handleCancel = async (row) => {
 
 const goCourse = (id) => router.push(`/student/courses/${id}`)
 const goBundle = (id) => router.push(`/student/bundles/${id}`)
-
-// setup 阶段即发起首次加载，execute 同步置 loading=true（保持首屏 loading 行为）
-fetchOrders()
 </script>
 
 <style scoped>

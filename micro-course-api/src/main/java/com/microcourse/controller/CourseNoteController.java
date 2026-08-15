@@ -1,5 +1,6 @@
 package com.microcourse.controller;
 
+import com.microcourse.dto.CourseNoteCreateRequest;
 import com.microcourse.dto.R;
 import com.microcourse.entity.CourseNote;
 import com.microcourse.exception.BusinessException;
@@ -49,46 +50,43 @@ public class CourseNoteController {
 
     /** POST /api/course-notes 创建笔记 */
     @PostMapping
-    public R<CourseNote> create(@Valid @RequestBody CourseNote note) {
+    public R<CourseNote> create(@Valid @RequestBody CourseNoteCreateRequest req) {
         Long userId = SecurityUtil.getCurrentUserId();
-        if (note.getCourseId() == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "课程ID不能为空");
-        }
-        if (note.getContent() == null || note.getContent().isBlank()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "笔记内容不能为空");
-        }
-        // 唯一约束 idx_cn_unique(user_id, course_id, chapter_id, video_id)：
-        // 同一用户同一章节（同一视频）仅一条笔记 → upsert 语义（存在则更新）。
         CourseNote existing = noteRepository.selectOne(
                 new LambdaQueryWrapper<CourseNote>()
                         .eq(CourseNote::getUserId, userId)
-                        .eq(CourseNote::getCourseId, note.getCourseId())
-                        .eq(note.getChapterId() != null, CourseNote::getChapterId, note.getChapterId())
-                        .isNull(note.getChapterId() == null, CourseNote::getChapterId)
-                        .eq(note.getVideoId() != null, CourseNote::getVideoId, note.getVideoId())
-                        .isNull(note.getVideoId() == null, CourseNote::getVideoId)
+                        .eq(CourseNote::getCourseId, req.getCourseId())
+                        .eq(req.getChapterId() != null, CourseNote::getChapterId, req.getChapterId())
+                        .isNull(req.getChapterId() == null, CourseNote::getChapterId)
+                        .eq(req.getVideoId() != null, CourseNote::getVideoId, req.getVideoId())
+                        .isNull(req.getVideoId() == null, CourseNote::getVideoId)
                         .last("LIMIT 1"));
         if (existing != null) {
-            existing.setContent(note.getContent());
-            if (note.getTitle() != null && !note.getTitle().isBlank()) {
-                existing.setTitle(note.getTitle());
+            existing.setContent(req.getContent());
+            if (req.getTitle() != null && !req.getTitle().isBlank()) {
+                existing.setTitle(req.getTitle());
             } else {
-                String content = note.getContent().trim();
+                String content = req.getContent().trim();
                 existing.setTitle(content.length() > 30 ? content.substring(0, 30) : content);
             }
             existing.setUpdatedAt(LocalDateTime.now());
             noteRepository.updateById(existing);
             return R.ok(existing);
         }
-        note.setId(null);
+        CourseNote note = new CourseNote();
         note.setUserId(userId);
-        // course_notes.title NOT NULL：未提供时取内容前 30 字作为默认标题
-        if (note.getTitle() == null || note.getTitle().isBlank()) {
-            String content = note.getContent().trim();
+        note.setCourseId(req.getCourseId());
+        note.setChapterId(req.getChapterId());
+        note.setVideoId(req.getVideoId());
+        note.setVideoPosition(req.getVideoPosition());
+        note.setContent(req.getContent());
+        if (req.getTitle() != null && !req.getTitle().isBlank()) {
+            note.setTitle(req.getTitle());
+        } else {
+            String content = req.getContent().trim();
             note.setTitle(content.length() > 30 ? content.substring(0, 30) : content);
         }
-        note.setCreatedAt(LocalDateTime.now());
-        note.setUpdatedAt(LocalDateTime.now());
+        note.setIsPublic(req.getIsPublic() != null ? req.getIsPublic() : false);
         noteRepository.insert(note);
         return R.ok(note);
     }

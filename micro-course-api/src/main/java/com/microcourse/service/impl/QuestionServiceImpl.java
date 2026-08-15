@@ -185,7 +185,9 @@ public class QuestionServiceImpl implements QuestionService {
         }
 
         question.setUpdatedAt(LocalDateTime.now());
-        questionRepository.updateById(question);
+        if (questionRepository.updateById(question) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "题目已被其他操作修改，请刷新后重试");
+        }
 
         // Handle chapter associations (multi-chapter support): replace old with new
         if (request.getChapterIds() != null && !request.getChapterIds().isEmpty()) {

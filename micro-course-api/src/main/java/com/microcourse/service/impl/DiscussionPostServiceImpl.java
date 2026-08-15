@@ -293,7 +293,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         final java.util.Map<Long, User> finalUserMap = userMap;
 
         DiscussionPostVO vo = convertToVO(post, finalUserMap);
-        vo.setChildren(buildCommentTree(comments, finalUserMap, post.getUserId()));
+        vo.setChildren(buildCommentTree(comments, finalUserMap, post.getUserId(), post));
 
         // P0-4: 设置 isOwner，让匿名帖子作者也能删除自己的帖子
         try {
@@ -720,7 +720,8 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
 
     private List<DiscussionCommentVO> buildCommentTree(List<DiscussionComment> comments,
                                                         java.util.Map<Long, User> userMap,
-                                                        Long opUserId) {
+                                                        Long opUserId,
+                                                        DiscussionPost post) {
         if (comments == null || comments.isEmpty()) {
             return new ArrayList<>();
         }
@@ -742,8 +743,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
 
             // P0-1 + P1C-028: 匿名评论对教师/管理员可见真实身份
             if (Boolean.TRUE.equals(c.getIsAnonymous())) {
-                DiscussionPost post = postRepository.selectById(c.getPostId());
-                if (post != null && isTeacherOrAdminForCourse(post.getCourseId())) {
+                if (isTeacherOrAdminForCourse(post.getCourseId())) {
                     if (c.getUserId() != null) {
                         User author = userMap.get(c.getUserId());
                         if (author != null) {
