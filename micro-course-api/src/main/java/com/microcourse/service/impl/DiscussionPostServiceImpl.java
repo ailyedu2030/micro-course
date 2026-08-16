@@ -620,36 +620,7 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
     }
 
     private DiscussionPostVO convertToVO(DiscussionPost post) {
-        DiscussionPostVO vo = new DiscussionPostVO();
-        vo.setId(post.getId());
-        vo.setCourseId(post.getCourseId());
-        vo.setChapterId(post.getChapterId());
-        vo.setUserId(post.getUserId());
-        vo.setTitle(post.getTitle());
-        vo.setContent(post.getContent());
-        vo.setIsAnonymous(post.getIsAnonymous());
-        vo.setIsPinned(post.getIsPinned());
-        vo.setIsEssence(post.getIsEssence());
-        vo.setCommentCount(post.getCommentCount());
-        vo.setLikeCount(post.getLikeCount());
-        vo.setCreatedAt(post.getCreatedAt());
-        applyPostStatus(vo, post);
-
-        // 联查 authorName
-        if (post.getUserId() != null) {
-            User author = userRepository.selectById(post.getUserId());
-            if (author != null) {
-                // P1C-028: TEACHER/ADMIN 可见匿名帖子真实身份
-                if (Boolean.TRUE.equals(post.getIsAnonymous()) && !isTeacherOrAdminForCourse(post.getCourseId())) {
-                    vo.setAuthorName("匿名用户");
-                    vo.setUserId(null);
-                } else {
-                    vo.setAuthorName(author.getRealName() != null ? author.getRealName() : author.getUsername());
-                }
-            }
-        }
-
-        return vo;
+        return convertToVO(post, java.util.Collections.emptyMap());
     }
 
     private DiscussionPostVO convertToVO(DiscussionPost post, java.util.Map<Long, User> userMap) {
@@ -668,11 +639,13 @@ public class DiscussionPostServiceImpl implements DiscussionPostService {
         vo.setCreatedAt(post.getCreatedAt());
         applyPostStatus(vo, post);
 
-        // 联查 authorName（使用预加载的 Map）
+        // 联查 authorName（优先用预加载 Map，miss 时回退查库）
         if (post.getUserId() != null) {
-            User author = userMap.get(post.getUserId());
+            User author = userMap != null ? userMap.get(post.getUserId()) : null;
+            if (author == null) {
+                author = userRepository.selectById(post.getUserId());
+            }
             if (author != null) {
-                // P1C-028: TEACHER/ADMIN 可见匿名帖子真实身份
                 if (Boolean.TRUE.equals(post.getIsAnonymous()) && !isTeacherOrAdminForCourse(post.getCourseId())) {
                     vo.setAuthorName("匿名用户");
                     vo.setUserId(null);
