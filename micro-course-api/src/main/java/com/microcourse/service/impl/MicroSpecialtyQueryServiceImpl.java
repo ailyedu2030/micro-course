@@ -534,91 +534,17 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
     @Override
     public MicroSpecialtyVO toVO(MicroSpecialty ms) {
         MicroSpecialtyVO vo = new MicroSpecialtyVO();
-        copyToVO(ms, vo);
+        copyToVO(ms, vo, java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
         return vo;
     }
     private void copyToVO(MicroSpecialty ms, MicroSpecialtyVO vo) {
-        vo.setId(ms.getId());
-        vo.setCode(ms.getCode());
-        vo.setTitle(ms.getTitle());
-        vo.setSubtitle(ms.getSubtitle());
-        vo.setCoverUrl(ms.getCoverUrl());
-        vo.setDescription(ms.getDescription());
-        vo.setOfferDepartmentId(ms.getOfferDepartmentId());
-        vo.setLeadTeacherId(ms.getLeadTeacherId());
-        vo.setTargetAudience(ms.getTargetAudience());
-        vo.setTrainingObjective(ms.getTrainingObjective());
-        vo.setAdmissionRequirement(ms.getAdmissionRequirement());
-        vo.setCompletionRule(ms.getCompletionRule());
-        vo.setTotalCredits(ms.getTotalCredits());
-        vo.setTotalHours(ms.getTotalHours());
-        vo.setRequiredCourseCount(ms.getRequiredCourseCount());
-        vo.setElectiveCourseCount(ms.getElectiveCourseCount());
-        vo.setMinCredits(ms.getMinCredits());
-        vo.setMaxStudents(ms.getMaxStudents());
-        vo.setStudentCount(ms.getStudentCount());
-        vo.setSemester(ms.getSemester());
-        vo.setIsFeatured(ms.getIsFeatured());
-        vo.setFeaturedRank(ms.getFeaturedRank());
-        vo.setFeaturedStatus(ms.getFeaturedStatus());
-        vo.setIsGoldFeatured(ms.getIsGoldFeatured());
-        vo.setStatus(ms.getStatus());
-        vo.setRejectReason(ms.getRejectReason());
-        vo.setSubmittedAt(ms.getSubmittedAt());
-        vo.setApprovedAt(ms.getApprovedAt());
-        vo.setOpenedAt(ms.getOpenedAt());
-        vo.setClosedAt(ms.getClosedAt());
-        vo.setCreatorId(ms.getCreatorId());
-        vo.setCreatedAt(ms.getCreatedAt());
-        vo.setUpdatedAt(ms.getUpdatedAt());
-        vo.setFeaturedApplyAt(ms.getFeaturedApplyAt());
-        vo.setFeaturedApplyReason(ms.getFeaturedApplyReason());
-        // Set department name
-        Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
-        if (dept != null) {
-            vo.setDepartmentName(dept.getName());
-        }
-        // Set lead teacher name
-        if (ms.getLeadTeacherId() != null) {
-            User leadUser = userRepository.selectById(ms.getLeadTeacherId());
-            if (leadUser != null) {
-                vo.setLeadTeacherName(leadUser.getRealName());
-            }
-        }
-        // Set creator name
-        if (ms.getCreatorId() != null) {
-            User creatorUser = userRepository.selectById(ms.getCreatorId());
-            if (creatorUser != null) {
-                vo.setCreatorName(creatorUser.getRealName());
-            }
-        }
-        // Count courses
-        Long courseCount = msCourseRepository.selectCount(
-                new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, ms.getId()));
-        vo.setCourseCount(courseCount.intValue());
-        // Count pending enrollments (待审报名)
-        Long pendingCount = msEnrollmentRepository.selectCount(
-                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
-                        .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"));
-        vo.setPendingEnrollCount(pendingCount.intValue());
-        // Set teacher role for current user in this micro-specialty
-        Long currentUserId = SecurityUtil.getCurrentUserId();
-        if (currentUserId != null) {
-            MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
-                    new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                            .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, ms.getId())
-                            .eq(MicroSpecialtyTeacher::getTeacherId, currentUserId));
-            if (teacher != null) {
-                vo.setRole(teacher.getRole());
-            }
-        }
-        // Count total enrollments
-        Long totalEnrollments = msEnrollmentRepository.selectCount(
-                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId()));
-        vo.setTotalEnrollments(totalEnrollments.intValue());
+        copyToVO(ms, vo, java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+                java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
     }
     @Override
     public MicroSpecialtyCourseVO toCourseVO(MicroSpecialtyCourse item) {
@@ -715,12 +641,12 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         java.util.Map<Long, User> userMap = new java.util.HashMap<>();
         java.util.Map<Long, Course> courseMap = new java.util.HashMap<>();
         if (t.getTeacherId() != null) {
-            User u = userRepository.selectById(t.getTeacherId());
-            if (u != null) userMap.put(u.getId(), u);
+            userRepository.selectBatchIds(java.util.Collections.singletonList(t.getTeacherId()))
+                    .forEach(u -> userMap.put(u.getId(), u));
         }
         if (t.getCourseId() != null) {
-            Course c = courseRepository.selectById(t.getCourseId());
-            if (c != null) courseMap.put(c.getId(), c);
+            courseRepository.selectBatchIds(java.util.Collections.singletonList(t.getCourseId()))
+                    .forEach(c -> courseMap.put(c.getId(), c));
         }
         return toTeacherVO(t, userMap, courseMap);
     }
@@ -809,28 +735,69 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         vo.setUpdatedAt(ms.getUpdatedAt());
         vo.setFeaturedApplyAt(ms.getFeaturedApplyAt());
         vo.setFeaturedApplyReason(ms.getFeaturedApplyReason());
-        // 使用预加载 map 填充关联字段
+        // 使用预加载 map 填充关联字段（miss 时回退查库，保证功能等价于原单参数版本）
         if (ms.getOfferDepartmentId() != null) {
-            String deptName = deptNameMap.get(ms.getOfferDepartmentId());
+            String deptName = deptNameMap != null ? deptNameMap.get(ms.getOfferDepartmentId()) : null;
+            if (deptName == null) {
+                Department dept = departmentRepository.selectById(ms.getOfferDepartmentId());
+                if (dept != null) deptName = dept.getName();
+            }
             if (deptName != null) vo.setDepartmentName(deptName);
         }
         if (ms.getLeadTeacherId() != null) {
-            String teacherName = teacherNameMap.get(ms.getLeadTeacherId());
+            String teacherName = teacherNameMap != null ? teacherNameMap.get(ms.getLeadTeacherId()) : null;
+            if (teacherName == null) {
+                User teacher = userRepository.selectById(ms.getLeadTeacherId());
+                if (teacher != null) teacherName = teacher.getRealName();
+            }
             if (teacherName != null) vo.setLeadTeacherName(teacherName);
         }
         if (ms.getCreatorId() != null) {
-            String creatorName = creatorNameMap.get(ms.getCreatorId());
+            String creatorName = creatorNameMap != null ? creatorNameMap.get(ms.getCreatorId()) : null;
+            if (creatorName == null) {
+                User creator = userRepository.selectById(ms.getCreatorId());
+                if (creator != null) creatorName = creator.getRealName();
+            }
             if (creatorName != null) vo.setCreatorName(creatorName);
         }
-        // 使用批量预计算统计值
+        // 使用批量预计算统计值（miss 时回退查库）
         if (courseCountMap != null) {
             vo.setCourseCount(courseCountMap.getOrDefault(ms.getId(), 0));
+        } else {
+            Long courseCount = msCourseRepository.selectCount(
+                    new LambdaQueryWrapper<MicroSpecialtyCourse>()
+                            .eq(MicroSpecialtyCourse::getMicroSpecialtyId, ms.getId()));
+            vo.setCourseCount(courseCount != null ? courseCount.intValue() : 0);
         }
         if (pendingEnrollCountMap != null) {
             vo.setPendingEnrollCount(pendingEnrollCountMap.getOrDefault(ms.getId(), 0));
+        } else {
+            Long pendingCount = msEnrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                            .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId())
+                            .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"));
+            vo.setPendingEnrollCount(pendingCount != null ? pendingCount.intValue() : 0);
         }
         if (totalEnrollmentsMap != null) {
             vo.setTotalEnrollments(totalEnrollmentsMap.getOrDefault(ms.getId(), 0));
+        } else {
+            Long totalEnrollments = msEnrollmentRepository.selectCount(
+                    new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
+                            .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, ms.getId()));
+            vo.setTotalEnrollments(totalEnrollments != null ? totalEnrollments.intValue() : 0);
+        }
+        if (roleMap != null && roleMap.containsKey(ms.getId())) {
+            vo.setRole(roleMap.get(ms.getId()));
+        } else {
+            Long currentUserId = SecurityUtil.getCurrentUserIdOpt();
+            if (currentUserId != null) {
+                MicroSpecialtyTeacher teacher = msTeacherRepository.selectOne(
+                        new LambdaQueryWrapper<MicroSpecialtyTeacher>()
+                                .eq(MicroSpecialtyTeacher::getMicroSpecialtyId, ms.getId())
+                                .eq(MicroSpecialtyTeacher::getTeacherId, currentUserId)
+                                .eq(MicroSpecialtyTeacher::getInviteStatus, "ACTIVE"));
+                if (teacher != null) vo.setRole(teacher.getRole());
+            }
         }
 }
 }
