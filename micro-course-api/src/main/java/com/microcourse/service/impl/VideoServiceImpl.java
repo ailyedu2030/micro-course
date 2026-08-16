@@ -72,7 +72,7 @@ public class VideoServiceImpl implements VideoService {
     @Value("${video.cover-dir:uploads/covers}")
     private String coverDir;
 
-    @Value("${video.storage-base-dir:uploads/videos}")
+    @Value("${video.upload-dir:uploads/videos}")
     private String uploadDir;
 
     public VideoServiceImpl(VideoRepository videoRepository,
