@@ -115,8 +115,26 @@
 | PR #244 | deep-audit P0×2 + P1-C×12 + P1-I×15 + P2×30 全量修复 + precheck whitelist bug | ✅ MERGED |
 | PR #245 | L4 decryptSafe + L2 校验统一 + L3/TtsWorkerService 确认 + P2-2 确认 | ✅ MERGED |
 | PR #246 | L1 @Deprecated 归档 + P2-1 ErrorCode 重构 | ✅ MERGED |
+| PR #250 | ServiceImpl 质量治理：DiscussionPostServiceImpl copyToVO 去重 + MicroSpecialtyQueryServiceImpl copyToVO 去重（含所有字段 fallback 查库）+ toTeacherVO N+1消除 + P2-3 @Valid null 测试 | ✅ MERGED (2026-08-16 CI 7/7 PASS) |
+
+### e2e 失败根因分析（PR #250）
+
+**现象**：CI 5次连续 e2e FAIL（backend PASS 6/6），本地 smoke test 15/15 PASS。
+
+**根因**：`MicroSpecialtyQueryServiceImpl.copyToVO` 单参数版本被消除后，
+`toVO(ms)` 委托 `copyToVO(ms, vo, emptyMap, ...)` 传入空 map，
+导致 `deptName/teacherName/creatorName/courseCount/pendingCount/totalEnrollments`
+字段在空 map 情况下无回退查库，全部为 null/0，破坏 API 响应结构。
+
+**修复**：为 `deptNameMap`、`teacherNameMap`、`creatorNameMap`、`courseCountMap`、
+`pendingEnrollCountMap`、`totalEnrollmentsMap` 均补充 null fallback 查库逻辑，
+保持与原单参数版本功能完全等价。
+
+**教训**：消除重复代码时，单参数版本仅做委托不够，必须确保多参数版本
+在任意 map 状态下功能等价，否则会引入隐蔽的 API 响应破坏。
 
 ---
 
 *记录生成：总工程师 · 2026-08-15*
+*最后更新：2026-08-16 PR #250 merged*
 *下次审查：Phase 7（ServiceImpl 拆分子服务提取 + @Valid null 测试补充）*
