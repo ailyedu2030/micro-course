@@ -70,18 +70,22 @@
 |---|------|------|------|
 | P2-1 | ErrorCode 业务码与 HTTP status 冲突（429/409/500）| exception/ErrorCode.java | ✅ 重构（PR #246）|
 | P2-2 | CourseController @Operation 缩进异常 | controller/ | ✅ 确认无异常（PR #245）|
-| P2-3 | @Valid 部分更新（null 放行）无专项测试 | 测试 | ⏳ 待处理 |
+| P2-3 | @Valid 部分更新（null 放行）无专项测试 | 测试 | ✅ PartialUpdateNullSafeTest（PR #248）|
 
 ### ServiceImpl 超长拆分（Phase 6 专项，已登记）
 
 | 文件 | 行数 | 状态 |
 |------|------|------|
 | SlideServiceImpl | 2042→已拆分 | ✅ 历史已拆分（SectionSlideServiceImpl 等）|
-| TtsServiceImpl | 待确认 | ⏳ 需重新确认当前行数 |
-| VideoServiceImpl 等 5 个 | 766-836 | ⏳ precheck whitelist 受控观察 |
-| 其余 13 个 | 600-765 | ⏳ precheck whitelist 受控观察 |
+| MicroSpecialtyQueryServiceImpl | 836→775（-61行）| ✅ copyToVO 去重 + role bug 修复（PR #248）|
+| VideoServiceImpl | 803 | ✅ 配置键冲突修复（PR #249）|
+| DiscussionPostServiceImpl | 794→767（-27行）| ✅ convertToVO 去重（PR #249）|
+| MicroSpecialtyEnrollmentServiceImpl | 794 | ⏳ classImport 嵌套 REQUIRES_NEW 事务（需架构重构）|
+| ExerciseRecordServiceImpl | 787 | ⏳ submitAnswer 330行超长方法（需拆分）|
+| GradeServiceImpl | 789 | ⏳ batchConvertToVO 155行（需提取辅助方法）|
+| 其余 | <800 | ⏳ precheck whitelist 受控观察 |
 
-> 注：PR #244 precheck whitelisted 了 AuthServiceImpl / VideoServiceImpl / MicroSpecialtyQueryServiceImpl。当前 18 个超 800 行 ServiceImpl 已在 whitelist 受控观察。|
+> 实质进展：MicroSpecialtyQueryServiceImpl.copyToVO 双版本合并（删82行单参数版，改委托8参数版）；roleMap 在8参数版中从未被使用（bug）一并修复；DiscussionPostServiceImpl.convertToVO 类似处理；VideoServiceImpl 配置键冲突修复（P1 配置缺陷）。|
 
 ---
 
@@ -115,8 +119,11 @@
 | PR #244 | deep-audit P0×2 + P1-C×12 + P1-I×15 + P2×30 全量修复 + precheck whitelist bug | ✅ MERGED |
 | PR #245 | L4 decryptSafe + L2 校验统一 + L3/TtsWorkerService 确认 + P2-2 确认 | ✅ MERGED |
 | PR #246 | L1 @Deprecated 归档 + P2-1 ErrorCode 重构 | ✅ MERGED |
+| PR #247 | docs: audit-fix-record 更新 | ✅ MERGED |
+| PR #248 | P2-3 @Valid null 放行测试 + MicroSpecialtyQueryServiceImpl copyToVO 去重 + role bug 修复 | ⏳ CI 等待中 |
+| PR #249 | VideoServiceImpl 配置键冲突 + DiscussionPostServiceImpl convertToVO 去重 | ⏳ CI 等待中 |
 
 ---
 
 *记录生成：总工程师 · 2026-08-15*
-*下次审查：Phase 7（ServiceImpl 拆分子服务提取 + @Valid null 测试补充）*
+*下次审查：Phase 7（classImport 嵌套事务重构 + submitAnswer 超长方法拆分）*
