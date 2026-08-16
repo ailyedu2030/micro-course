@@ -174,6 +174,7 @@ jobs:
           MULTIPART_LOCATION: ${{ runner.temp }}/multipart
           UPLOAD_BASE_DIR: ${{ runner.temp }}/uploads
           VIDEO_STORAGE_BASE_DIR: ${{ runner.temp }}/videos
+          VIDEO_UPLOAD_DIR: ${{ runner.temp }}/videos
 
       - name: Install PostgreSQL Client
         run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
