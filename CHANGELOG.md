@@ -134,6 +134,27 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 - `ExerciseAnswerSubmitExecutorTest` (6 个): 练习不存在、超答题次数、考试超时、考试已提交、maxAttempts/timeLimit 不限
 - **无需 Spring / DB / Redis**,纯 Mockito, ~2s 跑完
 
+### CI Backend 测试 Hang 根因修复（2026-08-18 · Phase 8）
+
+> 解决 CI backend 每次阻塞 ~30 分钟的根因。实测 backend 34m28s → **6m8s**，节省 28m20s/PR（**-82% 时间**）。
+
+#### PR #258 — perf(ci): 修复 backend test hang 根因
+
+**现象**: 连续 5 个 PR（#253-#257）backend 28-34m hang，frontend 1m35s 形成 22x 差距。
+
+**根因（3 重叠加）**:
+1. `BaseIntegrationTest` 用 `WebEnvironment.RANDOM_PORT` → 每个 test class 启动真实 Tomcat server（74 个继承的 test × Tomcat 启动）
+2. `pom.xml` surefire `reuseForks=false` → 每 test class 独立 JVM fork（83 JVM 启动开销）
+3. JVM `-Xmx1500m` 不足以支撑 83 个 Spring context 累积（200-300MB/context）
+
+**修复**:
+- `BaseIntegrationTest`：`RANDOM_PORT` → `MOCK`（所有 test 用 MockMvc，无需 Tomcat）。删除未使用的 `port` 字段（死代码）
+- `pom.xml`：`-Xmx1500m` → `-Xmx3g`、`reuseForks=false` → `true`（Spring context 跨 test class 缓存）
+
+**防回退**: `BaseIntegrationTest` Javadoc 完整记录 3 重根因 + workaround 起源。后续若有人改回 `RANDOM_PORT` 必须先理解 34m hang。
+
+**收益**: backend **34m → 6m8s**（节省 82%），每 PR 减少 ~25 分钟阻塞。
+
 ### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
 
 > 2026-08-07 Phase 10 代码审查（R1 前端 / R2 后端 / R3 配置+CI+DB / R4 业务契约+UX，52 项）
