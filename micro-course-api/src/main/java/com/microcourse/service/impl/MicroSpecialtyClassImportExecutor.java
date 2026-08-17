@@ -364,7 +364,7 @@ public class MicroSpecialtyClassImportExecutor {
     /**
      * 结果快照。
      */
-    record ClassImportResult(
+    public record ClassImportResult(
             int imported,
             int totalPendingCount,
             int studentsWithPending,
