@@ -28,7 +28,9 @@ export default {
     operation: 'Actions',
     detail: 'Detail',
     toggleLang: 'Language',
-    saveSuccess: 'Saved'
+    saveSuccess: 'Saved',
+    langSwitchToEn: 'Language switched to English',
+    langSwitchToZh: '已切换至中文'
   },
   common: {
     success: 'Operation successful',
