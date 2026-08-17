@@ -121,6 +121,7 @@
 | PR #253 | fix(i18n): 修复侧边栏二级菜单显示原始 i18n 键的问题（教师端/teacher/discussions 菜单显示 menu.teacherDashboard 等键名）+ Element Plus locale 同步 + 语言切换按钮可见化 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
 | PR #254 | refactor(service): 拆分3 个超长方法到独立 executor 类（GradeServiceImpl 789→619 行, MicroSpecialtyEnrollmentServiceImpl 794→638 行, ExerciseRecordServiceImpl 787→476 行）。顺手修 classImport batch.clear() 漏写 bug。 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
 | PR #256 | test: 为 PR #254 拆分的 3 个 Executor/Builder 添加 22 个独立单元测试（GradeVoBuilder 11 + MicroSpecialtyClassImportExecutor 5 + ExerciseAnswerSubmitExecutor 6），兑现拆分时构造函数注入→独立 Mockito 测试的设计目标 | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
+| PR #258 | perf(ci): 修复 backend test hang 根因（BaseIntegrationTest RANDOM_PORT → MOCK，surefire reuseForks=false → true，JVM heap 1.5G → 3G）。实测 backend **34m28s → 6m8s**（-82%），节省 ~28m/PR | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 
 ### e2e 失败根因分析（PR #250）
 
@@ -141,5 +142,25 @@
 ---
 
 *记录生成：总工程师 · 2026-08-15*
-*最后更新：2026-08-16 PR #250 merged*
-*下次审查：Phase 7（ServiceImpl 拆分子服务提取 + @Valid null 测试补充）*
+### PR #258 CI Backend Hang 根因分析（3 重叠加）
+
+**现象**: 连续 5 个 PR（#253-#257）backend 28-34m hang，frontend 1m35s 形成 22x 差距。
+
+**根因**:
+1. `BaseIntegrationTest` 用 `WebEnvironment.RANDOM_PORT` → 每个 test class 启动真实 Tomcat server（74 个继承的 test × Tomcat 启动）
+2. `pom.xml` surefire `reuseForks=false` → 每 test class 独立 JVM fork（83 JVM 启动开销）
+3. JVM `-Xmx1500m` 不足以支撑 83 个 Spring context 累积（200-300MB/context）
+
+**修复**:
+- `BaseIntegrationTest`：`RANDOM_PORT` → `MOCK`（所有 test 用 MockMvc，无需 Tomcat）。删除未使用的 `port` 字段
+- `pom.xml`：`-Xmx1500m` → `-Xmx3g`、`reuseForks=false` → `true`
+
+**实测收益**: backend **34m28s → 6m8s**（-82%），节省 ~28m/PR。
+
+**防回退**: `BaseIntegrationTest` Javadoc 完整记录 3 重根因 + workaround 起源。
+
+---
+
+*记录生成：总工程师 · 2026-08-15*
+*最后更新：2026-08-18 PR #258 merged (Phase 8 完成)*
+*下次审查：Phase 9（F10-D2 灰度分流实现 + 集成测试用例去重）*
