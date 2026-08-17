@@ -99,6 +99,34 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 #### 验证
 - `mvn -o compile` 通过；CI yaml `yaml.safe_load` 解析通过；V328 migration 头部审计通过
 
+### ServiceImpl 治理 + i18n 修复（2026-08-16 ~ 2026-08-17 · Phase 7 收尾）
+
+> 完成审计清单遗留 P2（ServiceImpl 超长）+ 修复 i18n 真实生产缺陷。3 个 ServiceImpl 全部 < 800 行（precheck 26/26 ✅）。
+
+#### PR #250 — ServiceImpl 质量治理（已合并）
+- `DiscussionPostServiceImpl` / `MicroSpecialtyQueryServiceImpl` copyToVO 去重 + 所有字段 fallback 查库
+- `toTeacherVO` N+1 消除
+- `PartialUpdateNullSafeTest` P2-3 测试补全
+
+#### PR #251 — 审计记录补录
+- 补录 PR #250 合并状态 + e2e 根因分析文档
+
+#### PR #252 — VideoServiceImpl 配置冲突修复
+- `video.upload-dir` 与 `video.storage-base-dir` 分离（DEPLOYMENT_CHECKLIST.md 已规划但 Java 代码未引用）
+- CI workflow 加 `VIDEO_UPLOAD_DIR` 环境变量
+
+#### PR #253 — i18n 键名显示修复
+- **根因**：vue-i18n v9 + Element Plus slot 上下文中 `$t()` 全局属性未正确解析,返回原始键字符串
+- **症状**：教师端 /teacher/discussions 侧边栏二级菜单显示 `menu.teacherDashboard` 等键名（用户误以为是英文）
+- **修复**：`Layout.vue` 一级/二级菜单 `$t()` → `t()` (useI18n 闭包) + Element Plus locale 同步 + 语言切换按钮可见化（`中/EN` 指示 + toast）
+
+#### PR #254 — ServiceImpl 拆分为 Executor / Builder 类
+- `GradeServiceImpl` 789 → 619 行 + `GradeVoBuilder.java` (359 行)
+- `MicroSpecialtyEnrollmentServiceImpl` 794 → 638 行 + `MicroSpecialtyClassImportExecutor.java` (371 行)
+- `ExerciseRecordServiceImpl` 787 → 476 行 + `ExerciseAnswerSubmitExecutor.java` (583 行)
+- **顺手修 Bug**：`MicroSpecialtyEnrollmentServiceImpl.classImport` 原代码漏 `batch.clear()`, BATCH_SIZE flush 后重复插入
+- **设计原则**：Executor 构造函数注入所有依赖 / Record 上下文快照 / Functional interface (QuestionGrader)
+
 ### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
 
 > 2026-08-07 Phase 10 代码审查（R1 前端 / R2 后端 / R3 配置+CI+DB / R4 业务契约+UX，52 项）

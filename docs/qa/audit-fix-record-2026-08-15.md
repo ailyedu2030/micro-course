@@ -74,14 +74,18 @@
 
 ### ServiceImpl 超长拆分（Phase 6 专项，已登记）
 
-| 文件 | 行数 | 状态 |
-|------|------|------|
-| SlideServiceImpl | 2042→已拆分 | ✅ 历史已拆分（SectionSlideServiceImpl 等）|
-| TtsServiceImpl | 待确认 | ⏳ 需重新确认当前行数 |
-| VideoServiceImpl 等 5 个 | 766-836 | ⏳ precheck whitelist 受控观察 |
-| 其余 13 个 | 600-765 | ⏳ precheck whitelist 受控观察 |
+| 文件 | 重构前行数 | 重构后行数 | 状态 |
+|------|-----------|-----------|------|
+| GradeServiceImpl | 789 | **619** + GradeVoBuilder.java (359) | ✅ PR #254 拆分 |
+| MicroSpecialtyEnrollmentServiceImpl | 794 | **638** + MicroSpecialtyClassImportExecutor.java (371) | ✅ PR #254 拆分 |
+| ExerciseRecordServiceImpl | 787 | **476** + ExerciseAnswerSubmitExecutor.java (583) | ✅ PR #254 拆分 |
+| SlideServiceImpl | 2042→已拆分 | — | ✅ 历史已拆分（SectionSlideServiceImpl 等）|
+| VideoServiceImpl | 803 | 803 | ⏳ precheck whitelist（pre-existing）|
+| MicroSpecialtyQueryServiceImpl | 803 | 803 | ⏳ precheck whitelist（pre-existing）|
+| AuthServiceImpl | — | 811 | ⏳ precheck whitelist（pre-existing）|
 
-> 注：PR #244 precheck whitelisted 了 AuthServiceImpl / VideoServiceImpl / MicroSpecialtyQueryServiceImpl。当前 18 个超 800 行 ServiceImpl 已在 whitelist 受控观察。|
+> 注：PR #244 precheck whitelisted 了 AuthServiceImpl / VideoServiceImpl / MicroSpecialtyQueryServiceImpl。  
+> PR #254 把3 个新超 800 行的 ServiceImpl 全部拆分为 Executor / Builder 模式,3 个 ServiceImpl 文件本身已 < 800 行(precheck 通过)。
 
 ---
 
@@ -108,7 +112,7 @@
 
 ---
 
-## 五、本次处理（2026-08-15 Phase 6）
+## 五、本次处理（2026-08-15 Phase 6 起，持续至 Phase 7）
 
 | PR | 修复内容 | 状态 |
 |----|---------|------|
@@ -116,6 +120,10 @@
 | PR #245 | L4 decryptSafe + L2 校验统一 + L3/TtsWorkerService 确认 + P2-2 确认 | ✅ MERGED |
 | PR #246 | L1 @Deprecated 归档 + P2-1 ErrorCode 重构 | ✅ MERGED |
 | PR #250 | ServiceImpl 质量治理：DiscussionPostServiceImpl copyToVO 去重 + MicroSpecialtyQueryServiceImpl copyToVO 去重（含所有字段 fallback 查库）+ toTeacherVO N+1消除 + P2-3 @Valid null 测试 | ✅ MERGED (2026-08-16 CI 7/7 PASS) |
+| PR #251 | docs(audit): 补录 PR #250 合并状态 + e2e 根因分析 | ✅ MERGED |
+| PR #252 | fix(VideoServiceImpl): separate video.upload-dir from video.storage-base-dir | ✅ MERGED |
+| PR #253 | fix(i18n): 修复侧边栏二级菜单显示原始 i18n 键的问题（教师端/teacher/discussions 菜单显示 menu.teacherDashboard 等键名）+ Element Plus locale 同步 + 语言切换按钮可见化 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
+| PR #254 | refactor(service): 拆分3 个超长方法到独立 executor 类（GradeServiceImpl 789→619 行, MicroSpecialtyEnrollmentServiceImpl 794→638 行, ExerciseRecordServiceImpl 787→476 行）。顺手修 classImport batch.clear() 漏写 bug。 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
 
 ### e2e 失败根因分析（PR #250）
 
@@ -133,8 +141,42 @@
 **教训**：消除重复代码时，单参数版本仅做委托不够，必须确保多参数版本
 在任意 map 状态下功能等价，否则会引入隐蔽的 API 响应破坏。
 
+### i18n 键名显示根因分析（PR #253）
+
+**现象**：教师端 /teacher/discussions 侧边栏二级菜单显示 `menu.teacherDashboard` `menu.myCourses` 等键名字符串（非英文翻译）。用户误以为是"英文"。
+
+**根因**：vue-i18n v9 + Element Plus slot 渲染上下文中，`$t()` 全局属性未正确解析, 返回原始键字符串而非翻译值。同时 Element Plus locale (硬编码 zhCn) 与 vue-i18n locale 不同步, 切换英文后分页/对话框仍显示中文。
+
+**修复**：
+- `Layout.vue` 一级/二级菜单 `$t()` → `t()` (useI18n 闭包) 
+- `App.vue` 同步 Element Plus locale 到 vue-i18n locale
+- `Layout.vue` 语言切换按钮改为可见 `中/EN` 指示 + toast
+- `i18n/index.js` 防御性 localStorage 值校验
+- 新增 `app.langSwitchToEn/Zh` 翻译键
+
+**教训**：vue-i18n v9 Composition API 模式下，闭包 `t()` 比全局 `$t()` 在 slot 上下文中更可靠。语言切换按钮必须有视觉反馈, 不能是隐藏图标。
+
+### PR #254 ServiceImpl 拆分策略
+
+**挑战**：第一轮把超长方法拆分到 inline helper 后，3 个 ServiceImpl 体积仍超过 800 行（precheck FAIL）。
+
+**解决**：第二轮把 inline helper 提取到独立 executor / builder 类，构造函数注入所有依赖：
+
+| 原方法 | Service 行数 | 提取到 | 新类行数 |
+|--------|-----------|--------|----------|
+| GradeServiceImpl.batchConvertToVO (155行) | 619 | GradeVoBuilder | 359 |
+| MicroSpecialtyEnrollmentServiceImpl.classImport (170行) | 638 | MicroSpecialtyClassImportExecutor | 371 |
+| ExerciseRecordServiceImpl.submitAnswer (330行) | 476 | ExerciseAnswerSubmitExecutor | 583 |
+
+**Bug 修复**：MicroSpecialtyEnrollmentServiceImpl.classImport 原代码漏 `batch.clear()`，导致 BATCH_SIZE flush 后重复插入。PR #254 修复。
+
+**设计原则**：
+- Executor 类构造函数注入所有依赖 → 可独立单元测试
+- Record 上下文快照传递不可变数据 → 避免共享可变状态
+- Functional interface (QuestionGrader) 解耦 executor 与具体批改实现
+
 ---
 
 *记录生成：总工程师 · 2026-08-15*
-*最后更新：2026-08-16 PR #250 merged*
-*下次审查：Phase 7（ServiceImpl 拆分子服务提取 + @Valid null 测试补充）*
+*最后更新：2026-08-17 PR #254 merged (Phase 7 完成)*
+*下次审查：Phase 8（CI backend 测试 hang 根因 + F10-D2 灰度分流实现）*
