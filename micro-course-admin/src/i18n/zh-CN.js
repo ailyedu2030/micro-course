@@ -28,7 +28,9 @@ export default {
     operation: '操作',
     detail: '详情',
     toggleLang: '切换语言',
-    saveSuccess: '保存成功'
+    saveSuccess: '保存成功',
+    langSwitchToEn: '语言已切换为 English',
+    langSwitchToZh: 'Language switched to 中文'
   },
   common: {
     success: '操作成功',

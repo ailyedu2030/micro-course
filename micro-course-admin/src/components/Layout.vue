@@ -31,11 +31,11 @@
           <el-sub-menu :index="group.group">
             <template #title>
               <el-icon><component :is="iconMap[group.icon]" /></el-icon>
-              <span v-show="!collapsed">{{ group.groupKey ? $t(group.groupKey) : group.group }}</span>
+              <span v-show="!collapsed">{{ group.groupKey ? t(group.groupKey) : group.group }}</span>
             </template>
             <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
               <el-icon><component :is="iconMap[item.icon]" /></el-icon>
-              <template #title>{{ item.labelKey ? $t(item.labelKey) : item.label }}</template>
+              <template #title>{{ item.labelKey ? t(item.labelKey) : item.label }}</template>
             </el-menu-item>
           </el-sub-menu>
         </template>
@@ -73,10 +73,11 @@
               <span class="sr-only">{{ isDark ? t('layout.switchLightMode') : t('layout.switchDarkMode') }}</span>
             </button>
           </el-tooltip>
-          <button class="header-icon header-btn-reset" @click="toggleLang" :aria-label="$t('app.toggleLang')">
-            <el-icon aria-hidden="true"><Document /></el-icon>
-            <span class="sr-only">{{ $t('app.toggleLang') }}</span>
-          </button>
+          <el-tooltip :content="t('app.toggleLang')" placement="bottom">
+            <button class="header-icon lang-toggle-btn header-btn-reset" @click="toggleLang" :aria-label="t('app.toggleLang')">
+              <span class="lang-indicator">{{ locale === 'zh-CN' ? '中' : 'EN' }}</span>
+            </button>
+          </el-tooltip>
           <button class="header-icon header-btn-reset" @click="$router.push('/notifications')">
             <el-icon aria-hidden="true">
               <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
@@ -155,7 +156,7 @@ import {
   TrendCharts, PictureFilled, Menu, Medal, Present, Calendar
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
@@ -205,8 +206,10 @@ function toggleTheme() {
 }
 
 function toggleLang() {
-  locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
-  try { localStorage.setItem('lang', locale.value) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
+  const newLocale = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
+  locale.value = newLocale
+  try { localStorage.setItem('lang', newLocale) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
+  ElMessage.success(newLocale === 'en-US' ? t('app.langSwitchToEn') : t('app.langSwitchToZh'))
 }
 
 // 侧边栏折叠状态
@@ -614,6 +617,18 @@ onUnmounted(() => {
 
 .theme-toggle-btn {
   font-size: 20px;
+}
+
+.lang-toggle-btn {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 32px;
+  letter-spacing: 0;
+}
+
+.lang-indicator {
+  font-family: inherit;
+  line-height: 1;
 }
 
 .user-avatar-wrapper {
