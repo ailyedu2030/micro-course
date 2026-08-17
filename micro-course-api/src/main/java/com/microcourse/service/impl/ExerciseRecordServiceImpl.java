@@ -465,7 +465,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-    static class GradingResult {
+    public static class GradingResult {
         Long questionId;
         String questionType;
         String answer;
