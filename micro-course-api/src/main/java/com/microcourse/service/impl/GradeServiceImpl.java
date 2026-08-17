@@ -530,172 +530,30 @@ public class GradeServiceImpl implements GradeService {
     }
 
     /**
+     * I18-2026-08-17: 委托 {@link GradeVoBuilder} 处理批量预加载（保持向后兼容，
+     * 内部旧字段仍存在但不再重复实现 VO 转换逻辑）。
+     */
+    private GradeVoBuilder gradeVoBuilder() {
+        return new GradeVoBuilder(
+                courseRepository, userRepository, exerciseRepository,
+                enrollmentRepository, exerciseRecordRepository, objectMapper);
+    }
+
+    /**
      * 批量转换 — 预加载关联实体，避免 N+1
      */
     private List<GradeVO> batchConvertToVO(List<Grade> grades) {
         if (grades.isEmpty()) {
             return new ArrayList<>();
         }
-
-        // 收集所有需要查询的 ID
-        Set<Long> courseIds = new HashSet<>();
-        Set<Long> userIds = new HashSet<>();
-        Set<Long> exerciseIds = new HashSet<>();
-        for (Grade g : grades) {
-            if (g.getCourseId() != null) courseIds.add(g.getCourseId());
-            if (g.getUserId() != null) userIds.add(g.getUserId());
-            if (g.getGradedBy() != null) userIds.add(g.getGradedBy());
-            if (g.getExerciseId() != null) exerciseIds.add(g.getExerciseId());
-        }
-
-        // 批量查询
-        Map<Long, Course> courseMap = courseIds.isEmpty() ? Collections.emptyMap()
-                : courseRepository.selectBatchIds(courseIds).stream()
-                        .collect(Collectors.toMap(Course::getId, c -> c));
-        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap()
-                : userRepository.selectBatchIds(userIds).stream()
-                        .collect(Collectors.toMap(User::getId, u -> u));
-        Map<Long, Exercise> exerciseMap = exerciseIds.isEmpty() ? Collections.emptyMap()
-                : exerciseRepository.selectBatchIds(exerciseIds).stream()
-                        .collect(Collectors.toMap(Exercise::getId, e -> e));
-
-        // Phase 6 P0: 批量查询选课（courseId, userId）→ enrollmentId
-        Map<Long, Map<Long, Long>> enrollmentIdMap = new HashMap<>();
-        if (!courseIds.isEmpty() && !userIds.isEmpty()) {
-            LambdaQueryWrapper<Enrollment> ew = new LambdaQueryWrapper<>();
-            ew.in(Enrollment::getCourseId, courseIds)
-              .in(Enrollment::getUserId, userIds)
-              .isNull(Enrollment::getDeletedAt);
-            for (Enrollment e : enrollmentRepository.selectList(ew)) {
-                enrollmentIdMap.computeIfAbsent(e.getCourseId(), k -> new HashMap<>())
-                               .put(e.getUserId(), e.getId());
-            }
-        }
-
-        // P1-C-Grade-N+1: 批量预加载 ExerciseRecord，避免 per-grade selectOne N+1
-        // 收集有 exerciseId 的 grades 的 (userId, exerciseId, attemptNo) 组合
-        List<ExerciseRecordKey> recordKeys = new ArrayList<>();
-        for (Grade g : grades) {
-            if (g.getExerciseId() != null && g.getUserId() != null) {
-                recordKeys.add(new ExerciseRecordKey(
-                        g.getUserId(),
-                        g.getExerciseId(),
-                        g.getAttemptNo() != null ? g.getAttemptNo() : 0));
-            }
-        }
-        // 批量查询所有相关 ExerciseRecord（按 id 倒序，取每个组合最近一条）
-        Map<ExerciseRecordKey, ExerciseRecord> recordMap = new HashMap<>();
-        if (!recordKeys.isEmpty()) {
-            Set<Long> recExerciseIds = recordKeys.stream().map(k -> k.exerciseId).collect(Collectors.toSet());
-            Set<Long> recUserIds = recordKeys.stream().map(k -> k.userId).collect(Collectors.toSet());
-            LambdaQueryWrapper<ExerciseRecord> recWrapper = new LambdaQueryWrapper<>();
-            recWrapper.in(ExerciseRecord::getExerciseId, recExerciseIds)
-                     .in(ExerciseRecord::getUserId, recUserIds)
-                     .isNull(ExerciseRecord::getDeletedAt)
-                     .orderByDesc(ExerciseRecord::getId);
-            List<ExerciseRecord> allRecords = exerciseRecordRepository.selectList(recWrapper);
-            for (ExerciseRecord r : allRecords) {
-                ExerciseRecordKey key = new ExerciseRecordKey(
-                        r.getUserId(), r.getExerciseId(),
-                        r.getAttemptNo() != null ? r.getAttemptNo() : 0);
-                // id 倒序，第一个遇到即最近
-                recordMap.putIfAbsent(key, r);
-            }
-        }
-
-        return grades.stream().map(grade -> {
-            GradeVO vo = new GradeVO();
-            vo.setId(grade.getId());
-            vo.setCourseId(grade.getCourseId());
-            vo.setUserId(grade.getUserId());
-            vo.setExerciseId(grade.getExerciseId());
-            vo.setScore(grade.getScore());
-            vo.setTotalScore(grade.getTotalScore());
-            vo.setPassed(grade.getPassed());
-            vo.setAttemptNo(grade.getAttemptNo());
-            vo.setDuration(grade.getDuration());
-            vo.setSubmittedAt(grade.getSubmittedAt());
-            vo.setGradedBy(grade.getGradedBy());
-            vo.setGradedAt(grade.getGradedAt());
-            vo.setCreatedAt(grade.getCreatedAt());
-            vo.setComment(grade.getComment());
-
-            // P1-C 修复 (2026-08-04): 关联练习作答记录，识别"待人工批改"的主观题，
-            // 供前端成绩页展示批改入口与逐题批改（此前主观题永远 0 分且无批改入口）。
-            // P1-C-Grade-N+1 优化: 批量预加载替代 per-grade selectOne，从 recordMap 查找。
-            try {
-                ExerciseRecord record = null;
-                if (grade.getExerciseId() != null && grade.getUserId() != null) {
-                    record = recordMap.get(new ExerciseRecordKey(
-                            grade.getUserId(),
-                            grade.getExerciseId(),
-                            grade.getAttemptNo() != null ? grade.getAttemptNo() : 0));
-                }
-                if (record != null) {
-                    vo.setRecordId(record.getId());
-                    boolean needsManual = Boolean.TRUE.equals(record.getNeedsManualGrading());
-                    vo.setNeedsManualGrading(needsManual);
-                    if (needsManual && record.getAnswers() != null && !record.getAnswers().isBlank()) {
-                        List<Map<String, Object>> answerList = objectMapper.readValue(
-                                record.getAnswers(),
-                                new TypeReference<List<Map<String, Object>>>() {});
-                        List<Map<String, Object>> pending = new ArrayList<>();
-                        for (Map<String, Object> answer : answerList) {
-                            if (Boolean.TRUE.equals(answer.get("needsManualGrading"))) {
-                                Map<String, Object> item = new HashMap<>();
-                                Object qidObj = answer.get("questionId");
-                                item.put("questionId", qidObj instanceof Number
-                                        ? ((Number) qidObj).longValue() : null);
-                                item.put("studentAnswer", answer.get("answer"));
-                                // 满分取练习总分（单题主观题即该题满分；answer.score 是学生得分 0）
-                                item.put("maxScore", grade.getTotalScore() != null
-                                        ? grade.getTotalScore().intValue() : 0);
-                                pending.add(item);
-                            }
-                        }
-                        vo.setPendingQuestions(pending);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("[Grade] 关联作答记录解析失败 gradeId={}", grade.getId(), e);
-            }
-
-            Course course = courseMap.get(grade.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getTitle());
-            }
-            User student = userMap.get(grade.getUserId());
-            if (student != null) {
-                vo.setStudentName(student.getRealName() != null ? student.getRealName() : student.getUsername());
-            }
-            Exercise exercise = exerciseMap.get(grade.getExerciseId());
-            if (exercise != null) {
-                vo.setExerciseTitle(exercise.getTitle());
-            }
-            User grader = userMap.get(grade.getGradedBy());
-            if (grader != null) {
-                vo.setGradedByName(grader.getRealName() != null ? grader.getRealName() : grader.getUsername());
-            }
-            // Phase 6 P0: 填充 enrollmentId（从批量预加载的选课映射）
-            if (grade.getCourseId() != null && grade.getUserId() != null) {
-                Map<Long, Long> byCourse = enrollmentIdMap.get(grade.getCourseId());
-                if (byCourse != null) {
-                    Long eid = byCourse.get(grade.getUserId());
-                    if (eid != null) {
-                        vo.setEnrollmentId(eid);
-                    }
-                }
-            }
-            return vo;
-        }).collect(Collectors.toList());
+        return gradeVoBuilder().buildAll(grades);
     }
 
     /**
      * P1/P0-6 修复: 单条转换委托 batchConvertToVO，消除 N+1
      */
     private GradeVO convertToVO(Grade grade) {
-        List<GradeVO> vos = batchConvertToVO(Collections.singletonList(grade));
-        return vos.isEmpty() ? new GradeVO() : vos.get(0);
+        return gradeVoBuilder().buildSingle(grade);
     }
 
     /**
@@ -733,34 +591,6 @@ public class GradeServiceImpl implements GradeService {
         // 用 page 方法取最大 EXPORT_MAX_SIZE 条
         PageResult<GradeVO> result = page(courseId, null, 0, EXPORT_MAX_SIZE);
         return result.getItems();
-    }
-
-    /**
-     * P1-C-Grade-N+1: ExerciseRecord 复合键，用于批量查询结果去重
-     */
-    private static class ExerciseRecordKey {
-        final Long userId;
-        final Long exerciseId;
-        final int attemptNo;
-
-        ExerciseRecordKey(Long userId, Long exerciseId, int attemptNo) {
-            this.userId = userId;
-            this.exerciseId = exerciseId;
-            this.attemptNo = attemptNo;
-        }
-
-        @Override public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ExerciseRecordKey that = (ExerciseRecordKey) o;
-            return attemptNo == that.attemptNo
-                    && Objects.equals(userId, that.userId)
-                    && Objects.equals(exerciseId, that.exerciseId);
-        }
-
-        @Override public int hashCode() {
-            return Objects.hash(userId, exerciseId, attemptNo);
-        }
     }
 
     /**
