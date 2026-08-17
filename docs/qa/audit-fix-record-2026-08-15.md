@@ -116,6 +116,11 @@
 | PR #245 | L4 decryptSafe + L2 校验统一 + L3/TtsWorkerService 确认 + P2-2 确认 | ✅ MERGED |
 | PR #246 | L1 @Deprecated 归档 + P2-1 ErrorCode 重构 | ✅ MERGED |
 | PR #250 | ServiceImpl 质量治理：DiscussionPostServiceImpl copyToVO 去重 + MicroSpecialtyQueryServiceImpl copyToVO 去重（含所有字段 fallback 查库）+ toTeacherVO N+1消除 + P2-3 @Valid null 测试 | ✅ MERGED (2026-08-16 CI 7/7 PASS) |
+| PR #251 | docs(audit): 补录 PR #250 合并状态 + e2e 根因分析 | ✅ MERGED |
+| PR #252 | fix(VideoServiceImpl): separate video.upload-dir from video.storage-base-dir | ✅ MERGED |
+| PR #253 | fix(i18n): 修复侧边栏二级菜单显示原始 i18n 键的问题（教师端/teacher/discussions 菜单显示 menu.teacherDashboard 等键名）+ Element Plus locale 同步 + 语言切换按钮可见化 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
+| PR #254 | refactor(service): 拆分3 个超长方法到独立 executor 类（GradeServiceImpl 789→619 行, MicroSpecialtyEnrollmentServiceImpl 794→638 行, ExerciseRecordServiceImpl 787→476 行）。顺手修 classImport batch.clear() 漏写 bug。 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
+| PR #256 | test: 为 PR #254 拆分的 3 个 Executor/Builder 添加 22 个独立单元测试（GradeVoBuilder 11 + MicroSpecialtyClassImportExecutor 5 + ExerciseAnswerSubmitExecutor 6），兑现拆分时构造函数注入→独立 Mockito 测试的设计目标 | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 
 ### e2e 失败根因分析（PR #250）
 
