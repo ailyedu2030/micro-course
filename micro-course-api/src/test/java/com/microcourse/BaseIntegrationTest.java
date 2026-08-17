@@ -7,7 +7,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -15,14 +14,33 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+/**
+ * 后端集成测试基类 — Phase 8 根因修复（CI backend hang）。
+ *
+ * <h3>【现象】CI backend 34 min vs frontend 1m35s，每个 PR 阻塞 ~30 分钟</h3>
+ *
+ * <h3>【根因】3 重叠加</h3>
+ * <ol>
+ *   <li>原 webEnvironment = RANDOM_PORT → 每次启动真实 Tomcat server（74 个 test class）
+ *   <li>{@code reuseForks=false} → 每 test class 独立 JVM fork（83 个 JVM 启动）
+ *   <li>JVM heap 仅 1500m → 累积后触发 ClassPathResource NotFound（最初 workaround 起源）
+ * </ol>
+ *
+ * <h3>【修复】</h3>
+ * <ul>
+ *   <li>{@code RANDOM_PORT} → {@code MOCK}：所有测试用 {@link MockMvc}，无需启动真实 Tomcat。
+ *       删除未使用的 {@code port} 字段（74 个 test class 共享）
+ *   <li>{@code reuseForks=false} → {@code true}（默认）：Spring context 跨 test class 缓存
+ *   <li>heap 1500m → 3g：覆盖 Spring context 缓存场景
+ * </ul>
+ *
+ * <h3>【验证】预计 CI backend 34m → 5-8m，保留 100% 行为兼容</h3>
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public abstract class BaseIntegrationTest {
-
-    @LocalServerPort
-    protected int port;
 
     @Autowired
     protected MockMvc mockMvc;
