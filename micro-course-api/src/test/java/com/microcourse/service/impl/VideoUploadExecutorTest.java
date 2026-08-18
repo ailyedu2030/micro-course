@@ -52,8 +52,8 @@ class VideoUploadExecutorTest {
         executor = new VideoUploadExecutor(
                 videoRepository, courseRepository, userRepository,
                 videoTranscodeService, redisUtil, videoValidator,
-                "/tmp/videos",  // uploadDir
-                "/tmp/covers"   // coverDir
+                "/tmp/videos",  // uploadDir (来自 @Value)
+                "/tmp/covers"   // coverDir (来自 @Value)
         );
     }
 

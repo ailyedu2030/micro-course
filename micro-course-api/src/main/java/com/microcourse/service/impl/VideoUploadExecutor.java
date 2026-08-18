@@ -80,8 +80,8 @@ public class VideoUploadExecutor {
                                VideoTranscodeService videoTranscodeService,
                                RedisUtil redisUtil,
                                VideoValidator videoValidator,
-                               String uploadDir,
-                               String coverDir) {
+                               @org.springframework.beans.factory.annotation.Value("${video.upload-dir:uploads/videos}") String uploadDir,
+                               @org.springframework.beans.factory.annotation.Value("${video.cover-dir:uploads/covers}") String coverDir) {
         this.videoRepository = videoRepository;
         this.courseRepository = courseRepository;
         this.userRepository = userRepository;
