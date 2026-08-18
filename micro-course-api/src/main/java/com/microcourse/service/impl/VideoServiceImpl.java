@@ -63,6 +63,8 @@ public class VideoServiceImpl implements VideoService {
     private final VideoSignUtil videoSignUtil;
     private final AdminSettingService adminSettingService;
     private final RedisUtil redisUtil;
+    private final VideoUploadService videoUploadExecutor;
+    private final VideoValidator videoValidator;
     private final LearningProgressRepository learningProgressRepository;
 
     /** P1-1: 从配置读取存储目录 */
@@ -84,6 +86,8 @@ public class VideoServiceImpl implements VideoService {
                             VideoSignUtil videoSignUtil,
                             AdminSettingService adminSettingService,
                             RedisUtil redisUtil,
+                            VideoUploadService videoUploadExecutor,
+                            VideoValidator videoValidator,
                             LearningProgressRepository learningProgressRepository) {
         this.videoRepository = videoRepository;
         this.chapterRepository = chapterRepository;
@@ -95,6 +99,8 @@ public class VideoServiceImpl implements VideoService {
         this.videoSignUtil = videoSignUtil;
         this.adminSettingService = adminSettingService;
         this.redisUtil = redisUtil;
+        this.videoUploadExecutor = videoUploadExecutor;
+        this.videoValidator = videoValidator;
     }
 
     private long getMaxFileSize() {
@@ -354,7 +360,17 @@ public class VideoServiceImpl implements VideoService {
             throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION, "视频状态已被修改，请刷新");
         }
 
-        scheduleTranscodeAfterCommit(id);
+        // 事务提交后调度转码
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    videoTranscodeService.transcode(id);
+                }
+            });
+        } else {
+            videoTranscodeService.transcode(id);
+        }
         log.info("[RetryTranscode] 视频重新进入转码: id={}", id);
         return getById(id);
     }
@@ -397,224 +413,30 @@ public class VideoServiceImpl implements VideoService {
 
     /**
      * 批量上传视频 (权限矩阵 v4.0 §3.5 BATCH_UPLOAD_VIDEO)
-     * 复用单文件上传逻辑, 任一文件失败不中断其他文件
+     * Phase 11 重构: 委托 VideoUploadService
      */
     @Override
     public java.util.List<VideoVO> batchUpload(org.springframework.web.multipart.MultipartFile[] files,
                                                 Long courseId, Long chapterId) {
-        if (files == null || files.length == 0) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
-        }
-        assertCourseOwnership(courseId);
-        java.util.List<VideoVO> results = new java.util.ArrayList<>();
-        for (org.springframework.web.multipart.MultipartFile file : files) {
-            try {
-                VideoVO vo = uploadVideo(file, courseId, chapterId);
-                results.add(vo);
-            } catch (Exception e) {
-                log.error("[BatchUpload] 文件上传失败: filename={}, err={}",
-                        file.getOriginalFilename(), e.getMessage());
-                // 单文件失败不阻塞其他文件, 但需要返回失败信息
-                VideoVO failed = new VideoVO();
-                failed.setTitle(file.getOriginalFilename());
-                failed.setErrorMessage(e.getMessage());
-                results.add(failed);
-            }
-        }
-        return results;
+        return videoUploadExecutor.batchUpload(files, courseId, chapterId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String uploadCover(Long videoId, MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件不能为空");
-        }
-        Video video = videoRepository.selectById(videoId);
-        if (video == null) {
-            throw new BusinessException(ErrorCode.VIDEO_NOT_FOUND);
-        }
-        assertCourseOwnership(video.getCourseId());
-        validateImageMagic(file);
-
-        // P2 R-003 修复：删除旧封面文件，防止磁盘泄漏
-        String oldCoverUrl = video.getCoverUrl();
-        if (oldCoverUrl != null && oldCoverUrl.startsWith("/api/files/covers/")) {
-            String oldFileName = oldCoverUrl.substring(oldCoverUrl.lastIndexOf("/") + 1);
-            Path oldFilePath = Paths.get(coverDir, String.valueOf(videoId), oldFileName);
-            try {
-                java.io.File oldFile = oldFilePath.toFile();
-                if (oldFile.exists()) {
-                    boolean deleted = oldFile.delete();
-                    if (deleted) {
-                        log.debug("Deleted old cover file: {}", oldFilePath);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("Failed to delete old cover file: {}", oldFilePath, e);
-            }
-        }
-
-        String baseDir = coverDir + "/" + videoId;
-        String originalFilename = file.getOriginalFilename();
-        if (originalFilename != null
-                && (originalFilename.contains("..") || originalFilename.contains("/")
-                    || originalFilename.contains("\\") || originalFilename.indexOf('\u0000') >= 0)) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面文件名不合法");
-        }
-        String ext = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            ext = originalFilename.substring(originalFilename.lastIndexOf("."));
-        }
-        String savedFileName = java.util.UUID.randomUUID().toString().replace("-", "") + ext;
-        Path targetPath = Paths.get(baseDir, savedFileName).toAbsolutePath().normalize();
-
-        try (InputStream in = file.getInputStream()) {
-            Files.createDirectories(targetPath.getParent());
-            Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "封面保存失败");
-        }
-
-        // P0-3: 返回可访问的 API URL（而非文件系统路径）
-        String coverUrl = "/api/files/covers/" + videoId + "/" + savedFileName;
-        video.setCoverUrl(coverUrl);
-        video.setUpdatedAt(LocalDateTime.now());
-        if (videoRepository.updateById(video) == 0) {
-            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "视频已被其他操作修改，请刷新后重试");
-        }
-
-        return coverUrl;
-    }
-
-    /**
-     * P1-8: 图片魔数校验（JPEG: FFD8FF, PNG: 89504E47）
-     */
-    private void validateImageMagic(MultipartFile file) {
-        // 【复用工具类】FileUploadUtil.assertImageMagic 已有完整实现
-        com.microcourse.util.FileUploadUtil.assertImageMagic(file);
+        // Phase 11 重构: 委托 VideoUploadService
+        return videoUploadExecutor.uploadCover(videoId, file);
     }
 
     /* ================================================================
-     *  视频上传（移自 VideoController）
+     *  视频上传（移自 VideoController, Phase 11 委托 VideoUploadService）
      * ================================================================ */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public VideoVO uploadVideo(MultipartFile file, Long courseId, Long chapterId) {
-        // P0-2: 校验课程 Owner 权限
-        assertCourseOwnership(courseId);
-
-        // P1-6: 校验 chapterId 归属课程
-        if (chapterId != null) {
-            assertChapterBelongsToCourse(chapterId, courseId);
-        }
-
-        // 校验文件类型、大小、魔数
-        validateVideoFile(file);
-
-        String originalFilename = file.getOriginalFilename();
-        String uuid = UUID.randomUUID().toString().replace("-", "");
-
-        // P1-1: 使用配置的上传目录
-        String baseDir = uploadDir + "/" + courseId;
-        String tempFileName = uuid + ".mp4";
-
-        try {
-            Files.createDirectories(Paths.get(baseDir));
-        } catch (IOException e) {
-            log.error("[VideoUpload] 无法创建存储目录 baseDir={}", baseDir, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法创建存储目录");
-        }
-
-        Path targetPath = Paths.get(baseDir, tempFileName).toAbsolutePath();
-
-        // 客户体验修复 v1.7.0: 用 Files.copy(inputStream, targetPath) 替代 file.transferTo()
-        try {
-            Path parent = targetPath.getParent();
-            if (parent != null && !Files.exists(parent)) {
-                Files.createDirectories(parent);
-            }
-            try (InputStream in = file.getInputStream()) {
-                Files.copy(in, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } catch (IOException e) {
-            log.error("[VideoUpload] 文件保存失败 courseId={}, filename={}, target={}", courseId, originalFilename, targetPath, e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件保存失败: " + e.getMessage());
-        }
-
-        // OP-0290: 计算 MD5 并检查重复（Redis 分布式锁防止并发秒传竞争）
-        String md5 = computeFileMd5(targetPath);
-        if (md5 == null) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "文件校验失败");
-        }
-        String lockKey = "lock:video:md5:" + md5;
-        String lockValue = UUID.randomUUID().toString();
-        boolean locked = redisUtil.tryLock(lockKey, lockValue, 30);
-        try {
-            // 锁内二次检查：防止两个并发线程先后通过第一次检查
-            Video duplicate = findByMd5(md5);
-            if (duplicate != null) {
-                log.info("[VideoUpload] 检测到 MD5 重复 md5={} existingVideoId={}", md5, duplicate.getId());
-                // 秒传：删除刚保存的文件，返回已有视频
-                try { Files.deleteIfExists(targetPath); } catch (IOException e) {
-                    log.warn("[VideoUpload] 临时文件删除失败 path={}", targetPath, e);
-                }
-                return getById(duplicate.getId());
-            }
-        } finally {
-            if (locked) {
-                redisUtil.releaseLock(lockKey, lockValue);
-            }
-        }
-
-        // 创建 Video 记录
-        Video video = new Video();
-        video.setChapterId(chapterId);
-        video.setCourseId(courseId);
-        video.setTitle(originalFilename != null ? originalFilename : "未命名视频");
-        video.setFileName(originalFilename != null ? originalFilename : "video.mp4");
-        // WebMvcConfig 映射 /api/files/** → file:./uploads/, 所以 url 是 /api/files/videos/{courseId}/{filename}
-        video.setUrl("/api/files/videos/" + courseId + "/" + tempFileName);
-        video.setFileSize(file.getSize());
-        video.setFileMd5(md5);
-        video.setMimeType(file.getContentType());
-        video.setOriginalPath(targetPath.toString());
-        video.setStatus(VideoStatus.UPLOADING.getCode());
-        video.setProgress(0);
-        video.setCreatedAt(LocalDateTime.now());
-        video.setUpdatedAt(LocalDateTime.now());
-        video.setVersion(0);
-
-        createEntity(video);
-
-        // 转码任务必须在事务提交后再提交，避免异步线程读不到刚插入的视频记录。
-        final Long videoId = video.getId();
-        scheduleTranscodeAfterCommit(videoId);
-
-        return getById(video.getId());
-    }
-
-    private void scheduleTranscodeAfterCommit(Long videoId) {
-        if (TransactionSynchronizationManager.isActualTransactionActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    submitTranscode(videoId);
-                }
-            });
-            return;
-        }
-        submitTranscode(videoId);
-    }
-
-    private void submitTranscode(Long videoId) {
-        try {
-            videoTranscodeService.transcode(videoId);
-        } catch (Exception e) {
-            log.error("[VideoUpload] 提交转码任务失败 videoId={}", videoId, e);
-            throw e;
-        }
+        // Phase 11 重构: 委托 VideoUploadService
+        return videoUploadExecutor.uploadVideo(file, courseId, chapterId);
     }
 
     @Override
@@ -685,91 +507,18 @@ public class VideoServiceImpl implements VideoService {
      *  视频文件校验（移自 VideoController）
      * ================================================================ */
 
-    /**
-     * 校验视频文件扩展名、MIME type、大小和魔数
-     * P1-4: 仅读取魔数字节（不消耗整个流），不影响后续 transferTo
-     */
-    private void validateVideoFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "上传文件不能为空");
-        }
-        // Round 11-4 安全加固:文件名路径穿越防护(纵深防御)。
-        com.microcourse.util.FileUploadUtil.assertSafeFilename(file.getOriginalFilename());
-        String originalFilename = file.getOriginalFilename();
-        String ext = "";
-        if (originalFilename != null && originalFilename.contains(".")) {
-            ext = originalFilename.substring(originalFilename.lastIndexOf(".") + 1);
-        }
-        if (!Set.of("mp4", "mov", "mkv").contains(ext.toLowerCase())) {
-            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID);
-        }
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.toLowerCase().startsWith("video/")) {
-            throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID,
-                    "MIME type 必须为 video/*,当前为 " + contentType);
-        }
-        if (file.getSize() > getMaxFileSize()) {
-            throw new BusinessException(ErrorCode.VIDEO_TOO_LARGE);
-        }
-        // 文件魔数检测
-        try (InputStream is = file.getInputStream()) {
-            byte[] magic = new byte[12];
-            int read = is.read(magic);
-            if (read < 12) {
-                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID, "文件过小，无法验证格式");
-            }
-            boolean validMagic = isMp4Magic(magic) || isMkvMagic(magic);
-            if (!validMagic) {
-                throw new BusinessException(ErrorCode.VIDEO_FORMAT_INVALID,
-                        "文件魔数校验失败，不是有效的 MP4/MOV/MKV 视频");
-            }
-        } catch (IOException e) {
-            log.warn("视频文件读取失败: {}", e.getMessage());
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "无法读取上传文件");
-        }
-    }
-
-    /** MP4/MOV 文件魔数：ftyp box */
-    private static boolean isMp4Magic(byte[] b) {
-        int boxSize = ((b[0] & 0xff) << 24) | ((b[1] & 0xff) << 16)
-                | ((b[2] & 0xff) << 8) | (b[3] & 0xff);
-        return boxSize >= 8 && b[4] == 'f' && b[5] == 't' && b[6] == 'y' && b[7] == 'p';
-    }
-
-    /** MKV/WebM (EBML) 文件魔数：1A 45 DF A3 */
-    private static boolean isMkvMagic(byte[] b) {
-        return (b[0] & 0xff) == 0x1A && (b[1] & 0xff) == 0x45
-                && (b[2] & 0xff) == 0xDF && (b[3] & 0xff) == 0xA3;
-    }
-
-    /**
-     * P2: 计算文件 MD5
-     * 【复用工具类】已迁移至 HashUtil.computeFileMd5
-     */
-    private String computeFileMd5(Path filePath) {
-        return com.microcourse.util.HashUtil.computeFileMd5(filePath);
-    }
-
     /** P0-2: 校验当前用户是否为课程 owner 或 ADMIN（公开方法） */
     @Override
     public void assertCourseOwnership(Long courseId) {
-        Course course = courseRepository.selectById(courseId);
-        if (course == null) {
-            throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
-        }
-        assertCourseOwner(course);
+        // Phase 11 重构: 委托 VideoValidator
+        videoValidator.assertCourseOwnership(courseId);
     }
 
     /** P1-6: 校验章节归属课程 */
     @Override
     public void assertChapterBelongsToCourse(Long chapterId, Long courseId) {
-        CourseChapter chapter = chapterRepository.selectById(chapterId);
-        if (chapter == null) {
-            throw new BusinessException(ErrorCode.CHAPTER_NOT_FOUND);
-        }
-        if (!courseId.equals(chapter.getCourseId())) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节不属于该课程");
-        }
+        // Phase 11 重构: 委托 VideoValidator
+        videoValidator.assertChapterBelongsToCourse(chapterId, courseId);
     }
 
     /** P2: 按 MD5 查询是否已有重复视频 */
