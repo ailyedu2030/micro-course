@@ -155,6 +155,28 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 **收益**: backend **34m → 6m8s**（节省 82%），每 PR 减少 ~25 分钟阻塞。
 
+### MicroSpecialtyQueryServiceImpl 拆分（2026-08-18 · Phase 10 起步）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。MicroSpecialtyQueryServiceImpl 803 → 723 行（-80 行），从 precheck advisory 白名单移除。
+
+#### PR #262 — refactor(ms-query): 拆分 page() 到 MicroSpecialtyPageLoader
+- **`MicroSpecialtyPageLoader` 新建** (235 行):
+  - `page(page, size, params, assembler)` — 完整分页查询 + 6 套批量预加载
+  - `buildQueryWrapper()` — 14 种条件组合 (keyword / status / featured / gold / role / leading/participating)
+  - `batchLoadContext()` — 6 套 IN 查询（dept / teacher / creator / course / pending / total / role）
+  - `BatchContext` record — 不可变上下文快照
+  - `PageVoAssembler` 函数式接口 — 避免循环依赖（loader → service）
+- **`MicroSpecialtyQueryServiceImpl` 简化** (803 → 723 行, -80 行):
+  - 构造器新增 `pageLoader` 依赖
+  - `page()` 简化为 4 行委托 + `assemblePageVo()` 回调
+  - 保留 `copyToVO()` 编排逻辑
+- **`precheck.sh`**: `advisory_whitelist` 移除 `MicroSpecialtyQueryServiceImpl` (从 803 → 723 行, 已合规)
+- **7 个新单元测试**: emptyRecords / keywordFilter / studentRole / singleRecord / multipleRecords / featuredTrue / roleLeading
+- **61 个相关测试 100% 通过** (新 7 + 既有 54)
+- **precheck 26/26** (advisory 列表 2 → 1)
+
+**下一步**: VideoServiceImpl 803 → < 800 (类似模式)
+
 ### F10-D2 灰度分流实现（2026-08-18 · Phase 9）
 
 > 兑现 deferred-items.md 登记 P2：原 `gray-release.sh` 写入 Redis 但后端不读取，灰度白名单实际不改变用户行为。
