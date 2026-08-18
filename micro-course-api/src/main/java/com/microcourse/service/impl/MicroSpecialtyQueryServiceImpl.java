@@ -48,15 +48,17 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
     private final AdminSettingService adminSettingService;
     private final DepartmentRepository departmentRepository;
     private final CourseRepository courseRepository;
+    private final MicroSpecialtyPageLoader pageLoader;
     public MicroSpecialtyQueryServiceImpl(MicroSpecialtyRepository msRepository,
-                                          MicroSpecialtyCourseRepository msCourseRepository,
-                                          MicroSpecialtyTeacherRepository msTeacherRepository,
-                                          MicroSpecialtyEnrollmentRepository msEnrollmentRepository,
-                                          UserRepository userRepository,
-                                          MicroSpecialtyQualityScoreService qualityScoreService,
-                                          AdminSettingService adminSettingService,
-                                          DepartmentRepository departmentRepository,
-                                          CourseRepository courseRepository) {
+                                            MicroSpecialtyCourseRepository msCourseRepository,
+                                            MicroSpecialtyTeacherRepository msTeacherRepository,
+                                            MicroSpecialtyEnrollmentRepository msEnrollmentRepository,
+                                            UserRepository userRepository,
+                                            MicroSpecialtyQualityScoreService qualityScoreService,
+                                            AdminSettingService adminSettingService,
+                                            DepartmentRepository departmentRepository,
+                                            CourseRepository courseRepository,
+                                            MicroSpecialtyPageLoader pageLoader) {
         this.msRepository = msRepository;
         this.msCourseRepository = msCourseRepository;
         this.msTeacherRepository = msTeacherRepository;
@@ -66,106 +68,24 @@ public class MicroSpecialtyQueryServiceImpl implements MicroSpecialtyQueryServic
         this.adminSettingService = adminSettingService;
         this.departmentRepository = departmentRepository;
         this.courseRepository = courseRepository;
+        this.pageLoader = pageLoader;
     }
     // ====== 查询 ======
     @Override
     public PageResult<MicroSpecialtyVO> page(int page, int size, Map<String, Object> params) {
-        LambdaQueryWrapper<MicroSpecialty> wrapper = new LambdaQueryWrapper<>();
-        String keyword = params != null ? (String) params.get("keyword") : null;
-        String status = params != null ? (String) params.get("status") : null;
-        // 学生只能看 RECRUITING 状态的微专业
-        if (!SecurityUtil.isAdminOrAcademic()) {
-            wrapper.eq(MicroSpecialty::getStatus, "RECRUITING");
-        } else if (status != null && !status.isEmpty()) {
-            wrapper.eq(MicroSpecialty::getStatus, status);
-        }
-        if (keyword != null && !keyword.isEmpty()) {
-            wrapper.like(MicroSpecialty::getTitle, keyword);
-        }
-        // Featured / gold featured filters
-        if (params != null && params.containsKey("featuredStatus")) {
-            wrapper.eq(MicroSpecialty::getFeaturedStatus, params.get("featuredStatus").toString());
-        }
-        if (params != null && params.containsKey("isGoldFeatured")) {
-            boolean isGold = Boolean.parseBoolean(params.get("isGoldFeatured").toString());
-            wrapper.eq(MicroSpecialty::getIsGoldFeatured, isGold);
-        }
-        if (params != null && params.containsKey("featured") && Boolean.parseBoolean(params.get("featured").toString())) {
-            wrapper.ne(MicroSpecialty::getFeaturedStatus, "NONE");
-        }
-        // Teacher role filter
-        Long teacherId = SecurityUtil.getCurrentUserId();
-        if (teacherId != null && params != null && params.containsKey("role")) {
-            String roleFilter = (String) params.get("role");
-            if ("leading".equals(roleFilter)) {
-                wrapper.apply("EXISTS (SELECT 1 FROM micro_specialty_teachers WHERE micro_specialty_id = micro_specialties.id AND teacher_id = {0} AND role = 'LEAD')", teacherId);
-            } else if ("participating".equals(roleFilter)) {
-                wrapper.apply("EXISTS (SELECT 1 FROM micro_specialty_teachers WHERE micro_specialty_id = micro_specialties.id AND teacher_id = {0} AND role IN ('LEAD','MEMBER','ASSISTANT'))", teacherId);
-            }
-        }
-        wrapper.orderByDesc(MicroSpecialty::getCreatedAt);
-        IPage<MicroSpecialty> ipage = msRepository.selectPage(new Page<>(page + 1, size), wrapper);
-        List<MicroSpecialty> records = ipage.getRecords();
-        List<MicroSpecialtyVO> vos = new java.util.ArrayList<>(records.size());
-        // P2-7: 批量预加载 N+1 → 用 IN 查询一次取完
-        java.util.Set<Long> deptIds = new java.util.HashSet<>();
-        java.util.Set<Long> teacherIds = new java.util.HashSet<>();
-        java.util.Set<Long> creatorIds = new java.util.HashSet<>();
-        for (MicroSpecialty ms : records) {
-            if (ms.getOfferDepartmentId() != null) deptIds.add(ms.getOfferDepartmentId());
-            if (ms.getLeadTeacherId() != null) teacherIds.add(ms.getLeadTeacherId());
-            if (ms.getCreatorId() != null) creatorIds.add(ms.getCreatorId());
-        }
-        java.util.Map<Long, String> deptNameMap = new java.util.HashMap<>();
-        if (!deptIds.isEmpty()) {
-            departmentRepository.selectBatchIds(deptIds).forEach(d -> deptNameMap.put(d.getId(), d.getName()));
-        }
-        java.util.Map<Long, String> teacherNameMap = new java.util.HashMap<>();
-        if (!teacherIds.isEmpty()) {
-            userRepository.selectBatchIds(teacherIds).forEach(u -> teacherNameMap.put(u.getId(), u.getRealName()));
-        }
-        java.util.Map<Long, String> creatorNameMap = new java.util.HashMap<>();
-        if (!creatorIds.isEmpty()) {
-            userRepository.selectBatchIds(creatorIds).forEach(u -> creatorNameMap.put(u.getId(), u.getRealName()));
-        }
-        // P1-C-4: 批量预计算统计字段
-        java.util.Map<Long, Integer> courseCountMapBatch = new java.util.HashMap<>();
-        java.util.Map<Long, Integer> pendingEnrollCountMapBatch = new java.util.HashMap<>();
-        java.util.Map<Long, Integer> totalEnrollmentsMapBatch = new java.util.HashMap<>();
-        java.util.Map<Long, String> roleMapBatch = new java.util.HashMap<>();
-        if (!records.isEmpty()) {
-            java.util.List<Long> msIds = records.stream().map(MicroSpecialty::getId).collect(java.util.stream.Collectors.toList());
-            // 课程数
-            msCourseRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                            .in(MicroSpecialtyCourse::getMicroSpecialtyId, msIds))
-                    .forEach(mc -> courseCountMapBatch.merge(mc.getMicroSpecialtyId(), 1, Integer::sum));
-            // 待审报名数
-            msEnrollmentRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                            .in(MicroSpecialtyEnrollment::getMicroSpecialtyId, msIds)
-                            .eq(MicroSpecialtyEnrollment::getStatus, "PENDING"))
-                    .forEach(e -> pendingEnrollCountMapBatch.merge(e.getMicroSpecialtyId(), 1, Integer::sum));
-            // 总报名数
-            msEnrollmentRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                            .in(MicroSpecialtyEnrollment::getMicroSpecialtyId, msIds))
-                    .forEach(e -> totalEnrollmentsMapBatch.merge(e.getMicroSpecialtyId(), 1, Integer::sum));
-            // 当前用户的角色
-            Long currentUserId = SecurityUtil.getCurrentUserId();
-            if (currentUserId != null) {
-                msTeacherRepository.selectList(new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                                .in(MicroSpecialtyTeacher::getMicroSpecialtyId, msIds)
-                                .eq(MicroSpecialtyTeacher::getTeacherId, currentUserId))
-                        .forEach(t -> roleMapBatch.put(t.getMicroSpecialtyId(), t.getRole()));
-            }
-        }
-        for (MicroSpecialty ms : records) {
-            MicroSpecialtyVO vo = new MicroSpecialtyVO();
-            // P1-C-4 修复: 传所有预加载 map,避免 copyToVO 内任何 selectById
-            copyToVO(ms, vo, deptNameMap, teacherNameMap, creatorNameMap,
-                    courseCountMapBatch, pendingEnrollCountMapBatch,
-                    totalEnrollmentsMapBatch, roleMapBatch);
-            vos.add(vo);
-        }
-        return PageResult.of(vos, ipage.getTotal(), page, size);
+        // Phase 10 重构: page() 实现已提取到 MicroSpecialtyPageLoader
+        return pageLoader.page(page, size, params, this::assemblePageVo);
+    }
+
+    /**
+     * Phase 10 重构: page() 的 VO 装配回调 (lambda 引用)。
+     * copyToVO 保留在 ServiceImpl 以避免循环依赖（loader → service）。
+     */
+    private void assemblePageVo(MicroSpecialty ms, MicroSpecialtyVO vo,
+                                 MicroSpecialtyPageLoader.BatchContext ctx) {
+        copyToVO(ms, vo, ctx.deptNameMap(), ctx.teacherNameMap(), ctx.creatorNameMap(),
+                ctx.courseCountMap(), ctx.pendingEnrollCountMap(),
+                ctx.totalEnrollmentsMap(), ctx.roleMap());
     }
     @Override
     public MicroSpecialtySquareVO getSquareData() {

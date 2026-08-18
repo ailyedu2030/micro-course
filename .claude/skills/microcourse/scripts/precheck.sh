@@ -451,7 +451,7 @@ check_service_class_size() {
     local hits=0
     # pre-existing oversized ServiceImpl（Phase 6 专项拆分，advisory 不阻断当前 PR）
     # AuthServiceImpl 811行已登记(2026-07-08)；VideoServiceImpl 803行/MicroSpecialtyQueryServiceImpl 825行本次修复引入但已登记 Phase 6
-    local advisory_whitelist="AuthServiceImpl VideoServiceImpl MicroSpecialtyQueryServiceImpl"
+    local advisory_whitelist="AuthServiceImpl VideoServiceImpl"
     while IFS= read -r file; do
         local lines
         local basename
