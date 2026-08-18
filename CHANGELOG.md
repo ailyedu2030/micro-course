@@ -155,6 +155,23 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 **收益**: backend **34m → 6m8s**（节省 82%），每 PR 减少 ~25 分钟阻塞。
 
+### F10-D2 灰度分流实现（2026-08-18 · Phase 9）
+
+> 兑现 deferred-items.md 登记 P2：原 `gray-release.sh` 写入 Redis 但后端不读取，灰度白名单实际不改变用户行为。
+
+#### PR #260 — feat(gray-release): 灰度分流机制
+- **`FeatureFlag` 枚举** (5 个): `MICRO_SPECIALTY_CLASS_IMPORT` / `NEW_PAYMENT_FLOW` / `AI_NARRATION_BATCH_GEN` / `VIDEO_TRANSCODE_V2` / `REALTIME_NOTIFICATION_WS`
+- **`GrayReleaseService`**: Redis-backed 灰度服务，5s 本地缓存，**fail-closed** 行为（Redis 异常默认 false）
+  - `isFeatureEnabled(flag)` / `isGrayUser(userId)` / `assertFeatureEnabled(flag)` 业务断言
+  - `loadFlagsFromRedis()` / `loadGrayUsersFromRedis()` 绕过缓存（运维诊断）
+  - `invalidateCache()` 主动刷新
+- **`GrayReleaseFilter`** (`@Order(40)`): HTTP 请求过滤器，注入 `gray.isGrayUser` / `gray.userId` request attribute
+- **`GrayReleaseController`**: ADMIN 诊断端点 `GET /api/gray-release/status`
+- **`ErrorCode.FEATURE_DISABLED(9011, HTTP 503)`**: 业务断言异常
+- **21 个单元测试 100% 通过** (GrayReleaseServiceTest 17 + GrayReleaseFilterTest 4)
+- **precheck 26/26**
+- **`gray-release.sh` 兼容性已验证**: `mc:gray:users` / `mc:feature:flags` Redis key 直接对接
+
 ### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
 
 > 2026-08-07 Phase 10 代码审查（R1 前端 / R2 后端 / R3 配置+CI+DB / R4 业务契约+UX，52 项）
