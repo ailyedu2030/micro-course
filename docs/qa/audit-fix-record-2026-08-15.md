@@ -122,6 +122,7 @@
 | PR #254 | refactor(service): 拆分3 个超长方法到独立 executor 类（GradeServiceImpl 789→619 行, MicroSpecialtyEnrollmentServiceImpl 794→638 行, ExerciseRecordServiceImpl 787→476 行）。顺手修 classImport batch.clear() 漏写 bug。 | ✅ MERGED (2026-08-17 CI 9/9 PASS) |
 | PR #256 | test: 为 PR #254 拆分的 3 个 Executor/Builder 添加 22 个独立单元测试（GradeVoBuilder 11 + MicroSpecialtyClassImportExecutor 5 + ExerciseAnswerSubmitExecutor 6），兑现拆分时构造函数注入→独立 Mockito 测试的设计目标 | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 | PR #258 | perf(ci): 修复 backend test hang 根因（BaseIntegrationTest RANDOM_PORT → MOCK，surefire reuseForks=false → true，JVM heap 1.5G → 3G）。实测 backend **34m28s → 6m8s**（-82%），节省 ~28m/PR | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
+| PR #260 | feat(gray-release): F10-D2 灰度分流机制实现（GrayReleaseService Redis-backed + 5s 缓存 + fail-closed + GrayReleaseFilter @Order 40 + FeatureFlag 枚举 + GrayReleaseController 诊断端点），兑现 deferred-items.md P2 登记 | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 
 ### e2e 失败根因分析（PR #250）
 
@@ -162,5 +163,5 @@
 ---
 
 *记录生成：总工程师 · 2026-08-15*
-*最后更新：2026-08-18 PR #258 merged (Phase 8 完成)*
-*下次审查：Phase 9（F10-D2 灰度分流实现 + 集成测试用例去重）*
+*最后更新：2026-08-18 PR #260 merged (Phase 9 完成 - F10-D2 灰度分流实现)*
+*下次审查：Phase 10（白名单受控 ServiceImpl 拆分: VideoServiceImpl 803 / MicroSpecialtyQueryServiceImpl 803）*
