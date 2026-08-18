@@ -11,7 +11,7 @@ import com.microcourse.repository.LearningProgressRepository;
 import com.microcourse.repository.VideoBookmarkRepository;
 import com.microcourse.repository.VideoRepository;
 import com.microcourse.service.impl.VideoServiceImpl;
-import com.microcourse.service.impl.VideoUploadExecutor;
+import com.microcourse.service.impl.VideoUploadService;
 import com.microcourse.service.impl.VideoValidator;
 import com.microcourse.util.RedisUtil;
 import com.microcourse.util.VideoSignUtil;
@@ -94,7 +94,7 @@ class VideoServiceImplRetryTranscodeTest {
                 mock(VideoSignUtil.class),
                 mock(AdminSettingService.class),
                 mock(RedisUtil.class),
-                mock(VideoUploadExecutor.class),
+                mock(VideoUploadService.class),
                 mock(VideoValidator.class),
                 mock(LearningProgressRepository.class)
         );

@@ -63,7 +63,7 @@ public class VideoServiceImpl implements VideoService {
     private final VideoSignUtil videoSignUtil;
     private final AdminSettingService adminSettingService;
     private final RedisUtil redisUtil;
-    private final VideoUploadExecutor videoUploadExecutor;
+    private final VideoUploadService videoUploadExecutor;
     private final VideoValidator videoValidator;
     private final LearningProgressRepository learningProgressRepository;
 
@@ -86,7 +86,7 @@ public class VideoServiceImpl implements VideoService {
                             VideoSignUtil videoSignUtil,
                             AdminSettingService adminSettingService,
                             RedisUtil redisUtil,
-                            VideoUploadExecutor videoUploadExecutor,
+                            VideoUploadService videoUploadExecutor,
                             VideoValidator videoValidator,
                             LearningProgressRepository learningProgressRepository) {
         this.videoRepository = videoRepository;
@@ -413,7 +413,7 @@ public class VideoServiceImpl implements VideoService {
 
     /**
      * 批量上传视频 (权限矩阵 v4.0 §3.5 BATCH_UPLOAD_VIDEO)
-     * Phase 11 重构: 委托 VideoUploadExecutor
+     * Phase 11 重构: 委托 VideoUploadService
      */
     @Override
     public java.util.List<VideoVO> batchUpload(org.springframework.web.multipart.MultipartFile[] files,
@@ -424,18 +424,18 @@ public class VideoServiceImpl implements VideoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String uploadCover(Long videoId, MultipartFile file) {
-        // Phase 11 重构: 委托 VideoUploadExecutor
+        // Phase 11 重构: 委托 VideoUploadService
         return videoUploadExecutor.uploadCover(videoId, file);
     }
 
     /* ================================================================
-     *  视频上传（移自 VideoController, Phase 11 委托 VideoUploadExecutor）
+     *  视频上传（移自 VideoController, Phase 11 委托 VideoUploadService）
      * ================================================================ */
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public VideoVO uploadVideo(MultipartFile file, Long courseId, Long chapterId) {
-        // Phase 11 重构: 委托 VideoUploadExecutor
+        // Phase 11 重构: 委托 VideoUploadService
         return videoUploadExecutor.uploadVideo(file, courseId, chapterId);
     }
 

@@ -58,9 +58,9 @@ import java.util.UUID;
  * @author refactor Phase 11 (2026-08-18)
  */
 @Component
-public class VideoUploadExecutor {
+public class VideoUploadService {
 
-    private static final Logger log = LoggerFactory.getLogger(VideoUploadExecutor.class);
+    private static final Logger log = LoggerFactory.getLogger(VideoUploadService.class);
 
     private final VideoRepository videoRepository;
     private final CourseRepository courseRepository;
@@ -74,7 +74,7 @@ public class VideoUploadExecutor {
     /** 封面目录(由 Spring 注入) */
     private final String coverDir;
 
-    public VideoUploadExecutor(VideoRepository videoRepository,
+    public VideoUploadService(VideoRepository videoRepository,
                                CourseRepository courseRepository,
                                UserRepository userRepository,
                                VideoTranscodeService videoTranscodeService,

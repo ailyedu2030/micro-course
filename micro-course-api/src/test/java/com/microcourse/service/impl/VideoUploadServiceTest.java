@@ -30,13 +30,13 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
- * VideoUploadExecutor 单元测试 (Phase 11)
+ * VideoUploadService 单元测试 (Phase 11)
  *
  * <p>验证视频上传 / 封面上传 / 批量上传的委托逻辑。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("VideoUploadExecutor 视频上传单元测试")
-class VideoUploadExecutorTest {
+@DisplayName("VideoUploadService 视频上传单元测试")
+class VideoUploadServiceTest {
 
     @Mock private VideoRepository videoRepository;
     @Mock private CourseRepository courseRepository;
@@ -45,11 +45,11 @@ class VideoUploadExecutorTest {
     @Mock private RedisUtil redisUtil;
     @Mock private VideoValidator videoValidator;
 
-    private VideoUploadExecutor executor;
+    private VideoUploadService executor;
 
     @BeforeEach
     void setUp() {
-        executor = new VideoUploadExecutor(
+        executor = new VideoUploadService(
                 videoRepository, courseRepository, userRepository,
                 videoTranscodeService, redisUtil, videoValidator,
                 "/tmp/videos",  // uploadDir (来自 @Value)
