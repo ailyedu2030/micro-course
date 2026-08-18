@@ -175,7 +175,10 @@ public enum ErrorCode {
     INTERNAL_SERVER_ERROR(5000, "服务器内部错误", 500),
 
     // Hermes 集成错误码
-    HERMES_INVALID_API_KEY(21001, "无效的 Hermes API Key", 401);
+    HERMES_INVALID_API_KEY(21001, "无效的 Hermes API Key", 401),
+
+    // F10-D2: 功能开关 / 灰度关闭
+    FEATURE_DISABLED(9011, "功能当前未启用", 503);
 
     private final int code;
     private final String message;
