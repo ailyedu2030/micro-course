@@ -124,6 +124,7 @@
 | PR #258 | perf(ci): 修复 backend test hang 根因（BaseIntegrationTest RANDOM_PORT → MOCK，surefire reuseForks=false → true，JVM heap 1.5G → 3G）。实测 backend **34m28s → 6m8s**（-82%），节省 ~28m/PR | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 | PR #260 | feat(gray-release): F10-D2 灰度分流机制实现（GrayReleaseService Redis-backed + 5s 缓存 + fail-closed + GrayReleaseFilter @Order 40 + FeatureFlag 枚举 + GrayReleaseController 诊断端点），兑现 deferred-items.md P2 登记 | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 | PR #262 | refactor(ms-query): 拆分 page() 到独立 MicroSpecialtyPageLoader（MicroSpecialtyQueryServiceImpl 803 → 723 行，从 precheck advisory 白名单移除，precheck 列表 2 → 1） | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
+| PR #264 | refactor(video): 拆分 Upload 职责到 VideoUploadService（VideoServiceImpl 803 → 552 行，从 precheck advisory 白名单移除，precheck 列表 **2 → 0**，首次所有 ServiceImpl < 800 行） | ✅ MERGED (2026-08-18 CI 9/9 PASS) |
 
 ### e2e 失败根因分析（PR #250）
 
@@ -164,5 +165,5 @@
 ---
 
 *记录生成：总工程师 · 2026-08-15*
-*最后更新：2026-08-18 PR #262 merged (Phase 10 起步 - MicroSpecialtyQueryServiceImpl 拆分)*
-*下次审查：Phase 11（VideoServiceImpl 803 行拆分, 复制 PR #262 模式）*
+*最后更新：2026-08-18 PR #264 merged (Phase 11 完成 - VideoServiceImpl 拆分 - **首次 0 advisory**)*
+*下次审查：Phase 12（AuthServiceImpl 811 行拆分 + 集成测试用例去重）*

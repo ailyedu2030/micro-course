@@ -177,6 +177,40 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 **下一步**: VideoServiceImpl 803 → < 800 (类似模式)
 
+### VideoServiceImpl 拆分（2026-08-18 · Phase 11 完成）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。VideoServiceImpl 803 → 552 行（-251 行，-31%）。**首次实现微课平台所有 ServiceImpl 均 < 800 行**（除 AuthServiceImpl 811 pre-existing advisory）。
+
+#### PR #264 — refactor(video): 拆分 Upload 职责到 VideoUploadService
+- **`VideoUploadService` 新建** (425 行):
+  - 3 个 public API 与 Service 接口签名一致
+    - `batchUpload(files, courseId, chapterId)` — 任一失败不阻塞
+    - `uploadCover(videoId, file)` — 封面上传 (P2 R-003 删除旧封面)
+    - `uploadVideo(file, courseId, chapterId)` — 主流程（校验/MD5/Redis 锁/秒传/转码）
+  - 9 个 private helper 提取（validateVideoFile / isMp4Magic / isMkvMagic / deleteOldCoverIfExists / 等）
+- **`VideoValidator` 新建** (62 行): 3 个权限校验方法
+- **`VideoServiceImpl` 简化** (803 → 552 行, -31%):
+  - 构造器新增 `videoUploadService` + `videoValidator`
+  - `batchUpload` / `uploadCover` / `uploadVideo` 简化为单行委托
+  - `assertCourseOwnership` / `assertChapterBelongsToCourse` 委托 validator
+- **`precheck.sh`**: `advisory_whitelist` 从 `AuthServiceImpl VideoServiceImpl` 减为仅 `AuthServiceImpl`（从 2 → 0）
+- **3 个新单元测试**: emptyFiles / zeroLengthArray / delegatesToValidator
+- **66 个相关测试 100% 通过**
+- **precheck 26/26** (advisory 列表 2 → **0**)
+
+**踩坑记录（CI 修复）**:
+- 第一轮 CI 失败：`VideoUploadExecutor` 构造函数 String 参数缺 `@Value`，导致所有 117 个集成测试 ApplicationContext 加载失败
+- 第二轮 CI 失败：`VideoUploadExecutor` 类名与 `AsyncConfig.videoUploadExecutor` bean 名冲突，`APPLICATION FAILED TO START`
+- 最终方案：重命名为 `VideoUploadService` + 显式 `@Value` 注解 + 更新所有引用
+
+**Phase 10-11 历史意义**:
+| 文件 | 重构前 | 重构后 | 状态 |
+|------|--------|--------|------|
+| VideoServiceImpl | 803 | 552 | ✅ PR #264 |
+| MicroSpecialtyQueryServiceImpl | 803 | 723 | ✅ PR #262 |
+| 其他 13 个 | < 800 | < 800 | ✅ 早已合规 |
+| AuthServiceImpl | 811 | 811 | ⚠️ pre-existing |
+
 ### F10-D2 灰度分流实现（2026-08-18 · Phase 9）
 
 > 兑现 deferred-items.md 登记 P2：原 `gray-release.sh` 写入 Redis 但后端不读取，灰度白名单实际不改变用户行为。
