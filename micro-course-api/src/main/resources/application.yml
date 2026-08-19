@@ -232,11 +232,11 @@ mybatis:
 
 # S-001/S-002: 字段级加密（手机号/邮箱等敏感字段）密钥配置
 # 【生产环境】必须通过环境变量 APP_SECURITY_FIELD_ENCRYPTION_KEY 和 APP_SECURITY_FIELD_ENCRYPTION_SALT 设置
-#   - APP_SECURITY_FIELD_ENCRYPTION_KEY: 至少 32 字符
-#   - APP_SECURITY_FIELD_ENCRYPTION_SALT: 至少 16 字符
+#   - APP_SECURITY_FIELD_ENCRYPTION_KEY: 32 字节 = 64 个 hex 字符（`openssl rand -hex 32` 生成）
+#   - APP_SECURITY_FIELD_ENCRYPTION_SALT: 8 字节 = 16 个 hex 字符（`openssl rand -hex 8` 生成）
 # 【本地开发】⚠️ 此默认值仅用于本地开发，生产环境必须通过环境变量覆盖！
-#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_KEY 至少 32 字符
-#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_SALT 至少 16 字符
+#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_KEY 必须是 hex（非普通字符串，否则 Encryptors.delux 的 Hex.decode 报 Non-hex character）
+#   ⚠️  APP_SECURITY_FIELD_ENCRYPTION_SALT 必须是 hex（同上）
 #   ⚠️  不覆盖 = 生产使用固定密钥 = 字段级加密形同虚设 = P0 级数据泄露事故
 app:
   security:

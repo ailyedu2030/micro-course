@@ -24,8 +24,9 @@ import static org.junit.jupiter.api.Assertions.*;
 @DisplayName("FieldEncryptor — 字段级加密/解密")
 class FieldEncryptorTest {
 
-    private static final String VALID_KEY = "test-32-char-key-1234567890123456";
+    private static final String VALID_KEY = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
     private static final String VALID_SALT = "0123456789abcdef";
+    private static final String OTHER_KEY = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210";
     private static final String SHORT_KEY = "short-key";
     private static final String PLAIN_TEXT = "13800138000";
     private static final String ANOTHER_TEXT = "user@example.com";
@@ -51,7 +52,7 @@ class FieldEncryptorTest {
     @DisplayName("不同密钥加密结果不同")
     void differentKeysProduceDifferentCiphertext() {
         FieldEncryptor e1 = createEncryptor(VALID_KEY, VALID_SALT);
-        FieldEncryptor e2 = createEncryptor("another-32-char-key-for-testing-!!!!!", VALID_SALT);
+        FieldEncryptor e2 = createEncryptor(OTHER_KEY, VALID_SALT);
         String c1 = e1.encrypt(PLAIN_TEXT);
         String c2 = e2.encrypt(PLAIN_TEXT);
         assertNotEquals(c1, c2, "不同密钥加密同一明文应输出不同密文");
@@ -82,7 +83,7 @@ class FieldEncryptorTest {
     @DisplayName("密钥错误时解密返回原值（不抛异常）")
     void decryptWithWrongKeyReturnsOriginal() {
         FieldEncryptor e1 = createEncryptor(VALID_KEY, VALID_SALT);
-        FieldEncryptor e2 = createEncryptor("another-32-char-key-for-testing-!!!!!", VALID_SALT);
+        FieldEncryptor e2 = createEncryptor(OTHER_KEY, VALID_SALT);
         String encrypted = e1.encrypt(PLAIN_TEXT);
         // 用不同密钥解密应返回原值（容错）
         String result = e2.decrypt(encrypted);
