@@ -694,12 +694,55 @@ check_workflow_outputs_id() {
     else
         PASS=$((PASS+1))
     fi
+
+
+# ----------------------------------------------------------------------------
+# R7 修复: 模块顶层 window/document/localStorage 隐式依赖 (P1-I 教训 2026-08-19)
+# 现象: PR #272 (i18n SSR 防护) 之前, src/i18n/index.js:8 在模块顶层直接访问
+#       localStorage.getItem('lang') -> happy-dom 早期初始化 + SSR 环境 crash
+#       (TypeError: Cannot read properties of undefined)
+# 根因: 隐式假设运行时 window/localStorage 一定存在, 未做环境检测
+# 教训: 模块顶层代码 (import 后立即执行) 禁止直接访问 window/document/localStorage
+#       必须包在环境检测函数中 (typeof window !== 'undefined' + try/catch)
+# 规则: 扫描 micro-course-admin/src 的 .ts/.js/.vue 文件前 30 行
+#       直接调用 window.* / document.* / localStorage.* 命中 WARN
+#       排除 .d.ts + test + 已 typeof 防护的修复模板
+# ----------------------------------------------------------------------------
+check_window_doc_localstorage_at_module_level() {
+    local hits=0
+    local hit_files=()
+    local f
+    while IFS= read -r -d "" f; do
+        case "$f" in *.d.ts|*.spec.*|*.test.*) continue ;; esac
+        local first30
+        first30=$(head -n 30 "$f" 2>/dev/null)
+        if echo "$first30" | grep -E '^[^/]*\b(window|document|localStorage)\.' >/dev/null 2>&1; then
+            if ! echo "$first30" | grep -qE "typeof window !== 'undefined'"; then
+                hits=$((hits+1))
+                hit_files+=("$f")
+            fi
+        fi
+    done < <(find micro-course-admin/src -type f \( -name "*.ts" -o -name "*.js" -o -name "*.vue" \) -print0 2>/dev/null)
+    if [ "$hits" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [R7] 模块顶层直接访问 window/document/localStorage ($hits 处, 需 typeof/try 防护):"
+        for f in "${hit_files[@]}"; do
+            echo "    - $f"
+        done
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# 调用 R7 (在 R6 调用后)
+
 }
 
 
 check_references_sync
 check_router_self_loop
 check_workflow_outputs_id
+check_window_doc_localstorage_at_module_level
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"
