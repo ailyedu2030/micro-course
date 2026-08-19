@@ -1172,7 +1172,7 @@ async function loadAudio(index) {
   // 再兜底"无音频"。v2 PPT GENERATING 页（pickReadyAudio 返回 null →
   // audio.url / narrationAudioUrl 均为 null）与 legacy PENDING 页若先判
   // narrationAudioUrl 会全部落入「该页无讲解音频」，而非真实状态。
-  if (page.narrationStatus === 'PENDING' || page.narrationStatus === 'AUDIO_PENDING') {
+  if (page?.narrationStatus === 'PENDING' || page?.narrationStatus === 'AUDIO_PENDING') {
     audioStatus.value = 'pending'
     pendingStartTime.value = Date.now()
     pendingTimeoutWarning.value = ''
@@ -1183,7 +1183,7 @@ async function loadAudio(index) {
     return
   }
 
-  if (page.narrationStatus === 'GENERATING' || page.narrationStatus === 'AUDIO_GENERATING') {
+  if (page?.narrationStatus === 'GENERATING' || page?.narrationStatus === 'AUDIO_GENERATING') {
     audioStatus.value = 'generating'
     audioDuration.value = 0
     audioRef.value.src = ''
@@ -1192,7 +1192,7 @@ async function loadAudio(index) {
   }
 
   // P1-C-3：AUDIO_FAILED（G3 后端新枚举）→ 显示「音频生成失败 [重试]」，不再落入"无音频"
-  if (page.narrationStatus === 'FAILED' || page.narrationStatus === 'AUDIO_FAILED') {
+  if (page?.narrationStatus === 'FAILED' || page?.narrationStatus === 'AUDIO_FAILED') {
     audioStatus.value = 'failed'
     audioDuration.value = 0
     audioRef.value.src = ''
@@ -1207,7 +1207,7 @@ async function loadAudio(index) {
     return
   }
 
-  if (page.narrationStatus !== 'AUDIO_READY') {
+  if (page?.narrationStatus !== 'AUDIO_READY') {
     audioStatus.value = 'none'
     audioDuration.value = 0
     audioRef.value.src = ''
