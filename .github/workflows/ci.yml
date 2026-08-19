@@ -31,7 +31,12 @@ jobs:
       docs: ${{ steps.filter.outputs.docs }}
     steps:
       - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
+      - id: filter
+        # P0 修复(2026-08-19): 必须设 id 才能让下游 job 通过 needs.changes.outputs.<name> 读取 filter 输出
+        # 根因: 不设 id 时 steps.filter 是 undefined → outputs.backend 空字符串 → if 评估为 false → SKIPPED
+        # 影响: PR #266 首次 CI 全部 5 个 required check SKIPPED 但 mergeStateStatus=CLEAN (P0 漏洞)
+        # 修复: 加 id: filter (与官方文档一致)
+        uses: dorny/paths-filter@v3
         with:
           # 同时检测工作区所有相关路径
           # 注意：必须使用 working-directory 默认值（仓库根）才能匹配 micro-course-api/** 等子路径
