@@ -14,21 +14,78 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ─────────────────────────────────────────────────────────────────
+  # PR-1 优化（2026-08-18）：paths-filter 增量检测
+  # docs-only PR 跳过 backend/e2e/docker → wall-time 从 ~18min 降至 ~3min
+  # 详见 docs/qa/ci-optimization-tracker.md
+  # ─────────────────────────────────────────────────────────────────
+  changes:
+    name: Detect changed paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+      monitoring: ${{ steps.filter.outputs.monitoring }}
+      docs: ${{ steps.filter.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        with:
+          # 同时检测工作区所有相关路径
+          # 注意：必须使用 working-directory 默认值（仓库根）才能匹配 micro-course-api/** 等子路径
+          filters: |
+            backend:
+              - 'micro-course-api/**'
+              - 'pom.xml'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'micro-course-admin/**'
+              - 'package-lock.json'
+              - '.github/workflows/ci.yml'
+            docker:
+              - 'micro-course-api/Dockerfile'
+              - 'micro-course-admin/Dockerfile'
+              - 'monitoring/**/Dockerfile'
+              - 'docker-compose*.yml'
+            monitoring:
+              - 'monitoring/**'
+            docs:
+              - 'docs/**'
+              - '**/*.md'
+              - 'CHANGELOG.md'
+              - 'AGENTS.md'
+              - 'CLAUDE.md'
+              - 'README.md'
+              - 'ROLLBACK*.md'
+              - 'DEPLOYMENT*.md'
+              - 'INCIDENT*.md'
+              - 'MONITORING*.md'
+
   # 注:GitHub branch protection 要求 status check 名称与 job name 精确匹配。
   # 使用 strategy.matrix 会产生 backend (17) 后缀,与 required check "backend" 不匹配。
   # 单版本 JDK 17 不用 matrix,直接硬编码 java-version → check 名称即为 backend。
   backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     # 45→55 (Q-6)：给 docker pull postgres/redis 镜像 + 首次 Maven 依赖下载留余量，避免偶发超时
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 17
+      # PR-1 优化: 改用 setup-java@v5 内置 cache（业界标准：100k+ repo 在用）
+      # 取代手写 actions/cache@v4 ~/.m2: 内置 cache 按 pom.xml hash 精准命中,
+      # 且自动处理跨 OS 路径差异 (windows runner 不需要额外 path 转换)
+      # 预期节省: 30-60s/backend (依赖冷启动场景)
+      - name: Set up JDK 17 (with Maven cache)
         uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
+          cache: maven
+          cache-dependency-path: micro-course-api/pom.xml
 
       # F-15 + Q-6：移除 services 容器编排（outage 后带 services 的 job 在 runner 上
       # 零日志卡死 4 次），改为 composite action 显式 docker 启动 + 可达验证
@@ -42,14 +99,6 @@ jobs:
           redis-port: "6379"
           redis-password: ""
           service-name: ci
-
-      - name: Cache Maven
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
 
       - name: Precheck (治理门禁)
         run: bash .claude/skills/microcourse/scripts/precheck.sh
@@ -69,6 +118,8 @@ jobs:
 
   # 注:同 backend,frontend 不用 matrix(避免 check 名称 frontend (20)/(22) 与 required 不匹配)
   frontend:
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -99,17 +150,24 @@ jobs:
   # P1C-14: 恢复 E2E 测试 — API 冒烟测试 + Playwright 浏览器 E2E
   # 并行启动后端 API 服务 + 前端 Preview，覆盖 API 层面和浏览器 UI 层面
   e2e:
-    needs: [backend, frontend]
+    needs: [changes, backend, frontend]
+    # PR-1 优化: docs-only PR 自动跳过 e2e（backend/frontend 也跳过）
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up JDK 17
+      # PR-1 优化: setup-java@v5 内置 maven cache（业界标准: lookup-only 由 cache action 自动处理）
+      # 取代手写 actions/cache@v4 ~/.m2 —— 命中即跳过解压下载
+      # 预期节省: 30-60s/e2e (依赖冷启动场景)
+      - name: Set up JDK 17 (with Maven cache)
         uses: actions/setup-java@v5
         with:
           java-version: 17
           distribution: temurin
+          cache: maven
+          cache-dependency-path: micro-course-api/pom.xml
 
       # F-15 + Q-6：同 backend——移除 services 编排，复用 composite action 显式 docker 启动
       - name: Start PostgreSQL + Redis
@@ -121,14 +179,6 @@ jobs:
           redis-port: "6379"
           redis-password: ""
           service-name: ci
-
-      - name: Cache Maven
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
 
       - name: Use Node.js 20
         uses: actions/setup-node@v5
@@ -234,7 +284,8 @@ jobs:
           retention-days: 7
 
   docker:
-    needs: [backend, frontend]
+    needs: changes
+    if: needs.changes.outputs.docker == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -251,6 +302,8 @@ jobs:
 
   # W35 治理: Prometheus 告警规则 + AlertManager 配置语法验证
   monitoring-lint:
+    needs: changes
+    if: needs.changes.outputs.monitoring == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -282,6 +335,15 @@ jobs:
   # 设计: --ci 模式 (同 default advisory) 不阻断 PR 合并；
   #       生产部署在 deploy-gate.sh 中调用 --strict 做硬阻断
   secrets-check:
+    needs: changes
+    # PR-1 优化: 业务/docker/monitoring 改动时跑, 纯 docs 改动跳过
+    if: |
+      always() && (
+        needs.changes.outputs.backend == 'true' ||
+        needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.docker == 'true' ||
+        needs.changes.outputs.monitoring == 'true'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -299,6 +361,14 @@ jobs:
   # check-references-sync.py 默认 advisory 模式 (exit 0 不阻断)
   # 通过 --strict 可硬阻断，用于部署前验证
   references-sync:
+    needs: changes
+    # PR-1 优化: docs 改动必跑, 业务代码改动也跑（references 可能被代码引用）
+    if: |
+      always() && (
+        needs.changes.outputs.backend == 'true' ||
+        needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.docs == 'true'
+      )
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
