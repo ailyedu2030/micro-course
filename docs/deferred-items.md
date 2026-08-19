@@ -10,7 +10,7 @@
 | # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
 |---|---|---|---|---|---|
 | ~~F10-D1~~ | ~~P1-I~~ | ~~课件工作台类型派生 hack（#219）~~ | ~~当前功能正确，客户不可感知~~ | ~~登记放行~~ | ✅ **已修复（2026-08-12）**：SlideVO 增加 `coursewareType` 字段，后端从 section.courseware_type 权威字段派生（fileUrl 兜底）；前端改读 `row.coursewareType`；6 例回归测试闭环 |
-| **F10-D2** | **P2** | **灰度分流机制未接线（2026-08-13 部署审计发现）**：`mc:gray:users` / `mc:feature:flags` Redis key 为预留，前端/后端均不读取，`gray-release.sh add/roll-out` 实际不改变用户可见行为，部署即全量生效 | 当前业务为单租户学校系统，灰度分流价值有限；部署安全已由"备份 + canary 验证 + 5 分钟监控 + 可回滚"覆盖，客户不可感知 | 放行（P2），不阻断 | 若未来多租户化，需实现后端 feature-flag 拦截器；当前保持"部署即全量 + canary 验证"流程，并在部署 SOP 明确标注 |
+| ~~**F10-D2**~~ | ~~**P2**~~ | ~~**灰度分流机制未接线（2026-08-13 部署审计发现）**~~：`mc:gray:users` / `mc:feature:flags` Redis key 为预留，前端/后端均不读取 | ~~✅ **已修复（2026-08-18 PR #260）**：新增 `GrayReleaseService` (Redis-backed + 5s 缓存 + fail-closed) + `GrayReleaseFilter` (`@Order(40)` 注入 `gray.isGrayUser` request attribute) + `FeatureFlag` 枚举 (5 个) + `GrayReleaseController` ADMIN 诊断端点 `GET /api/gray-release/status`。21 个单元测试 100% 通过，precheck 26/26 |
 | ~~F10-D3~~ | ~~P1-I~~ | ~~i18n 存量硬编码中文 4757 处（2026-08-13 部署时实测）~~ | ~~已修复~~ | ~~✅ 已完成（2026-08-14 PR #236）~~ | ✅ **已修复（2026-08-14 PR #236）**：900+ i18n keys，40+ Vue 文件全部迁移，zh-CN/en-US 完全对齐，npm run build ✅，CI 9/9 ✅。i18n CI 门禁已升级为硬阻断 |
 
 ---

@@ -10,6 +10,7 @@ import com.microcourse.repository.MicroSpecialtyEnrollmentRepository;
 import com.microcourse.repository.MicroSpecialtyRepository;
 import com.microcourse.repository.MicroSpecialtyTeacherRepository;
 import com.microcourse.repository.UserRepository;
+import com.microcourse.service.impl.MicroSpecialtyPageLoader;
 import com.microcourse.service.impl.MicroSpecialtyQueryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,6 +39,7 @@ class MicroSpecialtyQueryServiceTest {
     @Mock private AdminSettingService adminSettingService;
     @Mock private DepartmentRepository departmentRepository;
     @Mock private CourseRepository courseRepository;
+    @Mock private MicroSpecialtyPageLoader pageLoader;
 
     private MicroSpecialtyQueryServiceImpl service;
 
@@ -52,7 +54,8 @@ class MicroSpecialtyQueryServiceTest {
                 qualityScoreService,
                 adminSettingService,
                 departmentRepository,
-                courseRepository
+                courseRepository,
+                pageLoader
         );
     }
 
