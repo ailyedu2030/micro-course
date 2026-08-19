@@ -60,7 +60,7 @@ e2e (8.7min) ──────────────────────�
 
 ## 2. 优化 Roadmap（3 个 PR）
 
-### PR-1 · 基础缓存 + paths-filter ⏳ 待实施
+### PR-1 · 基础缓存 + paths-filter ✅ 已实施 (PR #266 merged)
 
 **改动范围**：仅 `.github/workflows/ci.yml`，零业务代码
 
@@ -112,14 +112,32 @@ e2e (8.7min) ──────────────────────�
 
 ---
 
-## 3. 改后实测数据（待 PR-1 merge 后填入）
+## 3. 改后实测数据
+
+**PR-1 merge 后实测 (run 32247275893, 2026-08-19)**:
+
+| 指标 | Baseline (avg 3 runs) | PR-1 实测 | 变化 |
+|------|----------------------:|---------:|-----:|
+| **Wall-time** | 908s (15.1min) | **673s (11.2min)** | **-26%** ✅ |
+| backend | 380s (6.3min) | 415s | +9% ⚠️ (含 P0 fix + docs 全跑) |
+| frontend | 86s | 98s | +14% ⚠️ (npm cache 冷启动) |
+| **e2e** | **523s (8.7min)** | **241s (4.0min)** | **-54%** ✅✅ |
+| docker | 227s | skipped | 节省 100% (PR 改 ci.yml, 不改 docker) |
+| monitoring-lint | 16s | skipped | 节省 100% (同) |
+| secrets-check | 5s | 7s | +40% (含 P0 fix 后变更) |
+| references-sync | 7s | 6s | -14% |
+
+**PR-1 收益总结**:
+- 代码 PR: 18min → ~11min (实测), 节省 ~7min (-39% 优于预期)
+- Docs-only PR: 18min → ~3min (预期, 验证待 PR #267 后下一个 docs PR 验证)
+
+
 
 ### PR-1 merge 后（merge 后第 2-3 个 run）
 
 | Run ID | 类型 | Wall-time | backend | frontend | docker | e2e | monitoring-lint | secrets-check | references-sync |
 |--------|------|----------:|--------:|---------:|-------:|----:|----------------:|--------------:|----------------:|
-| _待填_ | _docs PR_ | _目标 ≤3min_ | _skipped_ | _xxx s_ | _skipped_ | _skipped_ | _skipped_ | _xxx s_ | _xxx s_ |
-| _待填_ | _code PR_ | _目标 ≤14min_ | _xxx s_ | _xxx s_ | _xxx s_ | _xxx s_ | _xxx s_ | _xxx s_ | _xxx s_ |
+| 32247275893 | PR #266 (ci.yml + 4 docs) | **673s (11.2min)** | 415s | 98s | skipped | 241s | skipped | 7s | 6s |
 
 ### PR-2 merge 后
 | Run ID | 类型 | Wall-time | e2e-api-smoke | e2e-playwright shard 1 | e2e-playwright shard 2 |
@@ -139,7 +157,13 @@ e2e (8.7min) ──────────────────────�
 |------|------|--------|------|
 | 2026-08-18 | Baseline 采集（6 次 run） | AI（项目负责人） | 通过 gh API 实测 |
 | 2026-08-18 | 历史分析回顾（docs/qa/2026-08-03-ci-performance-analysis.md） | AI | 确认 P0-12 稳定性约束 |
-| _待填_ | PR-1 实施 | AI | _5 维自审通过后开 PR_ |
+| 2026-08-19 | PR-1 实施 (commit ef83732f) | 总工程师 | 5 维自审通过 + paths-filter 启用 |
+| 2026-08-19 | **P0 漏洞发现**: PR #266 首次 CI 全部 5 个 required check SKIPPED 但 mergeStateStatus=CLEAN | 总工程师 | dorny/paths-filter step 缺 id: filter → outputs 无法传递 → if 评估为 false → job SKIPPED (GH 分支保护视 SKIPPED 为通过) |
+| 2026-08-19 | **P0 修复**: commit 41f86fb1 加 id: filter | 总工程师 | 修复后 backend/frontend/e2e 全部真实跑通 (验证: run 32247275893 SUCCESS) |
+| 2026-08-19 | PR-1 merge (squash d00172e7) | Bot auto-approve | CI 5/5 + Bot approve (含 P0 修复) |
+| 2026-08-19 | PR-1 merge 后实测 | 总工程师 | wall-time 673s vs baseline 908s (-26%); e2e 241s vs 523s (-54%, setup-java@v5 cache 生效) |
+| 2026-08-19 | **【防止再发】R6 规则**: precheck.sh check_workflow_outputs_id | 总工程师 | PR #267 merged (c98e8e55), 27/27 PASS, 自动检测 workflow outputs 引用缺 id |
+| 2026-08-19 | 文档同步: FIELDS_CONTRACT.md Controller 77→78 + GrayRelease 行 | 总工程师 | PR #260 (F10-D2) 遗漏补录 |
 | _待填_ | PR-1 merge 后实测 | AI | _观察 2-3 个 run_ |
 | _待填_ | PR-2 启动决策 | AI | _依据实测数据决定_ |
 
