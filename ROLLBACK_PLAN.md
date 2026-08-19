@@ -10,6 +10,7 @@
 
 | 版本 | 日期 | 变更 |
 |------|------|------|
+| **2026-08-19 接管治理批次（最新，未部署）** | 2026-08-19 | **本批次未部署生产**（本地治理 + CI 优化 + 依赖升级）。变更含 22 PR (#266-#286 区间)：P0 漏洞修复 (ci.yml id: filter, PR #266) + CI 优化 PR-1 (paths-filter, -26% wall-time) + precheck R6/R7 规则 (PR #267 #273) + D19-1 vite-stack 升级 (vue 3.5/vite 6/devtools 8/vitest 2, PR #274-278) + D19-2 dependabot 升级 (happy-dom/easyexcel/pinia/vue-i18n, PR #280-283) + dependabot.yml 撤销排除 (PR #279) + 治理文档 (PR #268-270 #284-286)。**⚠️ 零 DB 迁移**。回滚：前端 dist + 后端 jar 5 分钟回滚即可（git revert 到 2026-08-13 HEAD `320a3abb`）。D19-1 依赖升级若回滚需同步回滚 package-lock.json + 重建 dist |
 | **2026-08-13 生产部署（最近）** | 2026-08-13 | 部署 main HEAD `320a3abb`（#225-#233 兜底审计批次）：jar md5 `3dc6a85d` + bundle `index-CaUkdtcp.js`。**零 DB 迁移**，回滚 5 分钟（备份 `jar.backup.20260813_170834` / `admin.dist.backup.20260813_171222`）|
 | **2026-08-11 生产部署（补录）** | 2026-08-11 | 部署 #218-#222 批次：Prometheus 监控修复 + 5 类型 dashboard + 前端 echarts6/quill2.0.2 + CI 升级。V329-V333 已应用（08-13 前生产为 V333）|
 | **2026-08-12 决策批次** | 2026-08-12 | main HEAD `24dc8658`（PR #232）部署决策记录（DEPLOYMENT_DECISION.md）|

@@ -45,7 +45,7 @@
 | # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
 |---|---|---|---|---|---|
 | P6-D1 | P2 | `vendor-el` 大包体 warning | 构建有 warning，但未构成功能回归或本地性能烟测失败 | 可放行到发布准备，不阻断当前教师模块交付 | 纳入性能治理专题，后续拆包优化 |
-| P6-D2 | P1-I | `Entity-数据字典漂移` advisory（历史） | 属历史治理项，本轮 `precheck` 仍以 advisory 形式提示，但非本轮引入 | 可放行到发布准备，不阻断当前教师模块交付 | 纳入数据契约治理专题，后续专门清理 |
+| ~~P6-D2~~ | ~~P1-I~~ | ~~`Entity-数据字典漂移` advisory（历史）~~ | ✅ **已解决（2026-08-19 接管确认）**：precheck advisory 已不含数据字典漂移（仅 AuthServiceImpl pre-existing），说明此前数据契约治理专题已闭环 | ~~登记放行~~ | ✅ **已处理**：Entity-数据字典漂移已在数据契约治理中解决，precheck 27/28 PASS 仅报 AuthServiceImpl advisory |
 
 ### 不允许延期的事项
 
