@@ -160,6 +160,12 @@ jobs:
     if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # PR-2.2 (2026-08-20): e2e Playwright 2-shard 矩阵 (docs/qa/pr-2-e2e-sharding-plan.md)
+    # 预期: e2e 4min → 2min (50% 降低); Playwright shard 原生支持按 spec 文件拆分
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     steps:
       - uses: actions/checkout@v5
 
@@ -274,8 +280,9 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: ./micro-course-admin
 
-      - name: Run Playwright E2E Tests
-        run: npx playwright test --config=tests/e2e/e2e.config.ts
+      - name: Run Playwright E2E Tests (shard ${{ matrix.shard }}/2)
+        # PR-2.2: 按 shard 拆分 Playwright 测试 (matrix.shard = 1 or 2)
+        run: npx playwright test --config=tests/e2e/e2e.config.ts --shard=${{ matrix.shard }}/2
         working-directory: ./micro-course-admin
         env:
           BASE_URL: http://localhost:8088
