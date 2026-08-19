@@ -6,8 +6,8 @@
 <template>
   <div class="reports-page">
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>系统管理</el-breadcrumb-item>
-      <el-breadcrumb-item>举报处理</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('reportsManagement.systemMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('reportsManagement.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 统计卡片 -->
@@ -15,25 +15,25 @@
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value">{{ stats.pending }}</div>
-          <div class="stat-label">待处理</div>
+          <div class="stat-label">{{ $t('reportsManagement.statusPending') }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value">{{ stats.dismissed }}</div>
-          <div class="stat-label">已驳回</div>
+          <div class="stat-label">{{ $t('reportsManagement.statusDismissed') }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value">{{ stats.processed }}</div>
-          <div class="stat-label">已处理</div>
+          <div class="stat-label">{{ $t('reportsManagement.statusProcessed') }}</div>
         </el-card>
       </el-col>
       <el-col :span="6">
         <el-card shadow="never" class="stat-card">
           <div class="stat-value">{{ stats.total }}</div>
-          <div class="stat-label">全部</div>
+          <div class="stat-label">{{ $t('app.all') }}</div>
         </el-card>
       </el-col>
     </el-row>
@@ -41,16 +41,16 @@
     <!-- 搜索区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm">
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部" clearable @change="handleSearch" style="width:140px">
-            <el-option label="待处理" :value="0" />
-            <el-option label="已驳回" :value="1" />
-            <el-option label="已处理" :value="2" />
+        <el-form-item :label="$t('app.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('app.all')" clearable @change="handleSearch" style="width:140px">
+            <el-option :label="$t('reportsManagement.statusPending')" :value="0" />
+            <el-option :label="$t('reportsManagement.statusDismissed')" :value="1" />
+            <el-option :label="$t('reportsManagement.statusProcessed')" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('common.search') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -58,51 +58,51 @@
     <!-- 表格区 -->
     <el-card class="table-card" shadow="never">
       <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无举报数据" :image-size="120" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('reportsManagement.noData')" :image-size="120" />
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="#" width="60" align="center" />
-        <el-table-column prop="reporterName" label="举报人" width="120" show-overflow-tooltip />
-        <el-table-column label="举报类型" width="150" align="center">
+        <el-table-column type="index" :label="$t('reportsManagement.indexLabel')" width="60" align="center" />
+        <el-table-column prop="reporterName" :label="$t('reportsManagement.reporter')" width="120" show-overflow-tooltip />
+        <el-table-column :label="$t('reportsManagement.reportType')" width="150" align="center">
           <template #default="{ row }">
             <el-tag :type="typeTagType(row.reportedItemType)" size="small">
               {{ typeText(row.reportedItemType) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="被举报ID" width="100" align="center">
+        <el-table-column :label="$t('reportsManagement.reportedId')" width="100" align="center">
           <template #default="{ row }">
             <span>{{ row.reportedItemId }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="reason" label="举报原因" min-width="200" show-overflow-tooltip />
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column prop="reason" :label="$t('reportsManagement.reason')" min-width="200" show-overflow-tooltip />
+        <el-table-column :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="statusTagType(row.status)" size="small">
               {{ row.statusText }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="reviewerName" label="审核人" width="100" show-overflow-tooltip>
+        <el-table-column prop="reviewerName" :label="$t('reportsManagement.reviewer')" width="100" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.reviewerName || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="reviewNotes" label="审核备注" width="150" show-overflow-tooltip>
+        <el-table-column prop="reviewNotes" :label="$t('reportsManagement.reviewNotes')" width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <span>{{ row.reviewNotes || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="举报时间" width="170">
+        <el-table-column prop="createdAt" :label="$t('reportsManagement.reportTime')" width="170">
           <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <template v-if="row.status === 0">
               <el-button type="warning" link size="small" @click="handleDismiss(row)">
-                <el-icon><Close /></el-icon>驳回
+                <el-icon><Close /></el-icon>{{ $t('reportsManagement.dismiss') }}
               </el-button>
               <el-button type="danger" link size="small" @click="handleRemove(row)">
-                <el-icon><Delete /></el-icon>通过并删除
+                <el-icon><Delete /></el-icon>{{ $t('reportsManagement.remove') }}
               </el-button>
             </template>
             <span v-else class="text-muted">—</span>
@@ -126,9 +126,12 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminReports, reviewReport } from '@/api/review'
 import { Close, Delete } from '@element-plus/icons-vue'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -159,7 +162,7 @@ async function fetchData() {
     totalElements.value = data.totalElements || 0
     await computeStats()
   } catch (err) {
-    ElMessage.error('加载举报列表失败')
+    ElMessage.error(t('reportsManagement.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -199,39 +202,43 @@ function handleReset() {
 
 async function handleDismiss(row) {
   try {
-    const { value: notes } = await ElMessageBox.prompt('驳回原因（可选）', '驳回举报', {
-      confirmButtonText: '确认驳回',
-      cancelButtonText: '取消',
+    const { value: notes } = await ElMessageBox.prompt(t('reportsManagement.dismissReasonLabel'), t('reportsManagement.dismissTitle'), {
+      confirmButtonText: t('reportsManagement.confirmDismiss'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputPlaceholder: '请输入驳回原因（可选）',
+      inputPlaceholder: t('reportsManagement.dismissReasonPlaceholder'),
     })
     await reviewReport(row.id, { action: 'DISMISS', reviewNotes: notes || null })
-    ElMessage.success('已驳回')
+    ElMessage.success(t('reportsManagement.statusDismissed'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败')
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('common.failed'))
   }
 }
 
 async function handleRemove(row) {
   try {
-    const { value: notes } = await ElMessageBox.prompt('审核备注（可选）', '删除内容并处理', {
-      confirmButtonText: '确认删除',
-      cancelButtonText: '取消',
+    const { value: notes } = await ElMessageBox.prompt(t('reportsManagement.notesLabel'), t('reportsManagement.removeTitle'), {
+      confirmButtonText: t('reportsManagement.confirmRemove'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputPlaceholder: '请输入审核备注（可选）',
+      inputPlaceholder: t('reportsManagement.notesPlaceholder'),
       confirmButtonClass: 'el-button--danger',
     })
     await reviewReport(row.id, { action: 'REMOVE', reviewNotes: notes || null })
-    ElMessage.success('已删除内容并处理')
+    ElMessage.success(t('reportsManagement.removedSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || '操作失败')
+    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('common.failed'))
   }
 }
 
 function typeText(type) {
-  const map = { REVIEW: '课程评价', DISCUSSION_POST: '讨论帖', DISCUSSION_COMMENT: '讨论评论' }
+  const map = {
+    REVIEW: t('reportsManagement.typeReview'),
+    DISCUSSION_POST: t('reportsManagement.typeDiscussionPost'),
+    DISCUSSION_COMMENT: t('reportsManagement.typeDiscussionComment')
+  }
   return map[type] || type
 }
 

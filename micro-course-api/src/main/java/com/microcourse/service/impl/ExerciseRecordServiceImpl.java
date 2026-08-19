@@ -99,335 +99,24 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ExerciseRecordVO submitAnswer(SubmitAnswerRequest request) {
-        // 1. 查 exercise 是否存在
+        // I18-2026-08-17: 委托 {@link ExerciseAnswerSubmitExecutor} 执行 8 步流水线
+        ExerciseRecord record = answerSubmitExecutor().run(request);
         Exercise exercise = exerciseRepository.selectById(request.getExerciseId());
-        if (exercise == null) {
-            throw new BusinessException(ErrorCode.EXERCISE_NOT_FOUND);
-        }
-
-        // R12 P0-1: 选课检查 — 学生只能提交已选课程课件的练习
-        if (exercise.getCourseId() != null && !SecurityUtil.isAdmin()) {
-            LambdaQueryWrapper<Enrollment> enrollCheck = new LambdaQueryWrapper<>();
-            enrollCheck.eq(Enrollment::getUserId, SecurityUtil.getCurrentUserId())
-                       .eq(Enrollment::getCourseId, exercise.getCourseId())
-                       .in(Enrollment::getEnrollmentStatus, "APPROVED", "COMPLETED")
-                       .isNull(Enrollment::getDeletedAt);
-            if (enrollmentRepository.selectCount(enrollCheck) == 0) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "未选课不能作答");
-            }
-        }
-
-        // 2. 校验答题次数是否超限 — 后端独立查询，不依赖前端attemptNo
-        if (exercise.getMaxAttempts() != null && exercise.getMaxAttempts() > 0) {
-            LambdaQueryWrapper<ExerciseRecord> countWrapper = new LambdaQueryWrapper<>();
-            countWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
-                       .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
-            long attemptCount = exerciseRecordRepository.selectCount(countWrapper);
-            if (attemptCount >= exercise.getMaxAttempts()) {
-                throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "已超过最大答题次数");
-            }
-        }
-
-        // 3. 超时校验 — 后端独立检查，不依赖客户端计时
-        if (exercise.getTimeLimit() != null && exercise.getTimeLimit() > 0) {
-            int timeLimitSeconds = exercise.getTimeLimit() * 60;
-            if (request.getDuration() != null && request.getDuration() > timeLimitSeconds) {
-                throw new BusinessException(ErrorCode.EXAM_TIME_EXPIRED, "答题超时，已超过时间限制");
-            }
-        }
-
-        // 4. 视频进度阈值检查 — 仅考试（is_exam=true）要求先观看视频
-        // P1-C 修复 (2026-08-04): 原逻辑对普通随堂练习也强制"先看视频"，
-        // 学生选课后想先做练习巩固知识被拦截，且无真实视频可看时练习永久不可用。
-        // 随堂练习是学习工具应可直接作答；考试保持前置门槛（防作弊）。
-        if (Boolean.TRUE.equals(exercise.getIsExam()) && exercise.getCourseId() != null) {
-            long totalVideosInCourse = videoRepository.selectCount(
-                new LambdaQueryWrapper<Video>()
-                    .eq(Video::getCourseId, exercise.getCourseId()));
-            if (totalVideosInCourse > 0) {
-                long completedVideos = learningProgressRepository.selectCount(
-                    new LambdaQueryWrapper<LearningProgress>()
-                        .eq(LearningProgress::getUserId, request.getUserId())
-                        .eq(LearningProgress::getCourseId, exercise.getCourseId())
-                        .eq(LearningProgress::getCompleted, true));
-                if (completedVideos < 1) {
-                    throw new BusinessException(ErrorCode.PREREQUISITE_NOT_MET,
-                        "请先观看课程视频后再开始答题");
-                }
-            }
-        }
-
-        // P1C-025: 考试单次提交检查 — 考试只能提交一次，不可重做
-        if (Boolean.TRUE.equals(exercise.getIsExam())) {
-            LambdaQueryWrapper<ExerciseRecord> examCheckWrapper = new LambdaQueryWrapper<>();
-            examCheckWrapper.eq(ExerciseRecord::getUserId, request.getUserId())
-                           .eq(ExerciseRecord::getExerciseId, request.getExerciseId());
-            long examSubmitCount = exerciseRecordRepository.selectCount(examCheckWrapper);
-            if (examSubmitCount > 0) {
-                throw new BusinessException(ErrorCode.EXAM_ALREADY_SUBMITTED, "考试已提交，不可重复作答");
-            }
-        }
-
-        // 6. 查 exercise_questions 列表
-        LambdaQueryWrapper<ExerciseQuestion> eqWrapper = new LambdaQueryWrapper<>();
-        eqWrapper.eq(ExerciseQuestion::getExerciseId, request.getExerciseId())
-                .orderByAsc(ExerciseQuestion::getSortOrder);
-        List<ExerciseQuestion> exerciseQuestions = exerciseQuestionRepository.selectList(eqWrapper);
-
-        if (exerciseQuestions.isEmpty()) {
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "练习没有题目");
-        }
-
-        // 构建 questionId -> ExerciseQuestion 的映射
-        Map<Long, ExerciseQuestion> eqMap = new HashMap<>();
-        for (ExerciseQuestion eq : exerciseQuestions) {
-            eqMap.put(eq.getQuestionId(), eq);
-        }
-
-        // 4. 批量预加载所有题目 -> 逐题批改(N+1→1+1)
-        List<SubmitAnswerRequest.AnswerItem> answerList = request.getAnswers();
-        int totalScore = 0;
-        List<GradingResult> gradingResults = new ArrayList<>();
-
-        // 收集所有 questionId 批量查询
-        List<Long> allQuestionIds = answerList.stream()
-                .map(SubmitAnswerRequest.AnswerItem::getQuestionId)
-                .filter(eqMap::containsKey)
-                .collect(java.util.stream.Collectors.toList());
-        Map<Long, Question> questionMap = new HashMap<>();
-        if (!allQuestionIds.isEmpty()) {
-            questionRepository.selectBatchIds(allQuestionIds)
-                    .forEach(q -> questionMap.put(q.getId(), q));
-        }
-
-        for (SubmitAnswerRequest.AnswerItem answerItem : answerList) {
-            ExerciseQuestion eq = eqMap.get(answerItem.getQuestionId());
-            if (eq == null) continue;
-
-            Question question = questionMap.get(answerItem.getQuestionId());
-            if (question == null) {
-                throw new BusinessException(ErrorCode.QUESTION_NOT_FOUND);
-            }
-
-            GradingResult result = gradeQuestion(question, answerItem.getAnswer(), eq.getScore());
-            gradingResults.add(result);
-            totalScore += result.score;
-        }
-
-        // 5. 计算总分，判断是否通过
-        // 2026-08-04 修复：pass_score 数据字典定义为「及格分（百分制）」，
-        // 原实现按绝对分值比较（totalScore >= passScore），小分值练习（如 2 题共 20 分）
-        // 永远无法达到 60 及格线 → 学生永远「未通过」。
-        // 改为得分率比较：totalScore / totalPossible * 100 >= passScore。
-        int totalPossible = exerciseQuestions.stream()
-                .mapToInt(eq -> eq.getScore() == null ? 0 : eq.getScore())
-                .sum();
-        boolean passed = totalPossible > 0
-                && (totalScore * 100.0 / totalPossible) >= exercise.getPassScore();
-
-        // P0 修复: 检查是否有需要人工批改的主观题（SHORT_ANSWER/ESSAY）
-        boolean hasManualGrading = gradingResults.stream().anyMatch(r -> r.needsManualGrading);
-
-        // 6. P0-05: 使用 Redis 分布式锁确保 attemptNo 原子递增，防止并发竞态
-        String lockKey = "attempt:lock:" + request.getUserId() + ":" + request.getExerciseId();
-        int attemptNo;
-        try {
-            Boolean locked = stringRedisTemplate.opsForValue().setIfAbsent(lockKey, "1",
-                    java.time.Duration.ofSeconds(5));
-            if (!Boolean.TRUE.equals(locked)) {
-                throw new BusinessException(ErrorCode.RATE_LIMITED, "操作太频繁，请稍后重试");
-            }
-            try {
-                QueryWrapper<ExerciseRecord> maxWrapper = new QueryWrapper<>();
-                maxWrapper.eq("user_id", request.getUserId())
-                        .eq("exercise_id", request.getExerciseId())
-                        .select("COALESCE(MAX(attempt_no), 0) AS max_no");
-                Map<String, Object> maxRow = exerciseRecordRepository.selectMaps(maxWrapper).stream()
-                        .findFirst().orElse(java.util.Collections.singletonMap("max_no", 0));
-                Object maxVal = maxRow.get("max_no");
-                long currentMax = (maxVal instanceof Number n) ? n.longValue() : 0L;
-                attemptNo = (int) currentMax + 1;
-            } finally {
-                stringRedisTemplate.delete(lockKey);
-            }
-        } catch (BusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.warn("[ExerciseRecord] attemptNo 计算失败,使用默认值 1", e);
-            attemptNo = 1;
-        }
-
-        // 7. 构建 answers JSON
-        String answersJson;
-        try {
-            answersJson = objectMapper.writeValueAsString(gradingResults);
-        } catch (JsonProcessingException e) {
-            log.error("[ExerciseRecord] JSON 序列化 gradingResults 失败 exerciseId={} userId={}", request.getExerciseId(), request.getUserId(), e);
-            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "成绩数据序列化失败");
-        }
-
-        // 8. 插入 exercise_record
-        ExerciseRecord record = new ExerciseRecord();
-        record.setExerciseId(request.getExerciseId());
-        record.setUserId(request.getUserId());
-        record.setAttemptNo(attemptNo);
-        record.setScore(totalScore);
-        record.setTotalScore(exercise.getTotalScore());
-        record.setPassed(passed);
-        record.setDuration(request.getDuration());
-        record.setAnswers(answersJson);
-        record.setNeedsManualGrading(hasManualGrading);
-        record.setSubmittedAt(LocalDateTime.now());
-        try {
-            exerciseRecordRepository.insert(record);
-        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
-            // DA-1 修复:V43 UNIQUE 约束兜底,并发 submit 时第二个 insert 抛唯一约束冲突
-            // 降级:重新查询已有记录并返回,避免整事务回滚导致用户答题记录丢失
-            log.warn("[ExerciseRecord] 并发 submit 命中 UNIQUE,降级返回已有记录 userId={} exerciseId={} attemptNo={}",
-                    request.getUserId(), request.getExerciseId(), attemptNo);
-            ExerciseRecord existing = exerciseRecordRepository.selectOne(
-                    new LambdaQueryWrapper<ExerciseRecord>()
-                            .eq(ExerciseRecord::getUserId, request.getUserId())
-                            .eq(ExerciseRecord::getExerciseId, request.getExerciseId())
-                            .eq(ExerciseRecord::getAttemptNo, attemptNo));
-            if (existing != null) return convertToVO(existing, exercise);
-            throw dupEx;
-        }
-
-        // 9. 同步更新 grades 表
-        Grade grade = new Grade();
-        grade.setUserId(request.getUserId());
-        grade.setExerciseId(request.getExerciseId());
-        grade.setCourseId(exercise.getCourseId());
-        grade.setScore(BigDecimal.valueOf(totalScore));
-        grade.setTotalScore(BigDecimal.valueOf(exercise.getTotalScore()));
-        grade.setPassed(passed);
-        grade.setAttemptNo(attemptNo);
-        grade.setDuration(request.getDuration());
-        grade.setSubmittedAt(LocalDateTime.now());
-        grade.setGradedAt(LocalDateTime.now());
-        grade.setCreatedAt(LocalDateTime.now());
-        grade.setUpdatedAt(LocalDateTime.now());
-        // ★ Round 8-4 修复(P0)：成绩并发防护。grades 有部分唯一约束
-        // uk_grade_user_exercise(user_id, course_id, exercise_id, attempt_no)，并发 submit 时
-        // attemptNo 可能重复命中 UK 把答题主流程打成 500。这里先按唯一键预检查（命中则幂等跳过），
-        // 极端并发再兜底捕获 DuplicateKeyException，确保边界 case 友好处理、绝不抛 500 给用户。
-        boolean gradeExists = gradeRepository.selectCount(
-                new LambdaQueryWrapper<Grade>()
-                        .eq(Grade::getUserId, request.getUserId())
-                        .eq(Grade::getCourseId, exercise.getCourseId())
-                        .eq(Grade::getExerciseId, request.getExerciseId())
-                        .eq(Grade::getAttemptNo, attemptNo)) > 0;
-        if (!gradeExists) {
-            try {
-                gradeRepository.insert(grade);
-            } catch (org.springframework.dao.DuplicateKeyException dupEx) {
-                // 并发竞态：对端已写入同一成绩，幂等忽略，避免整事务因 500 中断
-                log.warn("[Grade] 并发命中唯一约束，幂等忽略 userId={} exerciseId={} attemptNo={}",
-                        request.getUserId(), request.getExerciseId(), attemptNo);
-            }
-        }
-
-        // 10. 错题入库(批量预检查,减少单独查询)
-        Set<Long> wrongQuestionIds = gradingResults.stream()
-                .filter(r -> Boolean.FALSE.equals(r.isCorrect) && r.questionType != null
-                        && !r.questionType.equals("SHORT_ANSWER") && !r.questionType.equals("ESSAY"))
-                .map(r -> r.questionId)
-                .collect(java.util.stream.Collectors.toSet());
-        if (!wrongQuestionIds.isEmpty()) {
-            // 批量查询已存在的错题
-            LambdaQueryWrapper<WrongQuestion> existingWQ = new LambdaQueryWrapper<>();
-            existingWQ.eq(WrongQuestion::getUserId, request.getUserId())
-                    .in(WrongQuestion::getQuestionId, wrongQuestionIds);
-            Set<Long> existingIds = wrongQuestionRepository.selectList(existingWQ).stream()
-                    .map(WrongQuestion::getQuestionId)
-                    .collect(java.util.stream.Collectors.toSet());
-            // 增量更新已存在的
-            if (!existingIds.isEmpty()) {
-                wrongQuestionRepository.update(null,
-                        new LambdaUpdateWrapper<WrongQuestion>()
-                                .eq(WrongQuestion::getUserId, request.getUserId())
-                                .in(WrongQuestion::getQuestionId, existingIds)
-                                .setSql("wrong_count = wrong_count + 1")
-                                .setSql("last_wrong_at = NOW()"));
-            }
-            // 插入不存在的 — 捕获 DuplicateKeyException 避免并发时整事务回滚(CON-005 修复)
-            wrongQuestionIds.stream()
-                    .filter(qid -> !existingIds.contains(qid))
-                    .forEach(qid -> {
-                        WrongQuestion wq = new WrongQuestion();
-                        wq.setUserId(request.getUserId());
-                        wq.setQuestionId(qid);
-                        wq.setCourseId(exercise.getCourseId());
-                        wq.setWrongCount(1);
-                        wq.setLastWrongAt(LocalDateTime.now());
-                        wq.setCreatedAt(LocalDateTime.now());
-                        try {
-                            wrongQuestionRepository.insert(wq);
-                        } catch (org.springframework.dao.DuplicateKeyException dupEx) {
-                            // 并发插入:对端已先插入成功,转为原子 UPDATE +1 兜底
-                            log.debug("[WrongQuestion] 并发命中唯一约束,转为原子累加 userId={} qId={}", request.getUserId(), qid);
-                            wrongQuestionRepository.update(null,
-                                    new LambdaUpdateWrapper<WrongQuestion>()
-                                            .eq(WrongQuestion::getUserId, request.getUserId())
-                                            .eq(WrongQuestion::getQuestionId, qid)
-                                            .setSql("wrong_count = wrong_count + 1")
-                                            .setSql("last_wrong_at = NOW()"));
-                        }
-                    });
-        }
-
-        // P1-C: 答对归档逻辑 - 答对题目且已存在错题记录时,自动减少 wrong_count
-        Set<Long> correctQuestionIds = gradingResults.stream()
-                .filter(r -> Boolean.TRUE.equals(r.isCorrect) && r.questionId != null)
-                .map(r -> r.questionId)
-                .collect(java.util.stream.Collectors.toSet());
-        if (!correctQuestionIds.isEmpty()) {
-            LambdaQueryWrapper<WrongQuestion> correctWQ = new LambdaQueryWrapper<>();
-            correctWQ.eq(WrongQuestion::getUserId, request.getUserId())
-                     .in(WrongQuestion::getQuestionId, correctQuestionIds);
-            List<WrongQuestion> existingCorrectWQ = wrongQuestionRepository.selectList(correctWQ);
-
-            for (WrongQuestion wq : existingCorrectWQ) {
-                long newCount = Math.max(0, wq.getWrongCount() - 1);
-                if (newCount <= 0) {
-                    // 完全掌握了,直接删除错题记录
-                    wrongQuestionRepository.deleteById(wq.getId());
-                } else {
-                    // 还有错次,减 1
-                    wrongQuestionRepository.update(null,
-                            new LambdaUpdateWrapper<WrongQuestion>()
-                                    .eq(WrongQuestion::getId, wq.getId())
-                                    .set(WrongQuestion::getWrongCount, newCount)
-                                    .set(WrongQuestion::getLastWrongAt, LocalDateTime.now()));
-                }
-            }
-        }
-
-        // P1C-023: 练习通过后同步 learning_progress.exercise_passed = true
-        if (passed && exercise.getCourseId() != null) {
-            LambdaUpdateWrapper<LearningProgress> lpWrapper = new LambdaUpdateWrapper<>();
-            lpWrapper.eq(LearningProgress::getUserId, request.getUserId())
-                    .eq(LearningProgress::getCourseId, exercise.getCourseId())
-                    .set(LearningProgress::getExercisePassed, true)
-                    .set(LearningProgress::getUpdatedAt, LocalDateTime.now());
-            learningProgressRepository.update(null, lpWrapper);
-        }
-
-        // Phase B-2 (P0-7)：练习提交批改完成后，异步通知课程教师。
-        // Exercise 无 teacherId 字段，经 courseId → course → teacherId 解析；@Async 不阻塞答题主流程。
-        Course notifyCourse = exercise.getCourseId() != null
-                ? courseRepository.selectById(exercise.getCourseId()) : null;
-        if (notifyCourse != null && notifyCourse.getTeacherId() != null) {
-            notificationService.notifyAsync(
-                    notifyCourse.getTeacherId(),
-                    NotificationType.EXERCISE_GRADED,
-                    "学生完成练习",
-                    "有学生完成了练习《" + exercise.getTitle() + "》，得分 " + totalScore,
-                    exercise.getId());
-        }
-
         return convertToVO(record, exercise);
+    }
+
+    /**
+     * I18-2026-08-17: 委托 {@link ExerciseAnswerSubmitExecutor} 执行 8 步答题流水线。
+     * 自身保留 {@code GradingResult} 内部类（用作 Jackson JSON 序列化结构体）与
+     * {@code gradeQuestion} 公开方法（executor 通过 grader 接口调用）。
+     */
+    private ExerciseAnswerSubmitExecutor answerSubmitExecutor() {
+        return new ExerciseAnswerSubmitExecutor(
+                exerciseRepository, enrollmentRepository, exerciseRecordRepository,
+                videoRepository, learningProgressRepository, exerciseQuestionRepository,
+                questionRepository, gradeRepository, wrongQuestionRepository,
+                courseRepository, notificationService, stringRedisTemplate, objectMapper,
+                this::gradeQuestion);
     }
 
     private String normalizeQuestionType(String type) {
@@ -469,7 +158,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
         return set;
     }
 
-    private GradingResult gradeQuestion(Question question, String userAnswer, Integer fullScore) {
+    GradingResult gradeQuestion(Question question, String userAnswer, Integer fullScore) {
         GradingResult result = new GradingResult();
         result.questionId = question.getId();
         result.questionType = question.getQuestionType();
@@ -645,7 +334,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
                .ge(ExerciseRecord::getSubmittedAt, since)
                .orderByAsc(ExerciseRecord::getSubmittedAt);
         // 使用 MyBatis-Plus 分页代替 LIMIT 2000，防止 OOM
-        Page<ExerciseRecord> pg = new Page<>(1, 2000);
+        Page<ExerciseRecord> pg = new Page<>(1, com.microcourse.constants.ApiConstants.STATS_LIMIT);
         List<ExerciseRecord> records = exerciseRecordRepository.selectPage(pg, wrapper).getRecords();
 
         // P0 修复: 基于逐题 isCorrect 统计正确率，而非基于整卷 passed
@@ -776,7 +465,7 @@ public class ExerciseRecordServiceImpl implements ExerciseRecordService {
     }
 
     @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
-    private static class GradingResult {
+    public static class GradingResult {
         Long questionId;
         String questionType;
         String answer;

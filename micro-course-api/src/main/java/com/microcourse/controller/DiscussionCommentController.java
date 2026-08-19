@@ -1,7 +1,9 @@
 package com.microcourse.controller;
 
+import com.microcourse.constants.ApiLimits;
 import com.microcourse.dto.CommentCreateRequest;
 import com.microcourse.dto.DiscussionCommentVO;
+import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.service.DiscussionCommentService;
 import jakarta.validation.Valid;
@@ -21,11 +23,34 @@ public class DiscussionCommentController {
         this.commentService = commentService;
     }
 
+    /**
+     * 获取讨论帖评论。
+     *
+     * <p>P1-I-2026-08-15 · 修复"返回全量 List" DoS 风险：
+     * <ul>
+     *   <li>若调用方传 {@code size} 参数（>=0）→ 返回 {@link PageResult}（分页契约）</li>
+     *   <li>若调用方未传 {@code size}（兼容老前端） → 仍返回 {@link List}，但 Service 硬限 100 条</li>
+     * </ul>
+     */
     @GetMapping("/comments")
     @PreAuthorize("isAuthenticated()")
-    public R<List<DiscussionCommentVO>> page(@RequestParam Long postId) {
-        List<DiscussionCommentVO> list = commentService.page(postId);
-        return R.ok(list);
+    public R<?> page(@RequestParam Long postId,
+                     @RequestParam(required = false) Integer page,
+                     @RequestParam(required = false) Integer size) {
+        // 兼容老调用（无 page/size）→ 返回 List（受限 100）
+        if (page == null && size == null) {
+            List<DiscussionCommentVO> list = commentService.page(postId);
+            // 硬限保护（Service 也加了，这里是双层防御）
+            if (list.size() > ApiLimits.MAX_REQUEST_SIZE) {
+                return R.ok(new java.util.ArrayList<>(list.subList(0, ApiLimits.MAX_REQUEST_SIZE)));
+            }
+            return R.ok(list);
+        }
+        // 新调用（带 page/size）→ 返回 PageResult
+        int p = page == null ? 0 : page;
+        int s = size == null ? 20 : Math.min(Math.max(size, 1), ApiLimits.MAX_REQUEST_SIZE);
+        PageResult<DiscussionCommentVO> result = commentService.pagePaged(postId, p, s);
+        return R.ok(result);
     }
 
     @PostMapping("/comments")

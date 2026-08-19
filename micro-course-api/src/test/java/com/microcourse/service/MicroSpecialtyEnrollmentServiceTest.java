@@ -264,9 +264,14 @@ class MicroSpecialtyEnrollmentServiceTest {
     void classImport_capacityInsufficient() {
         MicroSpecialty ms = specialtyWithStatus("RECRUITING", 3, 2);
         when(msRepository.selectForUpdate(1L)).thenReturn(ms);
-        when(enrollmentRepository.selectCount(any())).thenReturn(2L);
+        // I18-2026-08-17 classImport 重构后，已用 selectList 替代 selectCount 来推导剩余名额
+        // （selectList 返回 2 个"已选学生"，现有 2 人 + 班级 2 人 = 4 > maxStudents=3 → 拒绝）
         when(userRepository.selectList(any())).thenReturn(List.of(studentUser(11L), studentUser(12L)));
-        when(enrollmentRepository.selectList(any())).thenReturn(Collections.emptyList());
+        MicroSpecialtyEnrollment exist1 = pendingEnrollment(101L);
+        exist1.setUserId(101L);
+        MicroSpecialtyEnrollment exist2 = pendingEnrollment(102L);
+        exist2.setUserId(102L);
+        when(enrollmentRepository.selectList(any())).thenReturn(List.of(exist1, exist2));
 
         BusinessException ex = assertThrows(BusinessException.class, () -> service.classImport(1L, 9L));
         assertEquals(ErrorCode.MS_MAX_STUDENTS_REACHED.getCode(), ex.getCode());

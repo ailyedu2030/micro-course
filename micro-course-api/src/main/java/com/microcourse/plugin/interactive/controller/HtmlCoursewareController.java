@@ -6,6 +6,7 @@ import com.microcourse.plugin.interactive.dto.HtmlSegmentScriptDTO;
 import com.microcourse.plugin.interactive.dto.SegmentDetectionResult;
 import com.microcourse.plugin.interactive.dto.SlideHtmlUnitDTO;
 import com.microcourse.plugin.interactive.service.HtmlCoursewareService;
+import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -44,7 +45,7 @@ public class HtmlCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> createUnit(@PathVariable Long courseId,
                                @PathVariable Long sectionId,
-                               @RequestBody SlideHtmlUnitDTO dto) {
+                               @Valid @RequestBody SlideHtmlUnitDTO dto) {
         // P0-2 IDOR: section 必须属于该课程 + 当前用户是 owner
         htmlService.verifySectionUnitOwner(courseId, sectionId);
         dto.setCourseId(courseId);
@@ -64,7 +65,7 @@ public class HtmlCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Void> updateUnit(@PathVariable Long courseId,
                                @PathVariable Long unitId,
-                               @RequestBody SlideHtmlUnitDTO dto) {
+                               @Valid @RequestBody SlideHtmlUnitDTO dto) {
         // P0-2 IDOR: unit 必须属于该课程 + 当前用户是 owner
         htmlService.verifyUnitOwner(courseId, unitId);
         htmlService.updateUnit(unitId, dto);
@@ -119,7 +120,7 @@ public class HtmlCoursewareController {
     public R<Long> saveSegmentScript(@PathVariable Long courseId,
                                       @PathVariable Long unitId,
                                       @PathVariable Integer idx,
-                                      @RequestBody SaveSegmentScriptRequest body) {
+                                      @Valid @RequestBody SaveSegmentScriptRequest body) {
         // P0-2 IDOR: unit 必须属于该课程 + 当前用户是 owner
         htmlService.verifyUnitOwner(courseId, unitId);
         return R.ok(htmlService.saveSegmentScript(unitId, idx, body.scriptText(),
@@ -141,7 +142,7 @@ public class HtmlCoursewareController {
     @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     public R<Long> generateSegmentAudio(@PathVariable Long courseId,
                                          @PathVariable Long scriptId,
-                                         @RequestBody GenerateSegmentAudioRequest body) {
+                                         @Valid @RequestBody GenerateSegmentAudioRequest body) {
         // P0-2 IDOR: segment script 所属 unit 必须属于该课程 + 当前用户是 owner
         // (TTS 计费端点 — 防止消耗他人 TTS 额度)
         htmlService.verifySegmentScriptOwner(courseId, scriptId);

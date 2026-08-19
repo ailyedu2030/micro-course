@@ -81,6 +81,21 @@ public class EnrollmentQueryServiceImpl implements EnrollmentQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    public PageResult<EnrollmentVO> getMyEnrollmentPage(Long userId, Boolean completed, int page, int size) {
+        LambdaQueryWrapper<Enrollment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Enrollment::getUserId, userId)
+                .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue());
+        if (completed != null) {
+            wrapper.eq(Enrollment::getCompleted, completed);
+        }
+        wrapper.orderByDesc(Enrollment::getEnrolledAt);
+        IPage<Enrollment> pageResult = enrollmentRepository.selectPage(new Page<>(page + 1, size), wrapper);
+        List<EnrollmentVO> voList = convertToVOList(pageResult.getRecords());
+        return PageResult.of(voList, pageResult.getTotal(), page, size);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query) {
         int page = query.getPage() != null ? query.getPage() : 0;
         int size = query.getSize() != null ? query.getSize() : 10;

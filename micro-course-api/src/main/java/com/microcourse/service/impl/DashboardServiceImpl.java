@@ -71,7 +71,7 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setTotalUsers(userRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: userRepository.selectCount failed", e);
-            vo.setTotalUsers(-1L);
+            vo.setTotalUsers(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
@@ -81,14 +81,14 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setActiveUsers7d(userRepository.selectCount(activeUsersWrapper));
         } catch (Exception e) {
             log.error("getOverview: activeUsers7d query failed", e);
-            vo.setActiveUsers7d(-1L);
+            vo.setActiveUsers7d(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setTotalCourses(courseRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: totalCourses query failed", e);
-            vo.setTotalCourses(-1L);
+            vo.setTotalCourses(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
@@ -97,35 +97,35 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setPublishedCourses(courseRepository.selectCount(publishedWrapper));
         } catch (Exception e) {
             log.error("getOverview: publishedCourses query failed", e);
-            vo.setPublishedCourses(-1L);
+            vo.setPublishedCourses(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setTotalEnrollments(enrollmentRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: totalEnrollments query failed", e);
-            vo.setTotalEnrollments(-1L);
+            vo.setTotalEnrollments(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setTotalVideos(videoRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: totalVideos query failed", e);
-            vo.setTotalVideos(-1L);
+            vo.setTotalVideos(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setTotalExercises(exerciseRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: totalExercises query failed", e);
-            vo.setTotalExercises(-1L);
+            vo.setTotalExercises(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setTotalDiscussions(discussionPostRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: totalDiscussions query failed", e);
-            vo.setTotalDiscussions(-1L);
+            vo.setTotalDiscussions(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
@@ -133,14 +133,14 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setTotalWatchTimeMinutes(totalWatchTimeMinutes);
         } catch (Exception e) {
             log.error("getOverview: totalWatchTimeMinutes query failed", e);
-            vo.setTotalWatchTimeMinutes(-1L);
+            vo.setTotalWatchTimeMinutes(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         try {
             vo.setCertificatesIssued(certificateRepository.selectCount(null));
         } catch (Exception e) {
             log.error("getOverview: certificatesIssued query failed — certificates table may not exist in DB", e);
-            vo.setCertificatesIssued(-1L);
+            vo.setCertificatesIssued(com.microcourse.constants.ApiConstants.STATS_NA);
         }
 
         return vo;

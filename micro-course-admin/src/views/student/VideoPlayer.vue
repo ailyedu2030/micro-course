@@ -77,7 +77,7 @@
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button link @click="toggleChapterList" aria-label="章节列表">
+          <el-button link @click="toggleChapterList" :aria-label="$t('video.chapterList')">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="8" y1="6" x2="21" y2="6" />
               <line x1="8" y1="12" x2="21" y2="12" />
@@ -92,7 +92,7 @@
 
       <!-- H5 Header (<= 768px) -->
       <header class="player-header h5-header">
-        <el-button class="back-btn" link @click="goBack" aria-label="返回">
+        <el-button class="back-btn" link @click="goBack" :aria-label="$t('video.back')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 18 9 12 15 6" />
           </svg>
@@ -144,7 +144,7 @@
                 :src="videoData.subtitleUrl"
                 kind="subtitles"
                 srclang="zh-CN"
-                label="中文字幕"
+                :label="$t('video.subtitleTrackLabel')"
                 @load="syncSubtitleTrack"
               />
             </video>
@@ -466,7 +466,7 @@
                   @mouseenter="highlightTime(note.time)"
                   @mouseleave="highlightTime(null)"
                 >
-                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="$t('video.jumpToTime', { time: formatTime(note.time) })" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                   <el-button link size="small" @click="deleteNote(note.id)">{{ $t('video.deleteNote') }}</el-button>
                 </div>
@@ -540,7 +540,7 @@
                   class="note-item h5-note-item"
                   :class="{ 'is-highlighted': highlightedNoteTime === note.time }"
                 >
-                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="`跳转到 ${formatTime(note.time)}`" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
+                  <span class="note-time" :class="{ 'is-highlighted': highlightedNoteTime === note.time }" role="button" tabindex="0" :aria-label="$t('video.jumpToTime', { time: formatTime(note.time) })" @click="seekToTime(note.time)" @keydown.enter="seekToTime(note.time)" @keydown.space.prevent="seekToTime(note.time)">{{ formatTime(note.time) }}</span>
                   <span class="note-content">{{ note.content }}</span>
                 </div>
               </div>
@@ -827,7 +827,7 @@ const {
   },
   onStorageError: ({ type, error }) => {
     if (type === 'notes_save') {
-      ElMessage.warning('笔记保存失败')
+      ElMessage.warning(t('video.notesSaveFailed'))
     }
     if (type === 'position_load') {
       console.warn('[VideoPlayer] loadLocalPosition 恢复播放位置失败', error)
@@ -882,11 +882,11 @@ const {
   },
   onChaptersError: (error) => {
     console.warn('[VideoPlayer] loadChapters 加载章节失败', error)
-    ElMessage.warning('章节列表加载失败，部分功能不可用')
+    ElMessage.warning(t('video.chaptersLoadFailed'))
   },
   onProgressError: (error) => {
     console.warn('[VideoPlayer] loadProgress 加载学习进度失败', error)
-    ElMessage.warning('学习进度加载失败，进度记忆不可用')
+    ElMessage.warning(t('video.progressLoadFailed'))
   },
   onDiscussionsError: (error) => {
     console.warn('[VideoPlayer] loadDiscussions 加载讨论失败', error)

@@ -8,22 +8,22 @@
   <div class="achievement-wall">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>成就墙</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.StudentAchievements') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 头部 -->
     <div class="achievement-wall-header">
-      <h2>我的成就</h2>
+      <h2>{{ $t('achievementWall.title') }}</h2>
       <span class="badge-count">
-        已获得 {{ earnedBadges.length }} 个徽章 / 共 {{ allDefinitions.length }} 种徽章
+        {{ $t('achievementWall.badgeCount', { earned: earnedBadges.length, total: allDefinitions.length }) }}
       </span>
     </div>
 
     <!-- 骨架屏加载态 -->
     <template v-if="loading">
       <el-card class="earned-section" shadow="never">
-        <template #header><span>已获得</span></template>
+        <template #header><span>{{ $t('achievementWall.earned') }}</span></template>
         <el-row :gutter="16">
           <el-col v-for="n in 4" :key="n" :xs="12" :sm="8" :md="6">
             <el-skeleton animated>
@@ -42,16 +42,16 @@
 
     <!-- 加载失败 -->
     <template v-else-if="error">
-      <el-result icon="error" title="加载失败" sub-title="成就数据加载异常，请稍后重试">
+      <el-result icon="error" :title="$t('achievementWall.loadFailedTitle')" :sub-title="$t('achievementWall.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" :loading="loading" @click="fetchData">重新加载</el-button>
+          <el-button type="primary" :loading="loading" @click="fetchData">{{ $t('learning.reload') }}</el-button>
         </template>
       </el-result>
     </template>
 
     <!-- 全部为空 -->
     <template v-else-if="allDefinitions.length === 0">
-      <el-empty description="暂无成就徽章数据" :image-size="100" />
+      <el-empty :description="$t('achievementWall.noData')" :image-size="100" />
     </template>
 
     <!-- 数据就绪 -->
@@ -59,7 +59,7 @@
       <!-- 已获得徽章区 -->
       <el-card class="earned-section" shadow="never">
         <template #header>
-          <span>已获得</span>
+          <span>{{ $t('achievementWall.earned') }}</span>
         </template>
         <el-row :gutter="16">
           <el-col
@@ -72,13 +72,13 @@
                 <el-icon color="var(--role-primary)" :size="40"><Star /></el-icon>
               </div>
               <div class="badge-name">{{ badge.name }}</div>
-              <div class="badge-date">获得于 {{ formatDate(badge.earnedAt) }}</div>
+              <div class="badge-date">{{ $t('achievementWall.earnedAt', { date: formatDate(badge.earnedAt) }) }}</div>
             </el-card>
           </el-col>
         </el-row>
         <el-empty
           v-if="earnedBadges.length === 0"
-          description="暂无已获得徽章，继续加油！"
+          :description="$t('achievementWall.noEarned')"
           :image-size="60"
         />
       </el-card>
@@ -86,7 +86,7 @@
       <!-- 未获得徽章区 -->
       <el-card class="locked-section" shadow="never">
         <template #header>
-          <span>未解锁</span>
+          <span>{{ $t('achievementWall.locked') }}</span>
         </template>
         <el-row :gutter="16">
           <el-col
@@ -100,13 +100,13 @@
               </div>
               <div class="badge-name">{{ badge.name }}</div>
               <div class="badge-desc">{{ badge.description }}</div>
-              <div class="badge-criteria">条件：{{ formatCriteria(badge.criteria) }}</div>
+              <div class="badge-criteria">{{ $t('achievementWall.criteria', { criteria: formatCriteria(badge.criteria) }) }}</div>
             </el-card>
           </el-col>
         </el-row>
         <el-empty
           v-if="lockedBadges.length === 0"
-          description="所有徽章已解锁！"
+          :description="$t('achievementWall.allUnlocked')"
           :image-size="60"
         />
       </el-card>
@@ -116,9 +116,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Star, Lock } from '@element-plus/icons-vue'
 import { getBadgeDefinitions, getMyAchievements } from '@/api/badge'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const error = ref(false)
@@ -148,19 +151,19 @@ function formatDate(dateStr) {
 }
 
 function formatCriteria(criteria) {
-  if (!criteria) return '未知条件'
+  if (!criteria) return t('achievementWall.unknownCriteria')
   try {
     const obj = typeof criteria === 'string' ? JSON.parse(criteria) : criteria
     const typeMap = {
-      streak_days: '连续学习打卡',
-      total_courses: '完成课程数',
-      total_videos: '观看视频数',
-      total_exercises: '完成习题数',
-      review_count: '复习次数',
-      discussion_count: '发贴讨论数',
+      streak_days: t('achievementWall.criteriaStreakDays'),
+      total_courses: t('achievementWall.criteriaTotalCourses'),
+      total_videos: t('achievementWall.criteriaTotalVideos'),
+      total_exercises: t('achievementWall.criteriaTotalExercises'),
+      review_count: t('achievementWall.criteriaReviewCount'),
+      discussion_count: t('achievementWall.criteriaDiscussionCount'),
     }
     const type = typeMap[obj.type] || obj.type
-    return `${type} ${obj.value} 次`
+    return t('achievementWall.criteriaValue', { type, value: obj.value })
   } catch {
     return criteria
   }
@@ -184,7 +187,7 @@ async function fetchData() {
 // eslint-disable-next-line no-console
     console.debug('[AchievementWall] 加载成就数据失败', e)
     error.value = true
-    ElMessage.error('加载成就数据失败，请稍后重试')
+    ElMessage.error(t('achievementWall.fetchFailed'))
   } finally {
     loading.value = false
   }

@@ -6,65 +6,66 @@
 -->
 <template>
   <div class="my-orders">
-    <nav class="page-breadcrumb" aria-label="面包屑">
-      <span>我的订单</span>
+    <nav class="page-breadcrumb" :aria-label="$t('myOrders.title')">
+      <span>{{ $t('myOrders.title') }}</span>
     </nav>
 
     <el-card shadow="never">
       <!-- 订单状态筛选（后端 getMyOrders 支持 status） -->
-      <div v-if="orders.length > 0" class="order-filter-bar">
+      <div v-if="orders.length > 0 || statusFilter !== ''" class="order-filter-bar">
         <el-select
           v-model="statusFilter"
-          placeholder="全部状态"
+          :placeholder="$t('myOrders.allStatuses')"
           clearable
           class="order-status-filter"
-          aria-label="按订单状态筛选"
+          :aria-label="$t('myOrders.filterAria')"
           @change="handleStatusFilterChange"
         >
-          <el-option label="全部" value="" />
-          <el-option label="待支付" value="PENDING" />
-          <el-option label="已支付" value="PAID" />
-          <el-option label="已取消" value="CANCELLED" />
-          <el-option label="已退款" value="REFUNDED" />
+          <el-option :label="$t('myOrders.all')" value="" />
+          <el-option :label="$t('myOrders.statusPending')" value="PENDING" />
+          <el-option :label="$t('myOrders.statusPaid')" value="PAID" />
+          <el-option :label="$t('myOrders.statusCancelled')" value="CANCELLED" />
+          <el-option :label="$t('myOrders.statusRefunded')" value="REFUNDED" />
         </el-select>
       </div>
 
       <!-- 空状态 -->
       <el-empty
         v-if="!loading && orders.length === 0"
-        description="暂无订单"
+        :description="$t('myOrders.noData')"
         :image-size="120"
       >
-        <el-button type="primary" @click="router.push('/student/courses')">去课程广场</el-button>
+        <el-button type="primary" @click="router.push('/student/courses')">{{ $t('myOrders.goCourseSquare') }}</el-button>
+        <el-button v-if="statusFilter !== ''" type="default" @click="handleClearFilter">{{ $t('course.clearFilter') }}</el-button>
       </el-empty>
 
       <!-- 订单列表 -->
       <template v-else>
         <el-table v-loading="loading" :data="orders" class="data-table" stripe border>
-        <el-table-column prop="orderNo" label="订单号" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="courseTitle" label="商品" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="amount" label="金额" width="120" align="center">
+        <el-table-column prop="orderNo" :label="$t('myOrders.orderNo')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="courseTitle" :label="$t('myOrders.product')" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="amount" :label="$t('cart.amount')" width="120" align="center">
           <template #default="{ row }">
             <span v-if="row.amount" class="price-paid">¥{{ row.amount }}</span>
-            <span v-else class="price-free">免费</span>
+            <span v-else class="price-free">{{ $t('app.free') }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'PAID'" type="success" size="small">已支付</el-tag>
-            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">待支付</el-tag>
-            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">已取消</el-tag>
-            <el-tag v-else-if="row.status === 'REFUNDED'" type="danger" size="small">已退款</el-tag>
+            <el-tag v-if="row.status === 'PAID'" type="success" size="small">{{ $t('myOrders.statusPaid') }}</el-tag>
+            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">{{ $t('myOrders.statusPending') }}</el-tag>
+            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">{{ $t('myOrders.statusCancelled') }}</el-tag>
+            <el-tag v-else-if="row.status === 'REFUNDED'" type="danger" size="small">{{ $t('myOrders.statusRefunded') }}</el-tag>
             <el-tag v-else size="small">{{ row.statusText }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="支付方式" width="100" align="center">
+        <el-table-column :label="$t('cart.paymentMethod')" width="100" align="center">
           <template #default="{ row }">
             {{ row.paymentMethod || '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="时间" width="170" show-overflow-tooltip :formatter="$formatDateTime" />
-        <el-table-column label="操作" width="140" align="center" fixed="right">
+        <el-table-column prop="createdAt" :label="$t('app.time')" width="170" show-overflow-tooltip :formatter="$formatDateTime" />
+        <el-table-column :label="$t('app.operation')" width="140" align="center" fixed="right">
           <template #default="{ row }">
             <el-button
               v-if="row.status === 'PENDING'"
@@ -72,7 +73,7 @@
               :loading="payingId === row.id"
               @click="handlePay(row)"
             >
-支付
+{{ $t('course.payBtn') }}
 </el-button>
             <el-button
               v-if="row.status === 'PENDING'"
@@ -80,7 +81,7 @@
               :loading="cancellingId === row.id"
               @click="handleCancel(row)"
             >
-取消订单
+{{ $t('myOrders.cancelOrder') }}
 </el-button>
             <el-button
               v-if="row.status === 'PAID'"
@@ -88,21 +89,21 @@
               :loading="refundingId === row.id"
               @click="handleRefund(row)"
             >
-申请退款
+{{ $t('myOrders.applyRefund') }}
 </el-button>
             <el-button
               v-if="row.bundleId"
               size="small"
               @click="goBundle(row.bundleId)"
             >
-查看套餐
+{{ $t('myOrders.viewBundle') }}
 </el-button>
             <el-button
               v-else-if="row.courseId"
               size="small"
               @click="goCourse(row.courseId)"
             >
-查看课程
+{{ $t('myOrders.viewCourse') }}
 </el-button>
           </template>
         </el-table-column>
@@ -124,6 +125,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMyOrders, payOrder, cancelOrder, refundOrder } from '@/api/order'
@@ -132,6 +134,7 @@ import { useUrlPagination } from '@/composables/useUrlPagination'
 import { useErrorHandler } from '@/composables/useErrorHandler'
 
 const router = useRouter()
+const { t } = useI18n()
 const payingId = ref(null)
 const refundingId = ref(null)
 const cancellingId = ref(null)
@@ -155,11 +158,24 @@ const fetchOrders = async () => {
     orders.value = data.items || []
     total.value = data.totalElements || 0
   } catch (e) {
-    handleError(e, '加载订单失败')
+    handleError(e, t('myOrders.fetchFailed'))
   }
 }
 
+// P1-C-修复: bindToQuery 在 onMounted 中从 URL 同步 page/size，
+// 必须等 URL 同步完成后再 fetch（否则 setup 中 fetch 走 initial page=1）
+onMounted(() => {
+  fetchOrders()
+})
+
 const handleStatusFilterChange = () => {
+  page.value = 1
+  fetchOrders()
+}
+
+// 空结果时通过"清除筛选"按钮恢复完整订单列表
+const handleClearFilter = () => {
+  statusFilter.value = ''
   page.value = 1
   fetchOrders()
 }
@@ -168,10 +184,10 @@ const handlePay = async (row) => {
   payingId.value = row.id
   try {
     await payOrder(row.id, 'BALANCE')
-    handleSuccess('支付成功')
+    handleSuccess(t('myOrders.paySuccess'))
     fetchOrders()
   } catch (e) {
-    handleError(e, '支付失败')
+    handleError(e, t('order.failed'))
   } finally {
     payingId.value = null
   }
@@ -179,18 +195,18 @@ const handlePay = async (row) => {
 
 const handleRefund = async (row) => {
   try {
-    await ElMessageBox.confirm('确定申请退款？退款后课程访问权限将被收回。', '确认退款', {
-      confirmButtonText: '确定退款',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('myOrders.refundConfirm'), t('myOrders.refundConfirmTitle'), {
+      confirmButtonText: t('myOrders.refundConfirmBtn'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     refundingId.value = row.id
     await refundOrder(row.id)
-    handleSuccess('退款申请已提交')
+    handleSuccess(t('myOrders.refundSubmitted'))
     fetchOrders()
   } catch (e) {
     if (e !== 'cancel') {
-      handleError(e, '退款失败')
+      handleError(e, t('myOrders.refundFailed'))
     }
   } finally {
     refundingId.value = null
@@ -199,15 +215,15 @@ const handleRefund = async (row) => {
 
 const handleCancel = async (row) => {
   try {
-    await ElMessageBox.confirm('确定取消该订单？取消后如需购买需重新下单。', '取消订单', {
-      confirmButtonText: '确定取消', cancelButtonText: '不取消', type: 'warning'
+    await ElMessageBox.confirm(t('myOrders.cancelConfirm'), t('myOrders.cancelOrder'), {
+      confirmButtonText: t('myOrders.cancelConfirmBtn'), cancelButtonText: t('myOrders.cancelBtn'), type: 'warning'
     })
     cancellingId.value = row.id
     await cancelOrder(row.id)
-    ElMessage.success('订单已取消')
+    ElMessage.success(t('myOrders.cancelledSuccess'))
     fetchOrders()
   } catch (e) {
-    if (e !== 'cancel') handleError(e, '取消失败')
+    if (e !== 'cancel') handleError(e, t('myOrders.cancelFailed'))
   } finally {
     cancellingId.value = null
   }
@@ -215,9 +231,6 @@ const handleCancel = async (row) => {
 
 const goCourse = (id) => router.push(`/student/courses/${id}`)
 const goBundle = (id) => router.push(`/student/bundles/${id}`)
-
-// setup 阶段即发起首次加载，execute 同步置 loading=true（保持首屏 loading 行为）
-fetchOrders()
 </script>
 
 <style scoped>

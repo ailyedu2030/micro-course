@@ -7,25 +7,25 @@
 <template>
   <div class="chapter-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>章节管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.chapterMgmt') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="课程">
-          <el-select v-model="searchForm.courseId" placeholder="请选择课程" clearable class="filter-input-w240" :disabled="courseOptions.length <= 1" @change="handleSearch" aria-label="课程">
+        <el-form-item :label="$t('course.title')">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('videoList.selectCourse')" clearable class="filter-input-w240" :disabled="courseOptions.length <= 1" @change="handleSearch" :aria-label="$t('course.title')">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item v-if="currentCourse">
-          <el-button @click="goBackToCourse">返回课程详情</el-button>
+          <el-button @click="goBackToCourse">{{ $t('chapterList.backToCourseDetail') }}</el-button>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('videoList.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -35,17 +35,17 @@
       <template #header>
         <div class="card-header">
           <span class="card-title">
-            <span v-if="currentCourse">{{ currentCourse.title }} - 章节列表</span>
-            <span v-else>章节列表</span>
+            <span v-if="currentCourse">{{ $t('chapterList.titleWithCourse', { title: currentCourse.title }) }}</span>
+            <span v-else>{{ $t('course.chapterMgmt') }}</span>
           </span>
-          <el-button type="primary" :disabled="!searchForm.courseId" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">新增章节</el-button>
+          <el-button type="primary" :disabled="!searchForm.courseId" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">{{ $t('course.addChapter') }}</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="!searchForm.courseId" description="请先选择课程" />
-      <el-empty v-else-if="tableData.length === 0" description="暂无章节数据" />
+      <el-empty v-else-if="!searchForm.courseId" :description="$t('chapterList.selectCourseFirst')" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('chapterList.noData')" />
       <el-table v-else :data="tableData" stripe border class="data-table" row-key="id">
-        <el-table-column type="expand" width="40" label="展开">
+        <el-table-column type="expand" width="40" :label="$t('chapterList.expand')">
           <template #default="{ row }">
             <div style="padding:12px 24px 12px 48px;background:var(--el-fill-color-lighter)">
               <div v-loading="sectionLoading[row.id]">
@@ -56,28 +56,28 @@
                   @delete="(s) => handleDeleteSection(row, s)"
                 />
                 <div style="margin-top:8px">
-                  <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">+ 新增课时</el-button>
+                  <el-button size="small" type="primary" plain @click.stop="handleAddSection(row)">{{ $t('course.addSection') }}</el-button>
                 </div>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
-        <el-table-column prop="title" label="标题" min-width="150" show-overflow-tooltip />
-        <el-table-column label="课时" width="80" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="80" align="center" />
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="150" show-overflow-tooltip />
+        <el-table-column :label="$t('course.sectionCount')" width="80" align="center">
           <template #default="{ row }">{{ (sectionsByChapterId[row.id] || []).length }}</template>
         </el-table-column>
-        <el-table-column prop="duration" label="时长" width="100" align="center">
+        <el-table-column prop="duration" :label="$t('course.duration')" width="100" align="center">
           <template #default="{ row }">
-            {{ row.duration ? `${row.duration}分钟` : '-' }}
+            {{ row.duration ? $t('chapterList.minutes', { count: row.duration }) : '-' }}
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="150" show-overflow-tooltip />
-        <el-table-column label="操作" width="150" fixed="right" align="center">
+        <el-table-column prop="description" :label="$t('chapterList.description')" min-width="150" show-overflow-tooltip />
+        <el-table-column :label="$t('app.operation')" width="150" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -89,12 +89,12 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         <div class="page-size-wrap">
-          <label for="ch-page-size" class="sr-only">每页条数</label>
-          <el-select id="ch-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" aria-label="每页条数">
-            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          <label for="ch-page-size" class="sr-only">{{ $t('course.perPage') }}</label>
+          <el-select id="ch-page-size" :model-value="size" class="page-size-select" @change="v => { size = v; handleSizeChange() }" :aria-label="$t('course.perPage')">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="$t('course.perPageOption', { count: s })" :value="s" />
           </el-select>
         </div>
       </div>
@@ -111,30 +111,30 @@
     <!-- 弹窗表单 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" @change="onCourseChange" placeholder="请选择课程" class="full-width" aria-label="课程">
+        <el-form-item :label="$t('course.title')" prop="courseId">
+          <el-select v-model="formData.courseId" @change="onCourseChange" :placeholder="$t('videoList.selectCourse')" class="full-width" :aria-label="$t('course.title')">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入章节标题" aria-label="章节标题" />
+        <el-form-item :label="$t('chapterList.chapterTitle')" prop="title">
+          <el-input v-model="formData.title" :placeholder="$t('chapterList.chapterTitlePlaceholder')" :aria-label="$t('chapterList.chapterTitle')" />
         </el-form-item>
         <div class="form-tip" style="margin-bottom:12px;color:var(--el-color-info);font-size:12px">
-          章节类型已迁移到「课时」管理。创建章节后，可在课程详情页添加不同类型的课时。
+          {{ $t('course.chapterTypeHint') }}
         </div>
-        <el-form-item label="排序" prop="sortOrder">
-          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" aria-label="排序" />
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
+          <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" :aria-label="$t('course.sortOrder')" />
         </el-form-item>
-        <el-form-item label="时长(分钟)" prop="duration">
-          <el-input-number v-model="formData.duration" :min="0" class="full-width" aria-label="时长" />
+        <el-form-item :label="$t('chapterList.durationLabel')" prop="duration">
+          <el-input-number v-model="formData.duration" :min="0" class="full-width" :aria-label="$t('course.duration')" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" placeholder="请输入描述" :rows="3" aria-label="描述" />
+        <el-form-item :label="$t('chapterList.description')" prop="description">
+          <el-input v-model="formData.description" type="textarea" :placeholder="$t('chapterList.descriptionPlaceholder')" :rows="3" :aria-label="$t('chapterList.description')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -143,8 +143,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
+import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { getChapters, createChapter, updateChapter, deleteChapter } from '@/api/chapter'
 import { getCourses } from '@/api/course'
 import { listSections, createSection, updateSection, deleteSection } from '@/api/section'
@@ -152,8 +154,11 @@ import { fetchAllPages } from '@/utils/fetchAllPages'
 import SectionList from '@/components/course/SectionList.vue'
 import SectionEditDialog from '@/components/course/SectionEditDialog.vue'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+// P1-C 修复: 使用角色感知路由，替代硬编码 /teacher/ 路径（非教师角色会 403/404）
+const { courseDetailPath } = useCourseWorkspaceRoutes({ userRoleRef: userRole })
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -167,7 +172,7 @@ const searchForm = reactive({
 })
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增章节')
+const dialogTitle = ref(t('course.addChapter'))
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -221,17 +226,18 @@ const handleEditSection = (chapter, section) => {
 const handleSectionUpload = (chapter, section) => {
   // 【D-3 修复】SectionList「课件」按钮 @upload 死按钮 → 打开该课时的课件管理（上传/编辑入口）
   if (!searchForm.courseId) return
-  router.push({ path: `/teacher/courses/${searchForm.courseId}/slides/manage`, query: { sectionId: section.id } })
+  // P1-C 修复: 使用路由名替代硬编码 /teacher/ 路径
+  router.push({ name: 'TeacherSlideManage', params: { courseId: searchForm.courseId }, query: { sectionId: section.id } })
 }
 
 const handleDeleteSection = async (chapter, section) => {
   try {
-    await ElMessageBox.confirm(`确定删除课时「${section.title}」?`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('course.confirmDeleteSection', { title: section.title }), t('course.hintTitle'), { type: 'warning' })
     await deleteSection(searchForm.courseId, chapter.id, section.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchSections(chapter.id)
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error('删除失败')
+    if (error !== 'cancel') ElMessage.error(t('course.deleteFailed'))
   }
 }
 
@@ -242,15 +248,15 @@ const handleSubmitSection = async (formData) => {
     const ch = currentChapterForSection.value
     if (isEditSection.value) {
       await updateSection(searchForm.courseId, ch.id, editingSection.value.id, formData)
-      ElMessage.success('更新成功')
+      ElMessage.success(t('course.updateSuccess'))
     } else {
       await createSection(searchForm.courseId, ch.id, formData)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
     }
     showSectionDialog.value = false
     fetchSections(ch.id)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '操作失败')
+    ElMessage.error(e?.response?.data?.message || e?.message || t('course.operationFailed'))
   } finally {
     sectionSubmitLoading.value = false
   }
@@ -264,9 +270,9 @@ const formData = reactive({
   description: ''
 })
 const formRules = {
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  title: [{ required: true, message: '请输入章节标题', trigger: 'blur' }],
-  sortOrder: [{ required: true, message: '请输入排序号', trigger: 'blur' }, { type: 'number', min: 0, message: '最小为0', trigger: 'blur' }]
+  courseId: [{ required: true, message: t('videoList.selectCourse'), trigger: 'change' }],
+  title: [{ required: true, message: t('chapterList.chapterTitlePlaceholder'), trigger: 'blur' }],
+  sortOrder: [{ required: true, message: t('chapterList.sortOrderRequired'), trigger: 'blur' }, { type: 'number', min: 0, message: t('chapterList.minZero'), trigger: 'blur' }]
 }
 
 const fetchData = async () => {
@@ -287,7 +293,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
     fetchAllSections()
   } catch {
-    ElMessage.error('获取章节列表失败')
+    ElMessage.error(t('chapterList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -295,7 +301,7 @@ const fetchData = async () => {
 
  const fetchCourseOptions = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
@@ -304,7 +310,7 @@ const fetchData = async () => {
       handleSearch()
     }
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -330,10 +336,11 @@ const handlePageChange = () => {
 }
 
 const goBackToCourse = () => {
-  if (searchForm.courseId) router.push(`/teacher/courses/${searchForm.courseId}`)
+  // P1-C 修复: 角色感知路由（教师 → /teacher/courses/:id，其他角色 → /courses/:id）
+  if (searchForm.courseId) router.push(courseDetailPath(searchForm.courseId))
 }
 const handleCreate = () => {
-  dialogTitle.value = '新增章节'
+  dialogTitle.value = t('course.addChapter')
   isEdit.value = false
   currentId.value = null
   formData.courseId = searchForm.courseId
@@ -345,7 +352,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑章节'
+  dialogTitle.value = t('course.chapterEdit')
   isEdit.value = true
   currentId.value = row.id
   formData.courseId = row.courseId
@@ -358,13 +365,13 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该章节?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('chapterList.confirmDeleteChapter'), t('course.hintTitle'), { type: 'warning' })
     await deleteChapter(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('course.deleteFailed'))
     }
   }
 }
@@ -381,15 +388,15 @@ const handleSubmit = async () => {
   try {
     if (isEdit.value) {
       await updateChapter(currentId.value, formData)
-      ElMessage.success('编辑成功')
+      ElMessage.success(t('chapterList.editSuccess'))
     } else {
       await createChapter(formData)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
     }
     dialogVisible.value = false
     fetchData()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || (isEdit.value ? '编辑失败' : '创建失败'))
+    ElMessage.error(e?.response?.data?.message || e?.message || (isEdit.value ? t('chapterList.editFailed') : t('course.createFailed')))
   } finally {
     submitLoading.value = false
   }

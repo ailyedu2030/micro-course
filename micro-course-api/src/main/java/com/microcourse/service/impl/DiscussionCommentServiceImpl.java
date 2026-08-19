@@ -75,7 +75,7 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         wrapper.eq(DiscussionComment::getPostId, postId)
                .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())
                .orderByAsc(DiscussionComment::getCreatedAt)
-               .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM
+               .last("LIMIT 500"); // DISC-NEW-3 修复:硬上限防 OOM（R4 审查：恢复 500，避免评论树 >100 条时第 101+ 条丢失；分页走 pagePaged）
         List<DiscussionComment> flatList = commentRepository.selectList(wrapper);
 
         // 获取帖子 OP 的 userId 用于 isOp 标记
@@ -83,6 +83,49 @@ public class DiscussionCommentServiceImpl implements DiscussionCommentService {
         Long opUserId = (post != null) ? post.getUserId() : null;
 
         return buildCommentTreeWithUsers(flatList, opUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<DiscussionCommentVO> pagePaged(Long postId, int page, int size) {
+        // P1-I-2026-08-15 · 新分页契约：平铺查询（不做树构建——分页场景下树结构跨页无意义）
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<DiscussionComment> mpPage =
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page + 1, size); // MP 1-based，page 0-based → +1
+        LambdaQueryWrapper<DiscussionComment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(DiscussionComment::getPostId, postId)
+               .eq(DiscussionComment::getStatus, DiscussionCommentStatus.PUBLISHED.getCode())
+               .orderByAsc(DiscussionComment::getCreatedAt);
+        IPage<DiscussionComment> result = commentRepository.selectPage(mpPage, wrapper);
+
+        // 批量预加载 user 避免 N+1
+        java.util.Map<Long, User> userMap = new java.util.HashMap<>();
+        java.util.Set<Long> userIds = result.getRecords().stream()
+                .map(DiscussionComment::getUserId).filter(java.util.Objects::nonNull)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!userIds.isEmpty()) {
+            userRepository.selectBatchIds(userIds).forEach(u -> userMap.put(u.getId(), u));
+        }
+        DiscussionPost post = postRepository.selectById(postId);
+        Long opUserId = (post != null) ? post.getUserId() : null;
+
+        List<DiscussionCommentVO> voList = result.getRecords().stream().map(c -> {
+            DiscussionCommentVO vo = new DiscussionCommentVO();
+            org.springframework.beans.BeanUtils.copyProperties(c, vo);
+            vo.setIsOp(c.getUserId() != null && c.getUserId().equals(opUserId));
+            User u = userMap.get(c.getUserId());
+            if (u != null) {
+                vo.setAuthorName(u.getUsername());
+            }
+            return vo;
+        }).collect(java.util.stream.Collectors.toList());
+
+        PageResult<DiscussionCommentVO> pageResult = new PageResult<>();
+        pageResult.setItems(voList);
+        pageResult.setPage(page);
+        pageResult.setSize(size);
+        pageResult.setTotalElements(result.getTotal());
+        pageResult.setTotalPages(result.getPages());
+        return pageResult;
     }
 
     private List<DiscussionCommentVO> buildCommentTreeWithUsers(List<DiscussionComment> flatList, Long opUserId) {

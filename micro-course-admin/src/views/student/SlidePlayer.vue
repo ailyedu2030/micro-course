@@ -10,12 +10,12 @@
          避免教师误以为学习进度已写入、或误判 quiz 分支行为与真实学生一致 -->
     <div v-if="inPreview || !isStudent" class="teacher-preview-banner" role="alert">
       <el-icon :size="14"><Warning /></el-icon>
-      <span class="tpb-text">教师预览模式 · 不会记录学习进度 · quiz 回答不影响分支跳转</span>
-      <button type="button" class="tpb-exit" @click="handleBack" aria-label="退出预览">退出预览</button>
+      <span class="tpb-text">{{ $t('slidePlayer.previewBanner') }}</span>
+      <button type="button" class="tpb-exit" @click="handleBack" :aria-label="$t('slidePlayer.exitPreview')">{{ $t('slidePlayer.exitPreview') }}</button>
     </div>
     <!-- Top Bar -->
     <header class="player-header">
-      <button class="btn-icon" @click="handleBack" :aria-label="inPreview ? '退出预览' : '返回'">
+      <button class="btn-icon" @click="handleBack" :aria-label="inPreview ? $t('slidePlayer.exitPreview') : $t('app.back')">
         <el-icon :size="20"><ArrowLeft /></el-icon>
       </button>
       <div class="header-center">
@@ -31,7 +31,7 @@
             :aria-label="thumbAriaLabel(p, i)"
             :title="pageDurationText(p)"
           >
-            <img v-if="thumbUrls[i]" :src="thumbUrls[i]" :alt="'第' + (i + 1) + '页缩略图'" class="thumb-img" @error="thumbLoadError(i)" />
+            <img v-if="thumbUrls[i]" :src="thumbUrls[i]" :alt="$t('slidePlayer.thumbAlt', { n: i + 1 })" class="thumb-img" @error="thumbLoadError(i)" />
             <!-- HTML 页无原生缩略图 → 第一段文字 + 图标占位（设计 §7.1 兜底方案） -->
             <span v-else-if="isHtmlPage(p)" class="thumb-html" aria-hidden="true">
               <el-icon :size="10"><Document /></el-icon>
@@ -45,19 +45,19 @@
       <div class="header-right">
         <button
           class="btn-icon" :class="{ active: showSubtitle }"
-          @click="showSubtitle = !showSubtitle" :aria-label="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
-          :title="showSubtitle ? '关闭讲述稿字幕' : '开启讲述稿字幕'"
+          @click="showSubtitle = !showSubtitle" :aria-label="showSubtitle ? $t('slidePlayer.closeSubtitle') : $t('slidePlayer.openSubtitle')"
+          :title="showSubtitle ? $t('slidePlayer.closeSubtitle') : $t('slidePlayer.openSubtitle')"
         >
           <el-icon :size="16"><Document /></el-icon>
         </button>
         <button
 class="btn-icon btn-auto" :class="{ active: autoMode }"
-          @click="autoMode = !autoMode" :aria-label="autoMode ? '关闭自动播放' : '开启自动播放'"
-          :title="autoMode ? '自动播放中' : '手动模式'"
+          @click="autoMode = !autoMode" :aria-label="autoMode ? $t('slidePlayer.closeAutoPlay') : $t('slidePlayer.openAutoPlay')"
+          :title="autoMode ? $t('slidePlayer.autoPlaying') : $t('slidePlayer.manualMode')"
 >
           <el-icon :size="16"><VideoPlay v-if="autoMode" /><VideoPause v-else /></el-icon>
         </button>
-        <button class="btn-icon" @click="toggleFullscreen" :aria-label="isFullscreen ? '退出全屏' : '全屏'">
+        <button class="btn-icon" @click="toggleFullscreen" :aria-label="isFullscreen ? $t('video.exitFullscreen') : $t('video.fullscreen')">
           <el-icon :size="16"><FullScreen /></el-icon>
         </button>
       </div>
@@ -65,29 +65,29 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
 
     <!-- Loading / Error State -->
     <div v-if="pageLoading" class="player-loading" style="display:flex;align-items:center;justify-content:center;flex:1;color:var(--el-text-color-secondary)">
-      <el-icon class="is-loading" :size="32"><Loading /></el-icon><span style="margin-left:12px">加载幻灯片中...</span>
+      <el-icon class="is-loading" :size="32"><Loading /></el-icon><span style="margin-left:12px">{{ $t('slidePlayer.loadingSlides') }}</span>
     </div>
     <div v-else-if="pageError" class="player-loading" style="display:flex;align-items:center;justify-content:center;flex:1;flex-direction:column;gap:12px">
-      <span style="color:var(--el-text-color-secondary)">幻灯片加载失败</span>
-      <el-button size="small" @click="loadPages">重试</el-button>
+      <span style="color:var(--el-text-color-secondary)">{{ $t('slidePlayer.slideLoadFailed') }}</span>
+      <el-button size="small" @click="loadPages">{{ $t('common.retry') }}</el-button>
     </div>
 
     <!-- G3-P0-6（L0 铁律）：0 页课件空状态 —— 明确告知"当前状况 + 该怎么办"。
          此前 pages.length===0 落入 slide-placeholder 显示"图片加载失败"+重试按钮、
          页计数器显示"1/0"，学生无法区分"图片挂了"与"课件没了"（误导）。
          空状态不指责用户，提供返回课程详情的明确出口。 -->
-    <div v-else-if="pages.length === 0" class="player-empty" role="region" aria-label="课件为空">
+    <div v-else-if="pages.length === 0" class="player-empty" role="region" :aria-label="$t('slidePlayer.emptyAria')">
       <el-empty :image-size="140">
         <template #description>
-          <span class="player-empty-title">该课件暂无内容或已被教师删除</span>
+          <span class="player-empty-title">{{ $t('slidePlayer.emptyTitle') }}</span>
         </template>
-        <p class="player-empty-hint">如有问题请联系教师或管理员</p>
-        <el-button type="primary" @click="goBackToCourse">返回课程详情</el-button>
+        <p class="player-empty-hint">{{ $t('slidePlayer.emptyHint') }}</p>
+        <el-button type="primary" @click="goBackToCourse">{{ $t('slidePlayer.backToCourse') }}</el-button>
       </el-empty>
     </div>
 
     <!-- Main Content -->
-    <section v-else class="player-main" role="region" aria-label="幻灯片内容">
+    <section v-else class="player-main" role="region" :aria-label="$t('slidePlayer.contentAria')">
       <!-- Slide Image Area -->
       <section class="slide-stage" @click="handleStageClick">
         <div class="slide-frame">
@@ -104,10 +104,10 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                 :srcdoc="htmlSrcDoc"
                 sandbox="allow-scripts"
                 ref="htmlIframeRef"
-                :title="'第' + (current + 1) + '页课件内容'"
+                :title="$t('slidePlayer.pageContentTitle', { n: current + 1 })"
                 class="slide-iframe"
                 :key="'html-' + current"
-                :aria-label="'第' + (current + 1) + '页'"
+                :aria-label="$t('slidePlayer.pageLabel', { n: current + 1 })"
                 @error="onHtmlIframeError"
                 @load="onHtmlIframeLoad"
               />
@@ -115,27 +115,27 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
                    F9：@click.stop 防止下载点击冒泡到 slide-stage 误触发 autoMode 切换 -->
               <div v-if="currentPage?.contentType === 'HTML_DIRECT'" class="html-toolbar">
                 <el-button size="small" text @click.stop="downloadHtmlPage">
-                  <el-icon><Download /></el-icon> 下载 HTML
+                  <el-icon><Download /></el-icon> {{ $t('slidePlayer.downloadHtml') }}
                 </el-button>
               </div>
               <!-- 正常渲染的图片 -->
               <img
                 v-else-if="imageUrls[current] && !imageErrors[current]"
                 :src="imageUrls[current]" class="slide-image"
-                :alt="'第' + (current + 1) + '页'"
+                :alt="$t('slidePlayer.pageLabel', { n: current + 1 })"
                 @error="imageErrors[current] = true"
               />
               <!-- 图片加载失败：占位图 + 重试按钮 -->
               <div v-else class="slide-placeholder">
                 <el-icon :size="48" class="placeholder-icon"><PictureFilled /></el-icon>
-                <span class="placeholder-text">图片加载失败</span>
+                <span class="placeholder-text">{{ $t('slidePlayer.imageLoadFailed') }}</span>
                 <el-button
                   size="small" type="primary" plain
                   :loading="imageRetrying[current]"
                   :icon="RefreshRight"
                   @click.stop="retryImage(current)"
                 >
-                  重试加载
+                  {{ $t('slidePlayer.retryLoad') }}
                 </el-button>
               </div>
               <div class="slide-gradient" />
@@ -143,10 +143,10 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           </transition>
 
           <!-- Navigation Arrows -->
-          <button v-if="current > 0" class="nav-arrow nav-prev" @click.stop="goTo(current - 1)" aria-label="上一页">
+          <button v-if="current > 0" class="nav-arrow nav-prev" @click.stop="goTo(current - 1)" :aria-label="$t('slidePlayer.prevPage')">
             <el-icon :size="24"><ArrowLeft /></el-icon>
           </button>
-          <button v-if="current < pages.length - 1" class="nav-arrow nav-next" @click.stop="goTo(current + 1)" aria-label="下一页">
+          <button v-if="current < pages.length - 1" class="nav-arrow nav-next" @click.stop="goTo(current + 1)" :aria-label="$t('slidePlayer.nextPage')">
             <el-icon :size="24"><ArrowRight /></el-icon>
           </button>
 
@@ -168,8 +168,8 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
       <div v-if="interactiveWaiting" class="interactive-mask">
         <div class="interactive-content">
           <Clock :size="28" class="interactive-icon" />
-          <p>请点击「完成」按钮继续</p>
-          <button class="interactive-btn" @click="handleInteractiveComplete">完成</button>
+          <p>{{ $t('slidePlayer.interactiveHint') }}</p>
+          <button class="interactive-btn" @click="handleInteractiveComplete">{{ $t('app.finish') }}</button>
         </div>
       </div>
 
@@ -179,59 +179,59 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
       <div class="audio-status-bar" aria-live="polite">
         <div class="audio-status" :class="audioStatus">
           <span v-if="audioStatus === 'loading'" class="status-loading">
-            <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频加载中...
+            <el-icon class="is-loading" :size="14"><Loading /></el-icon> {{ $t('slidePlayer.audioLoading') }}
           </span>
           <button
             v-else-if="audioStatus === 'ready'"
             type="button"
             class="status-ready audio-status-btn"
-            aria-label="开始播放当前页面音频"
+            :aria-label="$t('slidePlayer.startAudioAria')"
             @click="togglePlay"
           >
-            <el-icon :size="14"><VideoPlay /></el-icon> ▶ 点击开始
+            <el-icon :size="14"><VideoPlay /></el-icon> {{ $t('slidePlayer.clickToStart') }}
           </button>
           <span v-else-if="audioStatus === 'pending'" class="status-pending">
-            <el-icon :size="14"><Clock /></el-icon> 等待音频生成{{ pendingTimeoutWarning }}
+            <el-icon :size="14"><Clock /></el-icon> {{ $t('slidePlayer.waitingAudioGen') }}{{ pendingTimeoutWarning }}
           </span>
           <!-- P1-C-5：v2 PPT GENERATING 页 / legacy PENDING 页均按 narrationStatus 正确提示 -->
           <span v-else-if="audioStatus === 'generating'" class="status-pending">
-            <el-icon class="is-loading" :size="14"><Loading /></el-icon> 音频生成中
+            <el-icon class="is-loading" :size="14"><Loading /></el-icon> {{ $t('slidePlayer.audioGenerating') }}
           </span>
           <!-- P1-C-3：AUDIO_FAILED 段/页 → 明确"生成失败"而非"无音频"，并提供重试入口 -->
           <span v-else-if="audioStatus === 'failed'" class="status-error">
-            <el-icon :size="14"><Warning /></el-icon> 音频生成失败
+            <el-icon :size="14"><Warning /></el-icon> {{ $t('slidePlayer.audioGenFailed') }}
             <button
               type="button"
               class="audio-status-btn status-failed-retry"
-              aria-label="重新加载音频状态"
+              :aria-label="$t('slidePlayer.reloadAudioStatusAria')"
               @click="handleAudioRetry"
-            >重试</button>
+            >{{ $t('common.retry') }}</button>
           </span>
           <span v-else-if="audioStatus === 'error'" class="status-error">
-            <el-icon :size="14"><Warning /></el-icon> 音频加载失败{{ audioErrorHint }}
+            <el-icon :size="14"><Warning /></el-icon> {{ $t('slidePlayer.audioLoadFailed') }}{{ audioErrorHint }}
             <!-- P0-G：error 态提供重试按钮，学生可即时重新加载音频（不再无限转圈） -->
             <button
               type="button"
               class="audio-status-btn status-failed-retry"
-              aria-label="重新加载音频"
+              :aria-label="$t('slidePlayer.reloadAudioAria')"
               @click="handleAudioRetry"
-            >重新加载</button>
+            >{{ $t('slidePlayer.reload') }}</button>
           </span>
           <!-- 加载/失败期间不显示"无音频"（避免初始 loading 闪一下误导） -->
           <span v-else-if="!pageLoading && !pageError" class="status-no-audio">
-            <el-icon :size="14"><Mute /></el-icon> 该页无讲解音频
+            <el-icon :size="14"><Mute /></el-icon> {{ $t('slidePlayer.noAudioOnPage') }}
           </span>
         </div>
       </div>
 
       <div class="control-bar">
-        <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" aria-label="上一页">
+        <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" :aria-label="$t('slidePlayer.prevPage')">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none' || audioStatus === 'generating' || audioStatus === 'failed')" aria-label="播放/暂停">
+        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none' || audioStatus === 'generating' || audioStatus === 'failed')" :aria-label="$t('slidePlayer.playPauseAria')">
           <el-icon :size="24"><VideoPause v-if="playing" /><VideoPlay v-else /></el-icon>
         </button>
-        <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" aria-label="下一页">
+        <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" :aria-label="$t('slidePlayer.nextPage')">
           <el-icon :size="20"><ArrowRight /></el-icon>
         </button>
 
@@ -242,7 +242,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
             class="progress-track"
             role="slider"
             tabindex="0"
-            aria-label="音频播放进度"
+            :aria-label="$t('slidePlayer.audioProgressAria')"
             :aria-valuemin="0"
             :aria-valuemax="Math.round(audioDuration || 0)"
             :aria-valuenow="Math.round(audioTime || 0)"
@@ -269,7 +269,7 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
           <button
 v-for="s in speeds" :key="s"
             class="speed-chip" :class="{ active: speed === s }"
-            :aria-label="s + '倍速'"
+            :aria-label="$t('slidePlayer.speedAria', { speed: s })"
             @click="speed = s; setSpeed()"
 >
             {{ s }}x
@@ -281,7 +281,7 @@ v-for="s in speeds" :key="s"
     <!-- P3-2：讲述稿字幕跟随 -->
     <transition name="hint-fade">
       <div v-if="showSubtitle && subtitleText" class="subtitle-bar" aria-live="polite">
-        <span class="subtitle-label">讲述稿</span>
+        <span class="subtitle-label">{{ $t('slidePlayer.subtitleLabel') }}</span>
         <span class="subtitle-text">{{ subtitleText }}</span>
       </div>
     </transition>
@@ -304,16 +304,16 @@ v-for="s in speeds" :key="s"
         class="keyboard-hint"
         role="dialog"
         aria-modal="true"
-        aria-label="键盘操作提示"
+        :aria-label="$t('slidePlayer.keyboardHintAria')"
         @click.self="dismissKeyboardHint"
       >
         <div class="hint-card">
-          <div class="hint-row"><kbd>←</kbd><kbd>→</kbd> 翻页</div>
-          <div class="hint-row"><kbd>Space</kbd> 播放/暂停</div>
-          <div class="hint-row"><kbd>F</kbd> 全屏</div>
-          <div class="hint-row"><kbd>Esc</kbd> 退出全屏</div>
-          <button type="button" class="keyboard-hint-dismiss" @click="dismissKeyboardHint">关闭提示</button>
-          <span class="hint-dismiss">点击遮罩或按关闭按钮可退出</span>
+          <div class="hint-row"><kbd>←</kbd><kbd>→</kbd> {{ $t('slidePlayer.kbPageNav') }}</div>
+          <div class="hint-row"><kbd>Space</kbd> {{ $t('slidePlayer.kbPlayPause') }}</div>
+          <div class="hint-row"><kbd>F</kbd> {{ $t('slidePlayer.kbFullscreen') }}</div>
+          <div class="hint-row"><kbd>Esc</kbd> {{ $t('slidePlayer.kbExitFullscreen') }}</div>
+          <button type="button" class="keyboard-hint-dismiss" @click="dismissKeyboardHint">{{ $t('slidePlayer.closeHint') }}</button>
+          <span class="hint-dismiss">{{ $t('slidePlayer.dismissHint') }}</span>
         </div>
       </div>
     </transition>
@@ -323,6 +323,7 @@ v-for="s in speeds" :key="s"
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, reactive, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { getSlidePages } from '@/plugins/interactive/api/slide'
 import { evaluateFlow } from '@/plugins/interactive/api/queryCourseware'
@@ -335,6 +336,7 @@ import { enhanceHtmlContentForA11y } from '@/plugins/interactive/composables/use
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 // P1-C-7/P1-C-8：SlidePreview（教师预览 dialog）通过 in-preview 传入；courseId/sectionId
 // props 优先（预览场景显式传入），route 兜底（学生端路由直接打开）
 const props = defineProps({
@@ -391,9 +393,9 @@ const audioStatus = ref('none')
 const audioErrorType = ref('')
 const audioErrorHint = computed(() => {
   switch (audioErrorType.value) {
-    case 'network': return '，请检查网络后重试'
-    case 'decode': return '，音频文件损坏或格式异常'
-    case 'unsupported': return '，浏览器不支持该音频格式'
+    case 'network': return t('slidePlayer.audioErrNetwork')
+    case 'decode': return t('slidePlayer.audioErrDecode')
+    case 'unsupported': return t('slidePlayer.audioErrUnsupported')
     default: return ''
   }
 })
@@ -463,7 +465,7 @@ async function loadPages() {
     await Promise.allSettled(initialIndices.map(idx => loadPageImage(idx)))
   } catch {
     pageError.value = true
-    ElMessage.error('加载幻灯片失败')
+    ElMessage.error(t('slidePlayer.loadSlidesFailed'))
   } finally {
     pageLoading.value = false
   }
@@ -498,12 +500,12 @@ async function retryImage(pageIndex) {
     if (blobUrl) {
       imageUrls.value[pageIndex] = blobUrl
       delete imageErrors[pageIndex]
-      ElMessage.success('图片加载成功')
+      ElMessage.success(t('slidePlayer.imageLoadSuccess'))
     } else {
-      ElMessage.error('图片加载失败，请稍后重试')
+      ElMessage.error(t('slidePlayer.imageLoadFailedRetry'))
     }
   } catch {
-    ElMessage.error('图片加载失败，请检查网络连接')
+    ElMessage.error(t('slidePlayer.imageLoadFailedNetwork'))
   } finally {
     delete imageRetrying[pageIndex]
   }
@@ -515,7 +517,7 @@ function isHtmlPage(p) { return p?.contentType === 'HTML_DIRECT' }
 // a11y：缩略图 aria-label 携带加载状态（设计 §7.1：aria-label="第 N 页[已加载]"）
 function thumbAriaLabel(p, i) {
   const loaded = Boolean(thumbUrls[i] || isHtmlPage(p))
-  return loaded ? `第${i + 1}页已加载` : `第${i + 1}页`
+  return loaded ? t('slidePlayer.thumbLoadedAria', { n: i + 1 }) : t('slidePlayer.pageLabel', { n: i + 1 })
 }
 
 // HTML 缩略图占位文本：取正文前 8 字（剥脚本/样式/标签），无正文回退 'HTML'
@@ -593,7 +595,7 @@ function onHtmlIframeLoad() {
 
 function onHtmlIframeError() {
   // 加载失败（罕见）：提示用户刷新
-  ElMessage.error('HTML 课件加载失败，请刷新重试')
+  ElMessage.error(t('slidePlayer.htmlLoadFailedRefresh'))
 }
 
 // ==================== postMessage 音频控制（协议 v1 兼容 + v2，方案 §6） ====================
@@ -726,8 +728,8 @@ function updateMediaSession() {
   if (!('mediaSession' in navigator) || !navigator.mediaSession) return
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: `${current.value + 1}/${pages.value.length} · ${(subtitleText.value || '课件播放').slice(0, 60)}`,
-      artist: '微课平台'
+      title: `${current.value + 1}/${pages.value.length} · ${(subtitleText.value || t('slidePlayer.coursewarePlayback')).slice(0, 60)}`,
+      artist: t('app.title')
     })
     navigator.mediaSession.playbackState = playing.value ? 'playing' : 'paused'
   } catch { /* 忽略 */ }
@@ -870,13 +872,13 @@ function playSegment(index, time) {
     const segStatus = seg.audio?.status
     if (segStatus === 'GENERATING' || segStatus === 'PROCESSING') {
       audioStatus.value = 'generating'
-      ElMessage.warning('该段音频正在生成中...')
+      ElMessage.warning(t('slidePlayer.segmentGenerating'))
     } else if (segStatus === 'FAILED') {
       audioStatus.value = 'failed'
-      ElMessage.warning(`该段音频生成失败：${seg.audio?.errorMessage || '请教师重新生成音频'}`)
+      ElMessage.warning(t('slidePlayer.segmentGenFailed', { msg: seg.audio?.errorMessage || t('slidePlayer.teacherRegenAudio') }))
     } else {
       audioStatus.value = 'error'
-      ElMessage.warning('该段音频尚未生成，请教师先生成音频')
+      ElMessage.warning(t('slidePlayer.segmentNotGenerated'))
     }
     return
   }
@@ -1025,7 +1027,7 @@ function handleInteractiveComplete() {
 function downloadHtmlPage() {
   const page = currentPage.value
   if (!page?.htmlContent) {
-    ElMessage.warning('当前页面无 HTML 内容')
+    ElMessage.warning(t('slidePlayer.noHtmlContent'))
     return
   }
   const blob = new Blob([page.htmlContent], { type: 'text/html;charset=utf-8' })
@@ -1267,10 +1269,10 @@ function startPendingTimer() {
     if (!pendingStartTime.value) return
     const elapsed = Math.floor((Date.now() - pendingStartTime.value) / 1000)
     if (elapsed >= 300) {
-      pendingTimeoutWarning.value = '（已超过5分钟，请联系教师）'
+      pendingTimeoutWarning.value = t('slidePlayer.pendingTimeoutLong')
       clearPendingTimer()
     } else if (elapsed >= 240) {
-      pendingTimeoutWarning.value = '（即将超时，请联系教师）'
+      pendingTimeoutWarning.value = t('slidePlayer.pendingTimeoutSoon')
     }
   }, 5000)
 }
@@ -1326,9 +1328,9 @@ function togglePlay() {
 function handleStageClick() {
   autoMode.value = !autoMode.value
   if (autoMode.value) {
-    ElMessage.success({ message: '已开启自动播放', duration: 1500 })
+    ElMessage.success({ message: t('slidePlayer.autoPlayOn'), duration: 1500 })
   } else {
-    ElMessage.info({ message: '已关闭自动播放', duration: 1500 })
+    ElMessage.info({ message: t('slidePlayer.autoPlayOff'), duration: 1500 })
   }
 }
 
@@ -1411,7 +1413,7 @@ function onAudioError(e) {
   audioProgress.value = 0
   playing.value = false
   updateMediaSession()
-  ElMessage.error('音频加载失败，请检查网络或重试')
+  ElMessage.error(t('slidePlayer.audioLoadFailedNetwork'))
 }
 
 function onAudioWaiting() {
@@ -1476,18 +1478,18 @@ function onAudioEnded() {
 // 学生 =「本课学习完成」；教师/管理员预览 =「课件预览结束」（isStudent=false 不写进度）
 function notifyCourseCompleted() {
   courseCompleted = true
-  ElMessage.success(isStudent.value ? '本课学习完成' : '课件预览结束')
+  ElMessage.success(isStudent.value ? t('slidePlayer.courseCompleted') : t('slidePlayer.previewEnded'))
 }
 
 // P1-C-3：音频生成失败 → 重试入口（重新加载该页音频状态；生成操作本身在教师端）
 // P0-G：error（加载失败）→ 直接重载音频资源，给学生即时恢复路径；failed（生成失败）→ 引导教师重新生成
 function handleAudioRetry() {
   if (audioStatus.value === 'error') {
-    ElMessage.info('正在重新加载音频...')
+    ElMessage.info(t('slidePlayer.reloadingAudio'))
   } else if (isStudent.value) {
-    ElMessage.info('音频生成失败，请提醒教师重新生成音频')
+    ElMessage.info(t('slidePlayer.audioGenFailedHint'))
   } else {
-    ElMessage.info('请在「音频」面板重新生成该页音频')
+    ElMessage.info(t('slidePlayer.regenInAudioPanel'))
   }
   loadAudio(current.value)
 }

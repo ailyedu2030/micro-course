@@ -1,6 +1,8 @@
 package com.microcourse.dto;
 
 import com.microcourse.enums.UserRole;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 public class UserPageQuery {
 
@@ -11,11 +13,14 @@ public class UserPageQuery {
     private Long departmentId;
     private Long majorId;
     private Long classId;
-    /** TEACHER 角色时，仅返回该教师的任课学生 */
     private Long teacherId;
-    /** 仅返回指定用户 ID 集合（与 teacherId 互斥） */
     private java.util.List<Long> inUserIds;
+
+    @Min(value = 0, message = "页码不能为负数")
     private int page;
+
+    @Min(value = 1, message = "每页条数至少为1")
+    @Max(value = 100, message = "每页条数不能超过100")
     private int size;
 
     public UserPageQuery() {}

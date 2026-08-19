@@ -7,26 +7,26 @@
   <div class="teaching-class-list">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="breadcrumb-nav">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>教学班管理</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.TeachingClassList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="学期">
-          <el-input v-model="searchForm.semester" placeholder="如 2024-1" clearable class="search-input" />
+        <el-form-item :label="$t('course.semester')">
+          <el-input v-model="searchForm.semester" :placeholder="$t('teachingClass.semesterPlaceholder')" clearable class="search-input" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable class="search-select">
-            <el-option label="已停开" :value="0" />
-            <el-option label="开课中" :value="1" />
-            <el-option label="已结课" :value="2" />
+        <el-form-item :label="$t('app.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('teachingClass.allStatuses')" clearable class="search-select">
+            <el-option :label="$t('teachingClass.statusStopped')" :value="0" />
+            <el-option :label="$t('teachingClass.statusActive')" :value="1" />
+            <el-option :label="$t('teachingClass.statusCompleted')" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('teachingClass.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('common.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -35,8 +35,8 @@
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">教学班列表</span>
-          <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">新增教学班</el-button>
+          <span class="card-title">{{ $t('teachingClass.listTitle') }}</span>
+          <el-button type="primary" v-if="userRole === 'ADMIN'" @click="handleCreate">{{ $t('teachingClass.create') }}</el-button>
         </div>
       </template>
       <!-- 骨架屏 -->
@@ -45,42 +45,42 @@
       <!-- 空状态 -->
       <el-empty
         v-else-if="!loading && tableData.length === 0"
-        description="暂无教学班数据"
+        :description="$t('teachingClass.noData')"
         :image-size="120"
       />
 
       <!-- 数据表格 -->
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="name" label="教学班名称" min-width="150" show-overflow-tooltip />
-         <el-table-column prop="courseTitle" label="课程名称" min-width="150" show-overflow-tooltip>
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="id" :label="$t('teachingClass.id')" width="80" />
+        <el-table-column prop="name" :label="$t('teachingClass.name')" min-width="150" show-overflow-tooltip />
+         <el-table-column prop="courseTitle" :label="$t('course.courseName')" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
             <el-tag type="primary" size="small" effect="plain">{{ row.courseTitle || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="teacherName" label="授课教师" width="120" show-overflow-tooltip />
-        <el-table-column prop="semester" label="学期" width="100" />
-        <el-table-column prop="maxStudents" label="容量" width="80" align="center" />
-        <el-table-column prop="studentCount" label="已选人数" width="100" align="center">
+        <el-table-column prop="teacherName" :label="$t('course.teachingTeacher')" width="120" show-overflow-tooltip />
+        <el-table-column prop="semester" :label="$t('course.semester')" width="100" />
+        <el-table-column prop="maxStudents" :label="$t('teachingClass.capacity')" width="80" align="center" />
+        <el-table-column prop="studentCount" :label="$t('teachingClass.enrolledCount')" width="100" align="center">
           <template #default="{ row }">
             <span :class="(row.studentCount || 0) >= row.maxStudents ? 'text-danger' : 'text-success'">
               {{ row.studentCount || 0 }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column prop="status" :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="170" :formatter="$formatDateTime" />
-        <el-table-column label="操作" width="260" fixed="right">
+        <el-table-column prop="createdAt" :label="$t('teachingClass.createdAt')" width="170" :formatter="$formatDateTime" />
+        <el-table-column :label="$t('app.operation')" width="260" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="row.status === 1" type="warning" link size="small" @click="handleComplete(row)">结课</el-button>
-            <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleCancel(row)">停开</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="row.status === 1" type="warning" link size="small" @click="handleComplete(row)">{{ $t('teachingClass.complete') }}</el-button>
+            <el-button v-if="row.status === 1" type="danger" link size="small" @click="handleCancel(row)">{{ $t('teachingClass.cancel') }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -92,7 +92,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
@@ -100,61 +100,61 @@
     <!-- 弹窗区 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="720px" @close="handleDialogClose" destroy-on-close :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
-        <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" filterable @change="handleCourseChange">
+        <el-form-item :label="$t('course.title')" prop="courseId">
+          <el-select v-model="formData.courseId" :placeholder="$t('teachingClass.pleaseSelectCourse')" class="full-width" filterable @change="handleCourseChange">
             <el-option v-for="item in courseOptions" :key="item.id" :label="item.title" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教学班名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入教学班名称" />
+        <el-form-item :label="$t('teachingClass.name')" prop="name">
+          <el-input v-model="formData.name" :placeholder="$t('teachingClass.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="授课教师" prop="teacherId">
-          <el-select v-model="formData.teacherId" placeholder="请选择授课教师" class="full-width" filterable>
+        <el-form-item :label="$t('course.teachingTeacher')" prop="teacherId">
+          <el-select v-model="formData.teacherId" :placeholder="$t('course.selectTeacher')" class="full-width" filterable>
             <el-option v-for="item in teacherOptions" :key="item.id" :label="item.realName || item.username" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="学期" prop="semester">
-          <el-input v-model="formData.semester" placeholder="如 2024-1" />
+        <el-form-item :label="$t('course.semester')" prop="semester">
+          <el-input v-model="formData.semester" :placeholder="$t('teachingClass.semesterPlaceholder')" />
         </el-form-item>
-        <el-form-item label="最大人数" prop="maxStudents">
+        <el-form-item :label="$t('teachingClass.maxStudents')" prop="maxStudents">
           <el-input-number v-model="formData.maxStudents" :min="1" :max="999" class="full-width" />
         </el-form-item>
 
-        <el-form-item label="上课地点">
-          <el-input v-model="formData.location" placeholder="如 教学楼A101" />
+        <el-form-item :label="$t('teachingClass.location')">
+          <el-input v-model="formData.location" :placeholder="$t('teachingClass.locationPlaceholder')" />
         </el-form-item>
         <!-- 上课时间表（动态行） -->
-        <el-form-item label="上课时间表">
+        <el-form-item :label="$t('teachingClass.schedule')">
           <div class="schedule-list">
             <div v-for="(schedule, index) in formData.classSchedules" :key="index" class="schedule-row">
-              <el-select v-model="schedule.dayOfWeek" placeholder="星期" class="day-select" aria-label="星期">
-                <el-option label="周一" :value="1" />
-                <el-option label="周二" :value="2" />
-                <el-option label="周三" :value="3" />
-                <el-option label="周四" :value="4" />
-                <el-option label="周五" :value="5" />
-                <el-option label="周六" :value="6" />
-                <el-option label="周日" :value="7" />
+              <el-select v-model="schedule.dayOfWeek" :placeholder="$t('teachingClass.dayOfWeek')" class="day-select" :aria-label="$t('teachingClass.dayOfWeek')">
+                <el-option :label="$t('teachingClass.mon')" :value="1" />
+                <el-option :label="$t('teachingClass.tue')" :value="2" />
+                <el-option :label="$t('teachingClass.wed')" :value="3" />
+                <el-option :label="$t('teachingClass.thu')" :value="4" />
+                <el-option :label="$t('teachingClass.fri')" :value="5" />
+                <el-option :label="$t('teachingClass.sat')" :value="6" />
+                <el-option :label="$t('teachingClass.sun')" :value="7" />
               </el-select>
-              <el-input-number v-model="schedule.startPeriod" :min="1" :max="12" class="period-input" title="开始节次" aria-label="开始节次" />
-              <span class="period-separator">至</span>
-              <el-input-number v-model="schedule.endPeriod" :min="1" :max="12" class="period-input" title="结束节次" aria-label="结束节次" />
-              <el-input v-model="schedule.startTime" placeholder="开始时间" class="time-input" aria-label="开始时间" />
-              <el-input v-model="schedule.endTime" placeholder="结束时间" class="time-input" aria-label="结束时间" />
-              <el-input v-model="schedule.location" placeholder="上课地点" class="location-input" aria-label="上课地点" />
-              <el-button type="danger" link @click="removeSchedule(index)" aria-label="删除">
+              <el-input-number v-model="schedule.startPeriod" :min="1" :max="12" class="period-input" :title="$t('teachingClass.startPeriod')" :aria-label="$t('teachingClass.startPeriod')" />
+              <span class="period-separator">{{ $t('teachingClass.to') }}</span>
+              <el-input-number v-model="schedule.endPeriod" :min="1" :max="12" class="period-input" :title="$t('teachingClass.endPeriod')" :aria-label="$t('teachingClass.endPeriod')" />
+              <el-input v-model="schedule.startTime" :placeholder="$t('course.startTime')" class="time-input" :aria-label="$t('course.startTime')" />
+              <el-input v-model="schedule.endTime" :placeholder="$t('course.endTime')" class="time-input" :aria-label="$t('course.endTime')" />
+              <el-input v-model="schedule.location" :placeholder="$t('teachingClass.location')" class="location-input" :aria-label="$t('teachingClass.location')" />
+              <el-button type="danger" link @click="removeSchedule(index)" :aria-label="$t('app.delete')">
 <el-icon><Delete /></el-icon>
               </el-button>
             </div>
-            <el-button type="primary" link @click="addSchedule" aria-label="提交">
-<el-icon><Plus /></el-icon>新增时间段
+            <el-button type="primary" link @click="addSchedule" :aria-label="$t('app.submit')">
+<el-icon><Plus /></el-icon>{{ $t('teachingClass.addSchedule') }}
             </el-button>
           </div>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -175,6 +175,9 @@ import {
   cancelTeachingClass
 } from '@/api/teaching-class'
 import { getCourses } from '@/api/course'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -195,7 +198,7 @@ const searchForm = reactive({
 })
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增教学班')
+const dialogTitle = ref(t('teachingClass.create'))
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -212,21 +215,21 @@ const formData = reactive({
 })
 
 const formRules = {
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
-  name: [{ required: true, message: '请输入教学班名称', trigger: 'blur' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
-  semester: [{ required: true, message: '请输入学期', trigger: 'blur' }],
-  maxStudents: [{ required: true, message: '请输入最大人数', trigger: 'blur' }]
+  courseId: [{ required: true, message: t('teachingClass.pleaseSelectCourse'), trigger: 'change' }],
+  name: [{ required: true, message: t('teachingClass.namePlaceholder'), trigger: 'blur' }],
+  teacherId: [{ required: true, message: t('course.selectTeacher'), trigger: 'change' }],
+  semester: [{ required: true, message: t('teachingClass.semesterRequired'), trigger: 'blur' }],
+  maxStudents: [{ required: true, message: t('teachingClass.maxStudentsRequired'), trigger: 'blur' }]
 }
 
 const statusMap = {
-  0: { text: '已停开', type: 'info' },
-  1: { text: '开课中', type: 'success' },
-  2: { text: '已结课', type: 'warning' }
+  0: { text: t('teachingClass.statusStopped'), type: 'info' },
+  1: { text: t('teachingClass.statusActive'), type: 'success' },
+  2: { text: t('teachingClass.statusCompleted'), type: 'warning' }
 }
 
 function getStatusText(status) {
-  return statusMap[status]?.text || '未知'
+  return statusMap[status]?.text || t('course.unknown')
 }
 
 function getStatusType(status) {
@@ -236,12 +239,12 @@ function getStatusType(status) {
 // 获取课程列表
 async function fetchCourses() {
   try {
-    const params = { size: 1000 }
+    const params = { size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -273,11 +276,11 @@ function addSchedule() {
 // 移除时间段
 async function removeSchedule(index) {
   try {
-    await ElMessageBox.confirm('确定移除此时间段?', '确认移除', {
-      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    await ElMessageBox.confirm(t('teachingClass.confirmRemoveSchedule'), t('teachingClass.confirmRemoveTitle'), {
+      type: 'warning', confirmButtonText: t('teachingClass.remove'), cancelButtonText: t('common.cancel')
     })
     formData.classSchedules.splice(index, 1)
-    ElMessage.success('时间段已移除')
+    ElMessage.success(t('teachingClass.scheduleRemoved'))
   } catch {}
 }
 
@@ -295,7 +298,7 @@ async function fetchData() {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取教学班列表失败')
+    ElMessage.error(t('teachingClass.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -323,7 +326,7 @@ function handlePageChange() {
 }
 
 function handleCreate() {
-  dialogTitle.value = '新增教学班'
+  dialogTitle.value = t('teachingClass.create')
   isEdit.value = false
   currentId.value = null
   formData.courseId = null
@@ -337,7 +340,7 @@ function handleCreate() {
 }
 
 async function handleEdit(row) {
-  dialogTitle.value = '编辑教学班'
+  dialogTitle.value = t('teachingClass.edit')
   isEdit.value = true
   currentId.value = row.id
   try {
@@ -350,48 +353,48 @@ async function handleEdit(row) {
     formData.location = data.location || ''
     formData.classSchedules = data.classSchedules || []
   } catch {
-    ElMessage.error('获取教学班详情失败')
+    ElMessage.error(t('teachingClass.fetchDetailFailed'))
   }
   dialogVisible.value = true
 }
 
 async function handleComplete(row) {
   try {
-    await ElMessageBox.confirm(`确定将教学班「${row.name}」结课？`, '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('teachingClass.confirmComplete', { name: row.name }), t('course.hintTitle'), { type: 'warning' })
     await completeTeachingClass(row.id)
-    ElMessage.success('结课成功')
+    ElMessage.success(t('teachingClass.completeSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('结课失败')
+    if (e !== 'cancel') ElMessage.error(t('teachingClass.completeFailed'))
   }
 }
 
 async function handleCancel(row) {
   let reason = ''
   try {
-    await ElMessageBox.prompt(`确定停开教学班「${row.name}」？请填写停开原因：`, '停开确认', {
-      confirmButtonText: '确定停开',
-      cancelButtonText: '取消',
+    await ElMessageBox.prompt(t('teachingClass.confirmCancel', { name: row.name }), t('teachingClass.cancelTitle'), {
+      confirmButtonText: t('teachingClass.confirmCancelBtn'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputPlaceholder: '请填写停开原因',
-      inputValidator: (val) => !!val.trim() || '停开原因不能为空'
+      inputPlaceholder: t('teachingClass.cancelReasonPlaceholder'),
+      inputValidator: (val) => !!val.trim() || t('teachingClass.cancelReasonRequired')
     }).then(({ value }) => { reason = value })
     await cancelTeachingClass(row.id, reason)
-    ElMessage.success('停开成功')
+    ElMessage.success(t('teachingClass.cancelSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('停开失败')
+    if (e !== 'cancel') ElMessage.error(t('teachingClass.cancelFailed'))
   }
 }
 
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm('确定删除该教学班？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('teachingClass.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteTeachingClass(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('删除失败')
+    if (e !== 'cancel') ElMessage.error(t('course.deleteFailed'))
   }
 }
 
@@ -401,7 +404,7 @@ async function handleSubmit() {
   const hasValidSchedule = formData.classSchedules.length > 0 &&
     formData.classSchedules.every(s => s.dayOfWeek && s.startPeriod && s.endPeriod)
   if (!hasValidSchedule) {
-    ElMessage.warning('请至少添加一条完整的排课时间段（星期、节次）')
+    ElMessage.warning(t('teachingClass.scheduleRequired'))
     return
   }
   // P1 幂等修复: validate 回调是异步的, 必须在 await 前置位 loading 防连点重复提交
@@ -412,15 +415,15 @@ async function handleSubmit() {
     try {
       if (isEdit.value) {
         await updateTeachingClass(currentId.value, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('teachingClass.editSuccess'))
       } else {
         await createTeachingClass(formData)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('teachingClass.editFailed') : t('course.createFailed'))
     } finally {
       submitLoading.value = false
     }

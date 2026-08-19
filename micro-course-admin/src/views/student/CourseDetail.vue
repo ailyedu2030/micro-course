@@ -12,17 +12,17 @@
 
     <!-- 404 -->
     <div v-else-if="courseNotFound" class="not-found-page">
-      <el-empty description="课程不存在或已下架" :image-size="160">
-        <el-button type="primary" @click="router.push('/student/courses')">返回课程广场</el-button>
+      <el-empty :description="$t('course.notFoundDesc')" :image-size="160">
+        <el-button type="primary" @click="router.push('/student/courses')">{{ $t('course.backToSquare') }}</el-button>
       </el-empty>
     </div>
 
     <template v-else>
       <!-- ====== 面包屑 ====== -->
       <div class="detail-breadcrumb">
-        <router-link to="/student/courses">课程广场</router-link>
+        <router-link to="/student/courses">{{ $t('course.square') }}</router-link>
         <span class="bc-sep">/</span>
-        <span>{{ course.categoryName || '课程详情' }}</span>
+        <span>{{ course.categoryName || $t('course.courseDetail') }}</span>
         <span class="bc-sep">/</span>
         <span class="bc-current">{{ course.title }}</span>
       </div>
@@ -37,7 +37,7 @@
             role="button"
             tabindex="0"
             class="hero-img-box hero-preview-trigger"
-            aria-label="开始学习课件课程"
+            :aria-label="$t('course.startCoursewareAria')"
             @click="handlePlayPreview"
             @keydown.enter="handlePlayPreview"
             @keydown.space.prevent="handlePlayPreview"
@@ -77,33 +77,33 @@
           <h1 class="hero-title">{{ course.title }}</h1>
           <p v-if="course.subtitle" class="hero-subtitle">{{ course.subtitle }}</p>
           <div class="hero-tags">
-            <el-tag v-if="getCourseTypeConfig(course.courseType)" size="small" effect="plain" :type="getCourseTypeConfig(course.courseType).tagType">{{ getCourseTypeConfig(course.courseType).label }}</el-tag>
+            <el-tag v-if="getCourseTypeConfig(course.courseType)" size="small" effect="plain" :type="getCourseTypeConfig(course.courseType).tagType">{{ courseTypeText(course.courseType) }}</el-tag>
             <el-tag v-if="course.difficulty" size="small" effect="plain">{{ difficultyText }}</el-tag>
             <el-tag v-if="course.categoryName" size="small" effect="plain" type="info">{{ course.categoryName }}</el-tag>
           </div>
           <div class="hero-stats">
-            <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ course.avgRating.toFixed(1) }}</strong> 分</span>
-            <span v-if="course.studentCount" class="hero-stat"><el-icon><User /></el-icon> <strong>{{ course.studentCount }}</strong> 人学习</span>
+            <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ course.avgRating.toFixed(1) }}</strong> {{ $t('course.scoreUnit') }}</span>
+            <span v-if="course.studentCount" class="hero-stat"><el-icon><User /></el-icon> <strong>{{ course.studentCount }}</strong> {{ $t('course.peopleLearning') }}</span>
           </div>
 
           <!-- 定价面板 -->
           <div v-if="pricingInfo" class="hero-pricing">
             <div v-if="pricingInfo.free" class="pricing-free">
-              <el-tag type="success" size="large" effect="dark">免费</el-tag>
+              <el-tag type="success" size="large" effect="dark">{{ $t('app.free') }}</el-tag>
               <span v-if="pricingInfo.feeNote" class="pricing-note">{{ pricingInfo.feeNote }}</span>
             </div>
             <div v-else class="pricing-paid">
               <span v-if="pricingInfo.listPrice && pricingInfo.listPrice > 0 && pricingInfo.finalPrice < pricingInfo.listPrice" class="pricing-original">¥{{ pricingInfo.listPrice }}</span>
               <span class="pricing-final">¥{{ pricingInfo.finalPrice }}</span>
               <span v-if="pricingInfo.feeNote" class="pricing-note">{{ pricingInfo.feeNote }}</span>
-              <span v-else class="pricing-note">原价</span>
+              <span v-else class="pricing-note">{{ $t('course.originalPrice') }}</span>
             </div>
           </div>
           <div v-else-if="!pricingLoading" class="hero-price-info">
             <span v-if="course.freeAccessScopeLabel" class="hero-price hero-price--free">
               <el-tag type="success" size="small" effect="light">{{ course.freeAccessScopeLabel }}</el-tag>
             </span>
-            <span v-else-if="course.isFree || !course.price" class="hero-price hero-price--free">免费</span>
+            <span v-else-if="course.isFree || !course.price" class="hero-price hero-price--free">{{ $t('app.free') }}</span>
             <span v-else class="hero-price">
               <template v-if="course.listPrice && course.listPrice > 0">¥{{ course.listPrice }}</template>
               <template v-else>¥{{ course.price }}</template>
@@ -114,21 +114,21 @@
           </div>
           <div class="hero-actions">
             <template v-if="!isLoggedIn">
-              <el-button type="primary" size="large" @click="goLogin">登录后学习</el-button>
+              <el-button type="primary" size="large" @click="goLogin">{{ $t('course.loginToLearn') }}</el-button>
             </template>
             <template v-else-if="isEnrolled">
-              <el-button v-if="isWaitlisted" type="info" size="large" disabled>候补中</el-button>
-              <el-button v-else type="primary" size="large" @click="goLearn">继续学习</el-button>
+              <el-button v-if="isWaitlisted" type="info" size="large" disabled>{{ $t('course.waitlisted') }}</el-button>
+              <el-button v-else type="primary" size="large" @click="goLearn">{{ $t('course.continueLearning') }}</el-button>
             </template>
             <template v-else>
               <!-- P1C-005: 课程状态为 CLOSED(5)/ARCHIVED(6) 时禁用操作按钮 -->
-              <el-button v-if="course.status === 5" type="info" size="large" disabled>课程已下架</el-button>
-              <el-button v-else-if="course.status === 6" type="info" size="large" disabled>课程已结束</el-button>
+              <el-button v-if="course.status === 5" type="info" size="large" disabled>{{ $t('course.courseUnpublished') }}</el-button>
+              <el-button v-else-if="course.status === 6" type="info" size="large" disabled>{{ $t('course.courseEnded') }}</el-button>
               <el-button v-else type="primary" size="large" :loading="enrollLoading" @click="handleEnroll">
-                {{ isPaidForMe ? '立即购买' : '立即参加' }}
+                {{ isPaidForMe ? $t('course.buyNow') : $t('course.joinNow') }}
               </el-button>
               <el-button v-if="isPaidForMe && course.status !== 5 && course.status !== 6" size="large" @click="handleAddCart">
-                <el-icon><ShoppingCart /></el-icon>加入购物车
+                <el-icon><ShoppingCart /></el-icon>{{ $t('cart.addToCart') }}
               </el-button>
             </template>
           </div>
@@ -136,7 +136,7 @@
       </div>
 
       <!-- ====== Tab 导航 ====== -->
-      <div class="tab-nav" role="tablist" aria-label="课程内容">
+      <div class="tab-nav" role="tablist" :aria-label="$t('course.courseContentAria')">
         <button
           id="tab-detail"
           role="tab"
@@ -148,7 +148,7 @@
           @keydown.left.prevent="handleTabKeydown($event, 'detail')"
           @keydown.right.prevent="handleTabKeydown($event, 'detail')"
         >
-          课程详情
+          {{ $t('course.courseDetail') }}
         </button>
         <button
           id="tab-review"
@@ -161,7 +161,7 @@
           @keydown.left.prevent="handleTabKeydown($event, 'review')"
           @keydown.right.prevent="handleTabKeydown($event, 'review')"
         >
-          课程评价
+          {{ $t('course.courseReviews') }}
         </button>
       </div>
 
@@ -178,11 +178,11 @@
           <div class="section-card">
           <div class="section-head">
             <el-icon :size="20" class="section-head-icon"><Notebook /></el-icon>
-            <h2 class="section-title">课程介绍</h2>
+            <h2 class="section-title">{{ $t('course.courseIntro') }}</h2>
           </div>
             <div class="section-body">
               <p v-if="course.description" class="desc-text">{{ course.description }}</p>
-              <p v-else class="desc-text desc-text--empty">暂无课程介绍</p>
+              <p v-else class="desc-text desc-text--empty">{{ $t('course.noCourseIntro') }}</p>
             </div>
           </div>
 
@@ -192,8 +192,8 @@
             <el-icon :size="20" class="section-head-icon">
               <List v-if="!isInteractive" /><Present v-else />
             </el-icon>
-            <h2 class="section-title">{{ isInteractive ? '幻灯片' : '课程大纲' }}</h2>
-              <span class="section-count">共 {{ isInteractive ? slides.length : courseChapters.length }} {{ isInteractive ? '页' : '章节' }}</span>
+            <h2 class="section-title">{{ isInteractive ? $t('course.slides') : $t('course.outline') }}</h2>
+              <span class="section-count">{{ $t('course.totalCount') }} {{ isInteractive ? slides.length : courseChapters.length }} {{ isInteractive ? $t('course.countPages') : $t('course.countChapters') }}</span>
             </div>
             <div class="section-body">
               <!-- 课件章节: 幻灯片手风琴 -->
@@ -202,16 +202,16 @@
                   <el-collapse-item v-for="(sp, idx) in slides" :key="idx" :name="'s' + sp.pageNumber">
                     <template #title>
                       <span class="outline-idx">{{ sp.pageNumber }}</span>
-                      <span class="outline-title">第 {{ sp.pageNumber }} 页</span>
-                      <el-tag v-if="sp.audioDuration" size="small" type="success" effect="plain">已配音</el-tag>
-                      <el-tag v-else size="small" type="info" effect="plain">待配音</el-tag>
+                      <span class="outline-title">{{ $t('course.pageNumberLabel', { n: sp.pageNumber }) }}</span>
+                      <el-tag v-if="sp.audioDuration" size="small" type="success" effect="plain">{{ $t('course.narrated') }}</el-tag>
+                      <el-tag v-else size="small" type="info" effect="plain">{{ $t('course.pendingNarration') }}</el-tag>
                       <span v-if="sp.audioDuration" class="outline-duration">{{ formatDuration(sp.audioDuration) }}</span>
                     </template>
                     <p v-if="sp.extractedText" class="outline-desc">{{ sp.extractedText }}</p>
-                    <el-button size="small" type="primary" text @click.stop="goToSlidePlayer">开始学习</el-button>
+                    <el-button size="small" type="primary" text @click.stop="goToSlidePlayer">{{ $t('course.startLearning') }}</el-button>
                   </el-collapse-item>
                 </el-collapse>
-                <el-empty v-else description="暂无幻灯片，请教师上传课件" :image-size="60" />
+                <el-empty v-else :description="$t('course.noSlidesTeacher')" :image-size="60" />
               </template>
               <!-- 视频课件: 章节手风琴 -->
               <template v-else>
@@ -220,12 +220,12 @@
                     <template #title>
                       <span class="outline-idx">{{ idx + 1 }}</span>
                       <span class="outline-title">{{ ch.title }}</span>
-                      <el-tag v-if="ch.sectionType === 'VIDEO'" size="small" type="primary" effect="plain">📹 视频课</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE' && ch.coursewareType === 'PPT'" size="small" type="success" effect="plain">📄 PPT 课件</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">📄 互动课件（HTML 课件）</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">📝 练习课件</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'HTML_COURSEWARE'" size="small" type="info" effect="plain">📄 HTML 课件</el-tag>
-                      <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">🏫 线下课程</el-tag>
+                      <el-tag v-if="ch.sectionType === 'VIDEO'" size="small" type="primary" effect="plain">{{ $t('course.tagVideoLesson') }}</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE' && ch.coursewareType === 'PPT'" size="small" type="success" effect="plain">{{ $t('course.tagPptCourseware') }}</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'INTERACTIVE'" size="small" type="success" effect="plain">{{ $t('course.tagInteractiveHtml') }}</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'EXERCISE'" size="small" type="warning" effect="plain">{{ $t('course.tagExerciseCourseware') }}</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'HTML_COURSEWARE'" size="small" type="info" effect="plain">{{ $t('course.tagHtmlCourseware') }}</el-tag>
+                      <el-tag v-else-if="ch.sectionType === 'OFFLINE'" size="small" type="info" effect="plain">{{ $t('course.tagOfflineCourse') }}</el-tag>
                       <el-tag v-else size="small" type="info" effect="plain">—</el-tag>
                       <span class="outline-duration">{{ formatDuration(ch.duration) }}</span>
                     </template>
@@ -279,7 +279,7 @@
                     <el-button v-else size="small" type="primary" text @click.stop="handleChapterClick(ch)">{{ $t('course.startLearning') }}</el-button>
                   </el-collapse-item>
                 </el-collapse>
-                <el-empty v-else description="暂无章节" :image-size="60" />
+                <el-empty v-else :description="$t('video.noChapters')" :image-size="60" />
               </template>
             </div>
           </div>
@@ -289,12 +289,12 @@
         <div class="detail-side">
           <!-- 教师卡片 -->
           <div class="side-card">
-            <h3 class="side-card-title">授课教师</h3>
+            <h3 class="side-card-title">{{ $t('course.teachingTeacher') }}</h3>
             <div class="teacher-block">
-              <el-avatar v-if="teacher.avatar" :size="64" :src="teacher.avatar" :alt="(teacher.realName || course.teacherName || '教师') + '头像'" />
-              <el-avatar v-else :size="64">{{ (teacher.realName || course.teacherName || '教').charAt(0) }}</el-avatar>
+              <el-avatar v-if="teacher.avatar" :size="64" :src="teacher.avatar" :alt="$t('course.avatarAlt', { name: teacher.realName || course.teacherName || $t('course.teacher') })" />
+              <el-avatar v-else :size="64">{{ (teacher.realName || course.teacherName || $t('course.teacher')).charAt(0) }}</el-avatar>
               <div class="teacher-info">
-                <p class="teacher-name">{{ teacher.realName || course.teacherName || '暂无信息' }}</p>
+                <p class="teacher-name">{{ teacher.realName || course.teacherName || $t('course.noInfo') }}</p>
                 <p class="teacher-dept">{{ teacher.departmentName || '' }}</p>
               </div>
             </div>
@@ -302,14 +302,14 @@
 
           <!-- 课程信息 -->
           <div class="side-card">
-            <h3 class="side-card-title">课程信息</h3>
+            <h3 class="side-card-title">{{ $t('course.courseInfo') }}</h3>
             <div class="info-list">
-              <div class="info-item"><span class="info-label">课程类型</span><span class="info-value">{{ getCourseTypeConfig(course.courseType)?.label || '视频课件' }}</span></div>
+              <div class="info-item"><span class="info-label">{{ $t('course.courseType') }}</span><span class="info-value">{{ courseTypeText(course.courseType) || $t('course.videoCourse') }}</span></div>
               <div class="info-item" v-if="pricingInfo">
-                <span class="info-label">价格</span>
+                <span class="info-label">{{ $t('course.priceLabelShort') }}</span>
                 <span class="info-value price">
                   <template v-if="pricingInfo.free">
-                    <el-tag type="success" size="small" effect="light">免费</el-tag>
+                    <el-tag type="success" size="small" effect="light">{{ $t('app.free') }}</el-tag>
                     <span v-if="pricingInfo.feeNote" class="pricing-side-note">{{ pricingInfo.feeNote }}</span>
                   </template>
                   <template v-else>
@@ -318,9 +318,9 @@
                   </template>
                 </span>
               </div>
-              <div class="info-item" v-else-if="course.price && !course.isFree"><span class="info-label">价格</span><span class="info-value price">¥{{ course.price }}</span></div>
-              <div class="info-item" v-if="course.studentCount"><span class="info-label">学习人数</span><span class="info-value">{{ course.studentCount }}</span></div>
-              <div class="info-item" v-if="course.creditHours"><span class="info-label">学分</span><span class="info-value">{{ course.creditHours }}</span></div>
+              <div class="info-item" v-else-if="course.price && !course.isFree"><span class="info-label">{{ $t('course.priceLabelShort') }}</span><span class="info-value price">¥{{ course.price }}</span></div>
+              <div class="info-item" v-if="course.studentCount"><span class="info-label">{{ $t('course.learnersCount') }}</span><span class="info-value">{{ course.studentCount }}</span></div>
+              <div class="info-item" v-if="course.creditHours"><span class="info-label">{{ $t('course.credit') }}</span><span class="info-value">{{ course.creditHours }}</span></div>
             </div>
           </div>
         </div>
@@ -338,30 +338,30 @@
           <div class="section-card">
             <div class="section-head">
               <el-icon :size="20" class="section-head-icon"><Star /></el-icon>
-              <h2 class="section-title">课程评价</h2>
-              <el-button size="small" text type="primary" @click="openReviewDialog">写评价</el-button>
+              <h2 class="section-title">{{ $t('course.courseReviews') }}</h2>
+              <el-button size="small" text type="primary" @click="openReviewDialog">{{ $t('course.writeReview') }}</el-button>
             </div>
             <div class="section-body" v-loading="reviewLoading">
               <div v-if="reviews.length > 0" class="review-list">
                 <div v-for="r in reviews" :key="r.id" class="review-item">
                   <div class="review-top">
-                    <el-avatar :size="36" :src="r.userAvatar || ''" :alt="(r.realName || '用户') + '头像'">{{ (r.realName || '匿').charAt(0) }}</el-avatar>
-                    <span class="review-user">{{ r.realName || '匿名用户' }}</span>
+                    <el-avatar :size="36" :src="r.userAvatar || ''" :alt="$t('course.avatarAlt', { name: r.realName || $t('course.anonymousUser') })">{{ (r.realName || $t('course.anonymousUser')).charAt(0) }}</el-avatar>
+                    <span class="review-user">{{ r.realName || $t('course.anonymousUser') }}</span>
                     <el-rate v-model="r.rating" disabled size="small" />
                   </div>
                   <p class="review-content">{{ r.content }}</p>
                   <div class="review-footer">
                     <span class="review-time">{{ formatTime(r.createdAt) }}</span>
-                    <el-button link size="small" :disabled="!canReply" @click="handleReply(r)">回复</el-button>
-                    <el-button link size="small" type="warning" @click.stop="openReportDialog('REVIEW', r.id)">举报</el-button>
+                    <el-button link size="small" :disabled="!canReply" @click="handleReply(r)">{{ $t('course.reply') }}</el-button>
+                    <el-button link size="small" type="warning" @click.stop="openReportDialog('REVIEW', r.id)">{{ $t('course.report') }}</el-button>
                   </div>
                 </div>
               </div>
-              <el-empty v-else description="暂无评价" :image-size="60" />
+              <el-empty v-else :description="$t('course.noReviews')" :image-size="60" />
               <!-- P2-001: 查看更多评价按钮 -->
               <div v-if="reviews.length > 0 && reviews.length >= 5" class="review-more-wrap" style="text-align:center;margin-top:var(--space-4)">
                 <el-button text type="primary" @click="handleLoadMoreReviews">
-                  查看更多评价
+                  {{ $t('course.viewMoreReviews') }}
                   <el-icon><ArrowRight /></el-icon>
                 </el-button>
               </div>
@@ -371,44 +371,44 @@
       </div>
 
     <!-- 举报弹窗 -->
-    <el-dialog v-model="reportDialog.visible" title="举报" width="400px" @close="reportDialog.reason = ''">
+    <el-dialog v-model="reportDialog.visible" :title="$t('course.report')" width="400px" @close="reportDialog.reason = ''">
       <el-form>
-        <el-form-item label="举报原因">
-          <el-input v-model="reportDialog.reason" type="textarea" :rows="3" placeholder="请描述举报原因..." maxlength="500" show-word-limit />
+        <el-form-item :label="$t('course.reportReason')">
+          <el-input v-model="reportDialog.reason" type="textarea" :rows="3" :placeholder="$t('course.reportReasonPlaceholder')" maxlength="500" show-word-limit />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="reportDialog.visible = false">取消</el-button>
-        <el-button type="danger" :loading="reportDialog.submitting" @click="submitReport">提交举报</el-button>
+        <el-button @click="reportDialog.visible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" :loading="reportDialog.submitting" @click="submitReport">{{ $t('course.submitReportBtn') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 写评价弹窗 -->
-    <el-dialog v-model="reviewDialogVisible" title="写评价" width="480px">
+    <el-dialog v-model="reviewDialogVisible" :title="$t('course.writeReview')" width="480px">
         <el-form :model="reviewForm" :rules="reviewRules">
-          <el-form-item label="评分" prop="rating">
+          <el-form-item :label="$t('course.rating')" prop="rating">
             <el-rate v-model="reviewForm.rating" />
           </el-form-item>
-          <el-form-item label="评价" prop="content">
+          <el-form-item :label="$t('course.review')" prop="content">
             <el-input v-model="reviewForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit />
           </el-form-item>
         </el-form>
         <template #footer>
-          <el-button @click="reviewDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">提交评价</el-button>
+          <el-button @click="reviewDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+          <el-button type="primary" :loading="reviewSubmitting" @click="handleSubmitReview">{{ $t('course.submitReviewBtn') }}</el-button>
         </template>
       </el-dialog>
 
     <!-- 回复评价弹窗 -->
-    <el-dialog v-model="replyDialogVisible" title="回复评价" width="480px">
+    <el-dialog v-model="replyDialogVisible" :title="$t('course.replyReviewTitle')" width="480px">
       <el-form :model="replyForm" :rules="replyRules">
-        <el-form-item label="回复" prop="content">
-          <el-input v-model="replyForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit placeholder="请输入回复内容..." />
+        <el-form-item :label="$t('course.reply')" prop="content">
+          <el-input v-model="replyForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('course.replyPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="replyDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="replySubmitting" @click="handleSubmitReply">提交回复</el-button>
+        <el-button @click="replyDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="replySubmitting" @click="handleSubmitReply">{{ $t('course.submitReplyBtn') }}</el-button>
       </template>
     </el-dialog>
     </template>
@@ -418,6 +418,7 @@
 <script setup>
 import { ref, reactive, onMounted, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, User, Notebook, List, Present, VideoPlay, Close, Loading, ShoppingCart, ArrowRight, WarningFilled } from '@element-plus/icons-vue'
 import { getCourseById, getMyCoursePrice } from '@/api/course'
@@ -441,6 +442,16 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 const cartStore = useCartStore()
+const { t } = useI18n()
+
+// 课程类型 → i18n key（COURSE_TYPE_CONFIG.label 为中文硬编码，这里映射为 i18n）
+const COURSE_TYPE_I18N = {
+  HTML_COURSEWARE: 'course.typeHtmlCourseware',
+  PPT_COURSEWARE: 'course.typePptCourseware',
+  VIDEO: 'course.videoCourse',
+  OFFLINE: 'course.typeOfflineCourse'
+}
+const courseTypeText = (type) => COURSE_TYPE_I18N[type] ? t(COURSE_TYPE_I18N[type]) : (type || '')
 
 const courseId = computed(() => route.params.id)
 const course = ref({})
@@ -487,7 +498,7 @@ function handleTabKeydown(e, currentTab) {
 }
 
 const reviewForm = ref({ rating: 5, content: '' })
-const reviewRules = { rating: [{ required: true, message: '请选择评分', trigger: 'change' }], content: [{ required: true, message: '请输入评价内容', trigger: 'blur' }, { max: 500, message: '评价内容不超过500字', trigger: 'blur' }] }
+const reviewRules = { rating: [{ required: true, message: t('course.selectRatingRequired'), trigger: 'change' }], content: [{ required: true, message: t('course.inputReviewRequired'), trigger: 'blur' }, { max: 500, message: t('course.reviewMax500'), trigger: 'blur' }] }
 const isLoggedIn = computed(() => userStore.isLoggedIn)
 const hasProgress = ref(false)
 
@@ -503,12 +514,13 @@ const canReply = computed(() => {
 })
 
 const difficultyText = computed(() => {
-  const map = { EASY: '简单', MEDIUM: '中等', HARD: '困难', BEGINNER: '初级', INTERMEDIATE: '中级', ADVANCED: '高级' }
-  return map[course.value.difficulty] || course.value.difficulty || ''
+  const map = { EASY: 'course.difficultyEasy', MEDIUM: 'course.difficultyMedium', HARD: 'course.difficultyHard', BEGINNER: 'course.beginner', INTERMEDIATE: 'course.intermediate', ADVANCED: 'course.advanced' }
+  const key = map[course.value.difficulty]
+  return key ? t(key) : (course.value.difficulty || '')
 })
 
 const previewButtonLabel = computed(() => (
-  isInteractive.value ? `预览课件：${course.value.title || '当前课程'}` : `播放课程预览：${course.value.title || '当前课程'}`
+  isInteractive.value ? t('course.previewCourseware', { title: course.value.title || t('course.currentCourse') }) : t('course.previewVideo', { title: course.value.title || t('course.currentCourse') })
 ))
 
 // 内嵌视频播放
@@ -535,9 +547,9 @@ const handlePlayPreview = async () => {
       showPlayer.value = true
       nextTick(() => initInlinePlayer())
     } else {
-      ElMessage.info('暂无课程预览视频')
+      ElMessage.info(t('course.noPreviewVideo'))
     }
-  } catch { ElMessage.info('暂无课程预览视频') }
+  } catch { ElMessage.info(t('course.noPreviewVideo')) }
   finally { videoLoading.value = false }
 }
 
@@ -567,7 +579,7 @@ const initInlinePlayer = async () => {
     hlsInstance.loadSource(signedUrl)
     hlsInstance.attachMedia(video)
     hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play())
-    hlsInstance.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) { stopPreview(); ElMessage.error('视频播放出错') } })
+    hlsInstance.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) { stopPreview(); ElMessage.error(t('course.videoPlayError')) } })
   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
     const sign = previewVideoId.value ? (await getVideoSign(previewVideoId.value).catch(() => null))?.data : null
     const sep = previewVideoUrl.value.includes('?') ? '&' : '?'
@@ -587,7 +599,7 @@ const handleResize = () => { isMobile.value = window.innerWidth <= 768 }
 window.addEventListener('resize', handleResize)
 onBeforeUnmount(() => { window.removeEventListener('resize', handleResize); if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null } })
 
-const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">暂无封面</text></svg>')
+const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">${t('course.noCoverText')}</text></svg>`)
 const handleCoverError = (e) => { e.target.src = defaultCoverUrl }
 
 // 课程章节时长格式化: 数据库存的是 **秒** (10800 = 3h, 14400 = 4h),前端曾误按分钟处理
@@ -612,7 +624,7 @@ const fetchCourse = async () => {
     }
     if (!data?.id) courseNotFound.value = true 
   }
-  catch (e) { if (e.response?.status === 404) courseNotFound.value = true; else ElMessage.error('获取课程信息失败') }
+  catch (e) { if (e.response?.status === 404) courseNotFound.value = true; else ElMessage.error(t('course.fetchCourseFailed')) }
   finally { courseLoading.value = false }
 }
 
@@ -633,7 +645,7 @@ const fetchPricingInfo = async () => {
 const fetchTeacher = async () => {
   if (!course.value.teacherId) return; teacherLoading.value = true
   try { const { data } = await getPublicProfile(course.value.teacherId); teacher.value = data || {} }
-  catch (e) { console.warn('[CourseDetail] fetchTeacher 获取教师信息失败', e); teacher.value = {}; ElMessage.error('获取教师信息失败，请稍后重试') }
+  catch (e) { console.warn('[CourseDetail] fetchTeacher 获取教师信息失败', e); teacher.value = {}; ElMessage.error(t('course.fetchTeacherFailed')) }
   finally { teacherLoading.value = false }
 }
 
@@ -646,7 +658,7 @@ const checkEnrollment = async () => {
 
 const handleEnroll = async () => {
   if (!isLoggedIn.value) { goLogin(); return }
-  const uid = userStore.userInfo?.id; if (!uid) { ElMessage.error('用户信息未加载'); return }
+  const uid = userStore.userInfo?.id; if (!uid) { ElMessage.error(t('course.userInfoNotLoaded')); return }
   enrollLoading.value = true
   try {
     // 使用 pricingInfo 判断是否免费（考虑了免费范围/折扣）
@@ -662,25 +674,34 @@ const handleEnroll = async () => {
 
     if (!isFreeForMe && finalPrice > 0) {
       const { data: order } = await createOrder({ courseId: courseId.value })
-      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success('选课成功'); router.push(enrollTarget()); return }
+      if (order.status === 'PAID') { isEnrolled.value = true; ElMessage.success(t('course.enrollSuccess')); router.push(enrollTarget()); return }
+      const feeNote = pricingInfo.value?.feeNote ? '\n' + pricingInfo.value.feeNote : ''
       await ElMessageBox.confirm(
-        `确认支付 ¥${Number(finalPrice).toFixed(2)}？${pricingInfo.value?.feeNote ? '\n' + pricingInfo.value.feeNote : ''}`,
-        '确认支付',
-        { confirmButtonText: '支付', cancelButtonText: '取消', type: 'info' }
+        t('course.confirmPay', { amount: Number(finalPrice).toFixed(2) }) + feeNote,
+        t('order.pay'),
+        { confirmButtonText: t('course.payBtn'), cancelButtonText: t('common.cancel'), type: 'info' }
       )
-      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success('支付成功'); router.push(enrollTarget())
+      await payOrder(order.id, 'BALANCE'); isEnrolled.value = true; ElMessage.success(t('order.success')); router.push(enrollTarget())
       return
     }
     // 免费课程：增加确认环节
     const freeNote = pricingInfo.value?.feeNote ? `（${pricingInfo.value.feeNote}）` : ''
-    await ElMessageBox.confirm(`确认加入学习？${freeNote}`, '加入课程', { confirmButtonText: '确认加入', cancelButtonText: '取消', type: 'info' })
-    await enrollApi({ userId: uid, courseId: courseId.value, sourceChannel: 'SEARCH' }); ElMessage.success('报名成功'); isEnrolled.value = true; router.push(enrollTarget())
+    await ElMessageBox.confirm(t('course.confirmJoinStudy', { note: freeNote }), t('course.joinCourseTitle'), { confirmButtonText: t('course.confirmJoinBtn'), cancelButtonText: t('common.cancel'), type: 'info' })
+    await enrollApi({ userId: uid, courseId: courseId.value, sourceChannel: 'SEARCH' }); ElMessage.success(t('course.signupSuccess')); isEnrolled.value = true; router.push(enrollTarget())
   } catch (e) {
     if (e?.toString().includes('cancel')) {
-      ElMessage.info('已取消支付')
+      ElMessage.info(t('course.payCancelled'))
       return
     }
-    if (e?.response?.data?.code === 8002 || e?.response?.status === 409) isEnrolled.value = true
+    if (e?.response?.data?.code === 8002 || e?.response?.status === 409) {
+      // 已选过该课程：提示用户并刷新选课状态（同步后端最新 enrollment 状态）
+      isEnrolled.value = true
+      ElMessage.info(t('course.alreadyEnrolled'))
+      checkEnrollment()
+    } else {
+      // 其他错误（网络异常 / 余额不足等）必须给用户可见反馈，禁止静默失败
+      ElMessage.error(e?.response?.data?.message || t('course.enrollFailed'))
+    }
   } finally { enrollLoading.value = false }
 }
 
@@ -696,8 +717,8 @@ async function handleAddCart() {
     isFree: pricingInfo.value?.free ?? c.isFree,
     teacherName: c.teacherName,
   })
-  if (added) ElMessage.success('已加入购物车')
-  else ElMessage.info('该课程已在购物车中')
+  if (added) ElMessage.success(t('course.addedToCart'))
+  else ElMessage.info(t('course.alreadyInCart'))
 }
 
 const handleChapterClick = (row) => {
@@ -715,7 +736,7 @@ const handleChapterClick = (row) => {
 const goLogin = () => router.push({ path: '/login', query: { redirect: route.fullPath } })
 const goLearn = () => {
   if (isWaitlisted.value) {
-    ElMessage.info('您处于候补队列，暂不可学习')
+    ElMessage.info(t('course.waitlistNoLearn'))
     return
   }
   router.push(isInteractive.value ? `/student/courses/${courseId.value}/slides/player` : `/student/learning?courseId=${courseId.value}`)
@@ -739,7 +760,7 @@ const fetchReviews = async (append = false) => {
     }
     reviewTotalElements.value = data?.totalElements || items.length
   }
-  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning('评价数据加载失败'); reviews.value = [] }
+  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning(t('course.reviewsLoadFailed')); reviews.value = [] }
   finally { reviewLoading.value = false }
 }
 
@@ -750,7 +771,7 @@ const handleLoadMoreReviews = async () => {
 
 const fetchRanking = async () => {
   if (!courseId.value) return
-  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); ElMessage.warning('排行榜加载失败'); rankingList.value = [] }
+  try { const { data } = await getCourseRanking(courseId.value, { limit: 10 }); rankingList.value = data || [] } catch (e) { console.warn('[CourseDetail] fetchRanking 获取排行失败', e); ElMessage.warning(t('course.rankingLoadFailed')); rankingList.value = [] }
 }
 
 const checkProgress = async () => {
@@ -770,13 +791,13 @@ const checkProgress = async () => {
 }
 
 const openReviewDialog = () => {
-  if (!isLoggedIn.value) { ElMessage.warning('请先登录'); return goLogin() }
-  if (!isEnrolled.value) { ElMessage.warning('请先选修该课程'); return }
+  if (!isLoggedIn.value) { ElMessage.warning(t('course.pleaseLogin')); return goLogin() }
+  if (!isEnrolled.value) { ElMessage.warning(t('course.pleaseEnrollFirst')); return }
   // P3 体验优化 (2026-08-04): 原仅弹 3s toast，用户点击"写评价"看不到后续动作，
   // 误以为按钮无响应。改为明确提示框说明评价门槛。
   if (!hasProgress.value) {
-    ElMessageBox.alert('请先完成课程学习（学习进度 ≥ 80%）后再评价，感谢您的理解。', '暂不能评价', {
-      confirmButtonText: '知道了', type: 'warning'
+    ElMessageBox.alert(t('course.reviewGateMsg'), t('course.reviewGateTitle'), {
+      confirmButtonText: t('course.gotIt'), type: 'warning'
     })
     return
   }
@@ -792,7 +813,7 @@ const openReportDialog = (type, id) => {
 }
 
 const submitReport = async () => {
-  if (!reportDialog.reason.trim()) { ElMessage.warning('请输入举报原因'); return }
+  if (!reportDialog.reason.trim()) { ElMessage.warning(t('course.inputReportReason')); return }
   reportDialog.submitting = true
   try {
     await createReport({
@@ -800,9 +821,9 @@ const submitReport = async () => {
       targetId: reportDialog.targetId,
       reason: reportDialog.reason.trim()
     })
-    ElMessage.success('举报已提交，管理员将审核')
+    ElMessage.success(t('course.reportSubmitted'))
     reportDialog.visible = false
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('course.submitFailed')) }
   finally { reportDialog.submitting = false }
 }
 
@@ -811,7 +832,7 @@ const replyDialogVisible = ref(false)
 const replyTarget = ref(null)
 const replyForm = ref({ content: '' })
 const replySubmitting = ref(false)
-const replyRules = { content: [{ required: true, message: '请输入回复内容', trigger: 'blur' }, { max: 500, message: '回复内容不超过500字', trigger: 'blur' }] }
+const replyRules = { content: [{ required: true, message: t('course.inputReplyRequired'), trigger: 'blur' }, { max: 500, message: t('course.replyMax500'), trigger: 'blur' }] }
 
 const handleReply = (review) => {
   replyTarget.value = review
@@ -821,7 +842,7 @@ const handleReply = (review) => {
 
 const handleSubmitReply = async () => {
   if (!replyForm.value.content.trim()) {
-    ElMessage.warning('请输入回复内容')
+    ElMessage.warning(t('course.inputReplyRequired'))
     return
   }
   if (!replyTarget.value?.id) return
@@ -831,21 +852,21 @@ const handleSubmitReply = async () => {
       content: replyForm.value.content.trim(),
       parentId: replyTarget.value.id
     })
-    ElMessage.success('回复成功')
+    ElMessage.success(t('course.replySuccess'))
     replyDialogVisible.value = false
     fetchReviews()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '回复失败，请重试')
+    ElMessage.error(e?.response?.data?.message || t('course.replyFailedRetry'))
   } finally {
     replySubmitting.value = false
   }
 }
 
 const handleSubmitReview = async () => {
-  if (!reviewForm.value.rating) { ElMessage.warning('请选择评分'); return }
+  if (!reviewForm.value.rating) { ElMessage.warning(t('course.selectRatingRequired')); return }
   reviewSubmitting.value = true
-  try { await createReview(courseId.value, { rating: reviewForm.value.rating, content: reviewForm.value.content }); ElMessage.success('评价提交成功'); reviewDialogVisible.value = false; fetchReviews(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '提交失败，请重试') }
+  try { await createReview(courseId.value, { rating: reviewForm.value.rating, content: reviewForm.value.content }); ElMessage.success(t('course.reviewSubmitSuccess')); reviewDialogVisible.value = false; fetchReviews(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.submitFailedRetry')) }
   finally { reviewSubmitting.value = false }
 }
 
@@ -868,7 +889,7 @@ const loadChapterSections = async (chapterId) => {
   } catch (e) {
     console.warn('[CourseDetail] loadChapterSections 失败', e)
     chapterSections[chapterId] = []
-    chapterSectionsError[chapterId] = '加载 HTML 课件失败,请稍后重试'
+    chapterSectionsError[chapterId] = t('course.htmlSectionsLoadFailed')
   } finally {
     chapterSectionsLoading[chapterId] = false
   }

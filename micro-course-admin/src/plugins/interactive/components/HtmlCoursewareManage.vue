@@ -8,11 +8,11 @@
   <div class="html-courseware-manage">
     <div class="hcm-header">
       <el-tag :type="statusTagType(tree?.narrationStatus)" size="large" effect="plain">
-        {{ statusLabel(tree?.narrationStatus) }} · {{ tree?.audioReadyCount || 0 }} 音频就绪
+        {{ statusLabel(tree?.narrationStatus) }} · {{ t('htmlCourseware.manage.audioReadyCount', { count: tree?.audioReadyCount || 0 }) }}
       </el-tag>
       <div class="hcm-actions">
         <el-button type="primary" plain :icon="View" :disabled="!canPreview" @click="showPreview = true">
-          预览
+          {{ t('htmlCourseware.manage.preview') }}
         </el-button>
         <el-upload
           :show-file-list="false"
@@ -20,14 +20,14 @@
           accept=".html,.htm"
           :disabled="upload.uploading.value"
         >
-          <el-button :icon="UploadFilled" :loading="upload.uploading.value">替换 HTML</el-button>
+          <el-button :icon="UploadFilled" :loading="upload.uploading.value">{{ t('htmlCourseware.manage.replaceHtml') }}</el-button>
         </el-upload>
         <el-popconfirm
- title="确定删除该课件的全部 HTML 内容吗？" confirm-button-text="删除" cancel-button-text="取消"
+          :title="t('htmlCourseware.manage.confirmDeleteAll')" :confirm-button-text="t('htmlCourseware.manage.delete')" :cancel-button-text="t('htmlCourseware.manage.cancel')"
                         confirm-button-type="danger"
                         @confirm="deleteAction.run">
           <template #reference>
-            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">删除课件</el-button>
+            <el-button :icon="Delete" type="danger" plain :loading="deleteAction.loading.value">{{ t('htmlCourseware.manage.deleteCourseware') }}</el-button>
           </template>
         </el-popconfirm>
       </div>
@@ -35,7 +35,7 @@
 
     <div class="hcm-panels">
       <el-tabs v-model="activePanel" type="card">
-        <el-tab-pane name="content" label="HTML 内容">
+        <el-tab-pane name="content" :label="t('htmlCourseware.manage.tabContent')">
           <HtmlBlockEditor
             :course-id="courseId"
             :section-id="sectionId"
@@ -43,37 +43,37 @@
             @unit-saved="emit('changed')"
           />
         </el-tab-pane>
-        <el-tab-pane name="segment" label="分段脚本">
+        <el-tab-pane name="segment" :label="t('htmlCourseware.manage.tabSegments')">
           <el-alert
             v-if="!tree?.htmlUnit"
             type="info"
             :closable="false"
             show-icon
-            title="单元尚未初始化"
-            description="请在「HTML 内容」中编辑并保存一次，系统将自动创建课件单元，之后即可为各分段配置脚本与音频。"
+            :title="t('htmlCourseware.manage.unitNotInitialized')"
+            :description="t('htmlCourseware.manage.unitNotInitializedDesc')"
             class="hcm-segment-empty"
           />
           <!-- L0 U-4：无任何分段的真实空状态（替代原 Math.max(...,5) 渲染 5 个空编辑块的误导） -->
           <div v-if="hasNoSegments" class="hcm-segment-empty-card">
             <el-icon :size="40" class="hcm-empty-icon"><Files /></el-icon>
-            <p class="hcm-empty-title">本课件暂无分段</p>
-            <p class="hcm-empty-desc">点击下方「开始检测」或「手动添加段」按钮开始配置</p>
+            <p class="hcm-empty-title">{{ t('htmlCourseware.manage.noSegmentsTitle') }}</p>
+            <p class="hcm-empty-desc">{{ t('htmlCourseware.manage.noSegmentsDesc') }}</p>
             <div class="hcm-empty-actions">
               <el-button type="primary" :icon="MagicStick" :loading="detectAction.loading.value" @click="detectAction.run">
-                开始检测
+                {{ t('htmlCourseware.manage.detectSegments') }}
               </el-button>
-              <el-button :icon="Plus" @click="addSegmentManually">手动添加段</el-button>
+              <el-button :icon="Plus" @click="addSegmentManually">{{ t('htmlCourseware.manage.addSegment') }}</el-button>
             </div>
           </div>
           <div v-else-if="tree?.htmlUnit && segmentsLoading" class="hcm-segment-loading">
-            <el-icon class="is-loading" :size="16"><Loading /></el-icon> 加载分段中...
+            <el-icon class="is-loading" :size="16"><Loading /></el-icon> {{ t('htmlCourseware.manage.loadingSegments') }}
           </div>
           <div
             v-for="(seg, idx) in segmentSlots"
             :key="idx"
             class="hcm-segment-block"
           >
-            <h5 class="hcm-segment-title">第 {{ seg.idx }} 段</h5>
+            <h5 class="hcm-segment-title">{{ t('htmlCourseware.manage.segmentTitle', { idx: seg.idx }) }}</h5>
             <ScriptEditor
               :course-id="courseId"
               page-type="HTML"
@@ -86,7 +86,7 @@
           <!-- P0-2 修复: unit 级 AudioManager 多段模式 (与 PPT 每页一个 AudioManager 对称,
                HTML 按 unit 聚合各段音频, 内部 tabs 切换, 段有脚本才出现在列表) -->
           <div v-if="tree?.htmlUnit" class="hcm-segment-audio">
-            <h5 class="hcm-segment-audio-title">段级音频</h5>
+            <h5 class="hcm-segment-audio-title">{{ t('htmlCourseware.manage.segmentAudio') }}</h5>
             <AudioManager
               :course-id="courseId"
               page-type="HTML"
@@ -99,7 +99,7 @@
     </div>
 
     <!-- 学生视角预览 -->
-    <el-dialog v-model="showPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
+    <el-dialog v-model="showPreview" :title="t('htmlCourseware.manage.studentPreviewTitle')" fullscreen :destroy-on-close="true">
       <SlidePreview v-if="showPreview" :course-id="courseId" :section-id="sectionId" @close="showPreview = false" />
     </el-dialog>
   </div>
@@ -107,6 +107,7 @@
 
 <script setup>
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { View, UploadFilled, Delete, Files, MagicStick, Plus, Loading } from '@element-plus/icons-vue'
 import HtmlBlockEditor from './HtmlBlockEditor.vue'
@@ -117,6 +118,8 @@ import { useCoursewareUpload } from '../composables/useCoursewareUpload'
 import { useAsyncAction } from '../composables/useAsyncAction'
 import { deleteCourseware } from '../api/slide'
 import { listActiveHtmlSegments, detectHtmlSegments } from '../api/htmlCourseware'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -203,7 +206,7 @@ function addSegmentManually() {
 async function runSegmentDetection() {
   const unitId = props.tree?.htmlUnit?.id
   if (!unitId) {
-    ElMessage.warning('请先在「HTML 内容」中保存一次课件以创建单元')
+    ElMessage.warning(t('htmlCourseware.manage.saveFirstTip'))
     return
   }
   try {
@@ -212,9 +215,9 @@ async function runSegmentDetection() {
     const count = payload?.detectedCount
       ?? (Array.isArray(payload?.segments) ? payload.segments.length : 0)
     emit('changed')
-    ElMessage.success(count > 0 ? `已检测到 ${count} 个段落` : '未检测到段落，可点击「手动添加段」配置')
+    ElMessage.success(count > 0 ? t('htmlCourseware.manage.detectedCount', { count }) : t('htmlCourseware.manage.noDetected'))
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '检测失败，请稍后重试')
+    ElMessage.error(e?.response?.data?.message || t('htmlCourseware.manage.detectFailed'))
   }
 }
 const detectAction = useAsyncAction(runSegmentDetection)
@@ -246,11 +249,11 @@ const canPreview = computed(() => props.tree?.type === 'HTML')
 // P1-C-4/P1-C-3：AUDIO_PENDING（待生成）/ AUDIO_FAILED（失败）聚合枚举映射（G3 后端新枚举）
 function statusLabel(s) {
   return {
-    PENDING: '待生成',
-    AUDIO_PENDING: '待生成',
-    AUDIO_GENERATING: '生成中',
-    AUDIO_READY: '就绪',
-    AUDIO_FAILED: '失败'
+    PENDING: t('htmlCourseware.manage.status.pending'),
+    AUDIO_PENDING: t('htmlCourseware.manage.status.pending'),
+    AUDIO_GENERATING: t('htmlCourseware.manage.status.generating'),
+    AUDIO_READY: t('htmlCourseware.manage.status.ready'),
+    AUDIO_FAILED: t('htmlCourseware.manage.status.failed')
   }[s] || s
 }
 function statusTagType(s) {
@@ -266,10 +269,10 @@ function statusTagType(s) {
 async function handleDeleteCourseware() {
   try {
     await deleteCourseware(props.courseId, props.sectionId || null, props.sectionId ? null : props.chapterId)
-    ElMessage.success('课件已删除')
+    ElMessage.success(t('htmlCourseware.manage.coursewareDeleted'))
     emit('changed')
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '删除失败')
+    ElMessage.error(e?.response?.data?.message || t('htmlCourseware.manage.deleteFailed'))
   }
 }
 

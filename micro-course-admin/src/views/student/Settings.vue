@@ -10,12 +10,12 @@
     <div v-if="!isMobile" class="settings-pc">
       <!-- 面包屑导航 -->
       <el-breadcrumb separator="→" class="page-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>个人设置</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ $t('studentSettings.personalSettings') }}</el-breadcrumb-item>
       </el-breadcrumb>
 
       <div class="page-header">
-        <h2>偏好设置</h2>
+        <h2>{{ $t('studentSettings.preferences') }}</h2>
       </div>
 
       <!-- 骨架屏加载 -->
@@ -26,9 +26,9 @@
       </div>
 
       <!-- 加载失败 -->
-      <el-result v-else-if="error" icon="error" title="加载失败" sub-title="设置加载异常">
+      <el-result v-else-if="error" icon="error" :title="$t('studentSettings.loadFailedTitle')" :sub-title="$t('studentSettings.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" @click="loadSettings">重新加载</el-button>
+          <el-button type="primary" @click="loadSettings">{{ $t('studentSettings.reload') }}</el-button>
         </template>
       </el-result>
 
@@ -38,13 +38,13 @@
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><VideoPlay /></el-icon>
-              <span>播放设置</span>
+              <span>{{ $t('studentSettings.playbackSettings') }}</span>
             </div>
           </template>
           <div class="settings-list">
             <div class="settings-item">
-              <span class="settings-label">播放倍速</span>
-              <el-select v-model="settings.playbackSpeed" aria-label="播放倍速" @change="handleSave" class="settings-control">
+              <span class="settings-label">{{ $t('studentSettings.playbackSpeed') }}</span>
+              <el-select v-model="settings.playbackSpeed" :aria-label="$t('studentSettings.playbackSpeed')" @change="handleSave" class="settings-control">
                 <el-option label="0.75x" value="0.75" />
                 <el-option label="1.0x" value="1" />
                 <el-option label="1.25x" value="1.25" />
@@ -53,10 +53,10 @@
               </el-select>
             </div>
             <div class="settings-item">
-              <span class="settings-label">自动播放下一节</span>
+              <span class="settings-label">{{ $t('studentSettings.autoPlayNext') }}</span>
               <el-switch
                 v-model="settings.autoPlayNext"
-                aria-label="自动播放下一节"
+                :aria-label="$t('studentSettings.autoPlayNext')"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -69,50 +69,50 @@
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Bell /></el-icon>
-              <span>通知设置</span>
+              <span>{{ $t('studentSettings.notificationSettings') }}</span>
             </div>
           </template>
           <div class="settings-list">
             <div class="settings-item">
-              <span class="settings-label">启用通知</span>
+              <span class="settings-label">{{ $t('studentSettings.enableNotifications') }}</span>
               <el-switch
                 v-model="settings.notificationEnabled"
-                aria-label="启用通知"
+                :aria-label="$t('studentSettings.enableNotifications')"
                 @change="handleSave"
                 class="settings-control"
               />
             </div>
             <div class="settings-item">
-              <span class="settings-label">邮件通知</span>
+              <span class="settings-label">{{ $t('studentSettings.emailNotification') }}</span>
               <el-switch
                 v-model="settings.emailNotification"
-                aria-label="邮件通知"
+                :aria-label="$t('studentSettings.emailNotification')"
                 @change="handleSave"
                 class="settings-control"
               />
             </div>
             <!-- P1I-030: 微信通知开关 -->
             <div class="settings-item">
-              <span class="settings-label">微信通知</span>
+              <span class="settings-label">{{ $t('studentSettings.wechatNotification') }}</span>
               <el-switch
                 v-model="settings.wechatNotification"
-                aria-label="微信通知"
+                :aria-label="$t('studentSettings.wechatNotification')"
                 @change="handleSave"
                 class="settings-control"
               />
             </div>
             <!-- P1I-030: 免打扰时段 -->
             <div class="settings-item">
-              <span class="settings-label">免打扰时段</span>
+              <span class="settings-label">{{ $t('studentSettings.quietHours') }}</span>
               <el-switch
                 v-model="settings.quietHoursEnabled"
-                aria-label="免打扰时段"
+                :aria-label="$t('studentSettings.quietHours')"
                 @change="handleSave"
                 class="settings-control"
               />
             </div>
             <div v-if="settings.quietHoursEnabled" class="settings-item">
-              <span class="settings-label">开始时间</span>
+              <span class="settings-label">{{ $t('course.startTime') }}</span>
               <el-time-picker
                 v-model="quietHoursStartDate"
                 :value="settings.quietHoursStart"
@@ -124,7 +124,7 @@
               />
             </div>
             <div v-if="settings.quietHoursEnabled" class="settings-item">
-              <span class="settings-label">结束时间</span>
+              <span class="settings-label">{{ $t('course.endTime') }}</span>
               <el-time-picker
                 v-model="quietHoursEndDate"
                 :value="settings.quietHoursEnd"
@@ -143,23 +143,23 @@
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Lock /></el-icon>
-              <span>隐私设置</span>
+              <span>{{ $t('studentSettings.privacySettings') }}</span>
             </div>
           </template>
           <div class="settings-list">
             <div class="settings-item">
-              <span class="settings-label">个人主页可见性</span>
-              <el-select v-model="settings.profileVisibility" aria-label="个人资料可见性" @change="handleSave" class="settings-control">
-                <el-option label="公开" value="public" />
-                <el-option label="好友可见" value="friends" />
-                <el-option label="仅自己可见" value="private" />
+              <span class="settings-label">{{ $t('studentSettings.profileVisibility') }}</span>
+              <el-select v-model="settings.profileVisibility" :aria-label="$t('studentSettings.profileVisibilityAria')" @change="handleSave" class="settings-control">
+                <el-option :label="$t('studentSettings.visibilityPublic')" value="public" />
+                <el-option :label="$t('studentSettings.visibilityFriends')" value="friends" />
+                <el-option :label="$t('studentSettings.visibilityPrivate')" value="private" />
               </el-select>
             </div>
             <div class="settings-item">
-              <span class="settings-label">显示学习进度</span>
+              <span class="settings-label">{{ $t('studentSettings.showProgress') }}</span>
               <el-switch
                 v-model="settings.showProgress"
-                aria-label="展示学习进度"
+                :aria-label="$t('studentSettings.showProgressAria')"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -172,24 +172,24 @@
           <template #header>
             <div class="card-header">
               <el-icon class="card-icon"><Setting /></el-icon>
-              <span>辅助功能</span>
+              <span>{{ $t('studentSettings.accessibility') }}</span>
             </div>
           </template>
           <div class="settings-list">
             <div class="settings-item">
-              <span class="settings-label">减少动画效果</span>
+              <span class="settings-label">{{ $t('studentSettings.reducedMotion') }}</span>
               <el-switch
                 v-model="settings.reducedMotion"
-                aria-label="减少动画效果"
+                :aria-label="$t('studentSettings.reducedMotion')"
                 @change="handleSave"
                 class="settings-control"
               />
             </div>
             <div class="settings-item">
-              <span class="settings-label">高对比度模式</span>
+              <span class="settings-label">{{ $t('studentSettings.highContrast') }}</span>
               <el-switch
                 v-model="settings.highContrast"
-                aria-label="高对比度模式"
+                :aria-label="$t('studentSettings.highContrast')"
                 @change="handleSave"
                 class="settings-control"
               />
@@ -199,7 +199,7 @@
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap">
-        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button">保存设置</el-button>
+        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button">{{ $t('studentSettings.saveSettings') }}</el-button>
       </div>
     </div>
 
@@ -207,12 +207,12 @@
     <div v-else class="settings-h5">
       <!-- 面包屑导航 -->
       <el-breadcrumb separator="→" class="h5-breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/student/courses' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>个人设置</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/student/courses' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ $t('studentSettings.personalSettings') }}</el-breadcrumb-item>
       </el-breadcrumb>
 
       <div class="page-header-h5">
-        <h2>偏好设置</h2>
+        <h2>{{ $t('studentSettings.preferences') }}</h2>
       </div>
 
       <!-- 骨架屏加载 -->
@@ -223,9 +223,9 @@
       </div>
 
       <!-- 加载失败 -->
-      <el-result v-else-if="error" icon="error" title="加载失败" sub-title="设置加载异常">
+      <el-result v-else-if="error" icon="error" :title="$t('studentSettings.loadFailedTitle')" :sub-title="$t('studentSettings.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" size="small" :loading="loading" @click="loadSettings">重新加载</el-button>
+          <el-button type="primary" size="small" :loading="loading" @click="loadSettings">{{ $t('studentSettings.reload') }}</el-button>
         </template>
       </el-result>
 
@@ -234,12 +234,12 @@
         <div class="settings-group-h5">
           <div class="group-header-h5">
             <el-icon><VideoPlay /></el-icon>
-            <span>播放设置</span>
+            <span>{{ $t('studentSettings.playbackSettings') }}</span>
           </div>
           <div class="settings-list-h5">
             <div class="settings-item-h5">
-              <span>播放倍速</span>
-              <el-select v-model="settings.playbackSpeed" aria-label="播放倍速" @change="handleSave" class="control-select-h5">
+              <span>{{ $t('studentSettings.playbackSpeed') }}</span>
+              <el-select v-model="settings.playbackSpeed" :aria-label="$t('studentSettings.playbackSpeed')" @change="handleSave" class="control-select-h5">
                 <el-option label="0.75x" value="0.75" />
                 <el-option label="1.0x" value="1" />
                 <el-option label="1.25x" value="1.25" />
@@ -248,8 +248,8 @@
               </el-select>
             </div>
             <div class="settings-item-h5">
-              <span>自动播放下一节</span>
-              <el-switch v-model="settings.autoPlayNext" aria-label="自动播放下一节" @change="handleSave" />
+              <span>{{ $t('studentSettings.autoPlayNext') }}</span>
+              <el-switch v-model="settings.autoPlayNext" :aria-label="$t('studentSettings.autoPlayNext')" @change="handleSave" />
             </div>
           </div>
         </div>
@@ -258,29 +258,29 @@
         <div class="settings-group-h5">
           <div class="group-header-h5">
             <el-icon><Bell /></el-icon>
-            <span>通知设置</span>
+            <span>{{ $t('studentSettings.notificationSettings') }}</span>
           </div>
           <div class="settings-list-h5">
             <div class="settings-item-h5">
-              <span>启用通知</span>
-              <el-switch v-model="settings.notificationEnabled" aria-label="启用通知" @change="handleSave" />
+              <span>{{ $t('studentSettings.enableNotifications') }}</span>
+              <el-switch v-model="settings.notificationEnabled" :aria-label="$t('studentSettings.enableNotifications')" @change="handleSave" />
             </div>
             <div class="settings-item-h5">
-              <span>邮件通知</span>
-              <el-switch v-model="settings.emailNotification" aria-label="邮件通知" @change="handleSave" />
+              <span>{{ $t('studentSettings.emailNotification') }}</span>
+              <el-switch v-model="settings.emailNotification" :aria-label="$t('studentSettings.emailNotification')" @change="handleSave" />
             </div>
             <!-- P1I-030: 微信通知开关 (H5) -->
             <div class="settings-item-h5">
-              <span>微信通知</span>
-              <el-switch v-model="settings.wechatNotification" aria-label="微信通知" @change="handleSave" />
+              <span>{{ $t('studentSettings.wechatNotification') }}</span>
+              <el-switch v-model="settings.wechatNotification" :aria-label="$t('studentSettings.wechatNotification')" @change="handleSave" />
             </div>
             <!-- P1I-030: 免打扰时段 (H5) -->
             <div class="settings-item-h5">
-              <span>免打扰时段</span>
-              <el-switch v-model="settings.quietHoursEnabled" aria-label="免打扰时段" @change="handleSave" />
+              <span>{{ $t('studentSettings.quietHours') }}</span>
+              <el-switch v-model="settings.quietHoursEnabled" :aria-label="$t('studentSettings.quietHours')" @change="handleSave" />
             </div>
             <div v-if="settings.quietHoursEnabled" class="settings-item-h5">
-              <span>开始</span>
+              <span>{{ $t('studentSettings.startShort') }}</span>
               <el-time-picker
                 v-model="quietHoursStartDate"
                 :value="settings.quietHoursStart"
@@ -292,7 +292,7 @@
               />
             </div>
             <div v-if="settings.quietHoursEnabled" class="settings-item-h5">
-              <span>结束</span>
+              <span>{{ $t('studentSettings.endShort') }}</span>
               <el-time-picker
                 v-model="quietHoursEndDate"
                 :value="settings.quietHoursEnd"
@@ -310,20 +310,20 @@
         <div class="settings-group-h5">
           <div class="group-header-h5">
             <el-icon><Lock /></el-icon>
-            <span>隐私设置</span>
+            <span>{{ $t('studentSettings.privacySettings') }}</span>
           </div>
           <div class="settings-list-h5">
             <div class="settings-item-h5">
-              <span>个人主页可见性</span>
-              <el-select v-model="settings.profileVisibility" aria-label="个人资料可见性" @change="handleSave" class="control-select-h5">
-                <el-option label="公开" value="public" />
-                <el-option label="好友可见" value="friends" />
-                <el-option label="仅自己可见" value="private" />
+              <span>{{ $t('studentSettings.profileVisibility') }}</span>
+              <el-select v-model="settings.profileVisibility" :aria-label="$t('studentSettings.profileVisibilityAria')" @change="handleSave" class="control-select-h5">
+                <el-option :label="$t('studentSettings.visibilityPublic')" value="public" />
+                <el-option :label="$t('studentSettings.visibilityFriends')" value="friends" />
+                <el-option :label="$t('studentSettings.visibilityPrivate')" value="private" />
               </el-select>
             </div>
             <div class="settings-item-h5">
-              <span>显示学习进度</span>
-              <el-switch v-model="settings.showProgress" aria-label="展示学习进度" @change="handleSave" />
+              <span>{{ $t('studentSettings.showProgress') }}</span>
+              <el-switch v-model="settings.showProgress" :aria-label="$t('studentSettings.showProgressAria')" @change="handleSave" />
             </div>
           </div>
         </div>
@@ -332,23 +332,23 @@
         <div class="settings-group-h5">
           <div class="group-header-h5">
             <el-icon><Setting /></el-icon>
-            <span>辅助功能</span>
+            <span>{{ $t('studentSettings.accessibility') }}</span>
           </div>
           <div class="settings-list-h5">
             <div class="settings-item-h5">
-              <span>减少动画效果</span>
-              <el-switch v-model="settings.reducedMotion" aria-label="减少动画效果" @change="handleSave" />
+              <span>{{ $t('studentSettings.reducedMotion') }}</span>
+              <el-switch v-model="settings.reducedMotion" :aria-label="$t('studentSettings.reducedMotion')" @change="handleSave" />
             </div>
             <div class="settings-item-h5">
-              <span>高对比度模式</span>
-              <el-switch v-model="settings.highContrast" aria-label="高对比度模式" @change="handleSave" />
+              <span>{{ $t('studentSettings.highContrast') }}</span>
+              <el-switch v-model="settings.highContrast" :aria-label="$t('studentSettings.highContrast')" @change="handleSave" />
             </div>
           </div>
         </div>
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap-h5">
-        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button-h5">保存设置</el-button>
+        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button-h5">{{ $t('studentSettings.saveSettings') }}</el-button>
       </div>
 
       <div class="safe-area-bottom"></div>
@@ -361,6 +361,9 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { VideoPlay, Bell, Lock, Setting } from '@element-plus/icons-vue'
 import { getMyPreferences, updateMyPreferences } from '@/api/notification-preference'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const STORAGE_KEY = 'micro_course_settings'
 
@@ -442,7 +445,9 @@ const loadSettings = async () => {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) {
       const parsed = JSON.parse(stored)
-      settings.value = {
+      // 用 Object.assign 合并而非整体替换，避免丢失后端加载的
+      // wechatNotification / quietHoursEnabled / quietHoursStart / quietHoursEnd 字段
+      Object.assign(settings.value, {
         playbackSpeed: parsed.playbackSpeed || settings.value.playbackSpeed,
         autoPlayNext: parsed.autoPlayNext !== false,
         notificationEnabled: settings.value.notificationEnabled,
@@ -451,17 +456,22 @@ const loadSettings = async () => {
         showProgress: parsed.showProgress !== false,
         reducedMotion: parsed.reducedMotion === true,
         highContrast: parsed.highContrast === true
-      }
+      })
     }
     // 加载成功后同步到 localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
+    } catch (e) {
+      if (e.name !== 'QuotaExceededError') console.warn('Settings sync to localStorage failed:', e)
+    }
   } catch {
     // 后端不可用时回退到 localStorage
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored)
-        settings.value = {
+        // 合并而非替换，保留免打扰时段/微信通知等字段的默认值
+        Object.assign(settings.value, {
           playbackSpeed: parsed.playbackSpeed || '1',
           autoPlayNext: parsed.autoPlayNext !== false,
           notificationEnabled: parsed.notificationEnabled !== false,
@@ -470,11 +480,11 @@ const loadSettings = async () => {
           showProgress: parsed.showProgress !== false,
           reducedMotion: parsed.reducedMotion === true,
           highContrast: parsed.highContrast === true
-        }
+        })
       }
     } catch {
       error.value = true
-      ElMessage.error('加载设置失败')
+      ElMessage.error(t('studentSettings.loadFailed'))
     }
   } finally {
     loading.value = false
@@ -506,15 +516,15 @@ const debouncedSave = () => {
         allowEmail: settings.value.emailNotification,
         extraPreferences: JSON.stringify(extraPrefs)
       })
-      ElMessage.success('偏好设置已保存')
+      ElMessage.success(t('studentSettings.savedSuccess'))
     } catch {
-      ElMessage.warning('偏好设置保存失败，已使用本地缓存')
+      ElMessage.warning(t('studentSettings.saveFailedLocal'))
     }
     // 所有设置持久化到 localStorage 作为离线 fallback
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
     } catch {
-      ElMessage.error('保存失败')
+      ElMessage.error(t('studentSettings.saveFailed'))
     }
   }, 300)
 }

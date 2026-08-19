@@ -52,6 +52,9 @@ public class FieldEncryptor {
         try {
             return encryptor.decrypt(payload);
         } catch (Exception e) {
+            // P2-2-2026-08-15 · 容错契约（密钥轮换场景）：解密失败返回密文原样避免数据丢失，
+            // 但必须打 warn 日志让运维感知（此前完全静默 = 数据损坏不可追踪）。
+            log.warn("[FieldEncryptor] 解密失败，返回密文原样（密钥轮换或数据损坏?）: {}", e.getMessage());
             return encrypted;
         }
     }

@@ -207,6 +207,15 @@
           </button>
         </div>
       </div>
+      <el-empty
+        v-else
+        class="recent-learning-empty"
+        :description="$t('learning.noRecentLearning')"
+      >
+        <el-button type="primary" @click="$router.push('/student/courses')">
+          {{ $t('learning.goExplore') }}
+        </el-button>
+      </el-empty>
 
       <!-- 两栏：本周学习 + 学习日历 -->
       <div class="chart-calendar-row">
@@ -639,7 +648,7 @@ const statsError = ref(false)
 // 统计数据
 // ---------------------------------------------------------------------------
 const stats = ref({
-  totalHours: '0小时',
+  totalHours: t('learning.hours', { count: 0 }),
   completedCourses: 0,
   certificates: 0,
   studyDays: 0
@@ -753,7 +762,7 @@ async function loadHeatmap() {
     heatmapData.value = weeks
   } catch (e) {
       console.warn("[LearningCenter]", e)
-      ElMessage.warning('学习热力图加载失败')
+      ElMessage.warning(t('learning.heatmapLoadFailed'))
     heatmapData.value = []
   }
 }
@@ -785,12 +794,12 @@ async function getStats(sharedEnrollments) {
       getMyCertificates().catch(() => ({ data: [] }))
     ])
 
-    const enrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData?.data) ? enrollmentData.data : [])
+    const enrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData?.data) ? enrollmentData.data : (enrollmentData?.data?.items || []))
     const completedCourses = enrollments.filter(e => e.completed).length
 
     // 总学习时长（从 total-time API 聚合所有课程）
     const totalSeconds = totalTimeData?.data?.totalSeconds || 0
-    const totalHours = totalSeconds > 0 ? `${Math.round(totalSeconds / 3600)}小时` : '0小时'
+    const totalHours = totalSeconds > 0 ? t('learning.hours', { count: Math.round(totalSeconds / 3600) }) : t('learning.hours', { count: 0 })
 
     // 学习天数（总天数保留用于底部统计卡片）
     const studyDays = studyDaysData?.data?.totalDays ?? 0
@@ -819,9 +828,9 @@ async function getStats(sharedEnrollments) {
     animateNumber(streakDays, (v) => { animatedDays.value = v })
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     stats.value = {
-      totalHours: '0小时',
+      totalHours: t('learning.hours', { count: 0 }),
       completedCourses: 0,
       certificates: 0,
       studyDays: 0
@@ -837,7 +846,7 @@ async function getRecent(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 取第一个进行中的课程作为"继续学习"
@@ -858,7 +867,7 @@ async function getRecent(sharedEnrollments) {
       recentCourse.value = {
         courseId: inProgress.courseId,
         courseType: inProgress.courseType || '',
-        title: inProgress.courseTitle || inProgress.title || '课程',
+        title: inProgress.courseTitle || inProgress.title || t('learning.courseDefault'),
         currentChapter,
         progress: inProgress.progress || 0,
         cover: inProgress.courseCover || inProgress.coverUrl || (import.meta.env.BASE_URL + 'placeholder.svg')
@@ -866,7 +875,7 @@ async function getRecent(sharedEnrollments) {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     recentCourse.value = { title: '', currentChapter: 0, progress: 0, cover: '' }
   }
 }
@@ -896,7 +905,7 @@ async function getChart() {
     } catch (e) {
       // API 不存在，继续用打卡数据
       console.warn("[LearningCenter]", e)
-      ElMessage.warning('部分数据加载失败')
+      ElMessage.warning(t('learning.partialLoadFailed'))
     }
 
     if (!accuracyMode.value) {
@@ -925,7 +934,7 @@ async function getChart() {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     chartData.value = []
   }
 }
@@ -938,7 +947,7 @@ async function getRecommendations(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 取进行中的课程作为推荐
@@ -959,7 +968,7 @@ async function getRecommendations(sharedEnrollments) {
     }
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     recommendations.value = []
   }
 }
@@ -976,7 +985,7 @@ async function getBadges() {
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     badges.value = []
   }
 }
@@ -989,7 +998,7 @@ async function getRecentRecords(sharedEnrollments) {
     } else {
       const userId = userStore.userInfo?.id
       const { data } = await getMyEnrollments()
-      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : [])
+      enrollments = filterCourseCollectionEnrollments(Array.isArray(data) ? data : (data?.items || []))
     }
 
     // 按最近学习时间排序，取最近 5 条
@@ -1012,7 +1021,7 @@ async function getRecentRecords(sharedEnrollments) {
     }))
   } catch (e) {
       console.warn("[LearningCenter]", e)
-    ElMessage.warning('部分数据加载失败')
+    ElMessage.warning(t('learning.partialLoadFailed'))
     recentRecords.value = []
   }
 }
@@ -1030,7 +1039,7 @@ async function loadData() {
     let sharedEnrollments = []
     try {
       const { data: enrollmentData } = await getMyEnrollments()
-      sharedEnrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData) ? enrollmentData : [])
+      sharedEnrollments = filterCourseCollectionEnrollments(Array.isArray(enrollmentData) ? enrollmentData : (enrollmentData?.items || []))
     } catch (e) {
       sharedEnrollments = []
     }
@@ -1094,7 +1103,7 @@ async function checkTodayStatus() {
     })
   } catch (e) {
       console.warn("[LearningCenter]", e)
-      ElMessage.warning('学习趋势数据加载失败')
+      ElMessage.warning(t('learning.trendDataLoadFailed'))
     chartData.value = []
   }
 }
@@ -1107,6 +1116,7 @@ async function doCheckIn() {
     ElMessage.success(t('learning.checkInSuccess'))
     } catch (e) {
       console.warn("[LearningCenter]", e)
+      ElMessage.error(t('learning.checkInFailed'))
     } finally {
     checkInLoading.value = false
   }

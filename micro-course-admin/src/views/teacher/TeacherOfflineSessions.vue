@@ -2,22 +2,22 @@
   <div class="teacher-offline-page">
     <div class="page-breadcrumb">
       <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: '/teacher/dashboard' }">首页</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/teacher/dashboard' }">{{ $t('route.Home') }}</el-breadcrumb-item>
       <el-breadcrumb-item v-if="courseTitle">{{ courseTitle }}</el-breadcrumb-item>
-      <el-breadcrumb-item>线下课管理</el-breadcrumb-item>
-      <el-breadcrumb-item>{{ chapterTitle || '加载中...' }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('teacherOffline.offlineMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ chapterTitle || $t('common.loading') }}</el-breadcrumb-item>
       </el-breadcrumb>
     </div>
 
     <div class="page-header">
-      <h1>{{ chapterTitle || '线下课管理' }}</h1>
+      <h1>{{ chapterTitle || $t('teacherOffline.offlineMgmt') }}</h1>
       <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" @click="openCreateDialog">
-        <el-icon><Plus /></el-icon>新增场次
+        <el-icon><Plus /></el-icon>{{ $t('teacherOffline.addSession') }}
       </el-button>
     </div>
 
     <div v-loading="loading">
-      <el-empty v-if="!loading && sessions.length === 0" description="暂未安排线下课程，点击「新增场次」添加" :image-size="120" />
+      <el-empty v-if="!loading && sessions.length === 0" :description="$t('teacherOfflineSessions.emptySessions')" :image-size="120" />
 
       <el-card v-for="session in sessions" :key="session.id" class="session-card" shadow="never" @click="handleSessionClick(session)" style="cursor:pointer">
         <div class="session-header">
@@ -32,7 +32,7 @@
             </div>
             <div class="meta-row">
               <el-icon><Location /></el-icon>
-              <span>{{ session.location || '待定' }}</span>
+              <span>{{ session.location || $t('teacherOffline.pending') }}</span>
             </div>
             <div class="meta-row meta-notes" v-if="session.teacherNotes">
               <el-icon><ChatLineSquare /></el-icon>
@@ -40,73 +40,73 @@
             </div>
           </div>
           <div class="session-attendance-summary">
-            <el-tooltip content="已签到" placement="top">
+            <el-tooltip :content="$t('teacherOffline.present')" placement="top">
               <span class="att-count att-present">{{ attendanceSummary(session).present }}</span>
             </el-tooltip>
             <span class="att-sep">/</span>
-            <el-tooltip content="迟到" placement="top">
+            <el-tooltip :content="$t('teacherOffline.late')" placement="top">
               <span class="att-count att-late">{{ attendanceSummary(session).late }}</span>
             </el-tooltip>
             <span class="att-sep">/</span>
-            <el-tooltip content="缺勤" placement="top">
+            <el-tooltip :content="$t('teacherOffline.absent')" placement="top">
               <span class="att-count att-absent">{{ attendanceSummary(session).absent }}</span>
             </el-tooltip>
             <span class="att-sep">/</span>
-            <el-tooltip content="请假" placement="top">
+            <el-tooltip :content="$t('teacherOffline.excused')" placement="top">
               <span class="att-count att-excused">{{ attendanceSummary(session).excused }}</span>
             </el-tooltip>
           </div>
           <div class="session-actions">
-            <el-button size="small" @click="openAttendanceDialog(session)">签到管理</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click="openEditDialog(session)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" plain @click="handleDelete(session)">删除</el-button>
+            <el-button size="small" @click.stop="openAttendanceDialog(session)">{{ $t('teacherOffline.attendanceMgmt') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" @click.stop="openEditDialog(session)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" plain @click.stop="handleDelete(session)">{{ $t('app.delete') }}</el-button>
           </div>
         </div>
       </el-card>
     </div>
 
     <!-- 新增/编辑 弹窗 -->
-    <el-dialog v-model="formDialogVisible" :title="isEditing ? '编辑场次' : '新增场次'" width="520px" @close="handleDialogClose">
+    <el-dialog v-model="formDialogVisible" :title="isEditing ? $t('teacherOffline.editSession') : $t('teacherOffline.createSession')" width="520px" @close="handleDialogClose">
       <el-form ref="formRef" :model="form" :rules="formRules" label-width="100px">
-        <el-form-item label="所属课程" v-if="courseTitle">
+        <el-form-item :label="$t('teacherOffline.belongCourse')" v-if="courseTitle">
           <el-tag type="primary" effect="plain">{{ courseTitle }}</el-tag>
         </el-form-item>
-        <el-form-item label="所属章节" v-if="chapterTitle">
+        <el-form-item :label="$t('teacherOfflineSessions.belongChapter')" v-if="chapterTitle">
           <el-tag type="success" effect="plain">{{ chapterTitle }}</el-tag>
         </el-form-item>
-        <el-form-item label="日期" prop="sessionDate">
-          <el-date-picker v-model="form.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" style="width:100%" />
+        <el-form-item :label="$t('course.date')" prop="sessionDate">
+          <el-date-picker v-model="form.sessionDate" type="date" :placeholder="$t('course.selectDate')" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="开始时间" prop="startTime">
-              <el-time-picker v-model="form.startTime" placeholder="开始时间" value-format="HH:mm:ss" style="width:100%" />
+            <el-form-item :label="$t('course.startTime')" prop="startTime">
+              <el-time-picker v-model="form.startTime" :placeholder="$t('course.startTime')" value-format="HH:mm:ss" style="width:100%" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="结束时间" prop="endTime">
-              <el-time-picker v-model="form.endTime" placeholder="结束时间" value-format="HH:mm:ss" style="width:100%" />
+            <el-form-item :label="$t('course.endTime')" prop="endTime">
+              <el-time-picker v-model="form.endTime" :placeholder="$t('course.endTime')" value-format="HH:mm:ss" style="width:100%" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="地点" prop="location">
-          <el-input v-model="form.location" placeholder="如：教学楼 A-101" />
+        <el-form-item :label="$t('course.location')" prop="location">
+          <el-input v-model="form.location" :placeholder="$t('course.locationPlaceholder')" />
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
           <el-input-number v-model="form.sortOrder" :min="0" />
         </el-form-item>
-        <el-form-item label="教师备注" prop="teacherNotes">
-          <el-input v-model="form.teacherNotes" type="textarea" :rows="3" placeholder="选填，如注意事项、准备材料等" />
+        <el-form-item :label="$t('teacherOfflineSessions.teacherNotes')" prop="teacherNotes">
+          <el-input v-model="form.teacherNotes" type="textarea" :rows="3" :placeholder="$t('teacherOfflineSessions.teacherNotesPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="formDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="formSubmitting" :disabled="formSubmitting" @click="handleFormSubmit">确定</el-button>
+        <el-button @click="formDialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="formSubmitting" :disabled="formSubmitting" @click="handleFormSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 签到管理弹窗 -->
-    <el-dialog v-model="attendanceDialogVisible" title="签到管理" width="700px">
+    <el-dialog v-model="attendanceDialogVisible" :title="$t('teacherOffline.attendanceMgmt')" width="700px">
       <template #default>
         <div class="attendance-summary-bar" v-if="selectedSession">
           <span>{{ formatDate(selectedSession.sessionDate) }} {{ formatTimeRange(selectedSession.startTime, selectedSession.endTime) }}</span>
@@ -114,25 +114,25 @@
         </div>
         <el-table v-loading="attendanceLoading" :data="attendanceRecords" stripe border>
           <el-table-column type="index" label="#" width="50" align="center" />
-          <el-table-column prop="studentName" label="姓名" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="studentNumber" label="学号" width="130" show-overflow-tooltip />
-          <el-table-column prop="checkinTime" label="签到时间" width="160">
+          <el-table-column prop="studentName" :label="$t('teacherOfflineSessions.name')" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="studentNumber" :label="$t('teacherOffline.studentNumber')" width="130" show-overflow-tooltip />
+          <el-table-column prop="checkinTime" :label="$t('teacherOffline.checkinTime')" width="160">
             <template #default="{ row }">
               {{ row.checkinTime ? formatDateTime(row.checkinTime) : '-' }}
             </template>
           </el-table-column>
-          <el-table-column label="状态" width="130">
+          <el-table-column :label="$t('app.status')" width="130">
             <template #default="{ row }">
               <el-select v-model="row.status" size="small" @change="(val) => handleStatusChange(row, val)">
-                <el-option label="已签到" value="PRESENT" />
-                <el-option label="迟到" value="LATE" />
-                <el-option label="缺勤" value="ABSENT" />
-                <el-option label="请假" value="EXCUSED" />
+                <el-option :label="$t('teacherOffline.present')" value="PRESENT" />
+                <el-option :label="$t('teacherOffline.late')" value="LATE" />
+                <el-option :label="$t('teacherOffline.absent')" value="ABSENT" />
+                <el-option :label="$t('teacherOffline.excused')" value="EXCUSED" />
               </el-select>
             </template>
           </el-table-column>
         </el-table>
-        <el-empty v-if="!attendanceLoading && attendanceRecords.length === 0" description="暂无签到记录" :image-size="80" />
+        <el-empty v-if="!attendanceLoading && attendanceRecords.length === 0" :description="$t('teacherOfflineSessions.noAttendance')" :image-size="80" />
       </template>
     </el-dialog>
   </div>
@@ -140,6 +140,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/store/user'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -157,6 +158,7 @@ import { getCourseById } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 // P1-C 修复 (2026-08-04): userRole 未定义 → 新增/编辑/删除线下场次按钮全部隐藏
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
@@ -185,10 +187,10 @@ const form = reactive({
 })
 
 const formRules = {
-  sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  location: [{ required: true, message: '请输入地点', trigger: 'blur' }, { max: 200, message: '长度不超过200字符', trigger: 'blur' }]
+  sessionDate: [{ required: true, message: t('course.pleaseSelectDate'), trigger: 'change' }],
+  startTime: [{ required: true, message: t('course.pleaseSelectStartTime'), trigger: 'change' }],
+  endTime: [{ required: true, message: t('course.pleaseSelectEndTime'), trigger: 'change' }],
+  location: [{ required: true, message: t('course.pleaseInputLocation'), trigger: 'blur' }, { max: 200, message: t('teacherOfflineSessions.locationMaxLen'), trigger: 'blur' }]
 }
 
 const attendanceDialogVisible = ref(false)
@@ -199,7 +201,7 @@ const selectedSession = ref(null)
 function formatMonth(dateStr) {
   if (!dateStr) return ''
   const d = new Date(dateStr)
-  return `${d.getMonth() + 1}月`
+  return t('teacherOfflineSessions.monthFormat', { month: d.getMonth() + 1 })
 }
 function formatDayNum(dateStr) {
   if (!dateStr) return '--'
@@ -239,7 +241,7 @@ async function fetchChapter() {
     const { data } = await getChapterById(chapterId.value)
     chapterTitle.value = data?.title || ''
   } catch {
-    chapterTitle.value = '线下课程'
+    chapterTitle.value = t('course.typeOfflineCourse')
   }
 }
 
@@ -266,13 +268,13 @@ async function fetchSessions() {
     await Promise.all(items.map(s => fetchAttendanceSummary(s.id)))
   } catch {
     sessions.value = []
-    ElMessage.warning('场次数据加载失败')
+    ElMessage.warning(t('teacherOfflineSessions.sessionsLoadFailed'))
   }
 }
 
 async function fetchAttendanceSummary(sessionId) {
   try {
-    const { data } = await getAttendance(sessionId, { page: 0, size: 999 })
+    const { data } = await getAttendance(sessionId, { page: 0, size: 100 })
     const records = data?.items || data || []
     attendanceMap.value[sessionId] = Array.isArray(records) ? records : []
   } catch {
@@ -328,15 +330,15 @@ async function handleFormSubmit() {
     }
     if (isEditing.value) {
       await updateOfflineSession(editingId.value, payload)
-      ElMessage.success('更新成功')
+      ElMessage.success(t('course.updateSuccess'))
     } else {
       await createOfflineSession(chapterId.value, payload)
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
     }
     formDialogVisible.value = false
     await fetchSessions()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '操作失败，请重试')
+    ElMessage.error(e?.response?.data?.message || t('teacherOfflineSessions.opFailedRetry'))
   } finally {
     formSubmitting.value = false
   }
@@ -344,13 +346,13 @@ async function handleFormSubmit() {
 
 async function handleDelete(session) {
   try {
-    await ElMessageBox.confirm(`确定删除 ${formatDate(session.sessionDate)} 的场次？`, '删除确认', { type: 'warning' })
+    await ElMessageBox.confirm(t('teacherOfflineSessions.confirmDeleteSession', { date: formatDate(session.sessionDate) }), t('teacherOfflineSessions.deleteConfirmTitle'), { type: 'warning' })
     await deleteOfflineSession(session.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     await fetchSessions()
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error(e?.response?.data?.message || '删除失败')
+      ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
     }
   }
 }
@@ -360,12 +362,12 @@ async function openAttendanceDialog(session) {
   attendanceDialogVisible.value = true
   attendanceLoading.value = true
   try {
-    const { data } = await getAttendance(session.id, { page: 0, size: 999 })
+    const { data } = await getAttendance(session.id, { page: 0, size: 100 })
     const records = data?.items || data || []
     attendanceRecords.value = Array.isArray(records) ? records : []
   } catch {
     attendanceRecords.value = []
-    ElMessage.error('获取签到记录失败')
+    ElMessage.error(t('teacherOffline.fetchAttendanceFailed'))
   } finally {
     attendanceLoading.value = false
   }
@@ -374,10 +376,10 @@ async function openAttendanceDialog(session) {
 async function handleStatusChange(row, newStatus) {
   try {
     await updateAttendance(selectedSession.value.id, row.id, { status: newStatus })
-    ElMessage.success('状态已更新')
+    ElMessage.success(t('teacherOfflineSessions.statusUpdated'))
     await fetchAttendanceSummary(selectedSession.value.id)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '更新失败')
+    ElMessage.error(e?.response?.data?.message || t('teacherOffline.updateFailed'))
   }
 }
 

@@ -75,6 +75,13 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     @Override
     @Transactional
     public Long createPage(SlidePptPageDTO dto) {
+        // P1-I-2026-08-15（R4 审查）· DTO 层允许 null（PATCH 兼容），但 create 必须校验必填，避免 DB NOT NULL 抛 500
+        if (dto.getSlideId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "slideId 不能为空");
+        }
+        if (dto.getPageNumber() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "pageNumber 不能为空");
+        }
         SlidePptPage entity = new SlidePptPage();
         // 【BUG #16 修复】 排除 id/createdAt/updatedAt, 避免前端覆盖主键和时间戳
         BeanUtils.copyProperties(dto, entity, "id", "createdAt", "updatedAt", "version");
@@ -111,7 +118,9 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
         if (entity == null) {
             throw new BusinessException(ErrorCode.SLIDE_PAGE_NOT_FOUND, "PPT page not found: " + pageId);
         }
-        BeanUtils.copyProperties(dto, entity, "id", "createdAt", "slideId", "sectionId");
+        // P1-C-2026-08-15（R1 审查）· pageNumber 必须排除：前端 PptPageEditor 仅展示不提交，
+        // 若复制 null 会覆盖实体原 pageNumber 造成数据丢失。slideId 由 path 决定同样排除。
+        BeanUtils.copyProperties(dto, entity, "id", "createdAt", "slideId", "sectionId", "pageNumber");
         entity.setUpdatedAt(LocalDateTime.now());
         int affected = pageMapper.updateById(entity);
         if (affected == 0) {
@@ -235,6 +244,16 @@ public class PptCoursewareServiceImpl implements PptCoursewareService {
     @Override
     @Transactional
     public Long createFlow(PptFlowDTO dto) {
+        // P0-2026-08-15 · 必填校验下沉 Service（DTO 层因 PATCH/部分更新/课件结束语义允许 null）
+        if (dto.getSectionId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "sectionId 不能为空");
+        }
+        if (dto.getFromPageId() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "fromPageId 不能为空");
+        }
+        if (dto.getFlowType() == null || dto.getFlowType().isBlank()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "flowType 不能为空");
+        }
         SlidePptFlow entity = new SlidePptFlow();
         BeanUtils.copyProperties(dto, entity);
         if (entity.getPriority() == null) entity.setPriority(0);

@@ -140,6 +140,8 @@ public class HtmlSegmentDetector {
             String t = d.text();
             return t == null ? "" : t;
         } catch (Exception e) {
+            // P1-I 修复 (2026-08-12): 静默吞 HTML 解析异常阻碍生产环境排查
+            log.debug("[HtmlSegmentDetector] plainText HTML 解析失败 htmlLen={}", html == null ? 0 : html.length(), e);
             return "";
         }
     }

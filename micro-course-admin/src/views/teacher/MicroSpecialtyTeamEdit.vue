@@ -4,57 +4,57 @@
 -->
 <template>
   <div class="ms-team-page">
-    <el-page-header @back="$router.back()" :content="'教师团队 · ' + (detail?.title || '')" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('microSpecialtyTeamEdit.pageHeader', { title: detail?.title || '' })" class="mg-bottom-16" />
 
     <div v-loading="loading">
-      <el-result v-if="error" icon="error" title="加载失败" sub-title="请稍后重试">
-        <template #extra><el-button type="primary" @click="fetchData">重试</el-button></template>
+      <el-result v-if="error" icon="error" :title="$t('microSpecialtyManage.loadFailed')" :sub-title="$t('microSpecialtyManage.loadFailedSubtitle')">
+        <template #extra><el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button></template>
       </el-result>
-      <el-empty v-else-if="!loading && !detail" description="微专业不存在" />
+      <el-empty v-else-if="!loading && !detail" :description="$t('microSpecialtyManage.notFound')" />
 
       <template v-if="detail">
         <!-- 已邀请教师 -->
         <el-card shadow="never" class="section-card">
           <template #header>
             <div class="card-header">
-              <span>已邀请教师（{{ teachers.length }} 人）</span>
-              <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? '完成' : '批量操作' }}</el-button>
+              <span>{{ $t('microSpecialtyTeamEdit.invitedTeachers', { count: teachers.length }) }}</span>
+              <el-button size="small" type="danger" @click="expelMode = !expelMode">{{ expelMode ? $t('microSpecialtyTeamEdit.done') : $t('microSpecialtyTeamEdit.batchOps') }}</el-button>
               <el-button v-if="expelMode" size="small" type="danger" plain :loading="batchRemoving" :disabled="selectedMembers.length === 0" @click="handleBatchRemoveMembers">
-                批量移除（{{ selectedMembers.length }}）
+                {{ $t('microSpecialtyTeamEdit.batchRemoveCount', { count: selectedMembers.length }) }}
               </el-button>
             </div>
           </template>
-          <el-table ref="memberTableRef" :data="teachers" stripe border empty-text="暂无教师" @selection-change="handleMemberSelectionChange">
+          <el-table ref="memberTableRef" :data="teachers" stripe border :empty-text="$t('microSpecialtyTeamEdit.emptyTeachers')" @selection-change="handleMemberSelectionChange">
             <el-table-column v-if="expelMode" type="selection" width="50" />
-            <el-table-column prop="teacherName" label="姓名" width="120" />
-            <el-table-column label="角色" width="120">
-              <template #default="{ row }"><el-tag size="small">{{ roleMap[row.role] || row.role || '教师' }}</el-tag></template>
+            <el-table-column prop="teacherName" :label="$t('user.realName')" width="120" />
+            <el-table-column :label="$t('user.role')" width="120">
+              <template #default="{ row }"><el-tag size="small">{{ $t(roleMap[row.role] || row.role || 'role.TEACHER') }}</el-tag></template>
             </el-table-column>
-            <el-table-column prop="courseTitle" label="归属课程" min-width="160" show-overflow-tooltip>
+            <el-table-column prop="courseTitle" :label="$t('microSpecialtyTeamEdit.belongCourse')" min-width="160" show-overflow-tooltip>
               <template #default="{ row }">{{ row.courseTitle || '-' }}</template>
             </el-table-column>
-            <el-table-column label="邀请状态" width="110" align="center">
+            <el-table-column :label="$t('microSpecialtyTeamEdit.inviteStatus')" width="110" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.inviteStatus === 'INVITED'" type="warning" size="small">待响应</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'ACTIVE'" type="success" size="small">已接受</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'PENDING_ACADEMIC'" type="warning" size="small">等待教务处审核</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'DECLINED'" type="danger" size="small">已拒绝</el-tag>
-                <el-tag v-else-if="row.inviteStatus === 'REMOVED'" type="info" size="small">已移除</el-tag>
+                <el-tag v-if="row.inviteStatus === 'INVITED'" type="warning" size="small">{{ $t('microSpecialtyTeamEdit.statusInvited') }}</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'ACTIVE'" type="success" size="small">{{ $t('microSpecialtyTeamEdit.statusActive') }}</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'PENDING_ACADEMIC'" type="warning" size="small">{{ $t('microSpecialtyTeamEdit.statusPendingAcademic') }}</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'DECLINED'" type="danger" size="small">{{ $t('microSpecialtyTeamEdit.statusDeclined') }}</el-tag>
+                <el-tag v-else-if="row.inviteStatus === 'REMOVED'" type="info" size="small">{{ $t('microSpecialtyTeamEdit.statusRemoved') }}</el-tag>
                 <el-tag v-else size="small">{{ row.inviteStatus || '-' }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="过期" width="110" align="center">
+            <el-table-column :label="$t('microSpecialtyTeamEdit.columnExpired')" width="110" align="center">
               <template #default="{ row }">
                 <span v-if="row.inviteStatus === 'INVITED'" :class="{ 'expiring': row.expiring }">{{ row.deadlineText || '-' }}</span>
                 <span v-else>-</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="180" align="center" fixed="right">
+            <el-table-column :label="$t('app.operation')" width="180" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="expelMode" size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">移除</el-button>
+                <el-button v-if="expelMode" size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">{{ $t('microSpecialtyTeamEdit.remove') }}</el-button>
                 <template v-else>
-                  <el-button size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">移除</el-button>
-                  <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">重邀</el-button>
+                  <el-button size="small" type="danger" :loading="removingId === (row.id || row.teacherId)" @click="handleRemove(row)">{{ $t('microSpecialtyTeamEdit.remove') }}</el-button>
+                  <el-button v-if="row.inviteStatus === 'DECLINED' || row.inviteStatus === 'REMOVED'" size="small" @click="handleReinvite(row)">{{ $t('microSpecialtyTeamEdit.reinvite') }}</el-button>
                 </template>
               </template>
             </el-table-column>
@@ -63,64 +63,64 @@
 
         <!-- 邀请新教师 -->
         <el-card shadow="never" class="section-card">
-          <template #header><span class="card-title">邀请新教师</span></template>
+          <template #header><span class="card-title">{{ $t('microSpecialtyTeamEdit.inviteNewTeacher') }}</span></template>
           <!-- 搜索过滤 -->
           <div class="filter-bar">
-            <el-input v-model="searchKeyword" placeholder="搜索教师姓名" clearable class="search-input" @clear="fetchCandidates" @keyup.enter="fetchCandidates" aria-label="搜索教师姓名">
+            <el-input v-model="searchKeyword" :placeholder="$t('microSpecialtyTeamEdit.searchTeacherPlaceholder')" clearable class="search-input" @clear="fetchCandidates" @keyup.enter="fetchCandidates" :aria-label="$t('microSpecialtyTeamEdit.searchTeacherPlaceholder')">
               <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
-            <el-select v-model="searchDept" placeholder="选择学院" clearable class="filter-select" @change="fetchCandidates" aria-label="筛选学院">
+            <el-select v-model="searchDept" :placeholder="$t('microSpecialtyTeamEdit.selectCollegePlaceholder')" clearable class="filter-select" @change="fetchCandidates" :aria-label="$t('microSpecialtyTeamEdit.filterDeptAria')">
               <el-option v-for="d in departments" :key="d.id" :label="d.name" :value="d.id" />
             </el-select>
-            <el-button type="primary" @click="fetchCandidates">搜索</el-button>
+            <el-button type="primary" @click="fetchCandidates">{{ $t('common.search') }}</el-button>
           </div>
 
           <!-- 候选教师表格 -->
           <el-table :data="candidates" stripe border v-loading="candidateLoading" @selection-change="handleSelectionChange" ref="candidateTableRef">
-            <template #empty><el-empty :description="searched ? '未找到匹配的教师' : '点击搜索查看可选教师'" /></template>
+            <template #empty><el-empty :description="searched ? $t('microSpecialtyTeamEdit.noMatchTeacher') : $t('microSpecialtyTeamEdit.clickSearchHint')" /></template>
             <el-table-column type="selection" width="50" />
-            <el-table-column prop="realName" label="姓名" width="120" />
-            <el-table-column prop="collegeName" label="学院" width="140" show-overflow-tooltip />
-            <el-table-column prop="email" label="邮箱" min-width="180" show-overflow-tooltip />
-            <el-table-column label="角色" width="140">
+            <el-table-column prop="realName" :label="$t('user.realName')" width="120" />
+            <el-table-column prop="collegeName" :label="$t('microSpecialtyTeamEdit.college')" width="140" show-overflow-tooltip />
+            <el-table-column prop="email" :label="$t('user.email')" min-width="180" show-overflow-tooltip />
+            <el-table-column :label="$t('user.role')" width="140">
               <template #default="{ row: r }">
-                <el-select v-model="inviteRoles[r.id]" size="small" class="full-width" :aria-label="'为' + (r.realName || '') + '选择角色'">
-                  <el-option label="团队成员" value="MEMBER" />
-                  <el-option label="助教" value="ASSISTANT" />
+                <el-select v-model="inviteRoles[r.id]" size="small" class="full-width" :aria-label="$t('microSpecialtyTeamEdit.selectRoleAria', { name: r.realName || '' })">
+                  <el-option :label="$t('microSpecialtyTeamEdit.roleMember')" value="MEMBER" />
+                  <el-option :label="$t('microSpecialtyTeamEdit.roleAssistant')" value="ASSISTANT" />
                 </el-select>
               </template>
             </el-table-column>
-            <el-table-column label="分配章节" width="120">
+            <el-table-column :label="$t('microSpecialtyProposal.assignChapters')" width="120">
               <template #default="{ row: r }">
                 <el-button link type="primary" size="small" @click="openChapterSelect(r)">
-                  选择章节 {{ getInviteChapterCount(r.id) > 0 ? '(' + getInviteChapterCount(r.id) + ')' : '' }}
+                  {{ $t('course.selectChapter') }} {{ getInviteChapterCount(r.id) > 0 ? $t('microSpecialtyTeamEdit.chapterCountSuffix', { count: getInviteChapterCount(r.id) }) : '' }}
                 </el-button>
               </template>
             </el-table-column>
           </el-table>
 
           <div class="invite-bar" v-if="selectedCandidates.length > 0">
-            <span>已选 <strong>{{ selectedCandidates.length }}</strong> 位教师</span>
-            <el-button type="primary" :loading="inviting" :disabled="inviting" @click="handleBatchInvite">批量邀请</el-button>
+            <span>{{ $t('microSpecialtyTeamEdit.selectedPrefix') }} <strong>{{ selectedCandidates.length }}</strong> {{ $t('microSpecialtyTeamEdit.selectedSuffix') }}</span>
+            <el-button type="primary" :loading="inviting" :disabled="inviting" @click="handleBatchInvite">{{ $t('microSpecialtyTeamEdit.batchInvite') }}</el-button>
           </div>
         </el-card>
       </template>
     </div>
-    <el-dialog v-model="chapterPopupVisible" title="选择章节" width="500px">
+    <el-dialog v-model="chapterPopupVisible" :title="$t('course.selectChapter')" width="500px">
       <template v-if="chapterPopupTeacher">
-        <el-alert :title="'为 ' + (chapterPopupTeacher.realName || '') + ' 分配章节'" type="info" :closable="false" show-icon class="mg-bottom-12" />
-        <el-checkbox-group v-model="inviteChapters[chapterPopupTeacher.id]" aria-label="选择章节">
+        <el-alert :title="$t('microSpecialtyProposal.assignChapterFor', { name: chapterPopupTeacher.realName || '' })" type="info" :closable="false" show-icon class="mg-bottom-12" />
+        <el-checkbox-group v-model="inviteChapters[chapterPopupTeacher.id]" :aria-label="$t('course.selectChapter')">
           <div v-for="ch in chapterOptions" :key="ch.id" class="chapter-check-row">
             <el-checkbox :label="ch.id" :value="ch.id">
               {{ ch.courseTitle || ch.courseName }} / {{ ch.chapterTitle || ch.title }}
             </el-checkbox>
           </div>
         </el-checkbox-group>
-        <div v-if="chapterOptions.length === 0" class="empty-hint">暂无章节</div>
+        <div v-if="chapterOptions.length === 0" class="empty-hint">{{ $t('video.noChapters') }}</div>
       </template>
       <template #footer>
-        <el-button @click="chapterPopupVisible = false">取消</el-button>
-        <el-button type="primary" @click="chapterPopupVisible = false">确定</el-button>
+        <el-button @click="chapterPopupVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" @click="chapterPopupVisible = false">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -129,13 +129,16 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
 import { getMicroSpecialtyDetail, getTeachersForManage, inviteTeacher, removeTeacher, reinviteTeacher, getCourses } from '@/api/microSpecialty'
 import { getUsers } from '@/api/user'
 import { getDepartments } from '@/api/department'
 
-const roleMap = { LEAD: '负责人', MEMBER: '团队成员', ASSISTANT: '助教' }
+const { t } = useI18n()
+
+const roleMap = { LEAD: 'microSpecialtyTeamEdit.roleLead', MEMBER: 'microSpecialtyTeamEdit.roleMember', ASSISTANT: 'microSpecialtyTeamEdit.roleAssistant' }
 
 const route = useRoute()
 const msId = computed(() => route.params.id)
@@ -171,22 +174,22 @@ const fetchData = async () => {
   error.value = false; loading.value = true
   try {
     const { data: d } = await getMicroSpecialtyDetail(msId.value); detail.value = d
-    const { data: t } = await getTeachersForManage(msId.value)
-    const items = t.items || t || []
+    const { data: teachersRes } = await getTeachersForManage(msId.value)
+    const items = teachersRes.items || teachersRes || []
     const now = Date.now()
     teachers.value = items.map(i => {
       const dl = i.inviteExpiresAt ? new Date(i.inviteExpiresAt).getTime() : null
       const rem = dl ? Math.max(0, Math.ceil((dl - now) / 86400000)) : null
-      return { ...i, expiring: i.inviteStatus === 'INVITED' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? `剩余${rem}天` : '已过期') : '' }
+      return { ...i, expiring: i.inviteStatus === 'INVITED' && rem !== null && rem < 3, deadlineText: dl ? (rem > 0 ? t('microSpecialtyTeamEdit.remainingDays', { count: rem }) : t('microSpecialtyTeamEdit.deadlineExpired')) : '' }
     })
     try { const { data: cc } = await getCourses(msId.value); courseOptions.value = cc.items || cc || [] } catch { /* skip course options */ }
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '获取微专业详情失败'); error.value = true }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyTeamEdit.fetchDetailFailed')); error.value = true }
   finally { loading.value = false; loadDepartments() }
 }
 
 const loadDepartments = async () => {
   try { const { data } = await getDepartments(); departments.value = data?.items || data || [] }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '获取部门列表失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyTeamEdit.fetchDepartmentsFailed')) }
 }
 
 // 防抖搜索
@@ -196,7 +199,7 @@ const fetchCandidates = () => {
   searchDebounceTimer = setTimeout(async () => {
     candidateLoading.value = true; searched.value = true
     try {
-      const params = { role: 'TEACHER', size: 200 }
+      const params = { role: 'TEACHER', size: 100 }
       if (searchKeyword.value) params.keyword = searchKeyword.value
       if (searchDept.value) params.departmentId = searchDept.value
       const { data } = await getUsers(params)
@@ -228,7 +231,7 @@ function handleMemberSelectionChange(rows) {
 async function handleBatchRemoveMembers() {
   if (selectedMembers.value.length === 0) return
   try {
-    await ElMessageBox.confirm(`确定批量移除 ${selectedMembers.value.length} 位教师？`, '确认', { type: 'warning' })
+    await ElMessageBox.confirm(t('microSpecialtyTeamEdit.confirmBatchRemove', { count: selectedMembers.value.length }), t('app.confirm'), { type: 'warning' })
   } catch { return }
   batchRemoving.value = true
   const failed = []
@@ -240,8 +243,8 @@ async function handleBatchRemoveMembers() {
     }
   }
   batchRemoving.value = false
-  if (failed.length === 0) ElMessage.success('已批量移除')
-  else ElMessage.warning(`${failed.length} 位移除失败: ${failed.join(',')}`)
+  if (failed.length === 0) ElMessage.success(t('microSpecialtyTeamEdit.batchRemoveSuccess'))
+  else ElMessage.warning(t('microSpecialtyTeamEdit.batchRemovePartialFail', { count: failed.length, names: failed.join(',') }))
   memberTableRef.value?.clearSelection()
   selectedMembers.value = []
   fetchData()
@@ -251,25 +254,25 @@ const handleBatchInvite = async () => {
   if (selectedCandidates.value.length === 0) return
   inviting.value = true
   const failed = []
-  for (const t of selectedCandidates.value) {
+  for (const teacher of selectedCandidates.value) {
     try {
       await inviteTeacher(msId.value, {
-        teacherId: t.id,
-        role: inviteRoles[t.id] || 'MEMBER',
-        courseId: inviteCourses[t.id] || null,
-        chapterIds: inviteChapters[t.id] || []
+        teacherId: teacher.id,
+        role: inviteRoles[teacher.id] || 'MEMBER',
+        courseId: inviteCourses[teacher.id] || null,
+        chapterIds: inviteChapters[teacher.id] || []
       })
     } catch (e) {
-      failed.push({ name: t.realName, msg: e?.response?.data?.message || '失败' })
+      failed.push({ name: teacher.realName, msg: e?.response?.data?.message || t('microSpecialtyTeamEdit.failed') })
     }
   }
   inviting.value = false
   // 详细的成功/失败反馈
   const succeeded = selectedCandidates.value.length - failed.length
-  if (succeeded > 0) ElMessage.success(`已邀请 ${succeeded} 位教师`)
+  if (succeeded > 0) ElMessage.success(t('microSpecialtyTeamEdit.inviteSuccessCount', { count: succeeded }))
   if (failed.length > 0) {
     const msg = failed.map(f => `${f.name}: ${f.msg}`).join('; ')
-    ElMessage.warning(`${failed.length} 位失败: ${msg.substring(0, 200)}`)
+    ElMessage.warning(t('microSpecialtyTeamEdit.invitePartialFail', { count: failed.length, msg: msg.substring(0, 200) }))
   }
   fetchData()
   // 刷新候选列表(已邀请的会被排除)
@@ -280,15 +283,15 @@ const handleBatchInvite = async () => {
 }
 
 const handleRemove = async (row) => {
-  try { await ElMessageBox.confirm(`确定移除「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('microSpecialtyTeamEdit.confirmRemove', { name: row.teacherName }), t('app.confirm'), { type: 'warning' }) } catch { return }
   removingId.value = row.teacherId
-  try { await removeTeacher(msId.value, row.teacherId); ElMessage.success('已移除'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '移除失败') }
+  try { await removeTeacher(msId.value, row.teacherId); ElMessage.success(t('microSpecialtyTeamEdit.removedSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyTeamEdit.removeFailed')) }
   finally { removingId.value = null }
 }
 
 const handleReinvite = async (row) => {
-  try { await ElMessageBox.confirm(`确定重新邀请「${row.teacherName}」？`, '确认', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('microSpecialtyTeamEdit.confirmReinvite', { name: row.teacherName }), t('app.confirm'), { type: 'warning' }) } catch { return }
   // P1-C 修复：重邀请求体必须带 teacherId/role/courseId（此前空 body → "教师ID不能为空"）
   try {
     await reinviteTeacher(row.id || row.inviteId, {
@@ -296,22 +299,22 @@ const handleReinvite = async (row) => {
       role: row.role || 'MEMBER',
       courseId: row.courseId || null
     })
-    ElMessage.success('已重新邀请')
+    ElMessage.success(t('microSpecialtyTeamEdit.reinviteSuccess'))
     fetchData()
   }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '重邀失败') }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('microSpecialtyTeamEdit.reinviteFailed')) }
 }
 
 const handleBatchRemove = async () => {
   if (selectedCandidates.value.length === 0) return
-  try { await ElMessageBox.confirm(`确定批量移除 ${selectedCandidates.value.length} 位教师？`, '确认', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('microSpecialtyTeamEdit.confirmBatchRemove', { count: selectedCandidates.value.length }), t('app.confirm'), { type: 'warning' }) } catch { return }
   const failed = []
   for (const t of selectedCandidates.value) {
     try { await removeTeacher(msId.value, t.teacherId) }
     catch { failed.push(t.teacherName) }
   }
-  if (failed.length === 0) ElMessage.success('已批量移除')
-  else ElMessage.warning(`${failed.length} 位移除失败: ${failed.join(',')}`)
+  if (failed.length === 0) ElMessage.success(t('microSpecialtyTeamEdit.batchRemoveSuccess'))
+  else ElMessage.warning(t('microSpecialtyTeamEdit.batchRemovePartialFail', { count: failed.length, names: failed.join(',') }))
   fetchData()
   selectedCandidates.value = []
 }
@@ -349,7 +352,7 @@ async function loadChapterOptions() {
       }
     }
     chapterOptions.value = chapters
-  } catch { ElMessage.warning('加载章节失败') }
+  } catch { ElMessage.warning(t('microSpecialtyTeamEdit.loadChaptersFailed')) }
 }
 
 onMounted(() => { fetchData(); loadChapterOptions() })

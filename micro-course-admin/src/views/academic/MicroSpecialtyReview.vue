@@ -4,40 +4,40 @@
 -->
 <template>
   <div class="ms-review">
-    <el-page-header @back="$router.back()" content="微专业审核" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="$t('route.AcademicMicroSpecialtyReview')" class="mg-bottom-16" />
 
     <el-tabs v-model="activeTab" @tab-change="() => { page = 1; fetchData() }">
-      <el-tab-pane label="待审批" name="PENDING" />
-      <el-tab-pane label="全部" name="ALL" />
+      <el-tab-pane :label="$t('microSpecialtyReview.tabPending')" name="PENDING" />
+      <el-tab-pane :label="$t('app.all')" name="ALL" />
     </el-tabs>
 
     <el-card shadow="never">
-      <el-alert v-if="error" title="加载失败" type="error" show-icon :closable="false" class="mg-bottom-12">
-        <template #default><el-button size="small" @click="fetchData">重试</el-button></template>
+      <el-alert v-if="error" :title="$t('microSpecialtyManage.loadFailed')" type="error" show-icon :closable="false" class="mg-bottom-12">
+        <template #default><el-button size="small" @click="fetchData">{{ $t('common.retry') }}</el-button></template>
       </el-alert>
       <el-table v-loading="loading" :data="items" stripe border>
-        <template #empty><el-empty description="暂无待审核微专业" style="max-width: 100%; min-width: 0; --el-empty-padding: 0;" /></template>
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="collegeName" label="学院" width="120" />
-        <el-table-column prop="creatorName" label="创建者" width="100" />
-        <el-table-column label="状态" width="120" align="center">
+        <template #empty><el-empty :description="$t('microSpecialtyReview.emptyPending')" style="max-width: 100%; min-width: 0; --el-empty-padding: 0;" /></template>
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="collegeName" :label="$t('microSpecialtyReview.college')" width="120" />
+        <el-table-column prop="creatorName" :label="$t('microSpecialtyReview.creator')" width="100" />
+        <el-table-column :label="$t('app.status')" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="130" align="center" :formatter="$formatDateTime">
+        <el-table-column prop="createdAt" :label="$t('microSpecialtyReview.createdAt')" width="130" align="center" :formatter="$formatDateTime">
           <template #default="{ row }">{{ $formatDate(row.createdAt) || '-' }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="380" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="380" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.status === 'PENDING_REVIEW'">
-              <el-button size="small" @click="showDetail(row)">查看</el-button>
-              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">通过</el-button>
-              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
-              <el-button size="small" @click="handleCancel(row)">取消</el-button>
+              <el-button size="small" @click="showDetail(row)">{{ $t('course.view') }}</el-button>
+              <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">{{ $t('microSpecialtyReview.approve') }}</el-button>
+              <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">{{ $t('microSpecialtyReview.reject') }}</el-button>
+              <el-button size="small" @click="handleCancel(row)">{{ $t('app.cancel') }}</el-button>
             </template>
-            <el-button v-if="row.status === 'COMPLETED' && (userStore.role === 'ACADEMIC' || userStore.role === 'ADMIN')" size="small" type="primary" @click="handleReopen(row)">重新开课</el-button>
-            <el-button v-if="row.status === 'COMPLETED'" size="small" type="info" @click="handleArchive(row)">归档</el-button>
+            <el-button v-if="row.status === 'COMPLETED' && (userStore.role === 'ACADEMIC' || userStore.role === 'ADMIN')" size="small" type="primary" @click="handleReopen(row)">{{ $t('microSpecialtyManage.reopen') }}</el-button>
+            <el-button v-if="row.status === 'COMPLETED'" size="small" type="info" @click="handleArchive(row)">{{ $t('course.archive') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -54,40 +54,46 @@
     </el-card>
 
     <!-- 驳回原因 Dialog -->
-    <el-dialog v-model="rejectVisible" title="驳回原因" width="480px" @close="rejectTarget.value = null">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit aria-label="驳回原因" />
+    <el-dialog v-model="rejectVisible" :title="$t('microSpecialtyReview.rejectReasonTitle')" width="480px" @close="rejectTarget.value = null">
+      <el-form ref="rejectFormRef" :model="rejectForm" :rules="rejectRules" @submit.prevent>
+        <el-form-item prop="reason">
+          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" :placeholder="$t('microSpecialtyReview.rejectReasonPlaceholder')" maxlength="500" show-word-limit :aria-label="$t('microSpecialtyReview.rejectReasonTitle')" />
+        </el-form-item>
+      </el-form>
       <template #footer>
-        <el-button @click="rejectVisible = false; rejectTarget.value = null">取消</el-button>
-        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
+        <el-button @click="rejectVisible = false; rejectTarget.value = null">{{ $t('common.cancel') }}</el-button>
+        <el-button type="danger" :loading="actingId !== null" @click="confirmReject">{{ $t('microSpecialtyReview.confirmReject') }}</el-button>
       </template>
     </el-dialog>
     <!-- 查看详情 Dialog -->
-    <el-dialog v-model="detailVisible" title="微专业详情" width="560px">
+    <el-dialog v-model="detailVisible" :title="$t('microSpecialtyReview.detailTitle')" width="560px">
       <div class="detail-grid" v-if="detailRow">
-        <div class="detail-item"><label>标题</label><span>{{ detailRow.title }}</span></div>
-        <div class="detail-item"><label>学院</label><span>{{ detailRow.collegeName || '-' }}</span></div>
-        <div class="detail-item"><label>创建者</label><span>{{ detailRow.creatorName || '-' }}</span></div>
-        <div class="detail-item"><label>学期</label><span>{{ detailRow.semester || '-' }}</span></div>
-        <div class="detail-item"><label>招生上限</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
-        <div class="detail-item"><label>状态</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
-        <div class="detail-item full-width"><label>说明</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
-        <div class="detail-item full-width"><label>培养目标</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
+        <div class="detail-item"><label>{{ $t('course.tableTitle') }}</label><span>{{ detailRow.title }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyReview.college') }}</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyReview.creator') }}</label><span>{{ detailRow.creatorName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('course.semester') }}</label><span>{{ detailRow.semester || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyReview.maxStudents') }}</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('app.status') }}</label><span><el-tag :type="statusType(detailRow.status)" size="small">{{ statusLabel(detailRow.status) }}</el-tag></span></div>
+        <div class="detail-item full-width"><label>{{ $t('microSpecialtyManage.description') }}</label><span v-html="sanitizeHtml(detailRow.description || '-')" class="detail-html"></span></div>
+        <div class="detail-item full-width"><label>{{ $t('microSpecialtyManage.trainingObjective') }}</label><span v-html="sanitizeHtml(detailRow.trainingObjective || '-')" class="detail-html"></span></div>
       </div>
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty, reopenMicroSpecialty } from '@/api/microSpecialty'
 import { useUserStore } from '@/store/user'
 import { sanitizeHtml } from '@/utils/xss'
 
 const userStore = useUserStore()
+const { t } = useI18n()
 // 路由守卫竞态: 组件异步 load 在 store.getInfo() 前完成 → 错误 fetch → 403
 const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
 
@@ -100,14 +106,21 @@ const size = ref(20)
 const total = ref(0)
 
 const rejectVisible = ref(false)
-const rejectReason = ref('')
+// P1-C 修复: 驳回原因必填校验（此前可空原因直接驳回）
+const rejectForm = reactive({ reason: '' })
+const rejectFormRef = ref(null)
+const rejectRules = {
+  reason: [
+    { required: true, message: t('microSpecialtyReview.rejectReasonRequired') || '请输入驳回原因', trigger: 'blur' }
+  ]
+}
 const rejectTarget = ref(null)
 const detailVisible = ref(false)
 const detailRow = ref(null)
 
 const showDetail = (row) => { detailRow.value = row; detailVisible.value = true }
 
-const statusMap = { DRAFT: '草稿', PENDING_REVIEW: '待审核', APPROVED: '已通过', RECRUITING: '招生中', COMPLETED: '已结业', REJECTED: '已驳回', CANCELLED: '已取消', ARCHIVED: '已归档' }
+const statusKeyMap = { DRAFT: 'course.draft', PENDING_REVIEW: 'course.pendingReview', APPROVED: 'course.approved', RECRUITING: 'microSpecialtyReview.statusRecruiting', COMPLETED: 'microSpecialtyReview.statusCompleted', REJECTED: 'microSpecialtyManage.statusRejected', CANCELLED: 'microSpecialtyManage.statusCancelled', ARCHIVED: 'microSpecialtyReview.statusArchived' }
 const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'success', RECRUITING: 'success', COMPLETED: 'info', REJECTED: 'danger', CANCELLED: 'danger', ARCHIVED: 'info' }
 const error = ref(false)
 
@@ -123,69 +136,75 @@ const fetchData = async () => {
     total.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('加载失败')
+    ElMessage.error(t('microSpecialtyManage.loadFailed'))
   }
   finally { loading.value = false }
 }
-const statusLabel = (s) => statusMap[s] || s
+const statusLabel = (s) => (statusKeyMap[s] ? t(statusKeyMap[s]) : s)
 const statusType = (s) => statusTypeMap[s] || 'info'
 
 const handleApprove = async (row) => {
-  try { await ElMessageBox.confirm(`确定通过「${row.title}」的微专业？`, '确认通过', { type: 'info', confirmButtonText: '通过', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyReview.confirmApproveMsg', { title: row.title }), t('microSpecialtyReview.confirmApproveTitle'), { type: 'info', confirmButtonText: t('microSpecialtyReview.approve'), cancelButtonText: t('common.cancel') }) }
   catch { return }
   actingId.value = row.id
-  try { await approveMicroSpecialty(row.id); ElMessage.success('已通过'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await approveMicroSpecialty(row.id); ElMessage.success(t('course.approved')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }
 
 const handleReject = async (row) => {
-  try { await ElMessageBox.confirm(`确定驳回「${row.title}」？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyReview.confirmRejectMsg', { title: row.title }), t('microSpecialtyReview.confirmReject'), { type: 'warning', confirmButtonText: t('microSpecialtyReview.reject'), cancelButtonText: t('common.cancel') }) }
   catch { return }
-  rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
+  rejectTarget.value = row; rejectForm.reason = ''; rejectFormRef.value?.clearValidate(); rejectVisible.value = true
 }
 const confirmReject = async () => {
+  if (!rejectFormRef.value) return
+  try {
+    await rejectFormRef.value.validate()
+  } catch { return }
   actingId.value = rejectTarget.value.id
-  try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectReason.value }); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await rejectMicroSpecialty(rejectTarget.value.id, { reason: rejectForm.reason }); ElMessage.success(t('microSpecialtyManage.statusRejected')); rejectVisible.value = false; fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actingId.value = null }
 }
 
 const handleCancel = async (row) => {
   let reason
   try {
-    const res = await ElMessageBox.prompt('请填写取消原因', '取消微专业', {
-      confirmButtonText: '确定取消', cancelButtonText: '取消',
-      inputType: 'textarea', inputPlaceholder: '请填写取消原因',
-      inputValidator: v => v?.trim()?.length >= 1 || '取消原因不能为空'
+    const res = await ElMessageBox.prompt(t('microSpecialtyManage.cancelReasonPrompt'), t('microSpecialtyManage.cancelTitle'), {
+      confirmButtonText: t('microSpecialtyManage.confirmCancelBtn'), cancelButtonText: t('common.cancel'),
+      inputType: 'textarea', inputPlaceholder: t('microSpecialtyManage.cancelReasonPrompt'),
+      inputValidator: v => v?.trim()?.length >= 1 || t('microSpecialtyManage.cancelReasonRequired')
     })
     reason = res.value
   } catch { return }
-  try { await cancelMicroSpecialty(row.id, reason); ElMessage.success('已取消'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await cancelMicroSpecialty(row.id, reason); ElMessage.success(t('microSpecialtyManage.cancelSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 
 const handleReopen = async (row) => {
   try {
-    await ElMessageBox.confirm('确认将此微专业从 COMPLETED 重置为 RECRUITING？', '重新开课', {
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('microSpecialtyReview.reopenConfirmMsg'), t('microSpecialtyManage.reopen'), {
+      confirmButtonText: t('app.confirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
     await reopenMicroSpecialty(row.id)
-    ElMessage.success('已重新开课')
+    ElMessage.success(t('microSpecialtyManage.reopenSuccess'))
     fetchData()
   } catch (e) {
-// eslint-disable-next-line no-console
-    if (e !== 'cancel') console.debug(e)
+    // P1-C 修复: 原 catch 仅 console.debug 静默吞掉 API 失败，
+    // 用户点击"重新开启"失败时无任何反馈
+    if (e === 'cancel') return
+    ElMessage.error(e?.response?.data?.message || t('course.operationFailed'))
   }
 }
 
 const handleArchive = async (row) => {
-  try { await ElMessageBox.confirm(`确定归档「${row.title}」？`, '确认归档', { type: 'info', confirmButtonText: '归档', cancelButtonText: '取消' }) }
+  try { await ElMessageBox.confirm(t('microSpecialtyReview.confirmArchiveMsg', { title: row.title }), t('microSpecialtyReview.confirmArchiveTitle'), { type: 'info', confirmButtonText: t('course.archive'), cancelButtonText: t('common.cancel') }) }
   catch { return }
-  try { await archiveMicroSpecialty(row.id); ElMessage.success('已归档'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
+  try { await archiveMicroSpecialty(row.id); ElMessage.success(t('microSpecialtyReview.statusArchived')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
 }
 
 onMounted(fetchData)

@@ -9,11 +9,11 @@
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
         <div class="toolbar-left">
-          <span class="card-title">轮播图管理</span>
+          <span class="card-title">{{ $t('bannerList.title') }}</span>
         </div>
         <div class="toolbar-right">
-          <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleAdd" aria-label="新增轮播图">
-            <el-icon><Plus /></el-icon>新增轮播图
+          <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleAdd" :aria-label="$t('bannerList.addBanner')">
+            <el-icon><Plus /></el-icon>{{ $t('bannerList.addBanner') }}
           </el-button>
         </div>
       </div>
@@ -25,16 +25,16 @@
       <el-result
         v-else-if="error"
         icon="error"
-        title="加载失败"
-        sub-title="请稍后重试"
+        :title="$t('bannerList.loadFailed')"
+        :sub-title="$t('bannerList.loadFailedSubtitle')"
       >
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
       <el-empty
         v-else-if="!loading && tableData.length === 0"
-        description="暂无轮播图"
+        :description="$t('bannerList.empty')"
         :image-size="120"
       />
       <el-table
@@ -45,24 +45,24 @@
         border
         class="data-table"
       >
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column label="图片" width="200" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column :label="$t('bannerList.image')" width="200" align="center">
           <template #default="{ row }">
             <el-image
               :src="row.imageUrl"
               fit="cover"
               class="banner-image"
-              alt="轮播图"
+              :alt="$t('bannerList.bannerAlt')"
               :preview-src-list="[row.imageUrl]"
               preview-teleported
             >
               <template #error>
-                <div class="image-error">加载失败</div>
+                <div class="image-error">{{ $t('bannerList.imageLoadFailed') }}</div>
               </template>
             </el-image>
           </template>
         </el-table-column>
-        <el-table-column prop="linkUrl" label="跳转链接" min-width="200" show-overflow-tooltip>
+        <el-table-column prop="linkUrl" :label="$t('bannerList.linkUrl')" min-width="200" show-overflow-tooltip>
           <template #default="{ row }">
             <a v-if="row.linkUrl" :href="row.linkUrl" target="_blank" rel="noopener noreferrer" class="banner-link">
               {{ row.linkUrl }}
@@ -70,44 +70,44 @@
             <span v-else class="text-secondary">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="sortOrder" label="排序" width="80" align="center" sortable />
-        <el-table-column prop="enabled" label="状态" width="100" align="center">
+        <el-table-column prop="sortOrder" :label="$t('bannerList.sortOrder')" width="80" align="center" sortable />
+        <el-table-column prop="enabled" :label="$t('bannerList.status')" width="100" align="center">
           <template #default="{ row }">
             <el-switch
               v-model="row.enabled"
-              aria-label="轮播图启用状态"
-              active-text="启用"
-              inactive-text="禁用"
+              :aria-label="$t('bannerList.enabledAria')"
+              :active-text="$t('bannerList.enabled')"
+              :inactive-text="$t('bannerList.disabled')"
               @change="handleToggleStatus(row)"
             />
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="创建时间" width="160">
+        <el-table-column prop="createdAt" :label="$t('bannerList.createdAt')" width="160">
           <template #default="{ row }">
             <span class="text-secondary">{{ formatTime(row.createdAt) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="160" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'ADMIN'" type="primary" link @click="handleEdit(row)" aria-label="编辑">
-            <el-icon><Edit /></el-icon>编辑
+            <el-button v-if="userRole === 'ADMIN'" type="primary" link @click="handleEdit(row)" :aria-label="$t('app.edit')">
+            <el-icon><Edit /></el-icon>{{ $t('app.edit') }}
             </el-button>
-            <el-button v-if="userRole === 'ADMIN'" type="danger" link @click="handleDelete(row)" aria-label="删除">
-            <el-icon><Delete /></el-icon>删除
+            <el-button v-if="userRole === 'ADMIN'" type="danger" link @click="handleDelete(row)" :aria-label="$t('app.delete')">
+            <el-icon><Delete /></el-icon>{{ $t('app.delete') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <div v-if="tableData.length > 0" class="count-wrap">
-        <span class="text-secondary">共 {{ tableData.length }} 张轮播图</span>
+        <span class="text-secondary">{{ $t('bannerList.totalCount', { count: tableData.length }) }}</span>
       </div>
     </el-card>
 
     <!-- 添加/编辑弹窗 -->
     <el-dialog
       v-model="formVisible"
-      :title="isEdit ? '编辑轮播图' : '新增轮播图'"
+      :title="isEdit ? $t('bannerList.editTitle') : $t('bannerList.addTitle')"
       width="600px"
       destroy-on-close
      :close-on-press-escape="true"
@@ -119,7 +119,7 @@
         label-width="100px"
         class="banner-form"
       >
-        <el-form-item label="图片" prop="imageUrl">
+        <el-form-item :label="$t('bannerList.image')" prop="imageUrl">
           <div class="image-upload-wrap">
             <el-upload
               ref="imageUploadRef"
@@ -138,47 +138,47 @@
                 class="preview-image"
               >
                 <template #error>
-                  <div class="image-error">加载失败</div>
+                  <div class="image-error">{{ $t('bannerList.imageLoadFailed') }}</div>
                 </template>
               </el-image>
               <div v-else class="upload-placeholder">
                 <el-icon class="upload-icon"><Plus /></el-icon>
-                <span class="upload-text">点击上传图片</span>
+                <span class="upload-text">{{ $t('bannerList.clickUpload') }}</span>
               </div>
             </el-upload>
             <div v-if="form.imageUrl" class="image-actions">
               <el-button type="danger" size="small" @click="handleRemoveImage">
-<el-icon><Delete /></el-icon>移除
+<el-icon><Delete /></el-icon>{{ $t('bannerList.remove') }}
               </el-button>
             </div>
           </div>
-          <div class="form-tip">支持 JPG、PNG、WebP，建议尺寸 1920×600px，单张不超过 5MB</div>
+          <div class="form-tip">{{ $t('bannerList.formTip') }}</div>
         </el-form-item>
-        <el-form-item label="跳转链接" prop="link">
+        <el-form-item :label="$t('bannerList.linkUrl')" prop="linkUrl">
           <el-input
             v-model="form.linkUrl"
-            placeholder="https:// 或留空"
+            :placeholder="$t('bannerList.linkPlaceholder')"
             type="url"
           />
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('bannerList.sortOrder')" prop="sortOrder">
           <el-input-number
             v-model="form.sortOrder"
             :min="0"
             :max="9999"
             controls-position="right"
           />
-          <span class="form-tip-inline">数值越小越靠前</span>
+          <span class="form-tip-inline">{{ $t('bannerList.sortTip') }}</span>
         </el-form-item>
-        <el-form-item label="状态">
-          <el-switch v-model="form.enabled" aria-label="启用" />
-          <span class="form-hint">{{ form.enabled ? '启用' : '禁用' }}</span>
+        <el-form-item :label="$t('bannerList.status')">
+          <el-switch v-model="form.enabled" :aria-label="$t('bannerList.enabled')" />
+          <span class="form-hint">{{ form.enabled ? $t('bannerList.enabled') : $t('bannerList.disabled') }}</span>
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="handleFormCancel">取消</el-button>
+        <el-button @click="handleFormCancel">{{ $t('common.cancel') }}</el-button>
         <el-button type="primary" :loading="saving" @click="handleConfirmSave">
-          {{ isEdit ? '保存修改' : '确认新增' }}
+          {{ isEdit ? $t('bannerList.saveEdit') : $t('bannerList.confirmAdd') }}
         </el-button>
       </template>
     </el-dialog>
@@ -191,6 +191,7 @@
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -201,6 +202,8 @@ import {
   deleteBanner,
   toggleBannerStatus
 } from '@/api/admin-banner'
+
+const { t } = useI18n()
 
 // 加载状态
 const loading = ref(false)
@@ -231,10 +234,10 @@ const form = reactive({
 
 // 表单验证
 const formRules = {
-  imageUrl: [{ required: true, message: '请上传轮播图图片', trigger: ['blur', 'change'] }],
+  imageUrl: [{ required: true, message: t('bannerList.imageRequired'), trigger: ['blur', 'change'] }],
   linkUrl: [{
     pattern: /^$|^https?:\/\/.+/i,
-    message: '请输入正确的 URL 格式（以 http:// 或 https:// 开头）',
+    message: t('bannerList.linkFormat'),
     trigger: 'blur'
   }]
 }
@@ -248,7 +251,7 @@ async function fetchData() {
     tableData.value = Array.isArray(res.data) ? res.data : []
   } catch {
     error.value = true
-    ElMessage.error('获取轮播图列表失败')
+    ElMessage.error(t('bannerList.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -301,6 +304,22 @@ function handleImageChange(file) {
   form._rawFile = raw
 }
 
+// 上传前客户端校验（P1-C 修复: 此前 handleBeforeUpload 未定义导致
+// before-upload 绑定失效，图片选择无任何客户端校验）
+function handleBeforeUpload(file) {
+  const isImage = ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+  const isLt5M = file.size / 1024 / 1024 < 5
+  if (!isImage) {
+    ElMessage.error(t('bannerList.onlyImageAllowed') || '只能上传图片文件')
+    return false
+  }
+  if (!isLt5M) {
+    ElMessage.error(t('bannerList.fileTooLarge') || '图片大小不能超过 5MB')
+    return false
+  }
+  return true
+}
+
 // 移除图片
 function handleRemoveImage() {
   if (form.imageUrl && form.imageUrl.startsWith('blob:')) {
@@ -333,15 +352,15 @@ async function handleConfirmSave() {
 
     if (isEdit.value) {
       await updateBanner(currentBannerId.value, fd)
-      ElMessage.success('操作成功')
+      ElMessage.success(t('common.success'))
     } else {
       await createBanner(fd)
-      ElMessage.success('操作成功')
+      ElMessage.success(t('common.success'))
     }
     formVisible.value = false
     fetchData()
   } catch (err) {
-    ElMessage.error(err.message || (isEdit.value ? '修改失败，请稍后重试' : '新增失败，请稍后重试'))
+    ElMessage.error(err.message || t(isEdit.value ? 'bannerList.updateFailedRetry' : 'bannerList.createFailedRetry'))
   } finally {
     saving.value = false
   }
@@ -351,16 +370,16 @@ async function handleConfirmSave() {
 async function handleDelete(row) {
   try {
     await ElMessageBox.confirm(
-      `确定要删除轮播图「${row.id}」吗？`,
-      '删除确认',
-      { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' }
+      t('bannerList.confirmDelete', { id: row.id }),
+      t('bannerList.deleteConfirmTitle'),
+      { type: 'warning', confirmButtonText: t('app.delete'), cancelButtonText: t('common.cancel') }
     )
     await deleteBanner(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('bannerList.deleteSuccess'))
     fetchData()
   } catch (err) {
     if (err !== 'cancel') {
-      ElMessage.error(err.message || '删除失败')
+      ElMessage.error(err.message || t('bannerList.deleteFailed'))
     }
   }
 }
@@ -368,16 +387,19 @@ async function handleDelete(row) {
 // 切换状态（带二次确认）
 async function handleToggleStatus(row) {
   const newVal = row.enabled
-  const action = newVal ? '上线' : '下线'
-  const bannerTitle = row.title || row.id || '未命名'
+  const bannerTitle = row.title || row.id || t('bannerList.unnamed')
+  const confirmMsg = newVal
+    ? t('bannerList.confirmOnline', { title: bannerTitle })
+    : t('bannerList.confirmOffline', { title: bannerTitle })
+  const confirmTitle = newVal ? t('bannerList.onlineConfirmTitle') : t('bannerList.offlineConfirmTitle')
   try {
     await ElMessageBox.confirm(
-      `确认${action}轮播图「${bannerTitle}」？`,
-      `${action}确认`,
-      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+      confirmMsg,
+      confirmTitle,
+      { confirmButtonText: t('app.confirm'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await toggleBannerStatus(row.id, newVal)
-    ElMessage.success(`${action}成功`)
+    ElMessage.success(t(newVal ? 'bannerList.onlineSuccess' : 'bannerList.offlineSuccess'))
     fetchData()
   } catch (e) {
 // eslint-disable-next-line no-console

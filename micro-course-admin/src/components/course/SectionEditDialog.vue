@@ -81,7 +81,13 @@ watch(() => props.section, (s) => {
 
 const handleClose = () => emit('update:modelValue', false)
 const handleSubmit = async () => {
-  await formRef.value.validate()
+  // P1-C 修复: 原裸 await validate() 无 try/catch → 校验失败时产生
+  // unhandled promise rejection
+  try {
+    await formRef.value.validate()
+  } catch {
+    return // 校验错误消息已由 Element Plus 展示
+  }
   // F-2026-08-10-17: 提交时把下拉复合值映射回 sectionType + coursewareType
   const { sectionType, coursewareType } = optionToSectionType(form.sectionType)
   emit('submit', { ...form, sectionType, coursewareType })

@@ -79,7 +79,7 @@ public class MicroSpecialtyProposalController {
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasAnyRole('ACADEMIC', 'ADMIN')")
-    public R<Void> rejectProposal(@PathVariable Long id, @RequestBody RejectProposalRequest request) {
+    public R<Void> rejectProposal(@PathVariable Long id, @Valid @RequestBody RejectProposalRequest request) {
         proposalService.rejectProposal(id, request.getReason());
         return R.ok();
     }

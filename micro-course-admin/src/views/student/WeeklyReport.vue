@@ -252,6 +252,7 @@ import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyCheckIns } from '../../api/checkin'
 import { filterCourseCollectionEnrollments } from '../../utils/enrollmentFilters'
+import i18n from '@/i18n'
 
 const userStore = useUserStore()
 
@@ -358,7 +359,7 @@ const getWeekRange = () => {
 const fetchEnrollments = async (userId) => {
   try {
     const res = await getMyEnrollments({ userId })
-    enrollments.value = filterCourseCollectionEnrollments(res.data || [])
+    enrollments.value = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
   } catch {
     ElMessage.error('获取学习数据失败')
   }
@@ -430,7 +431,7 @@ const handleResize = () => {
 }
 
 onMounted(async () => {
-  document.title = '学习报告 - 微课平台'
+  document.title = i18n.global.t('student.myReport') + ' - ' + i18n.global.t('app.title')
   window.addEventListener('resize', handleResize)
   loading.value = true
   try {

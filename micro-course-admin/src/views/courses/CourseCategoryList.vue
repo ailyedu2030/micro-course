@@ -7,26 +7,26 @@
 <template>
   <div class="category-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>课程分类</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.CourseCategoryList') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏 -->
     <el-card class="toolbar-card" shadow="never">
       <div class="toolbar">
-        <span class="toolbar-title">课程分类管理</span>
+        <span class="toolbar-title">{{ $t('courseCategoryList.title') }}</span>
         <div class="toolbar-actions">
           <el-input
             v-model="searchForm.name"
-            placeholder="按名称搜索分类"
+            :placeholder="$t('courseCategoryList.searchPlaceholder')"
             clearable
             class="search-input"
             @keyup.enter="handleSearch"
             @clear="handleSearch"
           />
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">新增分类</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('courseCategoryList.query') }}</el-button>
+          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">{{ $t('courseCategoryList.create') }}</el-button>
         </div>
       </div>
     </el-card>
@@ -34,16 +34,16 @@
     <!-- 表格卡 -->
     <el-card class="table-card" shadow="never">
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无分类数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('courseCategoryList.noData')" />
       <!-- P2-19: 大数据量时 default-expand-all 可能卡顿，设为 false 按需展开 -->
       <el-table v-else :data="tableData" stripe border class="data-table" row-key="id" :default-expand-all="false">
-        <el-table-column prop="name" label="名称" min-width="180" />
-        <el-table-column prop="sortOrder" label="排序" width="100" align="center" />
-        <el-table-column label="操作" width="180" fixed="right" align="center">
+        <el-table-column prop="name" :label="$t('courseCategoryList.name')" min-width="180" />
+        <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="100" align="center" />
+        <el-table-column :label="$t('app.operation')" width="180" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="(userRole === 'ADMIN' || userRole === 'ACADEMIC') && row.parentId === null">新增子分类</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button type="success" link size="small" @click="handleAddChild(row)" v-if="(userRole === 'ADMIN' || userRole === 'ACADEMIC') && row.parentId === null">{{ $t('courseCategoryList.addChild') }}</el-button>
+            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,33 +55,33 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="dialogVisible" :title="$t(dialogTitle)" width="500px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="上级分类" v-if="formData.parentId">
+        <el-form-item :label="$t('courseCategoryList.parent')" v-if="formData.parentId">
           <el-input :value="parentName" disabled />
         </el-form-item>
-        <el-form-item label="分类名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入分类名称" />
+        <el-form-item :label="$t('courseCategoryList.nameLabel')" prop="name">
+          <el-input v-model="formData.name" :placeholder="$t('courseCategoryList.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="分类编码" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入分类编码" />
+        <el-form-item :label="$t('courseCategoryList.code')" prop="code">
+          <el-input v-model="formData.code" :placeholder="$t('courseCategoryList.codePlaceholder')" />
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入描述" />
+        <el-form-item :label="$t('courseCategoryList.description')" prop="description">
+          <el-input v-model="formData.description" type="textarea" :rows="3" :placeholder="$t('courseCategoryList.descriptionPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -89,12 +89,14 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getCategories, createCategory, updateCategory, deleteCategory } from '@/api/course-category'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const { t } = useI18n()
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -108,7 +110,7 @@ const searchForm = reactive({
 })
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增分类')
+const dialogTitle = ref('courseCategoryList.create')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -124,8 +126,8 @@ const formData = reactive({
 
 // P2-18: 表单中不存在 level 字段（formData.level 虽定义但无对应表单控件），移除无效校验规则
 const formRules = {
-  name: [{ required: true, message: '请输入分类名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入分类编码', trigger: 'blur' }]
+  name: [{ required: true, message: t('courseCategoryList.nameRequired'), trigger: 'blur' }],
+  code: [{ required: true, message: t('courseCategoryList.codeRequired'), trigger: 'blur' }]
 }
 
 const fetchData = async () => {
@@ -136,7 +138,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取分类列表失败')
+    ElMessage.error(t('courseCategoryList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -157,7 +159,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '新增分类'
+  dialogTitle.value = 'courseCategoryList.create'
   isEdit.value = false
   currentId.value = null
   formData.parentId = null
@@ -170,7 +172,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑分类'
+  dialogTitle.value = 'courseCategoryList.edit'
   isEdit.value = true
   currentId.value = row.id
   formData.parentId = row.parentId
@@ -183,7 +185,7 @@ const handleEdit = (row) => {
 }
 
 const handleAddChild = (row) => {
-  dialogTitle.value = '新增子分类'
+  dialogTitle.value = 'courseCategoryList.addChild'
   isEdit.value = false
   currentId.value = null
   formData.parentId = row.id
@@ -198,17 +200,17 @@ const handleAddChild = (row) => {
 const handleDelete = async (row) => {
   // P1I-053: 子分类预检 — 有子分类时阻止删除
   if (row.children?.length > 0) {
-    ElMessage.warning('请先删除子分类')
+    ElMessage.warning(t('courseCategoryList.deleteChildFirst'))
     return
   }
   try {
-    await ElMessageBox.confirm('确定删除该分类?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('courseCategoryList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteCategory(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('courseCategoryList.deleteSuccess'))
     fetchData()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('courseCategoryList.deleteFailed'))
     }
   }
 }
@@ -223,15 +225,15 @@ const handleSubmit = async () => {
     try {
       if (isEdit.value) {
         await updateCategory(currentId.value, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('courseCategoryList.editSuccess'))
       } else {
         await createCategory(formData)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('courseCategoryList.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('courseCategoryList.editFailed') : t('courseCategoryList.createFailed'))
     } finally {
       submitLoading.value = false
     }

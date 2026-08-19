@@ -9,86 +9,86 @@
     <div class="proposal-header">
       <div class="header-top">
         <el-button text @click="handleBack">
-          <el-icon><ArrowLeft /></el-icon> 返回
+          <el-icon><ArrowLeft /></el-icon> {{ $t('app.back') }}
         </el-button>
-        <h2 class="page-title">微专业申报表</h2>
+        <h2 class="page-title">{{ $t('microSpecialtyProposal.pageTitle') }}</h2>
         <div class="header-actions">
-          <el-button :loading="saving" :disabled="saving" @click="handleSave">保存</el-button>
-          <span v-if="saveStatus" class="save-status" :class="{ 'save-error': saveStatus === '保存失败' || saveStatus === '⚠ 未保存' }">
+          <el-button :loading="saving" :disabled="saving" @click="handleSave">{{ $t('app.save') }}</el-button>
+          <span v-if="saveStatus" class="save-status" :class="{ 'save-error': isSaveError }">
             {{ saveStatus }}
           </span>
-          <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
+          <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">{{ $t('course.submitForReview') }}</el-button>
           <el-dropdown trigger="click" @command="handleExport">
-            <el-button>导出<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+            <el-button>{{ $t('course.export') }}<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="word">导出 Word</el-dropdown-item>
-                <el-dropdown-item command="pdf">导出 PDF</el-dropdown-item>
+                <el-dropdown-item command="word">{{ $t('microSpecialtyProposal.exportWord') }}</el-dropdown-item>
+                <el-dropdown-item command="pdf">{{ $t('microSpecialtyProposal.exportPdf') }}</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
-          <el-button type="danger" plain @click="handleResetAll">重置全部</el-button>
+          <el-button type="danger" plain @click="handleResetAll">{{ $t('microSpecialtyProposal.resetAll') }}</el-button>
         </div>
       </div>
     </div>
 
     <!-- P1-C-13: 全局错误状态/重试 -->
     <div v-if="loadError" class="error-overlay">
-      <el-result icon="error" title="加载失败" sub-title="无法加载申请表数据，请检查网络后重试">
+      <el-result icon="error" :title="$t('teacherDashboard.loadFailed')" :sub-title="$t('microSpecialtyProposal.loadErrorDesc')">
         <template #extra>
-          <el-button type="primary" @click="retryLoad">重试</el-button>
-          <el-button @click="handleBack">返回</el-button>
+          <el-button type="primary" @click="retryLoad">{{ $t('common.retry') }}</el-button>
+          <el-button @click="handleBack">{{ $t('app.back') }}</el-button>
         </template>
       </el-result>
     </div>
 
-    <div v-if="!loadError" v-loading="loading" element-loading-text="加载中..." class="proposal-content">
+    <div v-if="!loadError" v-loading="loading" :element-loading-text="$t('common.loading')" class="proposal-content">
 <!-- ========== 分步导航 ========== -->
     <el-steps :active="step" align-center finish-status="success" class="ms-steps">
-      <el-step title="表头基础" description="申报信息" />
-      <el-step title="基本情况" description="微专业详情" />
-      <el-step title="教学团队" description="负责人+成员" />
-      <el-step title="佐证材料" description="签字盖章" />
-      <el-step title="确认提交" description="预览+提交" />
+      <el-step :title="$t('microSpecialtyProposal.step1Title')" :description="$t('microSpecialtyProposal.step1Desc')" />
+      <el-step :title="$t('microSpecialtyProposal.step2Title')" :description="$t('microSpecialtyProposal.step2Desc')" />
+      <el-step :title="$t('microSpecialtyProposal.step3Title')" :description="$t('microSpecialtyProposal.step3Desc')" />
+      <el-step :title="$t('microSpecialtyProposal.step4Title')" :description="$t('microSpecialtyProposal.step4Desc')" />
+      <el-step :title="$t('microSpecialtyProposal.step5Title')" :description="$t('microSpecialtyProposal.step5Desc')" />
     </el-steps>
 
     <!-- ========== 模块1：表头基础信息 ========== -->
     <el-card v-if="step === 0" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">模块1：表头基础信息</span>
+          <span class="card-title">{{ $t('microSpecialtyProposal.module1Title') }}</span>
           <!-- 模块1为主表字段，无可重置的子表，隐藏重置按钮 -->
         </div>
       </template>
       <el-form :model="form" :rules="rules" ref="formRef1" label-width="100px" class="proposal-form">
-        <el-form-item label="附件标题">
+        <el-form-item :label="$t('microSpecialtyProposal.attachmentTitle')">
           <el-input :model-value="attachmentTitle" readonly />
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="申报高校" prop="title">
-              <el-input v-model="form.title" placeholder="请输入申报高校全称" maxlength="100" show-word-limit />
+            <el-form-item :label="$t('microSpecialtyProposal.applyingUniversity')" prop="title">
+              <el-input v-model="form.title" :placeholder="$t('microSpecialtyProposal.applyingUniversityPlaceholder')" maxlength="100" show-word-limit />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="微专业名称" prop="microSpecialtyName">
-              <el-input v-model="form.microSpecialtyName" placeholder="请输入微专业名称" maxlength="100" show-word-limit />
+            <el-form-item :label="$t('microSpecialtyProposal.microSpecialtyName')" prop="microSpecialtyName">
+              <el-input v-model="form.microSpecialtyName" :placeholder="$t('microSpecialtyProposal.microSpecialtyNamePlaceholder')" maxlength="100" show-word-limit />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="负责人" prop="leadName">
-              <el-input v-model="form.leadName" placeholder="请输入负责人姓名" maxlength="50" />
+            <el-form-item :label="$t('microSpecialtyProposal.leader')" prop="leadName">
+              <el-input v-model="form.leadName" :placeholder="$t('microSpecialtyProposal.leaderPlaceholder')" maxlength="50" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="联系电话" prop="contactPhone">
-              <el-input v-model="form.contactPhone" placeholder="11位手机号" maxlength="11" />
+            <el-form-item :label="$t('microSpecialtyProposal.contactPhone')" prop="contactPhone">
+              <el-input v-model="form.contactPhone" :placeholder="$t('microSpecialtyProposal.phone11Placeholder')" maxlength="11" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="申请时间" prop="applyDate">
+            <el-form-item :label="$t('microSpecialtyProposal.applyDate')" prop="applyDate">
               <DatePickerYM v-model="form.applyDate" />
             </el-form-item>
           </el-col>
@@ -100,7 +100,7 @@
     <el-card v-if="step === 1" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">模块2：微专业基本情况</span>
+          <span class="card-title">{{ $t('microSpecialtyProposal.module2Title') }}</span>
           <!-- 模块2为主表字段，无可重置的子表，隐藏重置按钮 -->
         </div>
       </template>
@@ -108,16 +108,16 @@
         <!-- 第一行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="类型" prop="type">
+            <el-form-item :label="$t('app.type')" prop="type">
               <el-select v-model="form.type" class="full-width">
-                <el-option v-for="t in typeOptions" :key="t" :label="t" :value="t" />
+                <el-option v-for="opt in typeOptions" :key="opt" :label="typeLabel(opt)" :value="opt" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="16">
-            <el-form-item label="面向对象" prop="targetAudience">
+            <el-form-item :label="$t('microSpecialtyProposal.targetAudience')" prop="targetAudience">
               <el-checkbox-group v-model="form.targetAudience">
-                <el-checkbox v-for="a in audienceOptions" :key="a" :label="a" :value="a" />
+                <el-checkbox v-for="a in audienceOptions" :key="a" :label="audienceLabel(a)" :value="a" />
               </el-checkbox-group>
             </el-form-item>
           </el-col>
@@ -125,17 +125,17 @@
         <!-- 第二行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="面向学科" prop="targetDisciplines">
-              <el-input v-model="form.targetDisciplines" placeholder="如：管理学、教育学" maxlength="200" />
+            <el-form-item :label="$t('microSpecialtyProposal.targetDisciplines')" prop="targetDisciplines">
+              <el-input v-model="form.targetDisciplines" :placeholder="$t('microSpecialtyProposal.targetDisciplinesPlaceholder')" maxlength="200" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="总学分">
+            <el-form-item :label="$t('microSpecialtyProposal.totalCredits')">
               <el-input-number :model-value="totalCreditsDisplay" :disabled="true" :min="0" :max="100" :precision="1" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="课程门数">
+            <el-form-item :label="$t('microSpecialtyProposal.courseCount')">
               <el-input-number :model-value="courses.length" :disabled="true" :min="0" :max="200" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
@@ -143,79 +143,79 @@
         <!-- 第三行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="共建高校">
-              <el-input v-model="form.coBuildUniversities" placeholder="多个用逗号分隔" maxlength="300" />
+            <el-form-item :label="$t('microSpecialtyProposal.coBuildUniversities')">
+              <el-input v-model="form.coBuildUniversities" :placeholder="$t('microSpecialtyProposal.commaSeparated')" maxlength="300" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="拟共享高校">
-              <el-input v-model="form.plannedShareUniversities" placeholder="多个用逗号分隔" maxlength="300" />
+            <el-form-item :label="$t('microSpecialtyProposal.plannedShareUniversities')">
+              <el-input v-model="form.plannedShareUniversities" :placeholder="$t('microSpecialtyProposal.commaSeparated')" maxlength="300" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="开课时间">
-                  <DatePickerYM v-model="form.startDate" placeholder="选择开课时间" future precision="month" />
+            <el-form-item :label="$t('microSpecialtyProposal.startDate')">
+                  <DatePickerYM v-model="form.startDate" :placeholder="$t('microSpecialtyProposal.startDatePlaceholder')" future precision="month" />
             </el-form-item>
           </el-col>
         </el-row>
         <!-- 第四行 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="招生名额">
+            <el-form-item :label="$t('microSpecialtyProposal.enrollmentQuota')">
               <el-input-number v-model="form.enrollmentQuota" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="成班人数">
+            <el-form-item :label="$t('microSpecialtyProposal.classSize')">
               <el-input-number v-model="form.classSize" :min="1" :max="10000" class="full-width" controls-position="right" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="学制">
-              <el-input v-model="form.duration" placeholder="如：2年" maxlength="50" />
+            <el-form-item :label="$t('microSpecialtyProposal.duration')">
+              <el-input v-model="form.duration" :placeholder="$t('microSpecialtyProposal.durationPlaceholder')" maxlength="50" />
             </el-form-item>
           </el-col>
         </el-row>
         <!-- 产教融合 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="是否产教融合">
-              <el-switch v-model="form.isIndustryAcademic" active-text="是" inactive-text="否" />
+            <el-form-item :label="$t('microSpecialtyProposal.isIndustryAcademic')">
+              <el-switch v-model="form.isIndustryAcademic" :active-text="$t('app.yes')" :inactive-text="$t('app.no')" />
             </el-form-item>
           </el-col>
           <el-col :span="16">
-            <el-form-item v-if="form.isIndustryAcademic" label="合作单位">
-              <el-input v-model="form.industryPartners" placeholder="请输入合作单位名称，多个用逗号分隔" maxlength="300" />
+            <el-form-item v-if="form.isIndustryAcademic" :label="$t('microSpecialtyProposal.industryPartners')">
+              <el-input v-model="form.industryPartners" :placeholder="$t('microSpecialtyProposal.industryPartnersPlaceholder')" maxlength="300" />
             </el-form-item>
           </el-col>
         </el-row>
 
         <!-- 富文本区域 -->
-        <el-divider content-position="left">内容描述</el-divider>
+        <el-divider content-position="left">{{ $t('microSpecialtyProposal.contentDescription') }}</el-divider>
 
-        <el-form-item label="微专业介绍">
-          <RichTextWithCounter v-model="form.introduction" placeholder="详细介绍微专业的定位、特色与价值..." :min-height="160" :recommend-threshold="1000" :warning-threshold="1200" :max-threshold="1500" />
+        <el-form-item :label="$t('microSpecialtyProposal.introduction')">
+          <RichTextWithCounter v-model="form.introduction" :placeholder="$t('microSpecialtyProposal.introductionPlaceholder')" :min-height="160" :recommend-threshold="1000" :warning-threshold="1200" :max-threshold="1500" />
         </el-form-item>
 
-        <el-form-item label="就业前景">
-          <RichTextWithCounter v-model="form.marketDemandAnalysis" placeholder="描述该微专业的就业方向与市场需求..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
+        <el-form-item :label="$t('microSpecialtyProposal.marketDemandAnalysis')">
+          <RichTextWithCounter v-model="form.marketDemandAnalysis" :placeholder="$t('microSpecialtyProposal.marketDemandAnalysisPlaceholder')" :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
-        <el-form-item label="专业简介">
-          <RichTextWithCounter v-model="form.specialtyOverview" placeholder="微专业的整体概述..." :min-height="180" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
+        <el-form-item :label="$t('microSpecialtyProposal.specialtyOverview')">
+          <RichTextWithCounter v-model="form.specialtyOverview" :placeholder="$t('microSpecialtyProposal.specialtyOverviewPlaceholder')" :min-height="180" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
-        <el-form-item label="课程体系">
-          <RichTextWithCounter v-model="form.curriculumDesign" placeholder="描述课程设计思路与体系架构..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
+        <el-form-item :label="$t('microSpecialtyProposal.curriculumDesign')">
+          <RichTextWithCounter v-model="form.curriculumDesign" :placeholder="$t('microSpecialtyProposal.curriculumDesignPlaceholder')" :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
-        <el-form-item label="建设保障">
-          <RichTextWithCounter v-model="form.constructionGuarantee" placeholder="描述师资、场地、经费等建设保障..." :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
+        <el-form-item :label="$t('microSpecialtyProposal.constructionGuarantee')">
+          <RichTextWithCounter v-model="form.constructionGuarantee" :placeholder="$t('microSpecialtyProposal.constructionGuaranteePlaceholder')" :min-height="160" :recommend-threshold="800" :warning-threshold="1000" :max-threshold="1200" />
         </el-form-item>
 
         <!-- 课程体系动态表 -->
         <el-divider content-position="left">
-          <span>课程体系</span>
+          <span>{{ $t('microSpecialtyProposal.curriculumDesign') }}</span>
           <el-badge
             v-if="courseValidation.totalIssues > 0"
             :value="courseValidation.totalIssues"
@@ -232,30 +232,30 @@
           show-icon
           class="course-hours-alert"
           :title="courseValidation.errorCount > 0
-            ? `${courseValidation.issueList.length} 个课程学时与章节不一致（${courseValidation.errorCount} 项严重）`
-            : `${courseValidation.issueList.length} 个课程数据需关注`">
+            ? $t('microSpecialtyProposal.hoursMismatchAlert', { count: courseValidation.issueList.length, errorCount: courseValidation.errorCount })
+            : $t('microSpecialtyProposal.hoursAttentionAlert', { count: courseValidation.issueList.length })">
           <template #default>
             <ul class="course-issue-list">
               <li v-for="(it, idx) in courseValidation.issueList" :key="idx">
                 <strong :class="`issue-${it.level}`">{{ it.courseName }}：</strong>
                 <span v-for="(d, di) in it.issues" :key="di" :class="`issue-${d.severity}`">
-                  {{ d.message }}<span v-if="di < it.issues.length - 1">；</span>
+                  {{ d.message }}<span v-if="di < it.issues.length - 1">{{ $t('microSpecialtyProposal.issueSeparator') }}</span>
                 </span>
               </li>
             </ul>
             <div class="course-issue-actions">
               <el-button size="small" type="primary" @click="fixCourseHoursToChapterSum">
-                一键将课程学时同步为章节学时之和
+                {{ $t('microSpecialtyProposal.syncHoursButton') }}
               </el-button>
-              <el-button size="small" @click="dismissCourseIssues">本次忽略</el-button>
-              <span class="course-issue-hint">注意：学分不足建议时需手动处理</span>
+              <el-button size="small" @click="dismissCourseIssues">{{ $t('microSpecialtyProposal.dismissIssues') }}</el-button>
+              <span class="course-issue-hint">{{ $t('microSpecialtyProposal.issueHint') }}</span>
             </div>
           </template>
         </el-alert>
 
         <div class="table-section">
           <div class="table-summary" v-if="totalCourseHours > 0">
-            总学时：<strong>{{ totalCourseHours }}</strong>
+            {{ $t('microSpecialtyProposal.totalHours') }}<strong>{{ totalCourseHours }}</strong>
           </div>
           <CourseChapterEditor v-model="courses" @change="onCourseChange" />
         </div>
@@ -266,66 +266,66 @@
     <el-card v-if="step === 2" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">模块3：教学团队</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('teamMembers')">重置模块</el-button>
+          <span class="card-title">{{ $t('microSpecialtyProposal.module3Title') }}</span>
+          <el-button type="warning" plain size="small" @click="handleResetModule('teamMembers')">{{ $t('microSpecialtyProposal.resetModule') }}</el-button>
         </div>
       </template>
       <el-form :model="form" :rules="rules3" label-width="110px" class="proposal-form">
-        <el-divider content-position="left">专业负责人</el-divider>
+        <el-divider content-position="left">{{ $t('microSpecialtyProposal.professionalLeader') }}</el-divider>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="姓名">
-              <el-input v-model="form.leadName" placeholder="负责人姓名" maxlength="50" />
+            <el-form-item :label="$t('microSpecialtyProposal.name')">
+              <el-input v-model="form.leadName" :placeholder="$t('microSpecialtyProposal.leaderNamePlaceholder')" maxlength="50" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="职称">
-              <el-select v-model="form.leadTitle" class="full-width" filterable allow-create placeholder="选择或输入职称">
-                <el-option v-for="t in titleOptions" :key="t" :label="t" :value="t" />
+            <el-form-item :label="$t('microSpecialtyProposal.title')">
+              <el-select v-model="form.leadTitle" class="full-width" filterable allow-create :placeholder="$t('microSpecialtyProposal.titlePlaceholder')">
+                <el-option v-for="opt in titleOptions" :key="opt" :label="titleLabel(opt)" :value="opt" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="职务">
-              <el-input v-model="form.leadPosition" placeholder="职务" maxlength="50" />
+            <el-form-item :label="$t('microSpecialtyProposal.position')">
+              <el-input v-model="form.leadPosition" :placeholder="$t('microSpecialtyProposal.positionPlaceholder')" maxlength="50" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="联系电话" prop="leadPhone">
-              <el-input v-model="form.leadPhone" placeholder="负责人电话" maxlength="11" />
+            <el-form-item :label="$t('microSpecialtyProposal.contactPhone')" prop="leadPhone">
+              <el-input v-model="form.leadPhone" :placeholder="$t('microSpecialtyProposal.leaderPhonePlaceholder')" maxlength="11" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="研究方向">
-              <el-input v-model="form.leadResearchDirection" placeholder="研究方向" maxlength="200" />
+            <el-form-item :label="$t('microSpecialtyProposal.researchDirection')">
+              <el-input v-model="form.leadResearchDirection" :placeholder="$t('microSpecialtyProposal.researchDirection')" maxlength="200" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="主讲课程">
-              <el-input v-model="form.leadMainTasks" placeholder="主讲课程" maxlength="300" />
+            <el-form-item :label="$t('microSpecialtyProposal.mainCourses')">
+              <el-input v-model="form.leadMainTasks" :placeholder="$t('microSpecialtyProposal.mainCourses')" maxlength="300" />
             </el-form-item>
           </el-col>
         </el-row>
 
-        <el-divider content-position="left">近三年课程（最多5行）</el-divider>
+        <el-divider content-position="left">{{ $t('microSpecialtyProposal.threeYearCourses') }}</el-divider>
         <DynamicTableEditor v-model="leadCourses" :columns="leadCourseColumns" :default-row="leadCourseDefaultRow" :max-rows="5" />
 
-        <el-divider content-position="left">团队成员</el-divider>
+        <el-divider content-position="left">{{ $t('microSpecialtyProposal.teamMembers') }}</el-divider>
         <DynamicTableEditor v-model="teamMembers" :columns="teamColumns" :default-row="teamDefaultRow" />
       </el-form>
 
       <!-- Phase 2: 章节分配 -->
-      <el-divider content-position="left">章节分配</el-divider>
+      <el-divider content-position="left">{{ $t('microSpecialtyProposal.chapterAssignment') }}</el-divider>
       <div v-if="teamMembers.length === 0" class="empty-hint">
-        先添加上方团队成员, 即可为其分配负责章节
+        {{ $t('microSpecialtyProposal.addTeamFirstHint') }}
       </div>
       <el-table v-else :data="teamMembers" border size="small">
-        <el-table-column label="姓名" width="120">
-          <template #default="{ row }">{{ row.name || '(未命名)' }}</template>
+        <el-table-column :label="$t('microSpecialtyProposal.name')" width="120">
+          <template #default="{ row }">{{ row.name || $t('microSpecialtyProposal.unnamed') }}</template>
         </el-table-column>
-        <el-table-column label="已分配章节" min-width="200">
+        <el-table-column :label="$t('microSpecialtyProposal.assignedChapters')" min-width="200">
           <template #default="{ row }">
             <el-tag
               v-for="a in chapterAssignments.filter(ca => ca.teamMemberIndex === row._index)"
@@ -340,38 +340,38 @@
             <span v-if="!chapterAssignments.some(ca => ca.teamMemberIndex === row._index)" class="muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="120">
+        <el-table-column :label="$t('app.operation')" width="120">
           <template #default="{ row }">
             <el-button link type="primary" size="small" @click="openChapterDrawer(row)">
-              分配章节
+              {{ $t('microSpecialtyProposal.assignChapters') }}
             </el-button>
           </template>
         </el-table-column>
       </el-table>
 
       <!-- 章节分配 Drawer -->
-      <el-drawer v-model="chapterDrawerVisible" title="分配章节" direction="rtl" size="50%">
+      <el-drawer v-model="chapterDrawerVisible" :title="$t('microSpecialtyProposal.assignChapters')" direction="rtl" size="50%">
         <template v-if="chapterDrawerMember">
-          <el-alert :title="'为 ' + (chapterDrawerMember.name || '(未命名)') + ' 分配章节'" type="info" :closable="false" show-icon class="mg-bottom-16" />
+          <el-alert :title="$t('microSpecialtyProposal.assignChapterFor', { name: chapterDrawerMember.name || $t('microSpecialtyProposal.unnamed') })" type="info" :closable="false" show-icon class="mg-bottom-16" />
 
           <el-collapse v-if="courses.length > 0">
-            <el-collapse-item v-for="course in courses" :key="course._index || course.id" :title="course.courseName || '(未命名课程)'">
+            <el-collapse-item v-for="course in courses" :key="course._index || course.id" :title="course.courseName || $t('microSpecialtyProposal.unnamedCourse')">
               <el-checkbox-group v-if="course.chapters && course.chapters.length">
                 <div v-for="ch in course.chapters" :key="ch.id" class="chapter-check-item">
                   <el-checkbox
                     :model-value="isChapterAssigned(chapterDrawerMember, ch.id)"
-                    :label="ch.title + ' (' + (ch.hours || 0) + '学时)'"
+                    :label="$t('microSpecialtyProposal.chapterWithHours', { title: ch.title, hours: (ch.hours || 0) })"
                     @change="(val) => toggleChapter(chapterDrawerMember, ch.id, course.id, val)" />
                 </div>
               </el-checkbox-group>
-              <div v-else class="empty-hint">该课程还没有章节</div>
+              <div v-else class="empty-hint">{{ $t('microSpecialtyProposal.noChaptersInCourse') }}</div>
             </el-collapse-item>
           </el-collapse>
-          <div v-else class="empty-hint">还没有课程, 请先在 Step 2 添加课程和章节</div>
+          <div v-else class="empty-hint">{{ $t('microSpecialtyProposal.noCoursesHint') }}</div>
         </template>
         <template #footer>
-          <el-button @click="chapterDrawerVisible = false">关闭</el-button>
-          <el-button type="primary" @click="chapterDrawerVisible = false">完成</el-button>
+          <el-button @click="chapterDrawerVisible = false">{{ $t('common.close') }}</el-button>
+          <el-button type="primary" @click="chapterDrawerVisible = false">{{ $t('app.finish') }}</el-button>
         </template>
       </el-drawer>
     </el-card>
@@ -380,54 +380,54 @@
     <el-card v-if="step === 3" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">模块4：牵头单位意见</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('signatures')">重置模块</el-button>
+          <span class="card-title">{{ $t('microSpecialtyProposal.module4Title') }}</span>
+          <el-button type="warning" plain size="small" @click="handleResetModule('signatures')">{{ $t('microSpecialtyProposal.resetModule') }}</el-button>
         </div>
       </template>
-      <SignatureBlock title="① 微专业负责人意见" v-model="signatures[0]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
-      <SignatureBlock title="② 学院意见" v-model="signatures[1]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
-      <SignatureBlock title="③ 学校意见" v-model="signatures[2]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock :title="$t('microSpecialtyProposal.signatureLeaderOpinion')" v-model="signatures[0]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock :title="$t('microSpecialtyProposal.signatureDeptOpinion')" v-model="signatures[1]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
+      <SignatureBlock :title="$t('microSpecialtyProposal.signatureSchoolOpinion')" v-model="signatures[2]" :signature-uploader="makeUploader('SIGNATURE')" :seal-uploader="makeUploader('SEAL')" />
     </el-card>
 
     <!-- ========== 模块5：共建共享单位 ========== -->
     <el-card v-if="step === 4" shadow="never" class="proposal-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">模块5：共建共享单位</span>
-          <el-button type="warning" plain size="small" @click="handleResetModule('sharedUnits')">重置模块</el-button>
+          <span class="card-title">{{ $t('microSpecialtyProposal.module5Title') }}</span>
+          <el-button type="warning" plain size="small" @click="handleResetModule('sharedUnits')">{{ $t('microSpecialtyProposal.resetModule') }}</el-button>
         </div>
       </template>
       <div v-if="sharedUnits.length === 0" class="empty-hint">
-        暂无共建共享单位，点击下方按钮新增
+        {{ $t('microSpecialtyProposal.noSharedUnits') }}
       </div>
       <div v-for="(unit, idx) in sharedUnits" :key="idx" class="shared-unit-block">
         <div class="unit-header">
-          <span class="unit-label">单位 {{ idx + 1 }}</span>
-          <el-button type="danger" size="small" link @click="removeSharedUnit(idx)">删除</el-button>
+          <span class="unit-label">{{ $t('microSpecialtyProposal.unitNumber', { n: idx + 1 }) }}</span>
+          <el-button type="danger" size="small" link @click="removeSharedUnit(idx)">{{ $t('app.delete') }}</el-button>
         </div>
         <el-form :model="unit" label-width="100px" size="small">
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="单位名称">
-                <el-input v-model="unit.unitName" placeholder="请输入单位名称" maxlength="100" />
+              <el-form-item :label="$t('microSpecialtyProposal.unitName')">
+                <el-input v-model="unit.unitName" :placeholder="$t('microSpecialtyProposal.unitNamePlaceholder')" maxlength="100" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="单位类型">
+              <el-form-item :label="$t('microSpecialtyProposal.unitType')">
                 <el-select v-model="unit.unitType" class="full-width">
-                  <el-option v-for="ut in unitTypeOptions" :key="ut.value" :label="ut.label" :value="ut.value" />
+                  <el-option v-for="ut in unitTypeOptions" :key="ut.value" :label="unitTypeLabel(ut.value)" :value="ut.value" />
                 </el-select>
               </el-form-item>
             </el-col>
           </el-row>
-          <el-form-item label="意见">
-            <el-input v-model="unit.opinionText" type="textarea" :rows="2" placeholder="请输入意见..." />
+          <el-form-item :label="$t('microSpecialtyProposal.opinion')">
+            <el-input v-model="unit.opinionText" type="textarea" :rows="2" :placeholder="$t('microSpecialtyProposal.opinionPlaceholder')" />
           </el-form-item>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="负责人签字">
+              <el-form-item :label="$t('microSpecialtyProposal.leaderSignature')">
                 <SignatureUploader
-                  label="签字"
+                  :label="$t('microSpecialtyProposal.signature')"
                   :image-url="unit.signatureImageUrl"
                   :uploader="makeUploader('SHARED_SIGNATURE')"
                   @update:image-url="val => { unit.signatureImageUrl = val }"
@@ -435,9 +435,9 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="公章">
+              <el-form-item :label="$t('microSpecialtyProposal.seal')">
                 <SignatureUploader
-                  label="公章"
+                  :label="$t('microSpecialtyProposal.seal')"
                   :image-url="unit.sealImageUrl"
                   :uploader="makeUploader('SHARED_SEAL')"
                   @update:image-url="val => { unit.sealImageUrl = val }"
@@ -447,46 +447,47 @@
           </el-row>
           <el-row :gutter="20">
             <el-col :span="12">
-              <el-form-item label="日期">
+              <el-form-item :label="$t('course.date')">
                 <DatePickerYM v-model="unit.signDate" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="备注">
-                <el-input v-model="unit.remark" placeholder="备注信息" maxlength="200" />
+              <el-form-item :label="$t('course.remark')">
+                <el-input v-model="unit.remark" :placeholder="$t('microSpecialtyProposal.remarkPlaceholder')" maxlength="200" />
               </el-form-item>
             </el-col>
           </el-row>
         </el-form>
       </div>
       <div class="add-unit-bar">
-        <el-button type="primary" plain size="small" @click="addSharedUnit">+ 新增共享单位</el-button>
+        <el-button type="primary" plain size="small" @click="addSharedUnit">{{ $t('microSpecialtyProposal.addSharedUnit') }}</el-button>
       </div>
     </el-card>
 
     <!-- ========== 底部操作栏 ========== -->
     <div class="footer-bar">
-      <el-button @click="handleBack">返回</el-button>
-      <el-button :loading="saving" @click="handleSave">保存</el-button>
-      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
-      <el-button type="danger" plain @click="handleResetAll">重置全部</el-button>
+      <el-button @click="handleBack">{{ $t('app.back') }}</el-button>
+      <el-button :loading="saving" @click="handleSave">{{ $t('app.save') }}</el-button>
+      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">{{ $t('course.submitForReview') }}</el-button>
+      <el-button type="danger" plain @click="handleResetAll">{{ $t('microSpecialtyProposal.resetAll') }}</el-button>
     </div>
   </div>  <!-- closes ms-proposal-page -->
 </div>  <!-- closes v-if="!loadError" wrapper -->
 
   <!-- 分步导航按钮 -->
   <div v-if="!loadError" class="step-nav">
-    <el-button v-if="step > 0" @click="step--">上一步</el-button>
-    <el-button v-if="step < 4" type="primary" @click="handleNextStep">下一步</el-button>
+    <el-button v-if="step > 0" @click="step--">{{ $t('app.prev') }}</el-button>
+    <el-button v-if="step < 4" type="primary" @click="handleNextStep">{{ $t('app.next') }}</el-button>
     <template v-if="step === 4">
-      <el-button :loading="saving" @click="handleSave">保存</el-button>
-      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">提交审核</el-button>
+      <el-button :loading="saving" @click="handleSave">{{ $t('app.save') }}</el-button>
+      <el-button type="primary" :disabled="!formComplete" :loading="submitting" @click="handleSubmit">{{ $t('course.submitForReview') }}</el-button>
     </template>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, ArrowDown } from '@element-plus/icons-vue'
@@ -505,6 +506,7 @@ import SignatureUploader from '@/components/storage/SignatureUploader.vue'
 import DatePickerYM from '@/components/storage/DatePickerYM.vue'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 
@@ -535,7 +537,7 @@ const handleNextStep = async () => {
     step.value++
   } catch {
     // 校验失败，停留在当前步骤并展示错误提示
-    ElMessage.warning('请先完善当前步骤的必填信息')
+    ElMessage.warning(t('microSpecialtyProposal.completeCurrentStep'))
   }
 }
 const loadError = ref(false)  // P1-C-13: 全局加载错误标志
@@ -543,10 +545,18 @@ const initialLoadComplete = ref(false)
 const autoSaveEnabled = ref(false)
 const leavingConfirmed = ref(false)  /* 防 route guard 双重确认 */
 
+// 保存状态错误判断（与 saveStatus 的 i18n 文案比较，双语言均生效）
+const isSaveError = computed(() => {
+  const s = saveStatus.value
+  return s === t('microSpecialtyProposal.saveStatusFailed') ||
+    s === t('microSpecialtyProposal.saveStatusFailedWarn') ||
+    s === t('microSpecialtyProposal.saveStatusUnsavedWarn')
+})
+
 // 附件标题（只读）
 const attachmentTitle = computed(() => {
-  const name = form.value.microSpecialtyName || '未命名'
-  return `微专业申报表 - ${name}`
+  const name = form.value.microSpecialtyName || t('microSpecialtyProposal.unnamedPlain')
+  return t('microSpecialtyProposal.attachmentTitleFormat', { name })
 })
 
 // 表单主体
@@ -652,21 +662,22 @@ function getChapterLabel(chapterId) {
     const ch = (course.chapters || []).find(c => c.id === chapterId)
     if (ch) return (course.courseName || '') + ' / ' + (ch.title || '')
   }
-  return '(未知章节)'
+  return t('microSpecialtyProposal.unknownChapter')
 }
 async function removeChapterAssign(assign, memberIndex) {
   try {
-    await ElMessageBox.confirm('确定移除此章节分配?', '确认移除', {
-      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    await ElMessageBox.confirm(t('microSpecialtyProposal.confirmRemoveAssignment'), t('microSpecialtyProposal.confirmRemoveTitle'), {
+      type: 'warning', confirmButtonText: t('microSpecialtyProposal.remove'), cancelButtonText: t('common.cancel')
     })
     chapterAssignments.value = chapterAssignments.value.filter(a =>
       !(a.chapterId === assign.chapterId && a.teamMemberIndex === memberIndex))
-    ElMessage.success('章节分配已移除')
+    ElMessage.success(t('microSpecialtyProposal.assignmentRemoved'))
   } catch {}
 }
 
 // ==================== 下拉选项 ====================
 // TODO: 从后端配置接口动态获取类型选项
+// 注意：value 保持中文枚举值（后端契约），label 经 i18n 翻译后展示
 const typeOptions = ['急需紧缺型', '学科交叉型', '产教融合型']
 const audienceOptions = ['专科', '本科', '硕士', '博士']
 const titleOptions = ['教授', '副教授', '讲师', '助教', '企业导师']
@@ -675,6 +686,41 @@ const unitTypeOptions = [
   { value: 'ENTERPRISE', label: '合作企业' },
   { value: 'SHARE_UNIV', label: '拟共享高校' }  // P1-C-5 修复：与 UnitType 枚举一致
 ]
+
+function typeLabel(val) {
+  return ({
+    '急需紧缺型': t('microSpecialtyProposal.typeUrgent'),
+    '学科交叉型': t('microSpecialtyProposal.typeInterdisciplinary'),
+    '产教融合型': t('microSpecialtyProposal.typeIndustryAcademic')
+  })[val] || val
+}
+
+function audienceLabel(val) {
+  return ({
+    '专科': t('microSpecialtyProposal.audienceJunior'),
+    '本科': t('microSpecialtyProposal.audienceBachelor'),
+    '硕士': t('microSpecialtyProposal.audienceMaster'),
+    '博士': t('microSpecialtyProposal.audienceDoctor')
+  })[val] || val
+}
+
+function titleLabel(val) {
+  return ({
+    '教授': t('microSpecialtyProposal.titleProfessor'),
+    '副教授': t('microSpecialtyProposal.titleAssociateProfessor'),
+    '讲师': t('microSpecialtyProposal.titleLecturer'),
+    '助教': t('microSpecialtyProposal.titleAssistant'),
+    '企业导师': t('microSpecialtyProposal.titleEnterpriseMentor')
+  })[val] || val
+}
+
+function unitTypeLabel(val) {
+  return ({
+    'CO_BUILD_UNIV': t('microSpecialtyProposal.coBuildUniversities'),
+    'ENTERPRISE': t('microSpecialtyProposal.coopEnterprise'),
+    'SHARE_UNIV': t('microSpecialtyProposal.plannedShareUniversities')
+  })[val] || val
+}
 
 // ==================== 表格列配置 ====================
 const courseColumns = [
@@ -686,49 +732,49 @@ const courseColumns = [
 ]
 const courseDefaultRow = { moduleName: '', courseName: '', hours: null, credits: null, semester: '', chapters: [] }
 
-const leadCourseColumns = [
-  { prop: 'courseName', label: '课程名称', type: 'text', minWidth: '180', placeholder: '必填' },
-  { prop: 'credits', label: '学分', type: 'number', width: '80', min: 0.5 },
-  { prop: 'hours', label: '学时', type: 'number', width: '80', min: 1 }
-]
+const leadCourseColumns = computed(() => [
+  { prop: 'courseName', label: t('microSpecialtyProposal.courseName'), type: 'text', minWidth: '180', placeholder: t('microSpecialtyProposal.required') },
+  { prop: 'credits', label: t('microSpecialtyProposal.credits'), type: 'number', width: '80', min: 0.5 },
+  { prop: 'hours', label: t('microSpecialtyProposal.hours'), type: 'number', width: '80', min: 1 }
+])
 const leadCourseDefaultRow = { courseName: '', credits: null, hours: null }
 
-const teamColumns = [
-  { prop: 'name', label: '姓名', type: 'text', placeholder: '必填', minWidth: '100' },
-  { prop: 'age', label: '年龄', type: 'number', width: '70', min: 18, max: 70 },
-  { prop: 'title', label: '职称', type: 'text', placeholder: '教授/副教授/讲师/企业导师' },
-  { prop: 'organization', label: '所在单位', type: 'text', minWidth: '150' },
-  { prop: 'profession', label: '专业/行业', type: 'text', minWidth: '150' },
-  { prop: 'taughtCourses', label: '曾授课程', type: 'text', minWidth: '150' },
-  { prop: 'plannedCourses', label: '拟授课程', type: 'text', minWidth: '150' }
-]
+const teamColumns = computed(() => [
+  { prop: 'name', label: t('microSpecialtyProposal.name'), type: 'text', placeholder: t('microSpecialtyProposal.required'), minWidth: '100' },
+  { prop: 'age', label: t('microSpecialtyProposal.age'), type: 'number', width: '70', min: 18, max: 70 },
+  { prop: 'title', label: t('microSpecialtyProposal.title'), type: 'text', placeholder: t('microSpecialtyProposal.titlePlaceholderHint') },
+  { prop: 'organization', label: t('microSpecialtyProposal.organization'), type: 'text', minWidth: '150' },
+  { prop: 'profession', label: t('microSpecialtyProposal.profession'), type: 'text', minWidth: '150' },
+  { prop: 'taughtCourses', label: t('microSpecialtyProposal.taughtCourses'), type: 'text', minWidth: '150' },
+  { prop: 'plannedCourses', label: t('microSpecialtyProposal.plannedCourses'), type: 'text', minWidth: '150' }
+])
 const teamDefaultRow = { name: '', age: null, title: '', organization: '', profession: '', taughtCourses: '', plannedCourses: '' }
 
 // ==================== 表单校验 ====================
-const rules = {
-  title: [{ required: true, message: '请输入申报高校名称', trigger: 'blur' }],
-  microSpecialtyName: [{ required: true, message: '请输入微专业名称', trigger: 'blur' }],
-  leadName: [{ required: true, message: '请输入专业负责人', trigger: 'blur' }],
+const rules = computed(() => ({
+  title: [{ required: true, message: t('microSpecialtyProposal.requiredUniversityName'), trigger: 'blur' }],
+  microSpecialtyName: [{ required: true, message: t('microSpecialtyProposal.requiredSpecialtyName'), trigger: 'blur' }],
+  leadName: [{ required: true, message: t('microSpecialtyProposal.requiredLeader'), trigger: 'blur' }],
   contactPhone: [
-    { required: true, message: '请输入联系电话', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
+    { required: true, message: t('microSpecialtyProposal.requiredContactPhone'), trigger: 'blur' },
+    { pattern: /^1[3-9]\d{9}$/, message: t('microSpecialtyProposal.validPhone11'), trigger: 'blur' }
   ],
-  applyDate: [{ required: true, message: '请选择申请时间', trigger: 'change' }]
-}
+  applyDate: [{ required: true, message: t('microSpecialtyProposal.requiredApplyDate'), trigger: 'change' }]
+}))
 
 // ==================== 模块3 表单校验 (P2-A) ====================
-const rules3 = {
+const rules3 = computed(() => ({
   leadPhone: [
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的11位手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: t('microSpecialtyProposal.validPhone11'), trigger: 'blur' }
   ]
-}
+}))
 
 // ==================== 模块2 表单校验 (P1-C) ====================
-const rules2 = {
-  type: [{ required: true, message: '请选择微专业类型', trigger: 'change' }],
-  targetAudience: [{ type: 'array', required: true, min: 1, message: '请至少选择一个面向对象', trigger: 'change' }],
-  targetDisciplines: [{ required: true, message: '请填写面向学科', trigger: 'blur' }]
-}
+const rules2 = computed(() => ({
+  type: [{ required: true, message: t('microSpecialtyProposal.requiredType'), trigger: 'change' }],
+  targetAudience: [{ type: 'array', required: true, min: 1, message: t('microSpecialtyProposal.requiredAudience'), trigger: 'change' }],
+  targetDisciplines: [{ required: true, message: t('microSpecialtyProposal.requiredDisciplines'), trigger: 'blur' }]
+}))
 
 // ==================== 计算属性 ====================
 const totalCourseHours = computed(() => {
@@ -769,10 +815,10 @@ watch(() => courses.value.length, () => { courseIssueDismissed.value = false })
 function fixCourseHoursToChapterSum() {
   const n = autoFixCourseHours(courses.value)
   if (n > 0) {
-    ElMessage.success(`已自动同步 ${n} 门课程学时为章节学时之和`)
+    ElMessage.success(t('microSpecialtyProposal.autoSyncSuccess', { count: n }))
     courseIssueDismissed.value = false
   } else {
-    ElMessage.info('无需要修复的课程学时')
+    ElMessage.info(t('microSpecialtyProposal.noFixNeeded'))
   }
 }
 
@@ -817,9 +863,11 @@ function buildSavePayload() {
     chapterAssignments: chapterAssignments.value.map(a => {
       // V202 P0-2 修复: 不传 teacherId 字段,让后端用 NULL 写入
       // 即使前端 toggleChapter 误设了 teacherId 旧值,这里也强制清掉
+      // 审计 2026-08-14 修复: teamMemberIndex 必须保留,否则章节-教师分配无法持久化
       return {
         courseId: a.courseId,
         chapterId: a.chapterId,
+        teamMemberIndex: a.teamMemberIndex,
         source: a.source || 'TBD',
         acceptStatus: a.acceptStatus || 'PENDING'
         // teacherId 故意不传
@@ -849,11 +897,11 @@ function addSharedUnit() {
 
 async function removeSharedUnit(index) {
   try {
-    await ElMessageBox.confirm('确定移除此共享单位?', '确认移除', {
-      type: 'warning', confirmButtonText: '移除', cancelButtonText: '取消'
+    await ElMessageBox.confirm(t('microSpecialtyProposal.confirmRemoveUnit'), t('microSpecialtyProposal.confirmRemoveTitle'), {
+      type: 'warning', confirmButtonText: t('microSpecialtyProposal.remove'), cancelButtonText: t('common.cancel')
     })
     sharedUnits.value.splice(index, 1)
-    ElMessage.success('共享单位已移除')
+    ElMessage.success(t('microSpecialtyProposal.unitRemoved'))
   } catch {}
 }
 
@@ -862,7 +910,7 @@ async function removeSharedUnit(index) {
 // 让组件可以真实上传到后端并接收 0-100% 进度
 function makeUploader(type) {
   return async (file, onProgress) => {
-    if (!draftId.value) throw new Error('草稿初始化未完成，请稍候')
+    if (!draftId.value) throw new Error(t('microSpecialtyProposal.draftNotReady'))
     return await uploadStorageImage(draftId.value, file, type, onProgress)
   }
 }
@@ -876,13 +924,13 @@ async function handleSave() {
     await nextTick()
   }
   if (!formRef1.value) {
-    ElMessage.warning('请先进入"表头基础"步骤补全必填项')
+    ElMessage.warning(t('microSpecialtyProposal.goStep1First'))
     return
   }
   try {
     await formRef1.value.validate()
   } catch {
-    ElMessage.warning('请补全必填项后再保存')
+    ElMessage.warning(t('microSpecialtyProposal.completeRequiredBeforeSave'))
     return
   }
   // D-009: 检查共享单位中是否有暂不支持的字段
@@ -890,14 +938,14 @@ async function handleSave() {
     u.opinionText || u.signatureImageUrl || u.sealImageUrl || u.signDate
   )
   if (hasUnsupportedFields) {
-    ElMessage.info('共享单位的签名/公章等字段暂不支持保存，仅保存单位名称和类型')
+    ElMessage.info(t('microSpecialtyProposal.sharedUnitFieldWarning'))
   }
   // 懒创建：用户手动点保存时若草稿未存在, 先创建
   if (!draftId.value) {
     try {
       await ensureDraft()
     } catch (e) {
-      ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
+      ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.initDraftFailed'))
       return
     }
     if (!draftId.value) return  // ensureDraft 失败
@@ -905,14 +953,14 @@ async function handleSave() {
   saving.value = true
   try {
     await saveStorageApplication(draftId.value, buildSavePayload())
-    saveStatus.value = '已保存 ' + new Date().toLocaleTimeString()
+    saveStatus.value = t('microSpecialtyProposal.saveStatusSaved', { time: new Date().toLocaleTimeString() })
     dirty.value = false  // 仅在 save 成功后清除 dirty（避免数据丢失）
     autoSaveEnabled.value = true  /* 手动保存成功后启用 autoSave */
-    ElMessage.success('保存成功')
+    ElMessage.success(t('course.saveSuccess'))
   } catch (e) {
     // 关键：保留 dirty=true，让用户在路由离开/刷新时被警告，避免数据丢失
-    saveStatus.value = '保存失败'
-    ElMessage.error(e?.response?.data?.message || '保存失败')
+    saveStatus.value = t('microSpecialtyProposal.saveStatusFailed')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.saveStatusFailed'))
   } finally {
     saving.value = false
   }
@@ -946,7 +994,7 @@ async function performAutoSave() {
   autoSaveAbortController.value = new AbortController()
 
   pendingSave.value = true
-  saveStatus.value = '保存中'
+  saveStatus.value = t('microSpecialtyProposal.saveStatusSaving')
   try {
     const res = await autoSaveStorageApplication(draftId.value, buildSavePayload(), {
       signal: autoSaveAbortController.value.signal
@@ -954,13 +1002,13 @@ async function performAutoSave() {
     // P1-UX: 使用服务器时间戳显示"已保存 HH:MM:SS"，避免客户端时钟偏差
     const serverTime = res?.data?.serverTime
     const displayTime = serverTime ? new Date(serverTime).toLocaleTimeString() : new Date().toLocaleTimeString()
-    saveStatus.value = '已保存 ' + displayTime
+    saveStatus.value = t('microSpecialtyProposal.saveStatusSaved', { time: displayTime })
     dirty.value = false  // 仅成功时清除 dirty；失败保留让用户被警告，避免数据丢失
   } catch (e) {
     // C-007: AbortError 静默跳过（取消旧请求或组件卸载时触发）
     if (e.name === 'AbortError' || e.code === 'ERR_CANCELED') return
-    saveStatus.value = '⚠ 保存失败'
-    ElMessage.error(e?.response?.data?.message || '自动保存失败，请手动保存')
+    saveStatus.value = t('microSpecialtyProposal.saveStatusFailedWarn')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.autoSaveFailed'))
   } finally {
     pendingSave.value = false
     autoSaveAbortController.value = null
@@ -983,7 +1031,7 @@ function scheduleAutoSave() {
       autoSaveEnabled.value = true  /* 首次创建即启用 autoSave */
       performAutoSave()
     }).catch(() => {
-      saveStatus.value = '⚠ 保存失败'
+      saveStatus.value = t('microSpecialtyProposal.saveStatusFailedWarn')
     })
     return
   }
@@ -1029,17 +1077,17 @@ watch(teamMembersIndex, () => {
 // ==================== 提交审核 ====================
 async function handleSubmit() {
   if (!draftId.value) {
-    ElMessage.warning('草稿尚未初始化')
+    ElMessage.warning(t('microSpecialtyProposal.draftNotInitialized'))
     return
   }
   // P2-G: 业务级校验 — 课程表至少1行
   if (courses.value.length === 0) {
-    ElMessage.warning('请至少填写一行课程信息')
+    ElMessage.warning(t('microSpecialtyProposal.atLeastOneCourse'))
     return
   }
   // P2-G: 业务级校验 — 教学团队至少1人
   if (teamMembers.value.length === 0) {
-    ElMessage.warning('请至少填写一位教学团队成员')
+    ElMessage.warning(t('microSpecialtyProposal.atLeastOneMember'))
     return
   }
   // P1-C-11 修复：增加程序化表单校验
@@ -1049,7 +1097,7 @@ async function handleSubmit() {
     await nextTick()
   }
   if (!formRef1.value) {
-    ElMessage.warning('请先进入"表头基础"步骤补全必填项')
+    ElMessage.warning(t('microSpecialtyProposal.goStep1First'))
     return
   }
   try {
@@ -1065,7 +1113,7 @@ async function handleSubmit() {
         if (input) input.focus()
       }
     }
-    ElMessage.warning('请补全必填项后再提交')
+    ElMessage.warning(t('microSpecialtyProposal.completeRequiredBeforeSubmit'))
     return
   }
   // 模块2 校验（P1-C）: type / targetAudience / targetDisciplines 必填
@@ -1086,14 +1134,14 @@ async function handleSubmit() {
           if (input) input.focus()
         }
       }
-      ElMessage.warning('请补全"微专业基本情况"必填项后再提交')
+      ElMessage.warning(t('microSpecialtyProposal.completeModule2Required'))
       return
     }
   }
   try {
-    await ElMessageBox.confirm('提交后将无法修改，确定提交审核？', '确认提交', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('microSpecialtyProposal.confirmSubmitMsg'), t('microSpecialtyProposal.confirmSubmitTitle'), {
+      confirmButtonText: t('course.dialogConfirm'),
+      cancelButtonText: t('common.cancel'),
       type: 'warning'
     })
   } catch {
@@ -1102,7 +1150,7 @@ async function handleSubmit() {
   submitting.value = true
   try {
     await submitStorageApplication(draftId.value)
-    ElMessage.success('提交成功，等待审核')
+    ElMessage.success(t('microSpecialtyProposal.submitSuccess'))
     router.push('/teacher/micro-specialties/my-proposals')
   } catch (e) {
     // P1-UX: 提交失败的详细错误滚动定位（同上）
@@ -1118,7 +1166,7 @@ async function handleSubmit() {
         }
       }
     }
-    ElMessage.error(errorData?.message || '提交失败')
+    ElMessage.error(errorData?.message || t('microSpecialtyProposal.submitFailed'))
   } finally {
     submitting.value = false
   }
@@ -1128,16 +1176,16 @@ async function handleSubmit() {
 async function handleResetModule(moduleName) {
   if (!draftId.value) return
   try {
-    await ElMessageBox.confirm(`确定重置「${moduleName}」的数据？此操作不可恢复。`, '确认重置', { type: 'warning' })
+    await ElMessageBox.confirm(t('microSpecialtyProposal.confirmResetModuleMsg', { module: moduleName }), t('microSpecialtyProposal.confirmResetTitle'), { type: 'warning' })
   } catch {
     return
   }
   try {
     await resetStorageModule(draftId.value, moduleName)
-    ElMessage.success('模块已重置')
+    ElMessage.success(t('microSpecialtyProposal.moduleReset'))
     await loadDraft(draftId.value)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '重置失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.resetFailed'))
   }
 }
 
@@ -1145,9 +1193,9 @@ async function handleResetModule(moduleName) {
 async function handleResetAll() {
   if (!draftId.value) return
   try {
-    await ElMessageBox.confirm('确定重置全部数据？此操作不可恢复！', '确认全部重置', {
-      confirmButtonText: '确定重置',
-      cancelButtonText: '取消',
+    await ElMessageBox.confirm(t('microSpecialtyProposal.confirmResetAllMsg'), t('microSpecialtyProposal.confirmResetAllTitle'), {
+      confirmButtonText: t('microSpecialtyProposal.confirmResetAllBtn'),
+      cancelButtonText: t('common.cancel'),
       type: 'error'
     })
   } catch {
@@ -1155,17 +1203,17 @@ async function handleResetAll() {
   }
   try {
     await resetStorageAll(draftId.value)
-    ElMessage.success('已全部重置')
+    ElMessage.success(t('microSpecialtyProposal.resetAllDone'))
     await loadDraft(draftId.value)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '重置失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.resetFailed'))
   }
 }
 
 // ==================== 导出 ====================
 async function handleExport(type) {
   if (!draftId.value) {
-    ElMessage.warning('草稿尚未初始化')
+    ElMessage.warning(t('microSpecialtyProposal.draftNotInitialized'))
     return
   }
   const fn = type === 'word' ? exportStorageWord : exportStoragePdf
@@ -1175,7 +1223,7 @@ async function handleExport(type) {
     if (res.data && res.data.type === 'application/json') {
       const text = await new Response(res.data).text()
       const err = JSON.parse(text)
-      ElMessage.error(err.message || '导出校验失败')
+      ElMessage.error(err.message || t('microSpecialtyProposal.exportValidateFailed'))
       return
     }
     let blob
@@ -1188,14 +1236,14 @@ async function handleExport(type) {
     const a = document.createElement('a')
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
-    const schoolName = form.value.title || '申报高校'
+    const schoolName = form.value.title || t('microSpecialtyProposal.applyingUniversity')
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '')
-    a.download = `【${schoolName}】微专业申报表_${date}.${ext}`
+    a.download = `【${schoolName}】${t('microSpecialtyProposal.pageTitle')}_${date}.${ext}`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success(`${type === 'word' ? 'Word' : 'PDF'} 导出成功`)
+    ElMessage.success(t('microSpecialtyProposal.exportSuccess', { format: type === 'word' ? 'Word' : 'PDF' }))
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '导出失败，请检查表单完整性')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.exportFailed'))
   }
 }
 
@@ -1254,7 +1302,7 @@ async function loadDraft(id) {
     initialLoadComplete.value = true
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
-    ElMessage.error(e?.response?.data?.message || '加载草稿失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.loadDraftFailed'))
   } finally {
     loading.value = false
   }
@@ -1281,7 +1329,7 @@ async function initDraft() {
     // 不再自动保存（避免空表单 PUT 400），改为图片上传时才要求表单已存在
   } catch (e) {
     loadError.value = true  // P1-C-13: 显示错误状态
-    ElMessage.error(e?.response?.data?.message || '初始化草稿失败')
+    ElMessage.error(e?.response?.data?.message || t('microSpecialtyProposal.initDraftFailed'))
   }
 }
 
@@ -1298,7 +1346,7 @@ function retryLoad() {
 // ==================== 返回 ====================
 function handleBack() {
   if (dirty.value) {
-    ElMessageBox.confirm('有未保存的更改，确定离开？', '确认离开', { type: 'warning' })
+    ElMessageBox.confirm(t('microSpecialtyProposal.unsavedChangesMsg'), t('microSpecialtyProposal.unsavedChangesTitle'), { type: 'warning' })
       .then(() => {
         leavingConfirmed.value = true
         router.push('/teacher/micro-specialties/my-proposals')
@@ -1313,14 +1361,14 @@ function handleBack() {
 function handleBeforeUnload(e) {
   if (dirty.value || pendingSave.value) {
     e.preventDefault()
-    e.returnValue = '有未保存的数据，确定离开吗？'
+    e.returnValue = t('microSpecialtyProposal.unsavedDataMsg')
   }
 }
 
 // ==================== 路由离开守卫 ====================
 onBeforeRouteLeave((to, from, next) => {
   if (dirty.value && !leavingConfirmed.value) {
-    ElMessageBox.confirm('有未保存的更改，确定离开？', '确认离开', { type: 'warning' })
+    ElMessageBox.confirm(t('microSpecialtyProposal.unsavedChangesMsg'), t('microSpecialtyProposal.unsavedChangesTitle'), { type: 'warning' })
       .then(() => next())
       .catch(() => next(false))
   } else {

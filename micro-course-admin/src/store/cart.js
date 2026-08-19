@@ -45,10 +45,20 @@ export const useCartStore = defineStore('cart', () => {
       items.value = enriched
       synced.value = true
       // 同步到 localStorage 兜底
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(items.value))
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(items.value))
+      } catch (e) {
+        if (e.name !== 'QuotaExceededError') console.warn('Cart sync to localStorage failed:', e)
+      }
     } catch (e) {
       // 离线/未登录：降级到 localStorage
-      items.value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      // P1 修复: 本地数据损坏时 JSON.parse 可能抛错，内层 try/catch 兜底为 []
+      try {
+        items.value = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')
+      } catch {
+        items.value = []
+      }
+      if (!Array.isArray(items.value)) items.value = []
       synced.value = false
     }
   }

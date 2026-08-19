@@ -18,27 +18,27 @@
         <el-form-item :label="$t('course.keyword')">
           <el-input v-model="searchForm.keyword" :placeholder="$t('course.courseName')" clearable @clear="handleSearch" @keyup.enter="handleSearch" class="filter-input-w160" :aria-label="$t('course.keyword')" />
         </el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="searchForm.categoryId" placeholder="请选择分类" clearable class="filter-input-w160" aria-label="分类">
+        <el-form-item :label="$t('course.category')">
+          <el-select v-model="searchForm.categoryId" :placeholder="$t('course.pleaseSelectCategory')" clearable class="filter-input-w160" :aria-label="$t('course.category')">
             <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="教师">
-          <el-input v-model="searchForm.teacherName" placeholder="教师姓名" clearable class="filter-input-w120" aria-label="教师" @clear="handleSearch" />
+        <el-form-item :label="$t('course.teacher')">
+          <el-input v-model="searchForm.teacherName" :placeholder="$t('course.teacherName')" clearable class="filter-input-w120" :aria-label="$t('course.teacher')" @clear="handleSearch" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择" clearable class="filter-input-w120" aria-label="状态">
-            <el-option label="草稿" :value="0" />
-            <el-option label="待审核" :value="1" />
-            <el-option label="通过" :value="2" />
-            <el-option label="驳回" :value="3" />
-            <el-option label="已发布" :value="4" />
-            <el-option label="下架" :value="5" />
-            <el-option label="归档" :value="6" />
+        <el-form-item :label="$t('course.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('userSearch.pleaseSelect')" clearable class="filter-input-w120" :aria-label="$t('course.status')">
+            <el-option :label="$t('course.draft')" :value="0" />
+            <el-option :label="$t('course.pendingReview')" :value="1" />
+            <el-option :label="$t('course.statusApproved')" :value="2" />
+            <el-option :label="$t('course.reject')" :value="3" />
+            <el-option :label="$t('course.published')" :value="4" />
+            <el-option :label="$t('course.unpublish')" :value="5" />
+            <el-option :label="$t('course.archived')" :value="6" />
           </el-select>
         </el-form-item>
-        <el-form-item label="课程类型">
-          <el-select v-model="searchForm.courseType" placeholder="全部类型" clearable class="filter-input-w140" :disabled="!!fixedCourseType" @change="handleSearch" aria-label="课程类型">
+        <el-form-item :label="$t('course.courseType')">
+          <el-select v-model="searchForm.courseType" :placeholder="$t('course.allTypes')" clearable class="filter-input-w140" :disabled="!!fixedCourseType" @change="handleSearch" :aria-label="$t('course.courseType')">
             <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
@@ -60,30 +60,30 @@
               size="default"
               :disabled="tableData.length === 0"
               @click="handleExport"
-              aria-label="导出数据"
+              :aria-label="$t('course.exportData')"
             >
               <el-icon><Download /></el-icon>{{ $t('course.export') }}
             </el-button>
             <el-button type="primary" v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" @click="handleCreate">{{ $t('course.createCourse') }}</el-button>
-            <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">新增安排</el-button>
-            <el-button v-if="route.query.courseType" @click="handleBackToFullList">返回课程列表</el-button>
+            <el-button type="primary" v-if="route.query.courseType === 'OFFLINE'" @click="showOfflineDialog = true" :icon="Plus">{{ $t('course.addArrange') }}</el-button>
+            <el-button v-if="route.query.courseType" @click="handleBackToFullList">{{ $t('course.backToList') }}</el-button>
           </div>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="5" animated />
-      <el-empty v-else-if="tableData.length === 0" description="未找到匹配的课程，尝试更换筛选条件" :image-size="120">
+      <el-empty v-else-if="tableData.length === 0" :description="$t('course.noMatch')" :image-size="120">
         <template #default>
-          <el-button type="primary" @click="handleReset">清除筛选</el-button>
+          <el-button type="primary" @click="handleReset">{{ $t('course.clearFilter') }}</el-button>
         </template>
       </el-empty>
       <el-table v-else :data="tableData" stripe border class="data-table" ref="tableRef" @row-click="handleRowClick" @row-keydown.enter="handleRowClick">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column label="封面" width="80" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column :label="$t('course.cover')" width="80" align="center">
           <template #default="{ row }">
             <el-image
               v-if="row.coverUrl"
               :src="row.coverUrl"
-              :alt="(row.title || '课程') + '封面'"
+              :alt="$t('course.coverAlt', { title: row.title || $t('course.title') })"
               fit="cover"
               class="table-thumb"
               :preview-src-list="[row.coverUrl]"
@@ -92,8 +92,8 @@
             <span v-else class="no-thumb">—</span>
           </template>
         </el-table-column>
-        <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip />
-        <el-table-column label="类型" width="110" align="center">
+        <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
+        <el-table-column :label="$t('app.type')" width="110" align="center">
           <template #default="{ row }">
             <el-tag
               v-if="getCourseTypeConfig(row.courseType)"
@@ -101,39 +101,39 @@
               size="small"
               effect="plain"
             >
-{{ getCourseTypeConfig(row.courseType).shortLabel }}
+{{ courseTypeLabel(row.courseType) }}
 </el-tag>
-            <el-tag v-else type="primary" size="small" effect="plain">{{ row.courseType || '视频' }}</el-tag>
+            <el-tag v-else type="primary" size="small" effect="plain">{{ row.courseType || $t('course.typeVideo') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="categoryName" label="分类" width="120" />
-        <el-table-column prop="teacherName" label="教师" width="100" />
-        <el-table-column prop="studentCount" label="学员数" width="90" align="center" />
-        <el-table-column prop="status" label="状态" width="120" align="center">
+        <el-table-column prop="categoryName" :label="$t('course.category')" width="120" />
+        <el-table-column prop="teacherName" :label="$t('course.teacher')" width="100" />
+        <el-table-column prop="studentCount" :label="$t('course.studentCount')" width="90" align="center" />
+        <el-table-column prop="status" :label="$t('course.status')" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 0" type="info" size="small">草稿</el-tag>
-            <el-tag v-else-if="row.status === 1" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 2" type="success" size="small">已通过</el-tag>
-            <el-tag v-else-if="row.status === 3" type="danger" size="small">驳回</el-tag>
-            <el-tag v-else-if="row.status === 4" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="row.status === 5" type="warning" size="small">下架</el-tag>
-            <el-tag v-else type="info" size="small">归档</el-tag>
-            <div v-if="row.status === 1" class="review-hint">审核中，预计48h</div>
+            <el-tag v-if="row.status === 0" type="info" size="small">{{ $t('course.draft') }}</el-tag>
+            <el-tag v-else-if="row.status === 1" type="warning" size="small">{{ $t('course.pendingReview') }}</el-tag>
+            <el-tag v-else-if="row.status === 2" type="success" size="small">{{ $t('course.approved') }}</el-tag>
+            <el-tag v-else-if="row.status === 3" type="danger" size="small">{{ $t('course.reject') }}</el-tag>
+            <el-tag v-else-if="row.status === 4" type="success" size="small">{{ $t('course.published') }}</el-tag>
+            <el-tag v-else-if="row.status === 5" type="warning" size="small">{{ $t('course.unpublish') }}</el-tag>
+            <el-tag v-else type="info" size="small">{{ $t('course.archived') }}</el-tag>
+            <div v-if="row.status === 1" class="review-hint">{{ $t('course.reviewingHint') }}</div>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="280" fixed="right" align="center">
+        <el-table-column :label="$t('app.operation')" width="280" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">编辑</el-button>
-            <el-button v-if="isCoursewareCourseType(row.courseType)" type="success" link size="small" @click.stop="goSlides(row)">课件</el-button>
-            <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleManageOffline(row)">安排</el-button>
-            <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">审核通过</el-button>
-            <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">驳回</el-button>
-            <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? '重新上架' : '发布' }}</el-button>
-            <el-button v-if="row.status === 5 && userRole === 'ADMIN'" type="info" link size="small" :loading="actingId === row.id" @click.stop="handleArchive(row)">归档</el-button>
-            <el-button v-if="row.status === 4 && userRole === 'ADMIN'" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">下架</el-button>
-            <el-button type="info" link size="small" @click.stop="handleView(row)">查看</el-button>
-            <el-button type="primary" link size="small" @click.stop="handleCopy(row)">复制</el-button>
-            <el-button type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleDelete(row)">删除</el-button>
+            <el-button type="primary" link size="small" @click.stop="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="isCoursewareCourseType(row.courseType)" type="success" link size="small" @click.stop="goSlides(row)">{{ $t('course.courseware') }}</el-button>
+            <el-button v-if="row.courseType === 'OFFLINE'" type="info" link size="small" @click.stop="handleManageOffline(row)">{{ $t('course.arrange') }}</el-button>
+            <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="success" link size="small" :loading="actingId === row.id" @click.stop="handleApprove(row)">{{ $t('course.approve') }}</el-button>
+            <el-button v-if="row.status === 1 && (userRole === 'ADMIN' || userRole === 'ACADEMIC')" type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleReject(row)">{{ $t('course.reject') }}</el-button>
+            <el-button v-if="[2, 5].includes(row.status) && userRole === 'ADMIN'" type="primary" link size="small" :loading="actingId === row.id" @click.stop="handlePublish(row)">{{ row.status === 5 ? $t('course.republish') : $t('course.publish') }}</el-button>
+            <el-button v-if="row.status === 5 && userRole === 'ADMIN'" type="info" link size="small" :loading="actingId === row.id" @click.stop="handleArchive(row)">{{ $t('course.archive') }}</el-button>
+            <el-button v-if="row.status === 4 && userRole === 'ADMIN'" type="warning" link size="small" :loading="actingId === row.id" @click.stop="handleUnpublish(row)">{{ $t('course.unpublish') }}</el-button>
+            <el-button type="info" link size="small" @click.stop="handleView(row)">{{ $t('course.view') }}</el-button>
+            <el-button type="primary" link size="small" @click.stop="handleCopy(row)">{{ $t('course.copy') }}</el-button>
+            <el-button type="danger" link size="small" :loading="actingId === row.id" @click.stop="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -145,167 +145,167 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         <div class="page-size-wrap">
-          <span class="el-pagination__total">共 {{ totalElements }} 条</span>
-          <label for="page-size-select" class="sr-only">每页条数</label>
-          <el-select id="page-size-select" :model-value="size" class="page-size-select" @change="onPageSizeChange" aria-label="每页条数">
-            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="`${s}条/页`" :value="s" />
+          <span class="el-pagination__total">{{ $t('course.rows', { count: totalElements }) }}</span>
+          <label for="page-size-select" class="sr-only">{{ $t('course.perPage') }}</label>
+          <el-select id="page-size-select" :model-value="size" class="page-size-select" @change="onPageSizeChange" :aria-label="$t('course.perPage')">
+            <el-option v-for="s in [10, 20, 50, 100]" :key="s" :label="$t('course.perPageOption', { count: s })" :value="s" />
           </el-select>
         </div>
       </div>
     </el-card>
 
     <!-- 弹窗表单 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="700px" @close="handleDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="dialogVisible" :title="$t('course.createCourse')" width="700px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="90px">
-        <el-form-item label="课程标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入课程标题" aria-label="课程标题" />
+        <el-form-item :label="$t('course.courseTitle')" prop="title">
+          <el-input v-model="formData.title" :placeholder="$t('course.inputCourseTitle')" :aria-label="$t('course.courseTitle')" />
         </el-form-item>
-        <el-form-item label="课程类型" prop="courseType" v-if="!fixedCourseType">
-          <el-select v-model="formData.courseType" class="full-width" aria-label="课程类型">
+        <el-form-item :label="$t('course.courseType')" prop="courseType" v-if="!fixedCourseType">
+          <el-select v-model="formData.courseType" class="full-width" :aria-label="$t('course.courseType')">
             <el-option v-for="opt in courseTypeOptions" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="分类" prop="categoryId">
-              <el-select v-model="formData.categoryId" placeholder="请选择" class="full-width" aria-label="课程分类">
+            <el-form-item :label="$t('course.category')" prop="categoryId">
+              <el-select v-model="formData.categoryId" :placeholder="$t('userSearch.pleaseSelect')" class="full-width" :aria-label="$t('course.category')">
                 <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="授课教师" prop="teacherId">
-              <el-select v-model="formData.teacherId" placeholder="请搜索并选择授课教师" class="full-width" filterable remote :remote-method="remoteSearchTeachers" :loading="teacherLoading" :disabled="userStore.role === 'TEACHER'" aria-label="授课教师">
+            <el-form-item :label="$t('course.teachingTeacher')" prop="teacherId">
+              <el-select v-model="formData.teacherId" :placeholder="$t('course.searchTeacherPlaceholder')" class="full-width" filterable remote :remote-method="remoteSearchTeachers" :loading="teacherLoading" :disabled="userStore.role === 'TEACHER'" :aria-label="$t('course.teachingTeacher')">
                 <el-option v-for="t in teacherOptions" :key="t.id" :label="t.realName || t.username" :value="t.id" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="课程描述" prop="description">
-          <div class="quill-editor-wrapper" role="textbox" aria-label="课程描述" aria-multiline="true">
-            <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" placeholder="请输入课程描述..." :style="{ minHeight: '150px' }" />
+        <el-form-item :label="$t('course.courseDescription')" prop="description">
+          <div class="quill-editor-wrapper" role="textbox" :aria-label="$t('course.courseDescription')" aria-multiline="true">
+            <QuillEditor v-model:content="formData.description" content-type="html" toolbar="essential" :placeholder="$t('course.descriptionPlaceholder')" :style="{ minHeight: '150px' }" />
           </div>
         </el-form-item>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="学分">
-              <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" aria-label="学分" />
+            <el-form-item :label="$t('course.credit')">
+              <el-input-number v-model="formData.creditHours" :min="0" :max="20" class="full-width" :aria-label="$t('course.credit')" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="学期">
-              <el-input v-model="formData.semester" placeholder="如：2024春季" aria-label="学期" />
+            <el-form-item :label="$t('course.semester')">
+              <el-input v-model="formData.semester" :placeholder="$t('course.semesterPlaceholder')" :aria-label="$t('course.semester')" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="难度">
-              <el-select v-model="formData.difficulty" placeholder="请选择" class="full-width" clearable aria-label="难度">
-                <el-option label="初级" :value="1" />
-                <el-option label="中级" :value="2" />
-                <el-option label="高级" :value="3" />
+            <el-form-item :label="$t('course.difficulty')">
+              <el-select v-model="formData.difficulty" :placeholder="$t('userSearch.pleaseSelect')" class="full-width" clearable :aria-label="$t('course.difficulty')">
+                <el-option :label="$t('course.beginner')" :value="1" />
+                <el-option :label="$t('course.intermediate')" :value="2" />
+                <el-option :label="$t('course.advanced')" :value="3" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="价格(¥)">
-              <el-input-number v-model="formData.price" :min="0" :precision="2" placeholder="0=免费" class="full-width" aria-label="价格" />
+            <el-form-item :label="$t('course.priceLabel')">
+              <el-input-number v-model="formData.price" :min="0" :precision="2" :placeholder="$t('course.pricePlaceholder')" class="full-width" :aria-label="$t('course.priceLabelShort')" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-divider content-position="left">定价规则</el-divider>
+        <el-divider content-position="left">{{ $t('course.pricingRule') }}</el-divider>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="免费范围">
-              <el-select v-model="formData.freeAccessScope" class="full-width" aria-label="免费范围">
-                <el-option label="无" value="none" />
-                <el-option label="同院系" value="same_department" />
-                <el-option label="同学院" value="same_college" />
-                <el-option label="同学校" value="same_school" />
+            <el-form-item :label="$t('course.freeAccess')">
+              <el-select v-model="formData.freeAccessScope" class="full-width" :aria-label="$t('course.freeAccess')">
+                <el-option :label="$t('course.none')" value="none" />
+                <el-option :label="$t('course.sameDepartment')" value="same_department" />
+                <el-option :label="$t('course.sameCollege')" value="same_college" />
+                <el-option :label="$t('course.sameSchool')" value="same_school" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="优惠范围">
-              <el-select v-model="formData.discountScope" class="full-width" aria-label="优惠范围">
-                <el-option label="无" value="none" />
-                <el-option label="同学院" value="same_college" />
-                <el-option label="同学校" value="same_school" />
+            <el-form-item :label="$t('course.discountScope')">
+              <el-select v-model="formData.discountScope" class="full-width" :aria-label="$t('course.discountScope')">
+                <el-option :label="$t('course.none')" value="none" />
+                <el-option :label="$t('course.sameCollege')" value="same_college" />
+                <el-option :label="$t('course.sameSchool')" value="same_school" />
               </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="优惠比例">
-              <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" aria-label="优惠比例" />%
+            <el-form-item :label="$t('course.discountPercent')">
+              <el-input-number v-model="formData.discountPercent" :min="0" :max="100" :step="5" class="full-width" :aria-label="$t('course.discountPercent')" />%
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="课程封面">
+            <el-form-item :label="$t('course.courseCover')">
               <template v-if="!coverPreviewUrl">
-                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange" aria-label="上传课程封面">
-                  <el-button size="small" type="primary"><el-icon><Plus /></el-icon>选择图片</el-button>
+                <el-upload ref="coverUploadRef" :auto-upload="false" :limit="1" accept="image/jpeg,image/png" :before-upload="handleBeforeCoverUpload" :on-change="handleCoverChange" :aria-label="$t('course.uploadCover')">
+                  <el-button size="small" type="primary"><el-icon><Plus /></el-icon>{{ $t('course.selectImage') }}</el-button>
                 </el-upload>
-                <div class="form-tip">1200×628px，JPG/PNG/GIF/WebP，≤2MB</div>
+                <div class="form-tip">{{ $t('course.coverTip') }}</div>
               </template>
               <div v-else class="cover-preview-wrap">
-                <img :src="coverPreviewUrl" class="cover-preview-img" alt="封面预览" />
-                <el-button size="small" @click="handleRemoveCover">删除</el-button>
+                <img :src="coverPreviewUrl" class="cover-preview-img" :alt="$t('course.coverPreviewAlt')" />
+                <el-button size="small" @click="handleRemoveCover">{{ $t('app.delete') }}</el-button>
               </div>
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 线下课新增安排弹窗 -->
-    <el-dialog v-model="showOfflineDialog" title="新增线下安排" width="500px" @close="resetOfflineForm">
+    <el-dialog v-model="showOfflineDialog" :title="$t('course.addOfflineSchedule')" width="500px" @close="resetOfflineForm">
       <el-form ref="offlineFormRef" :model="offlineForm" :rules="offlineRules" label-width="100px">
-        <el-form-item label="课程">
-          <el-select v-model="offlineForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onOfflineCourseChange" aria-label="线下课程">
+        <el-form-item :label="$t('course.title')">
+          <el-select v-model="offlineForm.courseId" :placeholder="$t('course.selectCourse')" class="full-width" filterable @change="onOfflineCourseChange" :aria-label="$t('course.typeOfflineCourse')">
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" prop="chapterId">
-          <el-select v-model="offlineForm.chapterId" placeholder="选择章节" class="full-width" :disabled="!offlineForm.courseId || offlineChapterOptions.length === 0" aria-label="线下章节">
+        <el-form-item :label="$t('course.chapter')" prop="chapterId">
+          <el-select v-model="offlineForm.chapterId" :placeholder="$t('course.selectChapter')" class="full-width" :disabled="!offlineForm.courseId || offlineChapterOptions.length === 0" :aria-label="$t('course.chapter')">
             <el-option v-for="ch in offlineChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
-          <div v-if="offlineForm.courseId && offlineChapterOptions.length === 0" class="form-tip" style="color:var(--el-color-danger);margin-top:4px">该课程暂无线下章节，请先在课程详情页添加 OFFLINE 类型的章节</div>
+          <div v-if="offlineForm.courseId && offlineChapterOptions.length === 0" class="form-tip" style="color:var(--el-color-danger);margin-top:4px">{{ $t('course.offlineChapterHint') }}</div>
         </el-form-item>
-        <el-form-item label="日期" prop="sessionDate">
-          <el-date-picker v-model="offlineForm.sessionDate" type="date" placeholder="选择日期" value-format="YYYY-MM-DD" class="full-width" aria-label="线下日期" />
+        <el-form-item :label="$t('course.date')" prop="sessionDate">
+          <el-date-picker v-model="offlineForm.sessionDate" type="date" :placeholder="$t('course.selectDate')" value-format="YYYY-MM-DD" class="full-width" :aria-label="$t('course.date')" />
         </el-form-item>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="开始时间" prop="startTime">
-              <el-time-picker v-model="offlineForm.startTime" placeholder="开始" value-format="HH:mm:ss" class="full-width" aria-label="开始时间" />
+            <el-form-item :label="$t('course.startTime')" prop="startTime">
+              <el-time-picker v-model="offlineForm.startTime" :placeholder="$t('course.startTime')" value-format="HH:mm:ss" class="full-width" :aria-label="$t('course.startTime')" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="结束时间" prop="endTime">
-              <el-time-picker v-model="offlineForm.endTime" placeholder="结束" value-format="HH:mm:ss" class="full-width" aria-label="结束时间" />
+            <el-form-item :label="$t('course.endTime')" prop="endTime">
+              <el-time-picker v-model="offlineForm.endTime" :placeholder="$t('course.endTime')" value-format="HH:mm:ss" class="full-width" :aria-label="$t('course.endTime')" />
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item label="地点" prop="location">
-          <el-input v-model="offlineForm.location" placeholder="如：教学楼 A-101" aria-label="地点" />
+        <el-form-item :label="$t('course.location')" prop="location">
+          <el-input v-model="offlineForm.location" :placeholder="$t('course.locationPlaceholder')" :aria-label="$t('course.location')" />
         </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" placeholder="选填" aria-label="备注" />
+        <el-form-item :label="$t('course.remark')">
+          <el-input v-model="offlineForm.teacherNotes" type="textarea" :rows="2" :placeholder="$t('course.optional')" :aria-label="$t('course.remark')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showOfflineDialog = false">取消</el-button>
-        <el-button type="primary" :loading="offlineSubmitting" :disabled="offlineSubmitting" @click="submitOffline">新增</el-button>
+        <el-button @click="showOfflineDialog = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="offlineSubmitting" :disabled="offlineSubmitting" @click="submitOffline">{{ $t('course.add') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -314,6 +314,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useCourseWorkspaceRoutes } from '@/composables/useCourseWorkspaceRoutes'
 import { useUrlPagination } from '@/composables/useUrlPagination'
 import { swrCache } from '@/composables/useStaleWhileRevalidate'
@@ -325,6 +326,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { useUserStore } from '@/store/user'
 import { COURSE_TYPE_OPTIONS, COURSE_TYPE_LABELS, getCourseTypeConfig, isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getCourses, createCourse, updateCourseStatus, deleteCourse, approveCourse, rejectCourse, copyCourse, updateCourseCover, publishCourse, unpublishCourse } from '@/api/course'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getChapters } from '@/api/chapter'
 import { createOfflineSession } from '@/api/offline-session'
 import { getCategories } from '@/api/course-category'
@@ -332,6 +334,7 @@ import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
+const { t: i18nT } = useI18n()
 // 【V333 简化方案】HTML 课件 / PPT 课件独立管理页复用本组件，fixedCourseType 强制类型维度
 const props = defineProps({
   fixedCourseType: { type: String, default: '' }
@@ -357,13 +360,20 @@ const {
 // NN/g IA 原则: 标签精度比覆盖更重要。courseType filter 由 URL/固定类型 驱动,
 // 落地直接显示"我的HTML课件/PPT课件/视频课/线下课"避免泛词
 const courseTypeLabels = COURSE_TYPE_LABELS
+const COURSE_TYPE_I18N = {
+  HTML_COURSEWARE: 'course.typeHtmlCourseware',
+  PPT_COURSEWARE: 'course.typePptCourseware',
+  VIDEO: 'course.videoCourse',
+  OFFLINE: 'course.typeOfflineCourse'
+}
+const courseTypeLabel = (type) => COURSE_TYPE_I18N[type] ? t(COURSE_TYPE_I18N[type]) : (type || '')
 const pageTitle = computed(() => {
-  const base = userRole.value === 'TEACHER' ? '我的' : ''
+  const base = userRole.value === 'TEACHER' ? t('course.my') : ''
   const activeType = searchForm.courseType || props.fixedCourseType
   if (activeType && courseTypeLabels[activeType]) {
-    return `${base}${courseTypeLabels[activeType]}`
+    return `${base}${courseTypeLabel(activeType)}`
   }
-  return `${base}课程`
+  return `${base}${t('course.title')}`
 })
 
 const loading = ref(false)
@@ -393,7 +403,6 @@ if (props.fixedCourseType && !searchForm.courseType) {
 }
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增课程')
 const isEdit = ref(false)
 const formRef = ref(null)
 
@@ -419,27 +428,27 @@ const coverPreviewUrl = ref('')
 const coverFile = ref(null)
 
 const formRules = {
-  title: [{ required: true, message: '请输入课程标题', trigger: 'blur' }],
-  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
-  teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }],
-  courseType: [{ required: true, message: '请选择课程类型', trigger: 'change' }],
-  price: [{ type: 'number', min: 0, message: '价格不能为负数', trigger: 'blur' }],
-  creditHours: [{ type: 'number', min: 0, max: 20, message: '学分范围为 0-20', trigger: 'blur' }]
+  title: [{ required: true, message: t('course.inputCourseTitle'), trigger: 'blur' }],
+  categoryId: [{ required: true, message: t('course.pleaseSelectCategory'), trigger: 'change' }],
+  teacherId: [{ required: true, message: t('course.selectTeacher'), trigger: 'change' }],
+  courseType: [{ required: true, message: t('course.courseType'), trigger: 'change' }],
+  price: [{ type: 'number', min: 0, message: t('course.priceNonNegative'), trigger: 'blur' }],
+  creditHours: [{ type: 'number', min: 0, max: 20, message: t('course.creditRange'), trigger: 'blur' }]
 }
 
 const fetchCategories = async () => {
   try {
-    const { data } = await getCategories({ size: 1000 })
+    const { data } = await getCategories({ size: 100 })
     categories.value = data.items || []
   } catch {
-    ElMessage.error('获取分类列表失败')
+    ElMessage.error(t('course.fetchCategoriesFailed'))
   }
 }
 const fetchTeachers = async () => {
   // TEACHER 角色无需下拉选自己（也无权限查用户列表）
   if (userStore.role === 'TEACHER') { teacherOptions.value = []; return }
   try {
-    const { data } = await getUsers({ role: 'TEACHER', size: 1000 })
+    const { data } = await getUsers({ role: 'TEACHER', size: 100 })
     teacherOptions.value = data.items || []
   } catch { teacherOptions.value = [] }
 }
@@ -493,7 +502,7 @@ const fetchData = async () => {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   } finally {
     loading.value = false
   }
@@ -531,7 +540,6 @@ const handlePageChange = () => {
 const tableRef = ref(null)
 
 const handleCreate = () => {
-  dialogTitle.value = '新增课程'
   isEdit.value = false
   formData.title = ''
   formData.categoryId = null
@@ -544,6 +552,11 @@ const handleCreate = () => {
   formData.difficulty = null
   // 【V333】固定类型页创建课程时预设类型
   formData.courseType = props.fixedCourseType || 'VIDEO'
+  // P1 修复: 重置定价相关字段，避免上次输入残留到新课程
+  formData.price = 0
+  formData.freeAccessScope = 'none'
+  formData.discountScope = 'none'
+  formData.discountPercent = 100
   // 重置封面
   handleRemoveCover()
   dialogVisible.value = true
@@ -553,11 +566,11 @@ const handleCreate = () => {
 // 封面上传：选文件后本地预览（不立即上传）
 const handleBeforeCoverUpload = (file) => {
   if (file.size > 2 * 1024 * 1024) {
-    ElMessage.error('封面文件不能超过 2MB')
+    ElMessage.error(t('course.coverTooBig'))
     return false
   }
   if (!/^image\/(jpeg|jpg|png|gif)$/.test(file.type)) {
-    ElMessage.error('仅支持 JPG/PNG/GIF 格式')
+    ElMessage.error(t('course.coverFormatOnly'))
     return false
   }
   return true
@@ -596,58 +609,58 @@ const handleView = (row) => {
 }
 
 const handleApprove = async (row) => {
-  try { await ElMessageBox.confirm('确定审核通过该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmApproveCourse'), t('course.hintTitle'), { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await approveCourse(row.id); ElMessage.success('审核通过成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '审核通过失败') }
+  try { await approveCourse(row.id); ElMessage.success(t('course.approveSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.approveFailed')) }
   finally { actingId.value = null }
 }
 
 const handleReject = async (row) => {
   let value
   try {
-    const res = await ElMessageBox.prompt('请输入驳回原因', '驳回课程', {
-      confirmButtonText: '确定驳回', cancelButtonText: '取消',
-      inputType: 'textarea', inputPlaceholder: '请填写驳回原因（至少10个字符）',
-      inputValidator: v => v?.trim()?.length >= 10 || '驳回原因至少10个字符'
+    const res = await ElMessageBox.prompt(t('course.inputRejectReason'), t('course.rejectCourseTitle'), {
+      confirmButtonText: t('course.confirmReject'), cancelButtonText: t('common.cancel'),
+      inputType: 'textarea', inputPlaceholder: t('course.rejectReasonPlaceholder'),
+      inputValidator: v => v?.trim()?.length >= 10 || t('course.rejectReasonMin')
     })
     value = res.value
   } catch { return }
   actingId.value = row.id
-  try { await rejectCourse(row.id, value || ''); ElMessage.success('驳回成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '驳回失败') }
+  try { await rejectCourse(row.id, value || ''); ElMessage.success(t('course.rejectSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.rejectFailed')) }
   finally { actingId.value = null }
 }
 
 const handleArchive = async (row) => {
-  try { await ElMessageBox.confirm('确定归档该课程? 归档后课程不可再操作', '归档确认', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmArchiveCourse'), t('course.archiveConfirmTitle'), { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await updateCourseStatus(row.id, 6); ElMessage.success('归档成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '归档失败') }
+  try { await updateCourseStatus(row.id, 6); ElMessage.success(t('course.archiveSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.archiveFailed')) }
   finally { actingId.value = null }
 }
 
 const handlePublish = async (row) => {
-  try { await ElMessageBox.confirm('确定发布该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmPublishCourse'), t('course.hintTitle'), { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await publishCourse(row.id); ElMessage.success('发布成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '发布失败') }
+  try { await publishCourse(row.id); ElMessage.success(t('course.publishSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.publishFailed')) }
   finally { actingId.value = null }
 }
 
 const handleUnpublish = async (row) => {
-  try { await ElMessageBox.confirm('确定下架该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmUnpublishCourse'), t('course.hintTitle'), { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await unpublishCourse(row.id); ElMessage.success('下架成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '下架失败') }
+  try { await unpublishCourse(row.id); ElMessage.success(t('course.unpublishSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.unpublishFailed')) }
   finally { actingId.value = null }
 }
 
 const handleDelete = async (row) => {
-  try { await ElMessageBox.confirm('确定删除该课程?', '提示', { type: 'warning' }) } catch { return }
+  try { await ElMessageBox.confirm(t('course.confirmDeleteCourse'), t('course.hintTitle'), { type: 'warning' }) } catch { return }
   actingId.value = row.id
-  try { await deleteCourse(row.id); ElMessage.success('删除成功'); fetchData() }
-  catch (e) { ElMessage.error(e?.response?.data?.message || '删除失败') }
+  try { await deleteCourse(row.id); ElMessage.success(t('course.deleteSuccess')); fetchData() }
+  catch (e) { ElMessage.error(e?.response?.data?.message || t('course.deleteFailed')) }
   finally { actingId.value = null }
 }
 
@@ -656,30 +669,29 @@ const handleCopy = async (row) => {
   try {
     const { data } = await copyCourse(row.id)
     const newId = data?.id || data
-    ElMessage.success('复制成功，即将跳转到编辑页面')
+    ElMessage.success(t('course.copySuccessRedirect'))
     router.push(courseEditPath(newId))
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '复制失败')
+    ElMessage.error(e?.response?.data?.message || t('course.copyFailed'))
   } finally { actingId.value = null }
 }
 
 const handleExport = async () => {
   if (tableData.value.length === 0) {
-    ElMessage.warning('无可导出数据')
+    ElMessage.warning(t('course.noExportData'))
     return
   }
   // P2: 导出数量限制，最多 5000 条
   if (totalElements.value > 5000) {
     try {
-      await ElMessageBox.confirm(`当前共 ${totalElements.value} 条数据，仅导出前 5000 条，继续？`, '提示', { type: 'warning' })
+      await ElMessageBox.confirm(t('course.exportLimitConfirm', { count: totalElements.value }), t('course.hintTitle'), { type: 'warning' })
     } catch { return }
   }
   try {
-    ElMessage.info('正在获取全部数据，请稍候…')
-    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变，size 设为 5000(上限)
+    ElMessage.info(t('course.exportFetching'))
+    // P2-12: 导出全量筛选结果而非当前页，保持筛选条件不变
+    // P1-I-2026-08-15（R3 审查）· 改用 fetchAllPages 循环分页，规避后端 size 上限触发 400
     const exportParams = {
-      page: 0,
-      size: 5000,
       keyword: searchForm.keyword || undefined,
       categoryId: searchForm.categoryId || undefined,
       teacherName: searchForm.teacherName || undefined,
@@ -687,30 +699,29 @@ const handleExport = async () => {
       courseType: searchForm.courseType !== '' ? searchForm.courseType : undefined,
       teacherId: userStore.role === 'TEACHER' ? userStore.userId : null
     }
-    const { data } = await getCourses(exportParams)
-    const allData = data.items || []
+    const allData = await fetchAllPages(getCourses, exportParams, 100)
     const exportData = allData.map((item, index) => ({
-      '序号': index + 1,
-      '标题': item.title || '',
-      '类型': courseTypeLabels[item.courseType] || (item.courseType === 'INTERACTIVE' ? '课件' : '未知'),
-      '分类': item.categoryName || '',
-      '教师': item.teacherName || '',
-      '学员数': item.studentCount || 0,
-      '状态': getStatusLabel(item.status)
+      [i18nT('course.index')]: index + 1,
+      [i18nT('course.tableTitle')]: item.title || '',
+      [i18nT('app.type')]: courseTypeLabel(item.courseType) || (item.courseType === 'INTERACTIVE' ? i18nT('course.courseware') : i18nT('course.unknown')),
+      [i18nT('course.category')]: item.categoryName || '',
+      [i18nT('course.teacher')]: item.teacherName || '',
+      [i18nT('course.studentCount')]: item.studentCount || 0,
+      [i18nT('course.status')]: getStatusLabel(item.status)
     }))
     const wb = new Workbook()
-    const ws = wb.addWorksheet('课程列表')
+    const ws = wb.addWorksheet(i18nT('course.courseList'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(`课程导出_${Date.now()}.xlsx`)
-    ElMessage.success(`导出成功，共 ${exportData.length} 条`)
+    await wb.xlsx.writeFile(i18nT('course.exportFileName', { date: Date.now() }))
+    ElMessage.success(i18nT('course.exportSuccess', { count: exportData.length }))
   } catch {
-    ElMessage.error('导出失败')
+    ElMessage.error(t('course.exportFailed'))
   }
 }
 
 function getStatusLabel(status) {
-  const map = { 0: '草稿', 1: '待审核', 2: '通过', 3: '驳回', 4: '已发布', 5: '下架', 6: '归档' }
-  return map[status] || '未知'
+  const map = { 0: t('course.draft'), 1: t('course.pendingReview'), 2: t('course.statusApproved'), 3: t('course.reject'), 4: t('course.published'), 5: t('course.unpublish'), 6: t('course.archived') }
+  return map[status] || t('course.unknown')
 }
 
 const goSlides = async (row) => {
@@ -769,12 +780,12 @@ const handleSubmit = async () => {
     if (newCourseId && coverFile.value) {
       try {
         await updateCourseCover(newCourseId, coverFile.value)
-        ElMessage.success('创建成功，封面已上传')
+        ElMessage.success(t('course.createdCoverUploaded'))
       } catch {
-        ElMessage.warning('课程已创建，但封面上传失败，请稍后到编辑页重试')
+        ElMessage.warning(t('course.createdCoverFailed'))
       }
     } else {
-      ElMessage.success('创建成功')
+      ElMessage.success(t('course.createSuccess'))
     }
     dialogVisible.value = false
     if (newCourseId) {
@@ -783,7 +794,7 @@ const handleSubmit = async () => {
     }
     fetchData()
   } catch {
-    ElMessage.error('创建失败')
+    ElMessage.error(t('course.createFailed'))
   } finally {
     submitLoading.value = false
   }
@@ -802,7 +813,7 @@ const courseOptions = ref([])  // 线下课课程选择器
     watch(showOfflineDialog, async (v) => {
   if (v) {
     try {
-      const { data } = await getCourses({ size: 200 })
+      const { data } = await getCourses({ size: 100 })
       courseOptions.value = data?.items || []
     } catch { courseOptions.value = [] }
   }
@@ -811,11 +822,11 @@ const offlineForm = reactive({
   courseId: null, chapterId: null, sessionDate: '', startTime: '', endTime: '', location: '', teacherNotes: ''
 })
 const offlineRules = {
-  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }],
-  sessionDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  location: [{ required: true, message: '请输入地点', trigger: 'blur' }],
+  chapterId: [{ required: true, message: t('course.pleaseSelectChapter'), trigger: 'change' }],
+  sessionDate: [{ required: true, message: t('course.pleaseSelectDate'), trigger: 'change' }],
+  startTime: [{ required: true, message: t('course.pleaseSelectStartTime'), trigger: 'change' }],
+  endTime: [{ required: true, message: t('course.pleaseSelectEndTime'), trigger: 'change' }],
+  location: [{ required: true, message: t('course.pleaseInputLocation'), trigger: 'blur' }],
 }
 async function onOfflineCourseChange(courseId) {
   offlineForm.chapterId = null
@@ -834,7 +845,7 @@ function resetOfflineForm() {
 async function submitOffline() {
   if (!offlineFormRef.value) return
   try { const v = await offlineFormRef.value.validate(); if (!v) return } catch { return }
-  if (!offlineForm.chapterId) { ElMessage.warning('请选择章节'); return }
+  if (!offlineForm.chapterId) { ElMessage.warning(t('course.pleaseSelectChapter')); return }
   offlineSubmitting.value = true
   try {
     await createOfflineSession(offlineForm.chapterId, {
@@ -844,10 +855,10 @@ async function submitOffline() {
       location: offlineForm.location,
       teacherNotes: offlineForm.teacherNotes || undefined
     })
-    ElMessage.success('线下安排已创建')
+    ElMessage.success(t('course.offlineCreated'))
     showOfflineDialog.value = false
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || e?.message || '创建失败')
+    ElMessage.error(e?.response?.data?.message || e?.message || t('course.createFailed'))
   } finally {
     offlineSubmitting.value = false
   }

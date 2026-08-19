@@ -3,6 +3,18 @@
 > 本文件登记发布时已评估但放行的 P1-I / P2 缺陷。
 > 每次发布前必须清理上一版本的所有条目。
 
+## 2026-08-12 · F-2026-08-10 批次总工程师评估（更新 2026-08-13 部署后）
+
+> 总工程师签字：以下 P1-I/P2 项经逐条评估，当前不影响客户正常使用，登记放行，不阻断部署。
+
+| # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
+|---|---|---|---|---|---|
+| ~~F10-D1~~ | ~~P1-I~~ | ~~课件工作台类型派生 hack（#219）~~ | ~~当前功能正确，客户不可感知~~ | ~~登记放行~~ | ✅ **已修复（2026-08-12）**：SlideVO 增加 `coursewareType` 字段，后端从 section.courseware_type 权威字段派生（fileUrl 兜底）；前端改读 `row.coursewareType`；6 例回归测试闭环 |
+| ~~**F10-D2**~~ | ~~**P2**~~ | ~~**灰度分流机制未接线（2026-08-13 部署审计发现）**~~：`mc:gray:users` / `mc:feature:flags` Redis key 为预留，前端/后端均不读取 | ~~✅ **已修复（2026-08-18 PR #260）**：新增 `GrayReleaseService` (Redis-backed + 5s 缓存 + fail-closed) + `GrayReleaseFilter` (`@Order(40)` 注入 `gray.isGrayUser` request attribute) + `FeatureFlag` 枚举 (5 个) + `GrayReleaseController` ADMIN 诊断端点 `GET /api/gray-release/status`。21 个单元测试 100% 通过，precheck 26/26 |
+| ~~F10-D3~~ | ~~P1-I~~ | ~~i18n 存量硬编码中文 4757 处（2026-08-13 部署时实测）~~ | ~~已修复~~ | ~~✅ 已完成（2026-08-14 PR #236）~~ | ✅ **已修复（2026-08-14 PR #236）**：900+ i18n keys，40+ Vue 文件全部迁移，zh-CN/en-US 完全对齐，npm run build ✅，CI 9/9 ✅。i18n CI 门禁已升级为硬阻断 |
+
+---
+
 ## Phase 6 教师模块候选发布（2026-07-25）
 
 ### 放行前结论

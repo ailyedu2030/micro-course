@@ -4,7 +4,7 @@
 -->
 <template>
   <div class="checkout-page">
-    <nav class="page-breadcrumb" aria-label="面包屑">
+    <nav class="page-breadcrumb" :aria-label="$t('cart.breadcrumbAria')">
       <router-link to="/student/courses" class="bc-link">{{ $t('course.square') }}</router-link>
       <span class="bc-sep">/</span>
       <span>{{ $t('cart.checkout') }}</span>
@@ -20,7 +20,7 @@
             <el-table-column :label="$t('course.title')" min-width="200">
               <template #default="{ row }">
                 <div class="course-cell">
-                  <el-image v-if="row.coverUrl" :src="row.coverUrl" :alt="(row.title || '课程') + '封面'" class="cell-cover" fit="cover" />
+                  <el-image v-if="row.coverUrl" :src="row.coverUrl" :alt="$t('cart.coverAlt', { title: row.title || $t('course.title') })" class="cell-cover" fit="cover" />
                   <span>{{ row.title }}</span>
                 </div>
               </template>
@@ -45,7 +45,7 @@
               </div>
             </el-radio>
           </el-radio-group>
-          <p class="payment-hint">当前仅支持余额支付，其他支付方式即将开放</p>
+          <p class="payment-hint">{{ $t('cart.paymentHint') }}</p>
         </el-card>
       </el-col>
 
@@ -90,12 +90,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCartStore } from '@/store/cart'
 import { useUserStore } from '@/store/user'
 import { createOrder, payOrder, batchCreateOrders } from '@/api/order'
 import { Wallet } from '@element-plus/icons-vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const store = useCartStore()
 const userStore = useUserStore()
@@ -111,7 +113,7 @@ onMounted(async () => {
   await store.loadFromServer()
   if (!store.hasItems) {
     loading.value = false
-    ElMessage.info('购物车为空')
+    ElMessage.info(t('cart.cartEmpty'))
     router.push('/student/courses')
     return
   }
@@ -121,12 +123,12 @@ onMounted(async () => {
 async function handleSubmit() {
   if (submitting.value) return  // ★ 防重复提交
   if (!store.hasItems) {
-    ElMessage.warning('购物车为空或部分商品已下架')
+    ElMessage.warning(t('cart.cartEmptyOrOffline'))
     return
   }
   try {
-    await ElMessageBox.confirm(`确认支付 ¥${store.totalPrice}？`, '确认支付', {
-      confirmButtonText: '支付', cancelButtonText: '取消', type: 'info'
+    await ElMessageBox.confirm(t('cart.confirmPayMessage', { amount: store.totalPrice }), t('cart.pendingPayment'), {
+      confirmButtonText: t('cart.pay'), cancelButtonText: t('common.cancel'), type: 'info'
     })
   } catch { return }
 
@@ -151,9 +153,9 @@ async function handleSubmit() {
         } else {
           failedOrders.push({
             courseId: items[idx]?.courseId,
-            courseTitle: items[idx]?.title || order?.courseName || '未知',
+            courseTitle: items[idx]?.title || order?.courseName || t('course.unknown'),
             amount: order?.amount ?? items[idx]?.price,
-            errorMsg: order?.status === 'PENDING' ? '订单未完成支付' : '支付失败',
+            errorMsg: order?.status === 'PENDING' ? t('cart.orderPendingMsg') : t('order.failed'),
             status: order?.status || 'FAILED'
           })
         }
@@ -163,12 +165,12 @@ async function handleSubmit() {
       if (failedOrders.length === 0) {
         paid.value = true
       } else {
-        ElMessage.warning(`${failedOrders.length} 个订单支付异常，请查看详情`)
+        ElMessage.warning(t('cart.failedOrdersWarning', { count: failedOrders.length }))
       }
       return
     } catch (batchError) {
       // 批量失败，降级到逐一处理
-      ElMessage.warning('批量处理失败，正在逐一处理…')
+      ElMessage.warning(t('cart.batchFailedMsg'))
     }
 
     // 降级：逐一创建订单并支付
@@ -181,9 +183,9 @@ async function handleSubmit() {
         successItems.push({ courseTitle: item.title, amount: item.price, status: 'PAID' })
         store.removeItem(item.courseId)
       } catch (e) {
-        const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
+        const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || t('order.failed')
         failedItems.push({ courseId: item.courseId, courseTitle: item.title, amount: item.price, errorMsg: msg, status: 'FAILED' })
-        ElMessage.error(`「${item.title}」${msg}`)
+        ElMessage.error(t('cart.itemPayError', { title: item.title, msg }))
       }
     }
     resultSummary.value = { success: successItems, failed: failedItems }
@@ -212,9 +214,9 @@ async function handleRetryFailed() {
       retriedSuccess.push({ courseTitle: item.courseTitle, amount: item.amount, status: 'PAID' })
       store.removeItem(item.courseId)
     } catch (e) {
-      const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || '支付失败'
+      const msg = e?.response?.data?.message || e?.response?.data?.code || e.message || t('order.failed')
       retriedFailed.push({ courseId: item.courseId, courseTitle: item.courseTitle, amount: item.amount, errorMsg: msg, status: 'FAILED' })
-      ElMessage.error(`「${item.courseTitle}」${msg}`)
+      ElMessage.error(t('cart.itemPayError', { title: item.courseTitle, msg }))
     }
   }
   resultSummary.value = {
@@ -225,9 +227,9 @@ async function handleRetryFailed() {
     paid.value = true
   }
   if (retriedFailed.length > 0) {
-    ElMessage.warning(`重试完成：${retriedSuccess.length} 成功，${retriedFailed.length} 失败`)
+    ElMessage.warning(t('cart.retrySummary', { success: retriedSuccess.length, failed: retriedFailed.length }))
   } else {
-    ElMessage.success('所有课程支付成功！')
+    ElMessage.success(t('cart.allPaidSuccess'))
   }
   retrying.value = false
 }

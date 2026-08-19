@@ -45,7 +45,35 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 ## [Unreleased]
 
-### L0 兜底修复批次（2026-08-07 · D-1 / D-3 / Q-6 / C-3）
+### 全栈审查修复批次（2026-08-15 · audit-complete）
+
+> 全栈穷举扫描（153 Vue + 861 Java）+ R1-R4 交叉审查（reviewer 团队）发现并修复 P1-I/P2 级缺陷。
+> 用户铁律：体验至上 · 时间成本不限制 · 首席工程师兜底所有问题。
+
+#### P1-I 修复（audit-round1）
+- 分页上限统一：`ApiLimits.MAX_REQUEST_SIZE=10000`（@Range 契约）+ `MAX_PAGE_SIZE=100`（Service 硬限）
+- `PageSizeGuard` + MyBatis-Plus `setMaxLimit(100)` 全局兜底（DoS 双层防御）
+- `DiscussionCommentController` 双契约分页（List 兼容 + `pagePaged` PageResult）
+- 8 处 @RequestBody 补 `@Valid` + DTO 字段级校验（PptCourseware/MicroSpecialty）
+- 删除 5 个零引用死代码（AudioQueryService/AudioStorageService/3 Repository）
+- 28 个路由 `meta.titleKey` i18n 化 + `document.title` 设置
+- `EnrollmentController.getCourseRanking` limit 补 `@Range(1, 100)`
+- 27 处前端 size=999/1000 收敛
+
+#### P2 修复（audit-round2）
+- `ApiConstants` 统一 magic number（时间/Cookie/采样率/LIMIT/-1L）
+- `FieldEncryptor` 解密失败补 warn 日志
+- 删除 2 个前端零引用死代码
+- 学生端 5 页面 67 处硬编码中文 i18n 化（3660 keys 双向同步）
+
+#### 交叉审查阻塞项修复（audit-review）
+- **P0**：`PptFlowDTO` @NotNull 过度校验 → 必填下沉 Service（createFlow）
+- **P1-C**：`pagePaged` 分页偏移修复 + 回归测试
+- **P1-C**：`updatePage` copyProperties 补 pageNumber 排除（防 null 覆盖）
+- **P1-C**：MyBatis-Plus `setMaxLimit(100)` 全局 DoS 防护落地
+- **P1-I**：CourseController 双分页上限统一 + 前端 size>100 全部收敛/改 fetchAllPages
+
+
 
 > L0 宪法铁律（用户体验至上）兜底：存量数据 + CI 维护性 + 流程规范修到 0 遗留。
 > 本批次 4 个 commit 全部带 `Signed-off-by: jackie`（DCO，见上方 Sign-off 规范章节），不重写历史。
@@ -70,6 +98,135 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 
 #### 验证
 - `mvn -o compile` 通过；CI yaml `yaml.safe_load` 解析通过；V328 migration 头部审计通过
+
+### ServiceImpl 治理 + i18n 修复（2026-08-16 ~ 2026-08-17 · Phase 7 收尾）
+
+> 完成审计清单遗留 P2（ServiceImpl 超长）+ 修复 i18n 真实生产缺陷。3 个 ServiceImpl 全部 < 800 行（precheck 26/26 ✅）。
+
+#### PR #250 — ServiceImpl 质量治理（已合并）
+- `DiscussionPostServiceImpl` / `MicroSpecialtyQueryServiceImpl` copyToVO 去重 + 所有字段 fallback 查库
+- `toTeacherVO` N+1 消除
+- `PartialUpdateNullSafeTest` P2-3 测试补全
+
+#### PR #251 — 审计记录补录
+- 补录 PR #250 合并状态 + e2e 根因分析文档
+
+#### PR #252 — VideoServiceImpl 配置冲突修复
+- `video.upload-dir` 与 `video.storage-base-dir` 分离（DEPLOYMENT_CHECKLIST.md 已规划但 Java 代码未引用）
+- CI workflow 加 `VIDEO_UPLOAD_DIR` 环境变量
+
+#### PR #253 — i18n 键名显示修复
+- **根因**：vue-i18n v9 + Element Plus slot 上下文中 `$t()` 全局属性未正确解析,返回原始键字符串而非翻译值。同时 Element Plus locale (硬编码 zhCn) 与 vue-i18n locale 不同步, 切换英文后分页/对话框仍显示中文
+- **症状**：教师端 /teacher/discussions 侧边栏二级菜单显示 `menu.teacherDashboard` 等键名（用户误以为是英文）
+- **修复**：`Layout.vue` 一级/二级菜单 `$t()` → `t()` (useI18n 闭包) + Element Plus locale 同步 + 语言切换按钮可见化（`中/EN` 指示 + toast）
+
+#### PR #254 — ServiceImpl 拆分为 Executor / Builder 类
+- `GradeServiceImpl` 789 → 619 行 + `GradeVoBuilder.java` (359 行)
+- `MicroSpecialtyEnrollmentServiceImpl` 794 → 638 行 + `MicroSpecialtyClassImportExecutor.java` (371 行)
+- `ExerciseRecordServiceImpl` 787 → 476 行 + `ExerciseAnswerSubmitExecutor.java` (583 行)
+- **顺手修 Bug**：`MicroSpecialtyEnrollmentServiceImpl.classImport` 原代码漏 `batch.clear()`, BATCH_SIZE flush 后重复插入
+- **设计原则**：Executor 构造函数注入所有依赖 / Record 上下文快照 / Functional interface (QuestionGrader)
+
+#### PR #256 — Executor / Builder 独立单元测试（22 个）
+- 兑现 PR #254 拆分时"构造函数注入 → 独立 Mockito 测试"的设计目标
+- `GradeVoBuilderTest` (11 个): 空列表去抖、批量预加载去重、gradedBy 收集、关联实体填充、realName 回退、enrollmentId 嵌套 Map、复合键匹配、JSON 解析失败仅 warn
+- `MicroSpecialtyClassImportExecutorTest` (5 个): MS 不存在、状态非 RECRUITING、空班级、名额已满、新生超限
+- `ExerciseAnswerSubmitExecutorTest` (6 个): 练习不存在、超答题次数、考试超时、考试已提交、maxAttempts/timeLimit 不限
+- **无需 Spring / DB / Redis**,纯 Mockito, ~2s 跑完
+
+### CI Backend 测试 Hang 根因修复（2026-08-18 · Phase 8）
+
+> 解决 CI backend 每次阻塞 ~30 分钟的根因。实测 backend 34m28s → **6m8s**，节省 28m20s/PR（**-82% 时间**）。
+
+#### PR #258 — perf(ci): 修复 backend test hang 根因
+
+**现象**: 连续 5 个 PR（#253-#257）backend 28-34m hang，frontend 1m35s 形成 22x 差距。
+
+**根因（3 重叠加）**:
+1. `BaseIntegrationTest` 用 `WebEnvironment.RANDOM_PORT` → 每个 test class 启动真实 Tomcat server（74 个继承的 test × Tomcat 启动）
+2. `pom.xml` surefire `reuseForks=false` → 每 test class 独立 JVM fork（83 JVM 启动开销）
+3. JVM `-Xmx1500m` 不足以支撑 83 个 Spring context 累积（200-300MB/context）
+
+**修复**:
+- `BaseIntegrationTest`：`RANDOM_PORT` → `MOCK`（所有 test 用 MockMvc，无需 Tomcat）。删除未使用的 `port` 字段（死代码）
+- `pom.xml`：`-Xmx1500m` → `-Xmx3g`、`reuseForks=false` → `true`（Spring context 跨 test class 缓存）
+
+**防回退**: `BaseIntegrationTest` Javadoc 完整记录 3 重根因 + workaround 起源。后续若有人改回 `RANDOM_PORT` 必须先理解 34m hang。
+
+**收益**: backend **34m → 6m8s**（节省 82%），每 PR 减少 ~25 分钟阻塞。
+
+### MicroSpecialtyQueryServiceImpl 拆分（2026-08-18 · Phase 10 起步）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。MicroSpecialtyQueryServiceImpl 803 → 723 行（-80 行），从 precheck advisory 白名单移除。
+
+#### PR #262 — refactor(ms-query): 拆分 page() 到 MicroSpecialtyPageLoader
+- **`MicroSpecialtyPageLoader` 新建** (235 行):
+  - `page(page, size, params, assembler)` — 完整分页查询 + 6 套批量预加载
+  - `buildQueryWrapper()` — 14 种条件组合 (keyword / status / featured / gold / role / leading/participating)
+  - `batchLoadContext()` — 6 套 IN 查询（dept / teacher / creator / course / pending / total / role）
+  - `BatchContext` record — 不可变上下文快照
+  - `PageVoAssembler` 函数式接口 — 避免循环依赖（loader → service）
+- **`MicroSpecialtyQueryServiceImpl` 简化** (803 → 723 行, -80 行):
+  - 构造器新增 `pageLoader` 依赖
+  - `page()` 简化为 4 行委托 + `assemblePageVo()` 回调
+  - 保留 `copyToVO()` 编排逻辑
+- **`precheck.sh`**: `advisory_whitelist` 移除 `MicroSpecialtyQueryServiceImpl` (从 803 → 723 行, 已合规)
+- **7 个新单元测试**: emptyRecords / keywordFilter / studentRole / singleRecord / multipleRecords / featuredTrue / roleLeading
+- **61 个相关测试 100% 通过** (新 7 + 既有 54)
+- **precheck 26/26** (advisory 列表 2 → 1)
+
+**下一步**: VideoServiceImpl 803 → < 800 (类似模式)
+
+### VideoServiceImpl 拆分（2026-08-18 · Phase 11 完成）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。VideoServiceImpl 803 → 552 行（-251 行，-31%）。**首次实现微课平台所有 ServiceImpl 均 < 800 行**（除 AuthServiceImpl 811 pre-existing advisory）。
+
+#### PR #264 — refactor(video): 拆分 Upload 职责到 VideoUploadService
+- **`VideoUploadService` 新建** (425 行):
+  - 3 个 public API 与 Service 接口签名一致
+    - `batchUpload(files, courseId, chapterId)` — 任一失败不阻塞
+    - `uploadCover(videoId, file)` — 封面上传 (P2 R-003 删除旧封面)
+    - `uploadVideo(file, courseId, chapterId)` — 主流程（校验/MD5/Redis 锁/秒传/转码）
+  - 9 个 private helper 提取（validateVideoFile / isMp4Magic / isMkvMagic / deleteOldCoverIfExists / 等）
+- **`VideoValidator` 新建** (62 行): 3 个权限校验方法
+- **`VideoServiceImpl` 简化** (803 → 552 行, -31%):
+  - 构造器新增 `videoUploadService` + `videoValidator`
+  - `batchUpload` / `uploadCover` / `uploadVideo` 简化为单行委托
+  - `assertCourseOwnership` / `assertChapterBelongsToCourse` 委托 validator
+- **`precheck.sh`**: `advisory_whitelist` 从 `AuthServiceImpl VideoServiceImpl` 减为仅 `AuthServiceImpl`（从 2 → 0）
+- **3 个新单元测试**: emptyFiles / zeroLengthArray / delegatesToValidator
+- **66 个相关测试 100% 通过**
+- **precheck 26/26** (advisory 列表 2 → **0**)
+
+**踩坑记录（CI 修复）**:
+- 第一轮 CI 失败：`VideoUploadExecutor` 构造函数 String 参数缺 `@Value`，导致所有 117 个集成测试 ApplicationContext 加载失败
+- 第二轮 CI 失败：`VideoUploadExecutor` 类名与 `AsyncConfig.videoUploadExecutor` bean 名冲突，`APPLICATION FAILED TO START`
+- 最终方案：重命名为 `VideoUploadService` + 显式 `@Value` 注解 + 更新所有引用
+
+**Phase 10-11 历史意义**:
+| 文件 | 重构前 | 重构后 | 状态 |
+|------|--------|--------|------|
+| VideoServiceImpl | 803 | 552 | ✅ PR #264 |
+| MicroSpecialtyQueryServiceImpl | 803 | 723 | ✅ PR #262 |
+| 其他 13 个 | < 800 | < 800 | ✅ 早已合规 |
+| AuthServiceImpl | 811 | 811 | ⚠️ pre-existing |
+
+### F10-D2 灰度分流实现（2026-08-18 · Phase 9）
+
+> 兑现 deferred-items.md 登记 P2：原 `gray-release.sh` 写入 Redis 但后端不读取，灰度白名单实际不改变用户行为。
+
+#### PR #260 — feat(gray-release): 灰度分流机制
+- **`FeatureFlag` 枚举** (5 个): `MICRO_SPECIALTY_CLASS_IMPORT` / `NEW_PAYMENT_FLOW` / `AI_NARRATION_BATCH_GEN` / `VIDEO_TRANSCODE_V2` / `REALTIME_NOTIFICATION_WS`
+- **`GrayReleaseService`**: Redis-backed 灰度服务，5s 本地缓存，**fail-closed** 行为（Redis 异常默认 false）
+  - `isFeatureEnabled(flag)` / `isGrayUser(userId)` / `assertFeatureEnabled(flag)` 业务断言
+  - `loadFlagsFromRedis()` / `loadGrayUsersFromRedis()` 绕过缓存（运维诊断）
+  - `invalidateCache()` 主动刷新
+- **`GrayReleaseFilter`** (`@Order(40)`): HTTP 请求过滤器，注入 `gray.isGrayUser` / `gray.userId` request attribute
+- **`GrayReleaseController`**: ADMIN 诊断端点 `GET /api/gray-release/status`
+- **`ErrorCode.FEATURE_DISABLED(9011, HTTP 503)`**: 业务断言异常
+- **21 个单元测试 100% 通过** (GrayReleaseServiceTest 17 + GrayReleaseFilterTest 4)
+- **precheck 26/26**
+- **`gray-release.sh` 兼容性已验证**: `mc:gray:users` / `mc:feature:flags` Redis key 直接对接
 
 ### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
 

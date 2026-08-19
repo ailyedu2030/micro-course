@@ -58,7 +58,11 @@
 
     <!-- 驳回原因 Dialog -->
     <el-dialog v-model="rejectVisible" title="驳回原因" width="480px">
-      <el-input v-model="rejectReason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit />
+      <el-form ref="rejectFormRef" :model="rejectForm" :rules="rejectRules" @submit.prevent>
+        <el-form-item prop="reason">
+          <el-input v-model="rejectForm.reason" type="textarea" :rows="3" placeholder="请填写驳回原因" maxlength="500" show-word-limit />
+        </el-form-item>
+      </el-form>
       <template #footer>
         <el-button @click="rejectVisible = false">取消</el-button>
         <el-button type="danger" :loading="actingId !== null" @click="confirmReject">确认驳回</el-button>
@@ -68,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveFeatured, rejectFeatured } from '@/api/microSpecialty'
 
@@ -81,7 +85,14 @@ const size = ref(20)
 const total = ref(0)
 
 const rejectVisible = ref(false)
-const rejectReason = ref('')
+// P1-C 修复: 驳回原因必填校验（此前可空原因直接驳回）
+const rejectForm = reactive({ reason: '' })
+const rejectFormRef = ref(null)
+const rejectRules = {
+  reason: [
+    { required: true, message: '请输入驳回原因', trigger: 'blur' }
+  ]
+}
 const rejectTarget = ref(null)
 const error = ref(false)
 
@@ -119,11 +130,15 @@ const handleApprove = async (row) => {
 const handleReject = async (row) => {
   try { await ElMessageBox.confirm(`确定驳回「${row.title}」的置顶申请？`, '确认驳回', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' }) }
   catch { return }
-  rejectTarget.value = row; rejectReason.value = ''; rejectVisible.value = true
+  rejectTarget.value = row; rejectForm.reason = ''; rejectFormRef.value?.clearValidate(); rejectVisible.value = true
 }
 const confirmReject = async () => {
+  if (!rejectFormRef.value) return
+  try {
+    await rejectFormRef.value.validate()
+  } catch { return }
   actingId.value = rejectTarget.value.id
-  try { await rejectFeatured(rejectTarget.value.id, rejectReason.value); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
+  try { await rejectFeatured(rejectTarget.value.id, rejectForm.reason); ElMessage.success('已驳回'); rejectVisible.value = false; fetchData() }
   catch (e) { ElMessage.error(e?.response?.data?.message || '操作失败') }
   finally { actingId.value = null }
 }

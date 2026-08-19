@@ -10,45 +10,45 @@
       <div class="info-content">
         <el-icon :size="20" class="info-icon"><Coin /></el-icon>
         <div>
-          <p class="info-title">平台分账配置</p>
-          <p class="info-desc">管理平台对各等级教师的分账比例，配置后即刻生效。</p>
+          <p class="info-title">{{ $t('platformShare.title') }}</p>
+          <p class="info-desc">{{ $t('platformShare.desc') }}</p>
         </div>
       </div>
     </el-card>
 
     <!-- 表格 -->
-    <el-card class="table-card" shadow="never" v-loading="loading" element-loading-text="加载中...">
-      <el-table :data="configList" stripe style="width: 100%" @row-click="handleRowClick" empty-text="暂无配置">
-        <el-table-column prop="configKey" label="配置标识" width="140">
+    <el-card class="table-card" shadow="never" v-loading="loading" :element-loading-text="$t('common.loading')">
+      <el-table :data="configList" stripe style="width: 100%" @row-click="handleRowClick" :empty-text="$t('platformShare.noConfig')">
+        <el-table-column prop="configKey" :label="$t('platformShare.configKey')" width="140">
           <template #default="{ row }">
             <el-tag :type="getKeyTagType(row.configKey)" size="small" effect="dark">
               {{ row.configKey }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="configValue" label="分账比例" width="120">
+        <el-table-column prop="configValue" :label="$t('platformShare.ratio')" width="120">
           <template #default="{ row }">
             <span class="value-text">{{ row.configValue }}<span class="percent-suffix">%</span></span>
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="描述" min-width="200" />
-        <el-table-column prop="active" label="状态" width="90" align="center">
+        <el-table-column prop="description" :label="$t('platformShare.description')" min-width="200" />
+        <el-table-column prop="active" :label="$t('platformShare.status')" width="90" align="center">
           <template #default="{ row }">
             <el-tag :type="row.active ? 'success' : 'info'" size="small">
-              {{ row.active ? '启用' : '停用' }}
+              {{ row.active ? $t('platformShare.enabled') : $t('platformShare.disabled') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedBy" label="最后更新人" width="130" />
-        <el-table-column prop="updatedAt" label="更新时间" width="170">
+        <el-table-column prop="updatedBy" :label="$t('platformShare.updatedBy')" width="130" />
+        <el-table-column prop="updatedAt" :label="$t('platformShare.updatedAt')" width="170">
           <template #default="{ row }">
             {{ formatTime(row.updatedAt) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column :label="$t('platformShare.actions')" width="100" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'ADMIN'" type="primary" link size="small" @click.stop="handleEdit(row)">
-              编辑
+            <el-button v-if="isAdmin" type="primary" link size="small" @click.stop="handleEdit(row)">
+              {{ $t('app.edit') }}
             </el-button>
           </template>
         </el-table-column>
@@ -58,7 +58,7 @@
     <!-- 编辑弹窗 -->
     <el-dialog
       v-model="dialogVisible"
-      title="编辑分账配置"
+      :title="$t('platformShare.editTitle')"
       width="500px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -70,13 +70,13 @@
         label-width="100px"
         label-position="right"
       >
-        <el-form-item label="配置标识">
+        <el-form-item :label="$t('platformShare.configKey')">
           <el-tag :type="getKeyTagType(editForm.configKey)" effect="dark">
             {{ editForm.configKey }}
           </el-tag>
-          <span class="form-hint">不可修改</span>
+          <span class="form-hint">{{ $t('platformShare.notEditable') }}</span>
         </el-form-item>
-        <el-form-item label="分账比例" prop="configValue">
+        <el-form-item :label="$t('platformShare.ratio')" prop="configValue">
           <el-input-number
             v-model="editForm.configValue"
             :min="0"
@@ -87,22 +87,22 @@
           />
           <span class="form-unit">%</span>
         </el-form-item>
-        <el-form-item label="描述" prop="description">
+        <el-form-item :label="$t('platformShare.description')" prop="description">
           <el-input
             v-model="editForm.description"
             type="textarea"
             :rows="2"
-            placeholder="请输入配置说明"
+            :placeholder="$t('platformShare.descriptionPlaceholder')"
           />
         </el-form-item>
-        <el-form-item label="启用">
+        <el-form-item :label="$t('platformShare.enabled')">
           <el-switch v-model="editForm.active" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">
-          保存
+        <el-button @click="dialogVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button v-if="isAdmin" type="primary" :loading="saving" @click="handleSave">
+          {{ $t('app.save') }}
         </el-button>
       </template>
     </el-dialog>
@@ -113,13 +113,17 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Coin } from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
 import { getPlatformShareConfigList, upsertPlatformShareConfig } from '@/api/platform-share-config'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 const loading = ref(false)
-// P1-C 修复 (2026-08-04): userRole 未定义 → 分账比例编辑按钮隐藏，配置不可修改
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+// 审计 2026-08-14 修复: 平台分账配置仅 ADMIN 可编辑,
+// 行点击 / 编辑按钮 / 保存按钮统一以 isAdmin 守卫
+const isAdmin = computed(() => userRole.value === 'ADMIN')
 const saving = ref(false)
 const configList = ref([])
 const dialogVisible = ref(false)
@@ -134,8 +138,8 @@ const editForm = reactive({
 
 const formRules = {
   configValue: [
-    { required: true, message: '请输入分账比例', trigger: 'blur' },
-    { type: 'number', min: 0, max: 100, message: '分账比例应在 0-100 之间', trigger: 'blur' }
+    { required: true, message: t('platformShare.ratioRequired'), trigger: 'blur' },
+    { type: 'number', min: 0, max: 100, message: t('platformShare.ratioRange'), trigger: 'blur' }
   ]
 }
 
@@ -169,13 +173,15 @@ async function fetchList() {
     configList.value = res.data || []
   } catch (e) {
     console.warn('[PlatformShareConfig] fetch failed', e)
-    ElMessage.error('加载配置列表失败')
+    ElMessage.error(t('platformShare.loadFailed'))
   } finally {
     loading.value = false
   }
 }
 
 function handleRowClick(row) {
+  // 审计 2026-08-14 修复: 行点击仅 ADMIN 可触发编辑
+  if (!isAdmin.value) return
   handleEdit(row)
 }
 
@@ -188,7 +194,6 @@ function handleEdit(row) {
 }
 
 async function handleSave() {
-  // P1 幂等修复: validate 是异步的, loading 必须在 await 之前置位防连点重复提交
   if (saving.value) return
   if (!formRef.value) return
   saving.value = true
@@ -202,12 +207,12 @@ async function handleSave() {
       description: editForm.description,
       active: editForm.active
     })
-    ElMessage.success('保存成功')
+    ElMessage.success(t('app.saveSuccess'))
     dialogVisible.value = false
     await fetchList()
   } catch (e) {
     console.warn('[PlatformShareConfig] save failed', e)
-    ElMessage.error('保存失败，请稍后重试')
+    ElMessage.error(t('platformShare.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -242,7 +247,7 @@ onMounted(() => {
 
 .info-icon {
   color: var(--role-primary);
-  flex-shrink: 0;
+  flex-shrink: 1;
   margin-top: 2px;
 }
 
