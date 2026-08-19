@@ -43,6 +43,8 @@ jobs:
           # 7 个 CI job: 5 core + secrets-check + references-sync
           # secrets-check 和 references-sync 为 advisory (永不阻断)，
           # 但仍需等待它们出现（若 branch protection 列为 required check）
+          # PR-2.2 (2026-08-20): e2e 可能拆为 2-shard (e2e (1)/e2e (2)) 或保持单数
+          # 修复: EXPECTED_CHECKS 保留单数 e2e + 匹配逻辑用 startswith("e2e") 前缀容错
           EXPECTED_CHECKS="backend frontend e2e docker monitoring-lint secrets-check references-sync"
           MAX_WAIT=3300  # 55 minute timeout (匹配外层 job timeout-minutes: 55，与 backend job 对齐)
           INTERVAL=15
@@ -65,6 +67,22 @@ jobs:
 
             CANCELLED_THIS_ROUND=0
             for check in $EXPECTED_CHECKS; do
+              # PR-2.2: e2e 用 startswith 前缀匹配 (兼容 e2e / e2e (1) / e2e (2))
+              if [ "$check" = "e2e" ]; then
+                E2E_CONCLUSIONS=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
+                  --jq "[.check_runs[] | select(.name | startswith(\"e2e\")) | .conclusion] | unique" 2>/dev/null || echo "null")
+                if echo "$E2E_CONCLUSIONS" | grep -q '\"failure\"\|\"timed_out\"'; then
+                  echo "::error::e2e shard failed: $E2E_CONCLUSIONS — aborting auto-approve"
+                  exit 1
+                fi
+                if echo "$E2E_CONCLUSIONS" | grep -q '\"null\"\|\"pending\"\|\"in_progress\"'; then
+                  echo "[${ELAPSED}s] e2e: not all shards ready ($E2E_CONCLUSIONS)"
+                  ALL_READY=false
+                else
+                  echo "[${ELAPSED}s] e2e shards: $E2E_CONCLUSIONS ✓"
+                fi
+                continue
+              fi
               CONCLUSION=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
                 --jq ".check_runs[] | select(.name == \"$check\") | .conclusion" 2>/dev/null || echo "null")
               STATUS=$(gh api "repos/$GH_REPO/commits/$HEAD_SHA/check-runs" \
