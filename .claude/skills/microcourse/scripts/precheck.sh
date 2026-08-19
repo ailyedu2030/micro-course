@@ -734,6 +734,44 @@ check_window_doc_localstorage_at_module_level() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# R8 修复: working tree 异常残留文件 (P1-I 教训 2026-08-19)
+# 现象: 部署 jar mv 卡死的 session 期间产生 =700 0 字节空文件, 污染 working tree
+#       git status 显示 untracked, 不阻断 CI 但污染开发体验 + 横向残留风险
+# 根因: shell 误输入 (jar=... 简写 / > =重定向残留) 或 IDE 临时文件命名
+# 教训: working tree 异常命名 (以 = 开头纯数字) 应在 precheck 中检出, WARN 提示清理
+# 规则: git status --porcelain 中匹配 ? = 数字 形式的 0 字节空文件 -> WARN
+# ----------------------------------------------------------------------------
+check_working_tree_anomalies() {
+    local hits=0
+    local hit_files=()
+    local f
+    # 绕过 .gitignore, 直接 find 扫 = 开头纯数字 0 字节文件 (绕开 =[0-9]* 兜底仍能检出残留)
+    # 排除 .git / node_modules / target / dist / build / out / .audit-cache / .dsh-vision-router / .gitnexus 等
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if [ -f "$ROOT/$f" ] && [ ! -s "$ROOT/$f" ]; then
+            hits=$((hits+1))
+            hit_files+=("$f")
+        fi
+    done < <(cd "$ROOT" && find . -maxdepth 3 -type f -name '=[0-9]*' -size 0 \
+        -not -path './.git/*' -not -path './node_modules/*' \
+        -not -path '*/node_modules/*' -not -path '*/target/*' -not -path '*/dist/*' \
+        -not -path '*/build/*' -not -path '*/out/*' -not -path '*/.audit-cache/*' \
+        -not -path '*/.dsh-vision-router/*' -not -path '*/.gitnexus/*' \
+        -not -path '*/.playwright-mcp/*' -not -path '*/.playwright-report/*' \
+        2>/dev/null | sed 's|^\./||')
+    if [ "$hits" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [R8] working tree 异常残留文件 ($hits 个, 以 = 开头纯数字空文件, 2026-08-19 部署残留教训):"
+        for f in "${hit_files[@]}"; do
+            echo "    - $f (rm 清理; .gitignore =[0-9]* 已加兜底)"
+        done
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 # 调用 R7 (在 R6 调用后)
 
 }
@@ -743,6 +781,7 @@ check_references_sync
 check_router_self_loop
 check_workflow_outputs_id
 check_window_doc_localstorage_at_module_level
+check_working_tree_anomalies
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"
