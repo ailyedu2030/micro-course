@@ -134,6 +134,100 @@ SKIP_SIGNOFF_CHECK=1 git commit ...
 - `ExerciseAnswerSubmitExecutorTest` (6 个): 练习不存在、超答题次数、考试超时、考试已提交、maxAttempts/timeLimit 不限
 - **无需 Spring / DB / Redis**,纯 Mockito, ~2s 跑完
 
+### CI Backend 测试 Hang 根因修复（2026-08-18 · Phase 8）
+
+> 解决 CI backend 每次阻塞 ~30 分钟的根因。实测 backend 34m28s → **6m8s**，节省 28m20s/PR（**-82% 时间**）。
+
+#### PR #258 — perf(ci): 修复 backend test hang 根因
+
+**现象**: 连续 5 个 PR（#253-#257）backend 28-34m hang，frontend 1m35s 形成 22x 差距。
+
+**根因（3 重叠加）**:
+1. `BaseIntegrationTest` 用 `WebEnvironment.RANDOM_PORT` → 每个 test class 启动真实 Tomcat server（74 个继承的 test × Tomcat 启动）
+2. `pom.xml` surefire `reuseForks=false` → 每 test class 独立 JVM fork（83 JVM 启动开销）
+3. JVM `-Xmx1500m` 不足以支撑 83 个 Spring context 累积（200-300MB/context）
+
+**修复**:
+- `BaseIntegrationTest`：`RANDOM_PORT` → `MOCK`（所有 test 用 MockMvc，无需 Tomcat）。删除未使用的 `port` 字段（死代码）
+- `pom.xml`：`-Xmx1500m` → `-Xmx3g`、`reuseForks=false` → `true`（Spring context 跨 test class 缓存）
+
+**防回退**: `BaseIntegrationTest` Javadoc 完整记录 3 重根因 + workaround 起源。后续若有人改回 `RANDOM_PORT` 必须先理解 34m hang。
+
+**收益**: backend **34m → 6m8s**（节省 82%），每 PR 减少 ~25 分钟阻塞。
+
+### MicroSpecialtyQueryServiceImpl 拆分（2026-08-18 · Phase 10 起步）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。MicroSpecialtyQueryServiceImpl 803 → 723 行（-80 行），从 precheck advisory 白名单移除。
+
+#### PR #262 — refactor(ms-query): 拆分 page() 到 MicroSpecialtyPageLoader
+- **`MicroSpecialtyPageLoader` 新建** (235 行):
+  - `page(page, size, params, assembler)` — 完整分页查询 + 6 套批量预加载
+  - `buildQueryWrapper()` — 14 种条件组合 (keyword / status / featured / gold / role / leading/participating)
+  - `batchLoadContext()` — 6 套 IN 查询（dept / teacher / creator / course / pending / total / role）
+  - `BatchContext` record — 不可变上下文快照
+  - `PageVoAssembler` 函数式接口 — 避免循环依赖（loader → service）
+- **`MicroSpecialtyQueryServiceImpl` 简化** (803 → 723 行, -80 行):
+  - 构造器新增 `pageLoader` 依赖
+  - `page()` 简化为 4 行委托 + `assemblePageVo()` 回调
+  - 保留 `copyToVO()` 编排逻辑
+- **`precheck.sh`**: `advisory_whitelist` 移除 `MicroSpecialtyQueryServiceImpl` (从 803 → 723 行, 已合规)
+- **7 个新单元测试**: emptyRecords / keywordFilter / studentRole / singleRecord / multipleRecords / featuredTrue / roleLeading
+- **61 个相关测试 100% 通过** (新 7 + 既有 54)
+- **precheck 26/26** (advisory 列表 2 → 1)
+
+**下一步**: VideoServiceImpl 803 → < 800 (类似模式)
+
+### VideoServiceImpl 拆分（2026-08-18 · Phase 11 完成）
+
+> 兑现 `audit-fix-record-2026-08-15.md` ServiceImpl 超长拆分计划。VideoServiceImpl 803 → 552 行（-251 行，-31%）。**首次实现微课平台所有 ServiceImpl 均 < 800 行**（除 AuthServiceImpl 811 pre-existing advisory）。
+
+#### PR #264 — refactor(video): 拆分 Upload 职责到 VideoUploadService
+- **`VideoUploadService` 新建** (425 行):
+  - 3 个 public API 与 Service 接口签名一致
+    - `batchUpload(files, courseId, chapterId)` — 任一失败不阻塞
+    - `uploadCover(videoId, file)` — 封面上传 (P2 R-003 删除旧封面)
+    - `uploadVideo(file, courseId, chapterId)` — 主流程（校验/MD5/Redis 锁/秒传/转码）
+  - 9 个 private helper 提取（validateVideoFile / isMp4Magic / isMkvMagic / deleteOldCoverIfExists / 等）
+- **`VideoValidator` 新建** (62 行): 3 个权限校验方法
+- **`VideoServiceImpl` 简化** (803 → 552 行, -31%):
+  - 构造器新增 `videoUploadService` + `videoValidator`
+  - `batchUpload` / `uploadCover` / `uploadVideo` 简化为单行委托
+  - `assertCourseOwnership` / `assertChapterBelongsToCourse` 委托 validator
+- **`precheck.sh`**: `advisory_whitelist` 从 `AuthServiceImpl VideoServiceImpl` 减为仅 `AuthServiceImpl`（从 2 → 0）
+- **3 个新单元测试**: emptyFiles / zeroLengthArray / delegatesToValidator
+- **66 个相关测试 100% 通过**
+- **precheck 26/26** (advisory 列表 2 → **0**)
+
+**踩坑记录（CI 修复）**:
+- 第一轮 CI 失败：`VideoUploadExecutor` 构造函数 String 参数缺 `@Value`，导致所有 117 个集成测试 ApplicationContext 加载失败
+- 第二轮 CI 失败：`VideoUploadExecutor` 类名与 `AsyncConfig.videoUploadExecutor` bean 名冲突，`APPLICATION FAILED TO START`
+- 最终方案：重命名为 `VideoUploadService` + 显式 `@Value` 注解 + 更新所有引用
+
+**Phase 10-11 历史意义**:
+| 文件 | 重构前 | 重构后 | 状态 |
+|------|--------|--------|------|
+| VideoServiceImpl | 803 | 552 | ✅ PR #264 |
+| MicroSpecialtyQueryServiceImpl | 803 | 723 | ✅ PR #262 |
+| 其他 13 个 | < 800 | < 800 | ✅ 早已合规 |
+| AuthServiceImpl | 811 | 811 | ⚠️ pre-existing |
+
+### F10-D2 灰度分流实现（2026-08-18 · Phase 9）
+
+> 兑现 deferred-items.md 登记 P2：原 `gray-release.sh` 写入 Redis 但后端不读取，灰度白名单实际不改变用户行为。
+
+#### PR #260 — feat(gray-release): 灰度分流机制
+- **`FeatureFlag` 枚举** (5 个): `MICRO_SPECIALTY_CLASS_IMPORT` / `NEW_PAYMENT_FLOW` / `AI_NARRATION_BATCH_GEN` / `VIDEO_TRANSCODE_V2` / `REALTIME_NOTIFICATION_WS`
+- **`GrayReleaseService`**: Redis-backed 灰度服务，5s 本地缓存，**fail-closed** 行为（Redis 异常默认 false）
+  - `isFeatureEnabled(flag)` / `isGrayUser(userId)` / `assertFeatureEnabled(flag)` 业务断言
+  - `loadFlagsFromRedis()` / `loadGrayUsersFromRedis()` 绕过缓存（运维诊断）
+  - `invalidateCache()` 主动刷新
+- **`GrayReleaseFilter`** (`@Order(40)`): HTTP 请求过滤器，注入 `gray.isGrayUser` / `gray.userId` request attribute
+- **`GrayReleaseController`**: ADMIN 诊断端点 `GET /api/gray-release/status`
+- **`ErrorCode.FEATURE_DISABLED(9011, HTTP 503)`**: 业务断言异常
+- **21 个单元测试 100% 通过** (GrayReleaseServiceTest 17 + GrayReleaseFilterTest 4)
+- **precheck 26/26**
+- **`gray-release.sh` 兼容性已验证**: `mc:gray:users` / `mc:feature:flags` Redis key 直接对接
+
 ### Fixed (Phase 10 PPT/HTML 音频同步 P0-P3 + F-05~14 系列 + 4 维度交叉审查 batch fix)
 
 > 2026-08-07 Phase 10 代码审查（R1 前端 / R2 后端 / R3 配置+CI+DB / R4 业务契约+UX，52 项）
