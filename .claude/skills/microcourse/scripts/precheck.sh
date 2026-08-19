@@ -654,9 +654,52 @@ check_router_self_loop() {
         PASS=$((PASS+1))
     fi
 }
+# ----------------------------------------------------------------------------
+# R6 修复: workflows outputs 引用完整性 (P0 教训 2026-08-19)
+# 现象: PR #266 首次 CI run 全部 5 个 required check SKIPPED 但 mergeStateStatus=CLEAN
+#       (SKIPPED 在 GH 分支保护中视为通过) -> Bot auto-approve -> 实际 0 测试运行 (P0 漏洞)
+# 根因: dorny/paths-filter@v3 step 未设 id: filter -> 下游 needs.changes.outputs.<name>
+#       读取时 steps.filter undefined -> outputs 等于空字符串 -> if ('' == 'true') 评估 false -> SKIPPED
+# 教训: 任何 step 通过 steps.<id>.outputs.* 引用输出时, 对应 step 必须显式 id: <id>
+# 规则: 扫描 .github/workflows/*.yml, 若有 steps.<id>.outputs.* 引用, 对应 step 必须有 id 字段
+# ----------------------------------------------------------------------------
+check_workflow_outputs_id() {
+    local workflows_dir="$ROOT/.github/workflows"
+    if [ ! -d "$workflows_dir" ]; then
+        PASS=$((PASS+1))
+        return
+    fi
+    local fail_cnt=0
+    local fail_msgs=()
+    local wf
+    for wf in "$workflows_dir"/*.yml "$workflows_dir"/*.yaml; do
+        [ -f "$wf" ] || continue
+        local rel="${wf#$ROOT/}"
+        local step_refs
+        step_refs=$(grep -oE 'steps\.([a-zA-Z_][a-zA-Z0-9_-]*)\.outputs' "$wf" 2>/dev/null | sed 's/steps\.//;s/\.outputs//' | sort -u)
+        local ref
+        for ref in $step_refs; do
+            if ! grep -qE "^[[:space:]]*-?[[:space:]]*id:[[:space:]]+$ref\b" "$wf"; then
+                fail_cnt=$((fail_cnt+1))
+                fail_msgs+=("$rel: step 引用 steps.$ref.outputs 但无 id: $ref")
+            fi
+        done
+    done
+    if [ $fail_cnt -gt 0 ]; then
+        FAILS+=("[R6] workflows outputs 引用缺 id (P0 教训): $fail_cnt 处")
+        for m in "${fail_msgs[@]}"; do
+            FAILS+=("  - $m")
+        done
+        FAIL=1
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 
 check_references_sync
 check_router_self_loop
+check_workflow_outputs_id
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"
