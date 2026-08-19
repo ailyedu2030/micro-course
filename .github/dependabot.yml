@@ -62,12 +62,9 @@ updates:
           - "@vitejs*"
           - "eslint*"
           - "@playwright*"
-        # 2026-08-19 接管治理: 排除 vite-plugin-vue-devtools
-        # 根因: vite 5 vs vite-plugin-vue-devtools 8.x peer dep 冲突 (vite-plugin-vue-devtools 8.x 要求 vite ^6.0.0)
-        # 升级路径: 启动独立 PR-4 "vite-stack 升级" (vite 5→6 + vite-plugin-vue-devtools 7→8 + @vitejs/plugin-vue 5→6 + vitest 1→2)
-        # 详见: docs/deferred-items.md (D19-1 D19-5)
-        exclude-patterns:
-          - "vite-plugin-vue-devtools"
+        # 2026-08-19 D19-1 闭环 (PR #274 #275 #278 全部 merged): vite 5→6 + devtools 7→8 + plugin-vue 5→6 + vitest 1→2
+        # 排除规则已撤销, vite-plugin-vue-devtools 后续升级走 dependabot 正常流程
+        # 详见: docs/deferred-items.md (D19-1)
       utilities:
         patterns:
           - "*"
