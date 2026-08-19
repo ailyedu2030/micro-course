@@ -169,6 +169,30 @@ e2e (8.7min) ──────────────────────�
 
 ---
 
+## 4.5 依赖升级追踪 (dependabot, 2026-08-19)
+
+### 本次接管批处理结果
+
+| PR | 升级 | 类型 | 决策 | 结果 |
+|----|------|------|------|------|
+| #158 | element-plus 2.14.1→2.14.4 | patch | ✅ 合并 | merged (b4bfb547) |
+| #151 | hutool 5.8.46→5.8.47 | patch | ✅ 合并 | merged (be4f052c) |
+| #152 | jsoup 1.18.3→1.23.1 | minor | ✅ 合并 | merged (9d0eec5c) |
+| #156 | vite-plugin-vue-devtools 7.7.10→8.2.1 | minor | ❌ 关闭 | peer dep 冲突 (vite 5 vs devtools 8 要求 vite 6+) |
+| #192 | vue-i18n 9.14.5→11.4.8 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+| #159 | pinia 2.3.1→4.0.3 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+| #157 | happy-dom 15.11.7→20.11.2 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+| #155 | springdoc 2.5.0→3.1.0 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+| #154 | easyexcel 3.3.4→4.0.3 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+| #153 | openpdf 1.3.39→3.0.5 | MAJOR | 🟡 暂缓 | D19-2 deferred |
+
+### 后续 (启动独立 PR-4)
+- vite-stack 升级 (D19-1): vite 5→6 + vite-plugin-vue-devtools 7→8 + @vitejs/plugin-vue 5→6 + vitest 1→2
+- 6 个 MAJOR 升级 (D19-2): 单独 PR + 迁移评估
+- .github/dependabot.yml 已优化: build-tools group 排除 vite-plugin-vue-devtools (避免重复触发失败 PR)
+
+---
+
 ## 5. 引用与依据
 
 - 外部基准：[Cal.com - How We Cut Our CI Wall Time from 30 Minutes to 5 Minutes](https://cal.com/blog/how-we-cut-our-ci-wall-time-from-30-minutes-to-5-minutes)

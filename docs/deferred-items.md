@@ -3,6 +3,27 @@
 > 本文件登记发布时已评估但放行的 P1-I / P2 缺陷。
 > 每次发布前必须清理上一版本的所有条目。
 
+## 2026-08-19 · F-2026-08-19 批次总工程师评估（接管批次）
+
+> 总工程师签字: 本次接管 (2026-08-19) 已完成 P0 治理闭环, 以下 P1-I 项经逐条评估, 当前不影响客户正常使用, 登记放行, 不阻断部署.
+> 完整接管报告: docs/接管报告-2026-08-19-micro-course.md
+
+| # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
+|---|---|---|---|---|---|
+| **D19-1** | **P1-I** | **前端栈大版本升级 (vite 5→6 / vite-plugin-vue-devtools 7→8 / @vitejs/plugin-vue 5→6 / vitest 1→2)** | 当前功能正常, 客户不可感知; 但 dependabot PR #156 (vite-plugin-vue-devtools 7→8) 因 peer dep 冲突 (vite 5 vs devtools 8 要求 vite 6+) 被关闭 | 登记放行 | **启动独立 PR-4 "vite-stack 升级"** (本期不做, 涉及约 50 文件 + 完整回归); 在此之前 .github/dependabot.yml 排除 vite-plugin-vue-devtools (避免重复触发失败 PR) |
+| **D19-2** | **P1-I** | **6 个 dependabot MAJOR 升级暂缓** (#192 vue-i18n 9→11 / #159 pinia 2→4 / #157 happy-dom 15→20 / #155 springdoc 2.5→3.1 / #154 easyexcel 3.3→4.0 / #153 openpdf 1.3→3.0) | 当前功能正常, 客户不可感知; MAJOR 升级需单独迁移评估 | 登记放行 | 每个单独 PR + 迁移评估周期 (建议先做 backend deps, 再 frontend deps); 创建 docs/migration/MAJOR-upgrade-plan.md 跟踪 |
+| **D19-3** | P1-I | **PR #266 P0 漏洞触发的"PR 自审验证隐式依赖"教训** | 已根治: PR #266 squash commit d00172e7 含 id: filter 修复; 验证 run 32247275893 全部 SUCCESS (5/5 required checks) | 已闭环 (本次) | ✅ **【防止再发】已落地**: (a) precheck.sh R6 规则 check_workflow_outputs_id (PR #267 merged c98e8e55); (b) tracker 治理日志登记 (PR #268 merged d3fa2ed0); (c) 后续 AGENTS.md 增补硬约束 (本次治理 PR) |
+| **D19-4** | P1-I | **PR #142 #143 旧 takeover 任务 (24天 OPEN)** | 包含 31 commits / 63 文件大改, 风险高 | 已关闭 | ✅ **已处理**: 24天过期, 本次接管 (2026-08-19) 已部分覆盖; 分支 fix/takeover-phase3-final-2026-07-27 保留在 origin, 后续如需 cherry-pick 单个 commit 评估 |
+| **D19-5** | P1-I | **PR #156 vite-plugin-vue-devtools 7→8 (peer dep 冲突关闭)** | 不影响客户 (CI/前端构建正常), 但 dev 体验退化 (停在新版) | 关闭 + 排除 | 同 D19-1, 依赖 vite-stack 升级 |
+| **D19-6** | P1-I | **AGENTS.md / docs/开发流程 增补 workflows outputs id 硬约束 + commit hook 检查** | 已落地 R6 规则 + tracker 登记, 但 AGENTS.md 文档化未完成 | 治理改进 | ✅ **本次完成**: AGENTS.md 新增 "## 🔒 GitHub Actions 隐式依赖硬约束" 章节 (含 R6 规则引用 + fix commit 必检项) |
+
+### 评估
+- 6 项均为治理改进或大版本升级, 非回归缺陷
+- 不会在客户常规操作中触发或触发后无功能影响
+- 评估人: 总工程师 (2026-08-19)
+- 配套治理: PR #266 P0 修复 + PR #267 R6 规则 + PR #268 tracker 登记 + PR #269 接管报告
+
+
 ## 2026-08-12 · F-2026-08-10 批次总工程师评估（更新 2026-08-13 部署后）
 
 > 总工程师签字：以下 P1-I/P2 项经逐条评估，当前不影响客户正常使用，登记放行，不阻断部署。

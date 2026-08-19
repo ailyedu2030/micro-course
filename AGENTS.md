@@ -140,6 +140,30 @@ Owner 自提 PR
 
 ---
 
+## 🔒 GitHub Actions 隐式依赖硬约束（P0 教训 2026-08-19）
+
+> **背景**：PR #266 (ci(perf): paths-filter) 首次 CI 全部 5 个 required check SKIPPED 但 `mergeStateStatus=CLEAN`，Bot auto-approve 后理论上可 merge 但实际 0 测试运行（P0 漏洞）。
+> **根因**：`dorny/paths-filter@v3` step 未设 `id: filter` → `steps.filter` undefined → outputs 空字符串 → `if ('' == 'true')` 评估 false → job SKIPPED。
+> **治理闭环**：PR #266 squash `d00172e7` (id: filter 修复) + PR #267 `c98e8e55` (R6 规则) + PR #268 `d3fa2ed0` (tracker 登记)。
+
+### 硬约束（author + reviewer 必须遵守）
+
+| # | 规则 | 检查方式 |
+|---|------|---------|
+| **H1** | 任何 step 通过 `steps.<id>.outputs.*` 或 `needs.<job>.outputs.*` 引用输出时，**对应 step 必须显式 `id: <id>` 字段** | `precheck.sh` R6 规则 (27/27 PASS) |
+| **H2** | `fix(ci)` / `fix(scope)` 类型 commit 修改 `.github/workflows/*.yml` 时, commit message 必须包含**【根因】【横向扫描】【防止再发】**三段 | `commit-msg` hook + reviewer 双重检查 |
+| **H3** | 5 维自审 (R1-R5) 必须覆盖 "**DAG 数据流验证**: outputs 引用是否完整传递到下游 job" 这一隐含依赖 | PR 模板 + reviewer checklist |
+| **H4** | SKIPPED job 不能视为"通过" — `mergeStateStatus=CLEAN` + 全部 SKIPPED = P0 漏洞. Bot auto-approve 必须基于**真实 SUCCESS** 而非 SKIPPED | 总工程师 review + 治理审计日志 |
+| **H5** | 任何 .github/workflows/*.yml 修改必须先在本地用 `act` 或 dry-run 验证 if 条件表达式求值, 防止 paths-filter / needs 表达式静默失败 | CI dry-run + precheck |
+
+### 关联
+- `precheck.sh` R6 规则: `check_workflow_outputs_id` (PR #267 merged)
+- `docs/qa/ci-optimization-tracker.md` §4 治理审计日志: 7 条 P0 事件完整登记 (PR #268 merged)
+- `docs/deferred-items.md` D19-3: P0 教训闭环 + 【防止再发】落地确认
+- `docs/接管报告-2026-08-19-micro-course.md` §7 L1: PR 自审必须验证隐式依赖
+
+---
+
 ## PR 分级审批规则（Step 5.1）
 
 > **2026-07-20 决策 (D5) + 2026-07-21 更新**: 
