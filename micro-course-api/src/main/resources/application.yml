@@ -240,8 +240,10 @@ mybatis:
 #   ⚠️  不覆盖 = 生产使用固定密钥 = 字段级加密形同虚设 = P0 级数据泄露事故
 app:
   security:
-    field-encryption-key: ${APP_SECURITY_FIELD_ENCRYPTION_KEY:dev-32-char-key-not-for-production-!}
-    field-encryption-salt: ${APP_SECURITY_FIELD_ENCRYPTION_SALT:0123456789abcdef}
+    # P0-2026-08-20 修复: dev default 删除（之前的 `dev-32-char-key-not-for-production-!` / `0123456789abcdef` 长度均通过 FieldEncryptor isBlank/length 检查 → 生产忘设 env var 时默默用 dev key 加密 → 字段级加密形同虚设）
+    # 现在的 default 改空, FieldEncryptor.isBlank() 抛 IllegalArgumentException → 启动失败 (fail-fast)
+    field-encryption-key: ${APP_SECURITY_FIELD_ENCRYPTION_KEY:}
+    field-encryption-salt: ${APP_SECURITY_FIELD_ENCRYPTION_SALT:}
 
 # OpenTelemetry 链路追踪配置(临时禁用 — Phase 4 Round 4 总工程师决策)
 # 原因:OTel SDK 版本与 starter transitive 依赖冲突,prod 启动失败。
