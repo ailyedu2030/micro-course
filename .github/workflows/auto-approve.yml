@@ -43,7 +43,9 @@ jobs:
           # 7 个 CI job: 5 core + secrets-check + references-sync
           # secrets-check 和 references-sync 为 advisory (永不阻断)，
           # 但仍需等待它们出现（若 branch protection 列为 required check）
-          EXPECTED_CHECKS="backend frontend e2e docker monitoring-lint secrets-check references-sync"
+          # PR-2.2 (2026-08-20): e2e 拆为 2-shard 矩阵 → check 名变 e2e (1) + e2e (2)
+          # 修复: 匹配两个 shard 名 (精确匹配, 不能再用单数 e2e)
+          EXPECTED_CHECKS="backend frontend e2e (1) e2e (2) docker monitoring-lint secrets-check references-sync"
           MAX_WAIT=3300  # 55 minute timeout (匹配外层 job timeout-minutes: 55，与 backend job 对齐)
           INTERVAL=15
           ELAPSED=0
