@@ -5,6 +5,7 @@ import com.microcourse.entity.Video;
 import com.microcourse.repository.VideoRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.jdbc.Sql;
 
 import java.util.concurrent.*;
@@ -29,6 +30,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 // Phase K: 种子数据已修复,V137/V138 等 migration 已稳定 — @Tag("quarantine") 移除,
 //   测试默认纳入 CI 运行。Phase K 之前因依赖旧种子已通过手动修复(CON-002 转码并发门控),
 //   现在与默认 surefire 一起跑。
+// 2026-08-19 根因修复 (P0): 单测 pass 但全套件 fail (5 线程全 skip)。
+//   根因: reuseForks=true 共享 JVM + @Async video-upload executor 线程池被前测试污染。
+//   修复: @DirtiesContext(classMode=AFTER_CLASS) 强制 Spring context 重建,
+//   隔离 video-upload executor 线程池 + Redis 锁状态, 防止跨测试干扰。
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class VideoP0ConcurrencyTest extends BaseIntegrationTest {
 
     @Autowired
