@@ -1,6 +1,8 @@
 package com.microcourse.plugin.interactive.flow;
 
 import com.microcourse.plugin.interactive.dto.PptFlowDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 /**
@@ -11,6 +13,8 @@ import org.springframework.stereotype.Component;
  */
 @Component
 public class SkipIfKnownFlowHandler implements FlowHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(SkipIfKnownFlowHandler.class);
 
     @Override
     public String supportedType() {
@@ -62,6 +66,8 @@ public class SkipIfKnownFlowHandler implements FlowHandler {
         try {
             return Double.parseDouble(expr.substring(prefixLen).trim());
         } catch (Exception ex) {
+            // P1-I 修复 (2026-08-12): 静默吞表达式解析异常阻碍跳转规则排查
+            log.debug("[SkipIfKnownFlowHandler] conditionExpression 阈值解析失败 expr={} prefixLen={}", expr, prefixLen, ex);
             return Double.MAX_VALUE;
         }
     }

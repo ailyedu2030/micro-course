@@ -15,6 +15,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/students")
@@ -36,7 +37,7 @@ public class StudentController {
     @Operation(summary = "获取学员列表（分页）")
     public R<PageResult<EnrollmentVO>> listStudents(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size,
             @RequestParam(required = false) String studentName,
             @RequestParam(required = false) String courseName,
             @RequestParam(required = false) String status,

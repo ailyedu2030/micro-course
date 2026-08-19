@@ -1,52 +1,52 @@
 <template>
   <div class="exam-list-page">
     <header class="page-header">
-      <h1>试卷管理</h1>
+      <h1>{{ $t('exam.title') }}</h1>
       <div class="header-actions">
-        <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" :icon="Plus" @click="showCreate = true">{{ chapterIdFromRoute ? '智能组卷' : '新增试卷' }}</el-button>
-        <el-button v-if="chapterIdFromRoute && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" :icon="Plus" @click="openScheduleDialog">安排考试</el-button>
+        <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" type="primary" :icon="Plus" @click="showCreate = true">{{ chapterIdFromRoute ? $t('exam.smartGenerate') : $t('exam.createTitle') }}</el-button>
+        <el-button v-if="chapterIdFromRoute && (userRole === 'TEACHER' || userRole === 'ADMIN')" type="success" :icon="Plus" @click="openScheduleDialog">{{ $t('exam.scheduleExam') }}</el-button>
       </div>
     </header>
 
     <!-- 搜索筛选区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="所属课程">
-          <el-select v-model="searchForm.courseId" placeholder="选择课程" clearable class="filter-input-w200" @change="onSearchCourseChange" filterable>
+        <el-form-item :label="$t('exam.belongCourse')">
+          <el-select v-model="searchForm.courseId" :placeholder="$t('course.selectCourse')" clearable class="filter-input-w200" @change="onSearchCourseChange" filterable>
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节">
-          <el-select v-model="searchForm.chapterId" placeholder="选择章节" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
+        <el-form-item :label="$t('course.chapter')">
+          <el-select v-model="searchForm.chapterId" :placeholder="$t('course.selectChapter')" clearable class="filter-input-w200" :disabled="!searchForm.courseId">
             <el-option v-for="ch in searchChapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('exam.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
 
     <el-card class="table-card" shadow="never">
       <el-table :data="exams" stripe v-loading="loading">
-        <template #empty><el-empty description="暂未创建试卷，点击「新增试卷」一键组卷" /></template>
-        <el-table-column prop="title" label="试卷标题" min-width="180" />
-        <el-table-column label="所属课程" min-width="150" show-overflow-tooltip>
+        <template #empty><el-empty :description="$t('exam.emptyHint')" /></template>
+        <el-table-column prop="title" :label="$t('exam.examTitle')" min-width="180" />
+        <el-table-column :label="$t('exam.belongCourse')" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">{{ getCourseTitle(row.courseId) }}</template>
         </el-table-column>
-        <el-table-column prop="questionCount" label="题目数" width="80" align="center" />
-        <el-table-column prop="totalScore" label="总分" width="80" align="center" />
-        <el-table-column label="限时" width="80" align="center">
-          <template #default="{ row }">{{ row.timeLimit ? row.timeLimit + 'min' : '不限' }}</template>
+        <el-table-column prop="questionCount" :label="$t('exam.questionCount')" width="80" align="center" />
+        <el-table-column prop="totalScore" :label="$t('exam.totalScore')" width="80" align="center" />
+        <el-table-column :label="$t('exam.timeLimit')" width="80" align="center">
+          <template #default="{ row }">{{ row.timeLimit ? row.timeLimit + 'min' : $t('exam.unlimited') }}</template>
         </el-table-column>
-        <el-table-column label="创建时间" width="170">
+        <el-table-column :label="$t('exam.createdAt')" width="170">
           <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :loading="deleting === row.id" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="primary" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" link size="small" type="danger" :loading="deleting === row.id" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -61,95 +61,95 @@
     </el-card>
 
     <!-- 安排考试对话框 -->
-    <el-dialog v-model="showSchedule" title="安排考试到本章节" width="600px" @close="resetScheduleForm">
+    <el-dialog v-model="showSchedule" :title="$t('exam.scheduleTitle')" width="600px" @close="resetScheduleForm">
       <el-form ref="scheduleFormRef" label-width="100px">
-        <el-form-item label="选择试卷">
-          <el-select v-model="scheduleForm.examId" placeholder="从已有试卷中选择" filterable class="full-width">
+        <el-form-item :label="$t('exam.selectExam')">
+          <el-select v-model="scheduleForm.examId" :placeholder="$t('exam.selectExamPlaceholder')" filterable class="full-width">
             <el-option v-for="e in scheduleExamOptions" :key="e.id" :label="e.title" :value="e.id">
               <span>{{ e.title }}</span>
-              <span style="float:right;color:#909399;font-size:12px">{{ getCourseTitle(e.courseId) }} · {{ e.questionCount }}题 · {{ e.totalScore }}分</span>
+              <span style="float:right;color:#909399;font-size:12px">{{ getCourseTitle(e.courseId) }} · {{ e.questionCount }}{{ $t('exam.questionUnit') }} · {{ e.totalScore }}{{ $t('course.scoreUnit') }}</span>
             </el-option>
           </el-select>
         </el-form-item>
-        <el-divider>考试配置</el-divider>
+        <el-divider>{{ $t('exam.configTitle') }}</el-divider>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="限时(分)">
+            <el-form-item :label="$t('exam.timeLimitMin')">
               <el-input-number v-model="scheduleForm.timeLimit" :min="0" :step="10" class="full-width" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="答题次数">
+            <el-form-item :label="$t('exercise.maxAttempts')">
               <el-input-number v-model="scheduleForm.maxAttempts" :min="0" :step="1" class="full-width" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="及格分(%)">
+            <el-form-item :label="$t('exam.passScore')">
               <el-input-number v-model="scheduleForm.passScore" :min="0" :max="100" :step="5" class="full-width" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="显示答案">
+            <el-form-item :label="$t('exam.showAnswerWhen')">
               <el-select v-model="scheduleForm.showAnswerWhen" class="full-width">
-                <el-option label="提交后立即显示" value="AFTER_SUBMIT" />
-                <el-option label="及格后显示" value="AFTER_PASS" />
-                <el-option label="不显示" value="NEVER" />
+                <el-option :label="$t('exam.answerAfterSubmit')" value="AFTER_SUBMIT" />
+                <el-option :label="$t('exam.answerAfterPass')" value="AFTER_PASS" />
+                <el-option :label="$t('exam.answerNever')" value="NEVER" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="乱序题目">
+            <el-form-item :label="$t('exam.shuffleQuestions')">
               <el-switch v-model="scheduleForm.shuffleQuestions" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="乱序选项">
+            <el-form-item :label="$t('exam.shuffleOptions')">
               <el-switch v-model="scheduleForm.shuffleOptions" />
             </el-form-item>
           </el-col>
         </el-row>
       </el-form>
       <template #footer>
-        <el-button @click="showSchedule = false">取消</el-button>
-        <el-button type="primary" :loading="scheduling" :disabled="scheduling" @click="submitSchedule">确认安排</el-button>
+        <el-button @click="showSchedule = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="scheduling" :disabled="scheduling" @click="submitSchedule">{{ $t('exam.confirmSchedule') }}</el-button>
       </template>
     </el-dialog>
 
-    <el-dialog v-model="showCreate" title="新增试卷" width="600px" :close-on-click-modal="false" @closed="resetCreateForm">
+    <el-dialog v-model="showCreate" :title="$t('exam.createTitle')" width="600px" :close-on-click-modal="false" @closed="resetCreateForm">
       <el-form ref="createFormRef" :model="createForm" :rules="createRules" label-width="100px">
-        <el-form-item label="试卷标题" prop="title">
-          <el-input v-model="createForm.title" placeholder="如：期中考试" />
+        <el-form-item :label="$t('exam.examTitle')" prop="title">
+          <el-input v-model="createForm.title" :placeholder="$t('exam.titlePlaceholder')" />
         </el-form-item>
-        <el-form-item label="所属课程" prop="courseId">
-          <el-select v-model="createForm.courseId" placeholder="选择课程" class="full-width" filterable @change="onCourseChange">
+        <el-form-item :label="$t('exam.belongCourse')" prop="courseId">
+          <el-select v-model="createForm.courseId" :placeholder="$t('course.selectCourse')" class="full-width" filterable @change="onCourseChange">
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="涵盖章节">
-          <el-select v-model="createForm.chapterIds" placeholder="不限章节（可不选）" multiple collapse-tags clearable class="full-width" :disabled="!createForm.courseId">
+        <el-form-item :label="$t('exam.coverChapters')">
+          <el-select v-model="createForm.chapterIds" :placeholder="$t('exam.anyChapter')" multiple collapse-tags clearable class="full-width" :disabled="!createForm.courseId">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-divider>题型配置</el-divider>
+        <el-divider>{{ $t('exam.typeConfig') }}</el-divider>
         <div v-for="(item, idx) in createForm.typeConfigs" :key="idx" class="type-config-row">
           <span class="type-label">{{ typeLabel(item.type) }}</span>
           <el-input-number v-model="item.count" :min="0" :max="99" size="small" class="type-count" />
-          <span class="type-hint">题</span>
+          <span class="type-hint">{{ $t('exam.questionUnit') }}</span>
         </div>
-        <el-form-item label="总分">
+        <el-form-item :label="$t('exam.totalScore')">
           <el-input-number v-model="createForm.totalScore" :min="0" :step="10" />
         </el-form-item>
-        <el-form-item label="限时(分)">
-          <el-input-number v-model="createForm.timeLimit" :min="0" :step="10" placeholder="0=不限时" />
+        <el-form-item :label="$t('exam.timeLimitMin')">
+          <el-input-number v-model="createForm.timeLimit" :min="0" :step="10" :placeholder="$t('exam.timeLimitPlaceholder')" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">一键组卷</el-button>
+        <el-button @click="showCreate = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="generating" :disabled="generating" @click="handleGenerate">{{ $t('exam.generate') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -158,15 +158,17 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
 import { getChapters, getChapterById } from '@/api/chapter'
-import { getExamList, generateExam, deleteExam } from '@/api/exam'
+import { getExamList, getExamById, generateExam, deleteExam } from '@/api/exam'
 import { updateExercise } from '@/api/exercise'
 import { formatDateTime } from '@/utils/format'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const chapterIdFromRoute = computed(() => route.params.chapterId || route.query.chapterId)
@@ -214,22 +216,22 @@ const createForm = reactive({
 })
 
 const createRules = {
-  title: [{ required: true, message: '请输入试卷标题', trigger: 'blur' }],
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+  title: [{ required: true, message: t('exam.titleRequired'), trigger: 'blur' }],
+  courseId: [{ required: true, message: t('exam.courseRequired'), trigger: 'change' }],
 }
 
 const deleting = ref(null)
 
-function typeLabel(t) {
+function typeLabel(type) {
   const m = {
-    SINGLE: '单选题',
-    MULTIPLE: '多选题',
-    JUDGE: '判断题',
-    FILL: '填空题（需人工批改）',
-    SHORT_ANSWER: '简答题（需人工批改）',
-    ESSAY: '论述题（需人工批改）',
+    SINGLE: t('question.typeSingle'),
+    MULTIPLE: t('question.typeMultiple'),
+    JUDGE: t('question.typeJudge'),
+    FILL: t('exam.typeFillManual'),
+    SHORT_ANSWER: t('exam.typeShortAnswerManual'),
+    ESSAY: t('exam.typeEssayManual'),
   }
-  return m[t] || t
+  return m[type] || type
 }
 
 function formatTime(t) {
@@ -240,7 +242,7 @@ function formatTime(t) {
 }
 
 function getCourseTitle(courseId) {
-  return courseTitleMap.value[courseId] || `课程 #${courseId}`
+  return courseTitleMap.value[courseId] || t('exam.courseFallback', { id: courseId })
 }
 
 // P1-修复: 在挂载时加载所有课程标题,避免列表显示"课程 #1"回退
@@ -267,7 +269,7 @@ async function loadExams() {
     exams.value = data?.items || []
     totalElements.value = data?.totalElements || 0
   } catch {
-    ElMessage.error('获取试卷列表失败')
+    ElMessage.error(t('exam.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -276,7 +278,7 @@ async function loadExams() {
 async function loadCourses() {
   try {
     // P1-修复: 不按 teacherId 过滤,管理员也能看到所有课程
-    const { data } = await getCourses({ size: 200 })
+    const { data } = await getCourses({ size: 100 })
     const list = data?.items || []
     courseOptions.value = list
     list.forEach(c => { courseTitleMap.value[c.id] = c.title })
@@ -317,7 +319,7 @@ function handleReset() {
 async function openScheduleDialog() {
   showSchedule.value = true
   try {
-    const { data } = await getExamList({ isExam: true, size: 200 })
+    const { data } = await getExamList({ isExam: true, size: 100 })
     scheduleExamOptions.value = data?.items || []
   } catch { scheduleExamOptions.value = [] }
 }
@@ -328,7 +330,7 @@ function resetScheduleForm() {
 }
 async function submitSchedule() {
   if (!scheduleForm.examId || !chapterIdFromRoute.value) {
-    ElMessage.warning('请选择试卷')
+    ElMessage.warning(t('exam.selectExamRequired'))
     return
   }
   scheduling.value = true
@@ -354,11 +356,11 @@ async function submitSchedule() {
       shuffleQuestions: scheduleForm.shuffleQuestions,
       shuffleOptions: scheduleForm.shuffleOptions,
     })
-    ElMessage.success('考试已安排到本章节')
+    ElMessage.success(t('exam.scheduleSuccess'))
     showSchedule.value = false
     loadExams()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '安排失败')
+    ElMessage.error(e?.response?.data?.message || t('exam.scheduleFailed'))
   } finally {
     scheduling.value = false
   }
@@ -391,7 +393,7 @@ async function handleGenerate() {
   }
   if (totalNeeded === 0) {
     generating.value = false
-    ElMessage.warning('请至少选择一道题')
+    ElMessage.warning(t('exam.selectOneQuestion'))
     return
   }
 
@@ -405,12 +407,12 @@ async function handleGenerate() {
       timeLimit: createForm.timeLimit > 0 ? createForm.timeLimit : null,
     }
     await generateExam(examReq)
-    ElMessage.success('组卷成功')
+    ElMessage.success(t('exam.generateSuccess'))
     showCreate.value = false
     page.value = 1
     loadExams()
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '组卷失败')
+    ElMessage.error(e?.response?.data?.message || t('exam.generateFailed'))
   } finally {
     generating.value = false
   }
@@ -418,15 +420,15 @@ async function handleGenerate() {
 
 async function handleDelete(row) {
   try {
-    await ElMessageBox.confirm(`确定删除试卷「${row.title}」？`, '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
+    await ElMessageBox.confirm(t('exam.confirmDelete', { title: row.title }), t('exam.confirmDeleteTitle'), { type: 'warning', confirmButtonText: t('app.delete'), cancelButtonText: t('app.cancel') })
   } catch { return }
   deleting.value = row.id
   try {
     await deleteExam(row.id)
-    ElMessage.success('已删除')
+    ElMessage.success(t('exam.deleteSuccess'))
     exams.value = exams.value.filter(e => e.id !== row.id)
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '删除失败')
+    ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
   } finally {
     deleting.value = null
   }
@@ -436,7 +438,7 @@ async function handleDelete(row) {
 function handleEdit(row) {
   const courseId = row.courseId
   if (!courseId) {
-    ElMessage.warning('该试卷缺少课程信息，无法编辑')
+    ElMessage.warning(t('exam.missingCourseInfo'))
     return
   }
   router.push({ path: `/courses/${courseId}/exercises/form`, query: { exerciseId: row.id } })

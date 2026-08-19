@@ -592,6 +592,9 @@ public class SlideServiceImpl implements SlideService {
     /** 章节级锚点 section 标题约定（既有数据即用此约定：course_sections.id=50 "HTML 课件节"）。 */
     private static final String CHAPTER_ANCHOR_SECTION_TITLE = "HTML 课件节";
 
+    /** P2-1-2026-08-15 · 页面重排序临时排序号间隔（避免相邻页交换时排序号冲突） */
+    private static final int PAGE_REORDER_OFFSET = 50000;
+
     /** F-2026-08-10-02：章节级 PPT 锚点 section 标题（与 HTML 锚点对称；slide_ppt_pages.section_id NOT NULL 需真实 section 承载）。 */
     private static final String PPT_ANCHOR_SECTION_TITLE = "PPT 课件节";
 
@@ -778,6 +781,8 @@ public class SlideServiceImpl implements SlideService {
             String name = shape.getShapeName();
             return name != null && (name.toLowerCase().contains("title") || name.contains("标题"));
         } catch (Exception e) {
+            // P1-I 修复 (2026-08-12): 静默吞 shape 元数据异常阻碍 PPT 异常排查
+            log.debug("[SlideServiceImpl] isTitlePlaceholder shape 元数据读取失败", e);
             return false;
         }
     }
@@ -1518,12 +1523,41 @@ public class SlideServiceImpl implements SlideService {
         }
         if (sectionCache != null && s.getSectionId() != null) {
             CourseSection sec = sectionCache.get(s.getSectionId());
-            if (sec != null) vo.setLessonTitle(sec.getTitle());
+            if (sec != null) {
+                vo.setLessonTitle(sec.getTitle());
+                vo.setCoursewareType(deriveCoursewareType(sec, s.getFileUrl()));
+            } else {
+                vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
+            }
         } else if (s.getSectionId() != null) {
             CourseSection sec = sectionRepo.selectById(s.getSectionId());
-            if (sec != null) vo.setLessonTitle(sec.getTitle());
+            if (sec != null) {
+                vo.setLessonTitle(sec.getTitle());
+                vo.setCoursewareType(deriveCoursewareType(sec, s.getFileUrl()));
+            } else {
+                vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
+            }
+        } else if (s.getFileUrl() != null) {
+            // 章节级挂载（sectionId=null）：仅能依赖 fileUrl 兜底判定
+            vo.setCoursewareType(deriveCoursewareType(null, s.getFileUrl()));
         }
         return vo;
+    }
+
+    /**
+     * 派生课件类型（根因修复：优先读 section 权威 courseware_type 字段，fileUrl 兜底兼容历史数据）。
+     * - section.coursewareType 为 HTML/PPT/BOTH 时直接使用；
+     * - 为空/历史数据时回退 fileUrl.startsWith("html:") 判定。
+     */
+    private String deriveCoursewareType(CourseSection sec, String fileUrl) {
+        if (sec != null && sec.getCoursewareType() != null) {
+            String ct = sec.getCoursewareType();
+            if ("PPT".equals(ct) || "HTML".equals(ct)) return ct;
+            if ("BOTH".equals(ct)) {
+                return (fileUrl != null && fileUrl.startsWith("html:")) ? "HTML" : "PPT";
+            }
+        }
+        return (fileUrl != null && fileUrl.startsWith("html:")) ? "HTML" : "PPT";
     }
 
     private SlidePageVO toPageVO(SlidePage p) {
@@ -1884,7 +1918,7 @@ public class SlideServiceImpl implements SlideService {
     @Transactional(rollbackFor = Exception.class)
     public void reorderPages(Long courseId, List<Map<String, Integer>> order) {
         verifyOwner(courseId);
-        int TEMP_OFFSET = 50000;
+        int TEMP_OFFSET = PAGE_REORDER_OFFSET;
         for (Map<String, Integer> item : order) {
             Integer old = item.get("pageNumber"); Integer nw = item.get("newPageNumber");
             if (old == null || nw == null || old.equals(nw)) continue;

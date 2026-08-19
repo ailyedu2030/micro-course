@@ -7,122 +7,122 @@
 <template>
   <div class="exercise-form-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>{{ isEdit ? '编辑练习' : '新增练习' }}</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ isEdit ? $t('exercise.edit') : $t('exercise.create') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <el-card class="form-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">{{ isEdit ? '编辑练习' : '新增练习' }}</span>
-          <el-button @click="handleBack">返回</el-button>
+          <span class="card-title">{{ isEdit ? $t('exercise.edit') : $t('exercise.create') }}</span>
+          <el-button @click="handleBack">{{ $t('app.back') }}</el-button>
         </div>
       </template>
 
       <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px" class="exercise-form">
-        <el-form-item label="练习标题" prop="title">
-          <el-input v-model="formData.title" placeholder="请输入练习标题" aria-label="练习标题" />
+        <el-form-item :label="$t('exerciseForm.title')" prop="title">
+          <el-input v-model="formData.title" :placeholder="$t('exercise.titlePlaceholder')" :aria-label="$t('exerciseForm.title')" />
         </el-form-item>
-        <el-form-item label="课程" prop="courseId">
-          <el-select v-model="formData.courseId" placeholder="请选择课程" class="full-width" @change="handleCourseChange" aria-label="练习课程">
+        <el-form-item :label="$t('course.title')" prop="courseId">
+          <el-select v-model="formData.courseId" :placeholder="$t('exercise.selectCourse')" class="full-width" @change="handleCourseChange" :aria-label="$t('exerciseForm.courseAria')">
             <el-option v-for="c in courseOptions" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="章节" prop="chapterIds">
-          <el-select v-model="formData.chapterIds" placeholder="请选择章节（可多选）" multiple collapse-tags class="full-width" :disabled="!formData.courseId" aria-label="练习章节">
+        <el-form-item :label="$t('course.chapter')" prop="chapterIds">
+          <el-select v-model="formData.chapterIds" :placeholder="$t('exercise.selectChaptersMulti')" multiple collapse-tags class="full-width" :disabled="!formData.courseId" :aria-label="$t('exerciseForm.chapterAria')">
             <el-option v-for="ch in chapterOptions" :key="ch.id" :label="ch.title" :value="ch.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="及格分数" prop="passScore">
-          <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" aria-label="及格分数" />
+        <el-form-item :label="$t('exercise.passScore')" prop="passScore">
+          <el-input-number v-model="formData.passScore" :min="0" :max="100" class="full-width" :aria-label="$t('exercise.passScore')" />
         </el-form-item>
-        <el-form-item label="时间限制" prop="timeLimit">
-          <el-input-number v-model="formData.timeLimit" :min="0" placeholder="0表示无限制" class="full-width" aria-label="时间限制" />
+        <el-form-item :label="$t('exerciseForm.timeLimit')" prop="timeLimit">
+          <el-input-number v-model="formData.timeLimit" :min="0" :placeholder="$t('exercise.unlimitedHint')" class="full-width" :aria-label="$t('exerciseForm.timeLimit')" />
         </el-form-item>
-        <el-form-item label="答题次数" prop="maxAttempts">
-          <el-input-number v-model="formData.maxAttempts" :min="0" placeholder="0表示无限制" class="full-width" aria-label="答题次数" />
+        <el-form-item :label="$t('exercise.maxAttempts')" prop="maxAttempts">
+          <el-input-number v-model="formData.maxAttempts" :min="0" :placeholder="$t('exercise.unlimitedHint')" class="full-width" :aria-label="$t('exercise.maxAttempts')" />
         </el-form-item>
-        <el-form-item label="题目乱序" prop="shuffleQuestions">
+        <el-form-item :label="$t('exercise.shuffleQuestions')" prop="shuffleQuestions">
           <el-switch v-model="formData.shuffleQuestions" />
-          <span class="field-hint">开启后学员作答时题目顺序随机</span>
+          <span class="field-hint">{{ $t('exerciseForm.shuffleQuestionsHint') }}</span>
         </el-form-item>
-        <el-form-item label="选项乱序" prop="shuffleOptions">
+        <el-form-item :label="$t('exercise.shuffleOptions')" prop="shuffleOptions">
           <el-switch v-model="formData.shuffleOptions" />
-          <span class="field-hint">开启后学员作答时选项顺序随机</span>
+          <span class="field-hint">{{ $t('exerciseForm.shuffleOptionsHint') }}</span>
         </el-form-item>
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="formData.description" type="textarea" :rows="3" placeholder="请输入练习描述" aria-label="练习描述" />
+        <el-form-item :label="$t('exercise.description')" prop="description">
+          <el-input v-model="formData.description" type="textarea" :rows="3" :placeholder="$t('exerciseForm.descriptionPlaceholder')" :aria-label="$t('exerciseForm.descriptionAria')" />
         </el-form-item>
 
         <!-- 题库统计 & 随机选题 -->
         <el-divider v-if="formData.courseId" />
-        <el-form-item v-if="formData.courseId" label="题库统计">
+        <el-form-item v-if="formData.courseId" :label="$t('exercise.bankStats')">
           <div class="bank-stats">
             <el-tag v-for="s in bankStats" :key="s.type" :type="s.count > 0 ? 'primary' : 'info'" size="small" class="stat-tag">
-              {{ s.label }}: {{ s.count }} 题
+              {{ $t('exercise.statCount', { label: s.label, count: s.count }) }}
             </el-tag>
-            <el-tag type="primary" size="small" effect="dark">共 {{ totalBankCount }} 题</el-tag>
+            <el-tag type="primary" size="small" effect="dark">{{ $t('exercise.totalCount', { count: totalBankCount }) }}</el-tag>
           </div>
         </el-form-item>
-        <el-form-item v-if="formData.courseId" label="随机选题">
+        <el-form-item v-if="formData.courseId" :label="$t('exercise.randomPick')">
           <div class="random-pick">
             <div class="pick-filter">
-              <span class="pick-filter-label">难度</span>
-              <el-select v-model="pickDifficulty" placeholder="全部难度" clearable size="small" style="width:120px" aria-label="随机选题难度">
-                <el-option label="简单" value="EASY" />
-                <el-option label="中等" value="MEDIUM" />
-                <el-option label="困难" value="HARD" />
+              <span class="pick-filter-label">{{ $t('course.difficulty') }}</span>
+              <el-select v-model="pickDifficulty" :placeholder="$t('course.allDifficulty')" clearable size="small" style="width:120px" :aria-label="$t('exerciseForm.pickDifficultyAria')">
+                <el-option :label="$t('course.difficultyEasy')" value="EASY" />
+                <el-option :label="$t('course.difficultyMedium')" value="MEDIUM" />
+                <el-option :label="$t('course.difficultyHard')" value="HARD" />
               </el-select>
             </div>
             <div v-for="s in bankStats" :key="s.type" class="pick-row">
               <span class="pick-label">{{ s.label }}</span>
-              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" :aria-label="'随机抽取' + s.label + '数量'" />
-              <span class="pick-hint">/ {{ s.count }} 题</span>
+              <el-input-number v-model="s.pickCount" :min="0" :max="s.count" size="small" controls-position="right" class="pick-input" :aria-label="$t('exerciseForm.randomPickAria', { label: s.label })" />
+              <span class="pick-hint">{{ $t('exercise.countSuffix', { count: s.count }) }}</span>
             </div>
             <el-button type="success" size="small" :disabled="totalPickCount === 0" @click="handleRandomPick">
-              随机抽取 {{ totalPickCount }} 题
+              {{ $t('exercise.randomPickCount', { count: totalPickCount }) }}
             </el-button>
           </div>
         </el-form-item>
-        <el-form-item v-if="formData.courseId && exerciseQuestions.length > 0" label="已选题">
+        <el-form-item v-if="formData.courseId && exerciseQuestions.length > 0" :label="$t('exerciseForm.selectedQuestions')">
           <div class="selected-info">
-            <span class="selected-count">{{ exerciseQuestions.length }} 题已选</span>
-            <el-button type="danger" size="small" plain @click="exerciseQuestions = []">清空</el-button>
+            <span class="selected-count">{{ $t('exercise.selectedCount', { count: exerciseQuestions.length }) }}</span>
+            <el-button type="danger" size="small" plain @click="exerciseQuestions = []">{{ $t('exerciseForm.clearAll') }}</el-button>
           </div>
         </el-form-item>
 
         <!-- 题目预览入口 -->
-        <el-form-item v-if="exerciseQuestions.length > 0" label="操作">
+        <el-form-item v-if="exerciseQuestions.length > 0" :label="$t('app.operation')">
           <el-button type="primary" plain @click="handlePreviewQuestions" class="preview-btn">
-            <el-icon><View /></el-icon>预览题目 ({{ exerciseQuestions.length }} 题)
+            <el-icon><View /></el-icon>{{ $t('exerciseForm.previewQuestions', { count: exerciseQuestions.length }) }}
           </el-button>
         </el-form-item>
       </el-form>
 
       <div class="form-footer">
-        <el-button @click="handleBack">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">保存</el-button>
+        <el-button @click="handleBack">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" :disabled="submitLoading" @click="handleSubmit">{{ $t('app.save') }}</el-button>
       </div>
     </el-card>
 
     <!-- 题目预览弹窗（逐题分步） -->
-    <el-dialog v-model="previewDialogVisible" title="题目预览" width="650px" @close="handlePreviewClose" :close-on-press-escape="true">
+    <el-dialog v-model="previewDialogVisible" :title="$t('exerciseForm.previewTitle')" width="650px" @close="handlePreviewClose" :close-on-press-escape="true">
       <div v-if="currentPreviewQuestion" class="preview-content">
         <div class="preview-progress">
-          第 {{ currentPreviewIndex + 1 }} / {{ exerciseQuestions.length }} 题
+          {{ $t('exerciseForm.previewProgress', { current: currentPreviewIndex + 1, total: exerciseQuestions.length }) }}
         </div>
         <div class="preview-question-type">
-          <el-tag v-if="currentPreviewQuestion.questionType === 'SINGLE'" type="primary" size="small">单选题</el-tag>
-          <el-tag v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE'" type="success" size="small">多选题</el-tag>
-          <el-tag v-else-if="currentPreviewQuestion.questionType === 'JUDGE'" type="warning" size="small">判断题</el-tag>
-          <el-tag v-else type="info" size="small">简答题</el-tag>
+          <el-tag v-if="currentPreviewQuestion.questionType === 'SINGLE'" type="primary" size="small">{{ $t('question.typeSingle') }}</el-tag>
+          <el-tag v-else-if="currentPreviewQuestion.questionType === 'MULTIPLE'" type="success" size="small">{{ $t('question.typeMultiple') }}</el-tag>
+          <el-tag v-else-if="currentPreviewQuestion.questionType === 'JUDGE'" type="warning" size="small">{{ $t('question.typeJudge') }}</el-tag>
+          <el-tag v-else type="info" size="small">{{ $t('question.typeShortAnswer') }}</el-tag>
           <span class="preview-difficulty">
-            <el-tag v-if="currentPreviewQuestion.difficulty === 1" type="success" size="small">简单</el-tag>
-            <el-tag v-else-if="currentPreviewQuestion.difficulty === 2" type="warning" size="small">中等</el-tag>
-            <el-tag v-else-if="currentPreviewQuestion.difficulty === 3" type="danger" size="small">困难</el-tag>
+            <el-tag v-if="currentPreviewQuestion.difficulty === 1" type="success" size="small">{{ $t('course.difficultyEasy') }}</el-tag>
+            <el-tag v-else-if="currentPreviewQuestion.difficulty === 2" type="warning" size="small">{{ $t('course.difficultyMedium') }}</el-tag>
+            <el-tag v-else-if="currentPreviewQuestion.difficulty === 3" type="danger" size="small">{{ $t('course.difficultyHard') }}</el-tag>
           </span>
-          <span class="preview-score">分值：{{ currentPreviewQuestion.score }}</span>
+          <span class="preview-score">{{ $t('exerciseForm.scoreLabel', { score: currentPreviewQuestion.score }) }}</span>
         </div>
         <h3 class="preview-title">{{ currentPreviewQuestion.content }}</h3>
 
@@ -152,32 +152,32 @@
 
         <!-- 判断题 -->
         <div v-else-if="currentPreviewQuestion.questionType === 'JUDGE'" class="preview-options">
-          <div class="preview-option-item"><span class="option-label">A.</span><span class="option-text">正确</span></div>
-          <div class="preview-option-item"><span class="option-label">B.</span><span class="option-text">错误</span></div>
+          <div class="preview-option-item"><span class="option-label">A.</span><span class="option-text">{{ $t('question.correct') }}</span></div>
+          <div class="preview-option-item"><span class="option-label">B.</span><span class="option-text">{{ $t('question.wrong') }}</span></div>
         </div>
 
         <!-- 简答题 -->
         <div v-else-if="currentPreviewQuestion.questionType === 'SHORT_ANSWER'" class="preview-options">
-          <el-input type="textarea" :rows="3" placeholder="学员在此输入答案" disabled aria-label="答案预览" />
+          <el-input type="textarea" :rows="3" :placeholder="$t('exerciseForm.studentAnswerPlaceholder')" disabled :aria-label="$t('exerciseForm.answerPreviewAria')" />
         </div>
 
         <!-- 正确答案 -->
         <div class="preview-answer">
-          <span class="answer-label">正确答案：</span>
+          <span class="answer-label">{{ $t('exerciseTake.correctAnswer') }}</span>
           <span class="answer-value">{{ displayAnswer(currentPreviewQuestion) }}</span>
         </div>
 
         <!-- 答案解析 -->
         <div v-if="currentPreviewQuestion.explanation" class="preview-analysis">
-          <span class="analysis-label">答案解析：</span>
+          <span class="analysis-label">{{ $t('exerciseForm.answerAnalysis') }}</span>
           <span class="analysis-value">{{ currentPreviewQuestion.explanation }}</span>
         </div>
       </div>
 
       <template #footer>
-        <el-button :disabled="currentPreviewIndex === 0" @click="handlePrevQuestion">上一题</el-button>
-        <el-button :disabled="currentPreviewIndex === exerciseQuestions.length - 1" type="primary" @click="handleNextQuestion">下一题</el-button>
-        <el-button @click="previewDialogVisible = false">关闭</el-button>
+        <el-button :disabled="currentPreviewIndex === 0" @click="handlePrevQuestion">{{ $t('exerciseTake.prev') }}</el-button>
+        <el-button :disabled="currentPreviewIndex === exerciseQuestions.length - 1" type="primary" @click="handleNextQuestion">{{ $t('exerciseTake.next') }}</el-button>
+        <el-button @click="previewDialogVisible = false">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -186,17 +186,20 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { View } from '@element-plus/icons-vue'
 import { getExerciseById, createExercise, updateExercise, addQuestionsToExercise } from '@/api/exercise'
 import { getCourses } from '@/api/course'
 import { getChapters } from '@/api/chapter'
 import { getQuestions } from '@/api/question'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { useUserStore } from '@/store/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const formRef = ref(null)
 const submitLoading = ref(false)
@@ -219,8 +222,8 @@ const formData = reactive({
 })
 
 const formRules = {
-  title: [{ required: true, message: '请输入练习标题', trigger: 'blur' }],
-  courseId: [{ required: true, message: '请选择课程', trigger: 'change' }]
+  title: [{ required: true, message: t('exercise.titlePlaceholder'), trigger: 'blur' }],
+  courseId: [{ required: true, message: t('exercise.selectCourse'), trigger: 'change' }]
 }
 
 // 题目预览相关
@@ -237,7 +240,7 @@ function resolveDifficulty(val) {
   return DIFFICULTY_MAP[key] || undefined
 }
 
-const TYPE_LABELS = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', SHORT_ANSWER: '简答题' }
+const TYPE_LABEL_KEYS = { SINGLE: 'question.typeSingle', MULTIPLE: 'question.typeMultiple', JUDGE: 'question.typeJudge', FILL: 'question.typeFill', SHORT_ANSWER: 'question.typeShortAnswer' }
 const bankStats = ref([])
 const totalBankCount = ref(0)
 const totalPickCount = computed(() => bankStats.value.reduce((s, t) => s + (t.pickCount || 0), 0))
@@ -247,11 +250,10 @@ const pickDifficulty = ref('')
 async function refreshBankStats() {
   if (!formData.courseId) { bankStats.value = []; totalBankCount.value = 0; return }
   try {
-    const params = { courseId: formData.courseId, size: 9999 }
+    const params = { courseId: formData.courseId }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    const items = data?.items || []
+    const items = await fetchAllPages(getQuestions, params, 100)
     const filterDiff = pickDifficulty.value ? resolveDifficulty(pickDifficulty.value) : undefined
     const filtered = filterDiff != null ? items.filter(q => q.difficulty === filterDiff) : items
     totalBankCount.value = filtered.length
@@ -260,8 +262,8 @@ async function refreshBankStats() {
       const t = q.questionType || 'OTHER'
       groups[t] = (groups[t] || 0) + 1
     }
-    bankStats.value = Object.entries(TYPE_LABELS)
-      .map(([type, label]) => ({ type, label, count: groups[type] || 0, pickCount: 0 }))
+    bankStats.value = Object.entries(TYPE_LABEL_KEYS)
+      .map(([type, key]) => ({ type, label: t(key), count: groups[type] || 0, pickCount: 0 }))
       .filter(s => s.count > 0)
   } catch { bankStats.value = []; totalBankCount.value = 0 }
 }
@@ -274,11 +276,10 @@ async function handleRandomPick() {
     if (s.pickCount > 0) picks[s.type] = s.pickCount
   }
   try {
-    const params = { courseId: formData.courseId, size: 9999 }
+    const params = { courseId: formData.courseId }
     if (formData.chapterIds && formData.chapterIds.length > 0) params.chapterIds = formData.chapterIds.join(',')
     if (pickDifficulty.value) params.difficulty = resolveDifficulty(pickDifficulty.value)
-    const { data } = await getQuestions(params)
-    let all = data?.items || []
+    let all = await fetchAllPages(getQuestions, params, 100)
     // 如果后端不支持按难度过滤，前端再过滤一次
     if (pickDifficulty.value && all.some(q => q.difficulty)) {
       const rd = resolveDifficulty(pickDifficulty.value)
@@ -292,8 +293,8 @@ async function handleRandomPick() {
     }
     exerciseQuestions.value = [...exerciseQuestions.value, ...picked]
     bankStats.value.forEach(s => { s.pickCount = 0 })
-    ElMessage.success(`已随机抽取 ${picked.length} 题`)
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '随机选题失败') }
+    ElMessage.success(t('exerciseForm.randomPickSuccess', { count: picked.length }))
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('exercise.randomPickFailed')) }
 }
 
 const parsedOptions = (optionsStr) => {
@@ -309,7 +310,7 @@ const displayAnswer = (question) => {
   if (!question?.answer) return '-'
   const ans = question.answer
   if (question.questionType === 'JUDGE') {
-    return ans === 'true' || ans === true ? '正确' : '错误'
+    return ans === 'true' || ans === true ? t('question.correct') : t('question.wrong')
   }
   if (question.questionType === 'MULTIPLE' && question.options) {
     const opts = parsedOptions(question.options)
@@ -350,7 +351,7 @@ const handleCourseChange = async (val) => {
       const { data } = await getChapters({ courseId: val })
       chapterOptions.value = data.items || []
     } catch {
-      ElMessage.error('获取章节列表失败')
+      ElMessage.error(t('exercise.fetchChaptersFailed'))
     }
   } else {
     chapterOptions.value = []
@@ -372,11 +373,11 @@ const handleSubmit = async () => {
       let exId = exerciseId.value
       if (isEdit.value) {
         await updateExercise(exId, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('teachingClass.editSuccess'))
       } else {
         const { data } = await createExercise(formData)
         exId = data.id || data
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       // 自动保存已选的随机题目
       if (exerciseQuestions.value.length > 0) {
@@ -387,7 +388,7 @@ const handleSubmit = async () => {
       }
       router.back()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(t(isEdit.value ? 'exercise.editFailed' : 'question.createFailed'))
     } finally {
       submitLoading.value = false
     }
@@ -396,12 +397,12 @@ const handleSubmit = async () => {
 
 const fetchCourseOptions = async () => {
   try {
-    const params = { page: 0, size: 1000 }
+    const params = { page: 0, size: 100 }
     if (userStore?.role === 'TEACHER') params.teacherId = userStore.userId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -432,7 +433,7 @@ const fetchExercise = async () => {
       }
     }
   } catch {
-    ElMessage.error('获取练习信息失败')
+    ElMessage.error(t('exerciseForm.fetchFailed'))
   }
 }
 

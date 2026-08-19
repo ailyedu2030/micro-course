@@ -6,7 +6,7 @@
 <template>
   <div class="student-favorites-page">
     <div class="page-header">
-      <h1>我的收藏</h1>
+      <h1>{{ $t('student.favorites') }}</h1>
     </div>
 
     <el-card v-if="!loading && items.length > 0" shadow="never" class="favorites-card">
@@ -16,18 +16,18 @@
         class="favorite-row"
         tabindex="0"
         role="button"
-        :aria-label="'课程：' + item.courseTitle"
+        :aria-label="$t('studentFavorites.courseAria', { title: item.courseTitle })"
         @click="goCourse(item.courseId)"
         @keydown.enter="goCourse(item.courseId)"
       >
         <div class="course-cover" v-if="item.coverUrl">
-          <el-image :src="item.coverUrl" :alt="(item.title || '课程') + '封面'" fit="cover" class="thumb-img" lazy />
+          <el-image :src="item.coverUrl" :alt="$t('studentFavorites.coverAlt', { title: item.title || $t('course.title') })" fit="cover" class="thumb-img" lazy />
         </div>
         <div class="course-cover placeholder" v-else>
           <el-icon><VideoCamera /></el-icon>
         </div>
         <div class="course-info">
-          <span class="course-title">{{ item.courseTitle || '未命名课程' }}</span>
+          <span class="course-title">{{ item.courseTitle || $t('course.unnamed') }}</span>
           <span class="course-meta" v-if="item.teacherName">{{ item.teacherName }}</span>
         </div>
         <el-button
@@ -36,12 +36,12 @@
           size="small"
           @click.stop="handleRemove(item)"
         >
-          取消收藏
+          {{ $t('studentFavorites.cancel') }}
         </el-button>
       </div>
     </el-card>
 
-    <el-empty v-else-if="!loading" description="暂无收藏的课程" :image-size="100" />
+    <el-empty v-else-if="!loading" :description="$t('myCourses.emptyFavorited')" :image-size="100" />
 
     <div v-loading="loading" class="loading-container" v-if="loading" />
   </div>
@@ -50,10 +50,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
 import { getMyFavorites, cancelFavorite } from '@/api/favorite'
 
+const { t } = useI18n()
 const router = useRouter()
 const loading = ref(true)
 const items = ref([])
@@ -64,7 +66,7 @@ async function fetchFavorites() {
     const { data } = await getMyFavorites()
     items.value = Array.isArray(data) ? data : (data?.items || [])
   } catch {
-    ElMessage.error('获取收藏列表失败')
+    ElMessage.error(t('studentFavorites.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -76,12 +78,12 @@ function goCourse(courseId) {
 
 async function handleRemove(item) {
   try {
-    await ElMessageBox.confirm('确定取消收藏？', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('studentFavorites.confirmRemove'), t('course.hintTitle'), { type: 'warning' })
     await cancelFavorite(item.id)
-    ElMessage.success('已取消收藏')
+    ElMessage.success(t('studentFavorites.removed'))
     items.value = items.value.filter(i => i.id !== item.id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('common.failed'))
   }
 }
 

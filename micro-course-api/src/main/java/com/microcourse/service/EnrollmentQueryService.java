@@ -24,5 +24,11 @@ public interface EnrollmentQueryService {
 
     List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed);
 
+    /**
+     * P1-C: 当前用户选课分页查询（/api/enrollments/my 返回 PageResult，与其余端点一致）。
+     * 默认 size=999 覆盖前端"拉全量"习惯（BundleDetail 传 {page:0, size:999}）。
+     */
+    PageResult<EnrollmentVO> getMyEnrollmentPage(Long userId, Boolean completed, int page, int size);
+
     void exportEnrollments(Long courseId, HttpServletResponse response) throws IOException;
 }

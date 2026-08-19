@@ -26,12 +26,12 @@
     <el-result
       v-else-if="error"
       icon="error"
-      title="加载失败"
-      sub-title="网络异常，请稍后重试"
+      :title="$t('microSpecialtyDetail.loadFailed')"
+      :sub-title="$t('microSpecialtyDetail.networkError')"
       class="ms-detail-error"
     >
       <template #extra>
-        <el-button type="primary" @click="fetchDetail">重试</el-button>
+        <el-button type="primary" @click="fetchDetail">{{ $t('common.retry') }}</el-button>
       </template>
     </el-result>
 
@@ -39,11 +39,11 @@
     <el-result
       v-else-if="!ms"
       icon="warning"
-      title="微专业不存在"
-      sub-title="该微专业可能已被下架或删除"
+      :title="$t('microSpecialtyDetail.notFound')"
+      :sub-title="$t('microSpecialtyDetail.notFoundDesc')"
     >
       <template #extra>
-        <el-button type="primary" @click="$router.push('/micro-specialties')">返回微专业广场</el-button>
+        <el-button type="primary" @click="$router.push('/micro-specialties')">{{ $t('microSpecialtyDetail.backToSquare') }}</el-button>
       </template>
     </el-result>
 
@@ -53,7 +53,7 @@
       <el-page-header @back="$router.back()" class="ms-page-header">
         <template #content>
           <span class="bc-path">
-            <span class="bc-link" @click="$router.push('/micro-specialties')">微专业广场</span>
+            <span class="bc-link" @click="$router.push('/micro-specialties')">{{ $t('microSpecialtyDetail.square') }}</span>
             <span class="bc-sep">/</span>
             <span class="bc-current">{{ ms.title }}</span>
           </span>
@@ -82,23 +82,23 @@
       <el-card shadow="never" class="ms-info-card">
         <div class="ms-info-row">
           <div class="ms-info-item">
-            <span class="ms-info-label">所属学院</span>
+            <span class="ms-info-label">{{ $t('microSpecialtyDetail.department') }}</span>
             <span class="ms-info-value">{{ ms.departmentName || '—' }}</span>
           </div>
           <div class="ms-info-item">
-            <span class="ms-info-label">负责人</span>
+            <span class="ms-info-label">{{ $t('microSpecialtyDetail.leader') }}</span>
             <span class="ms-info-value">{{ ms.leadTeacherName || '—' }}</span>
           </div>
           <div class="ms-info-item">
-            <span class="ms-info-label">总学分</span>
-            <span class="ms-info-value">{{ ms.totalCredits || 0 }} 分</span>
+            <span class="ms-info-label">{{ $t('microSpecialtyDetail.totalCredits') }}</span>
+            <span class="ms-info-value">{{ ms.totalCredits || 0 }} {{ $t('course.scoreUnit') }}</span>
           </div>
           <div class="ms-info-item">
-            <span class="ms-info-label">总学时</span>
-            <span class="ms-info-value">{{ ms.totalHours || 0 }} 小时</span>
+            <span class="ms-info-label">{{ $t('microSpecialtyDetail.totalHours') }}</span>
+            <span class="ms-info-value">{{ ms.totalHours || 0 }} {{ $t('microSpecialtyDetail.hoursUnit') }}</span>
           </div>
           <div class="ms-info-item" v-if="stats">
-            <span class="ms-info-label">选课率</span>
+            <span class="ms-info-label">{{ $t('microSpecialtyDetail.enrollmentRate') }}</span>
             <span class="ms-info-value">{{ stats.enrollmentRate || '0%' }}</span>
           </div>
         </div>
@@ -107,14 +107,14 @@
       <!-- Tabs -->
       <el-card shadow="never" class="ms-tabs-card">
         <el-tabs v-model="activeTab" class="ms-tabs">
-          <el-tab-pane label="培养方案" name="courses">
-            <el-empty v-if="!courses.length" description="暂无课程安排" />
+          <el-tab-pane :label="$t('microSpecialtyDetail.tabCourses')" name="courses">
+            <el-empty v-if="!courses.length" :description="$t('microSpecialtyDetail.noCourses')" />
             <template v-else>
               <!-- 不合格课程提示 -->
               <el-alert
                 v-if="focusFailed"
                 type="warning"
-                title="以下是未通过考核的课程，请重新修读"
+                :title="$t('microSpecialtyDetail.focusFailedAlert')"
                 :closable="false"
                 show-icon
                 class="mg-bottom-12"
@@ -122,23 +122,23 @@
               <!-- 修读要求汇总卡片 -->
               <div class="ms-requirements-card">
                 <div class="ms-req-item">
-                  <span class="ms-req-label">必修</span>
-                  <span class="ms-req-value ms-req-value--required">{{ requiredCount }} 门</span>
+                  <span class="ms-req-label">{{ $t('microSpecialtyDetail.required') }}</span>
+                  <span class="ms-req-value ms-req-value--required">{{ requiredCount }} {{ $t('microSpecialtyDetail.courseUnit') }}</span>
                 </div>
                 <div class="ms-req-item">
-                  <span class="ms-req-label">选修</span>
-                  <span class="ms-req-value">{{ electiveCount }} 门</span>
+                  <span class="ms-req-label">{{ $t('microSpecialtyDetail.elective') }}</span>
+                  <span class="ms-req-value">{{ electiveCount }} {{ $t('microSpecialtyDetail.courseUnit') }}</span>
                 </div>
                 <div class="ms-req-item">
-                  <span class="ms-req-label">总学分</span>
-                  <span class="ms-req-value">{{ ms.totalCredits || 0 }} 分</span>
+                  <span class="ms-req-label">{{ $t('microSpecialtyDetail.totalCredits') }}</span>
+                  <span class="ms-req-value">{{ ms.totalCredits || 0 }} {{ $t('course.scoreUnit') }}</span>
                 </div>
                 <div v-if="ms.completionRule" class="ms-req-item ms-req-item--full">
-                  <span class="ms-req-label">通过条件</span>
+                  <span class="ms-req-label">{{ $t('microSpecialtyDetail.completionRule') }}</span>
                   <span class="ms-req-value">{{ ms.completionRule }}</span>
                 </div>
                 <div v-if="ms.semester" class="ms-req-item">
-                  <span class="ms-req-label">建议学期</span>
+                  <span class="ms-req-label">{{ $t('microSpecialtyDetail.suggestedSemester') }}</span>
                   <span class="ms-req-value">{{ ms.semester }}</span>
                 </div>
               </div>
@@ -162,11 +162,11 @@
                 <div class="ms-course-info">
                   <span class="ms-course-title">
                     {{ item.courseTitle }}
-                    <el-tag v-if="item.isRequired" type="danger" size="small">必修</el-tag>
-                    <el-tag v-else type="info" size="small">选修</el-tag>
+                    <el-tag v-if="item.isRequired" type="danger" size="small">{{ $t('microSpecialtyDetail.required') }}</el-tag>
+                    <el-tag v-else type="info" size="small">{{ $t('microSpecialtyDetail.elective') }}</el-tag>
                   </span>
                   <span class="ms-course-meta">
-                    {{ item.teacherName || '—' }} · {{ item.credits || 0 }} 学分
+                    {{ item.teacherName || '—' }} · {{ item.credits || 0 }} {{ $t('course.credit') }}
                   </span>
                 </div>
                 <el-icon class="ms-go-icon"><ArrowRight /></el-icon>
@@ -175,8 +175,8 @@
             </template>
           </el-tab-pane>
 
-          <el-tab-pane label="教师团队" name="teachers">
-            <el-empty v-if="!teachers.length" description="暂无教师信息" />
+          <el-tab-pane :label="$t('microSpecialtyDetail.tabTeachers')" name="teachers">
+            <el-empty v-if="!teachers.length" :description="$t('microSpecialtyDetail.noTeachers')" />
             <div v-else class="ms-teacher-list">
               <div
                 v-for="t in teachers"
@@ -189,41 +189,41 @@
                 <div class="ms-teacher-info">
                   <span class="ms-teacher-name">{{ t.teacherName || t.name }}</span>
                   <span class="ms-teacher-role">
-                    <el-tag v-if="t.role === 'LEAD'" type="primary" size="small">负责人</el-tag>
-                    <el-tag v-else size="small">授课教师</el-tag>
+                    <el-tag v-if="t.role === 'LEAD'" type="primary" size="small">{{ $t('microSpecialtyDetail.leader') }}</el-tag>
+                    <el-tag v-else size="small">{{ $t('course.teachingTeacher') }}</el-tag>
                   </span>
                 </div>
               </div>
             </div>
           </el-tab-pane>
 
-           <el-tab-pane label="详细介绍" name="desc">
+           <el-tab-pane :label="$t('microSpecialtyDetail.tabDescription')" name="desc">
             <div class="ms-desc-content">
               <p v-if="ms.objectives" class="ms-desc-section">
-                <strong>培养目标</strong>
+                <strong>{{ $t('microSpecialtyDetail.objectives') }}</strong>
                 <span>{{ ms.objectives }}</span>
               </p>
               <p v-if="ms.description" class="ms-desc-section">
-                <strong>项目介绍</strong>
+                <strong>{{ $t('microSpecialtyDetail.projectIntro') }}</strong>
                 <span>{{ ms.description }}</span>
               </p>
               <p v-if="ms.targetAudience" class="ms-desc-section">
-                <strong>面向人群</strong>
+                <strong>{{ $t('microSpecialtyDetail.targetAudience') }}</strong>
                 <span>{{ ms.targetAudience }}</span>
               </p>
               <p v-if="ms.admissionRequirement" class="ms-desc-section">
-                <strong>入学要求</strong>
+                <strong>{{ $t('microSpecialtyDetail.admissionRequirement') }}</strong>
                 <span>{{ ms.admissionRequirement }}</span>
               </p>
               <p v-if="ms.completionRule" class="ms-desc-section">
-                <strong>结业规则</strong>
+                <strong>{{ $t('microSpecialtyDetail.completionRuleTitle') }}</strong>
                 <span>{{ ms.completionRule }}</span>
               </p>
               <p v-if="ms.requirements" class="ms-desc-section">
-                <strong>报名要求</strong>
+                <strong>{{ $t('microSpecialtyDetail.requirements') }}</strong>
                 <span>{{ ms.requirements }}</span>
               </p>
-              <el-empty v-if="!ms.objectives && !ms.description && !ms.targetAudience && !ms.admissionRequirement && !ms.completionRule && !ms.requirements" description="暂无详细介绍" />
+              <el-empty v-if="!ms.objectives && !ms.description && !ms.targetAudience && !ms.admissionRequirement && !ms.completionRule && !ms.requirements" :description="$t('microSpecialtyDetail.noDescription')" />
             </div>
           </el-tab-pane>
         </el-tabs>
@@ -233,21 +233,21 @@
       <div class="ms-bottom-bar">
         <div class="ms-bottom-bar-inner">
           <div class="ms-bottom-info">
-            <span class="ms-bottom-credit">{{ ms.totalCredits || 0 }} 学分</span>
+            <span class="ms-bottom-credit">{{ ms.totalCredits || 0 }} {{ $t('course.credit') }}</span>
             <span class="ms-bottom-sep">|</span>
-            <span class="ms-bottom-count">{{ ms.courseCount || 0 }} 门课程</span>
+            <span class="ms-bottom-count">{{ $t('microSpecialtyDetail.courseCount', { count: ms.courseCount || 0 }) }}</span>
           </div>
           <div class="ms-bottom-actions">
             <!-- 未登录 -->
             <el-button v-if="!isLoggedIn" type="primary" size="large" @click="goLogin">
-              请先登录
+              {{ $t('course.pleaseLogin') }}
             </el-button>
             <el-button
               v-else-if="!isStudent"
               size="large"
               disabled
             >
-              仅学生可报名
+              {{ $t('microSpecialtyDetail.studentOnly') }}
             </el-button>
             <!-- FAILED / REJECTED → 重新申请 -->
             <el-button
@@ -257,14 +257,14 @@
               :loading="reapplyLoading"
               @click="handleReapply"
             >
-              重新申请
+              {{ $t('microSpecialtyDetail.reapply') }}
             </el-button>
             <el-button
               v-else-if="['FAILED', 'REJECTED'].includes(enrollmentStatus)"
               size="large"
               disabled
             >
-              当前未开放重新申请
+              {{ $t('microSpecialtyDetail.reapplyClosed') }}
             </el-button>
             <!-- PENDING → 审核中 -->
             <el-button
@@ -272,7 +272,7 @@
               size="large"
               disabled
             >
-              审核中
+              {{ $t('microSpecialtyDetail.reviewing') }}
             </el-button>
             <!-- 已报名/进行中 -->
             <el-button
@@ -280,7 +280,7 @@
               size="large"
               disabled
             >
-              已报名
+              {{ $t('microSpecialtyDetail.enrolled') }}
             </el-button>
             <!-- 已结业 -->
             <el-button
@@ -289,7 +289,7 @@
               size="large"
               disabled
             >
-              已结业
+              {{ $t('microSpecialtyDetail.completed') }}
             </el-button>
             <!-- CERTIFIED 已认证 -->
             <el-button
@@ -298,7 +298,7 @@
               size="large"
               disabled
             >
-              已认证
+              {{ $t('microSpecialtyDetail.certified') }}
             </el-button>
             <!-- 已报名但已退出 -->
             <el-button
@@ -308,14 +308,14 @@
               :loading="reapplyLoading"
               @click="handleReapply"
             >
-              重新报名
+              {{ $t('microSpecialtyDetail.reenroll') }}
             </el-button>
             <el-button
               v-else-if="enrollmentStatus === 'DROPPED'"
               size="large"
               disabled
             >
-              当前未开放重新报名
+              {{ $t('microSpecialtyDetail.reenrollClosed') }}
             </el-button>
             <!-- 未报名 — 显示明确引导 -->
             <el-button
@@ -326,7 +326,7 @@
               :disabled="!canEnroll"
               @click="handleApply"
             >
-              {{ canEnroll ? '立即报名' : (!isStudent ? '仅学生可报名' : (ms?.status === 'RECRUITING' ? '请先登录' : '当前不可报名')) }}
+              {{ canEnroll ? $t('microSpecialtyDetail.applyNow') : (!isStudent ? $t('microSpecialtyDetail.studentOnly') : (ms?.status === 'RECRUITING' ? $t('course.pleaseLogin') : $t('microSpecialtyDetail.applyClosed'))) }}
             </el-button>
           </div>
         </div>
@@ -338,6 +338,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowRight, Notebook, User } from '@element-plus/icons-vue'
 import {
@@ -353,6 +354,7 @@ import { useUserStore } from '@/store/user'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const { t: i18nT } = useI18n()
 
 const msId = computed(() => route.params.id)
 const ms = ref(null)
@@ -392,14 +394,14 @@ const canReapply = computed(() => {
 const statusLabel = computed(() => {
   if (!ms.value) return ''
   const map = {
-    DRAFT: '草稿',
-    PENDING_REVIEW: '审核中',
-    APPROVED: '已通过',
-    REJECTED: '已驳回',
-    ARCHIVED: '已归档',
-    RECRUITING: '招生中',
-    COMPLETED: '已结业',
-    CANCELLED: '已取消'
+    DRAFT: t('course.draft'),
+    PENDING_REVIEW: t('microSpecialtyDetail.reviewing'),
+    APPROVED: t('course.approved'),
+    REJECTED: t('microSpecialtyDetail.rejected'),
+    ARCHIVED: t('course.archived'),
+    RECRUITING: t('courseSquare.msRecruiting'),
+    COMPLETED: t('microSpecialtyDetail.completed'),
+    CANCELLED: t('microSpecialtyDetail.cancelled')
   }
   return map[ms.value.status] || ms.value.status || '—'
 })
@@ -463,24 +465,24 @@ const checkEnrollment = async () => {
 // 报名
 const handleApply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning('仅学生可报名微专业')
+    ElMessage.warning(t('microSpecialtyDetail.studentOnlyApply'))
     return
   }
   try {
     await ElMessageBox.confirm(
-      `确认报名微专业「${ms.value.title}」？`,
-      '报名确认',
-      { confirmButtonText: '确认报名', cancelButtonText: '取消', type: 'info' }
+      i18nT('microSpecialtyDetail.confirmApply', { title: ms.value.title }),
+      i18nT('microSpecialtyDetail.applyConfirmTitle'),
+      { confirmButtonText: i18nT('microSpecialtyDetail.confirmApplyBtn'), cancelButtonText: i18nT('app.cancel'), type: 'info' }
     )
     applyLoading.value = true
     await applyEnrollment({ microSpecialtyId: msId.value })
-    ElMessage.success('报名成功')
+    ElMessage.success(i18nT('course.signupSuccess'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 报名失败:', e)
-      ElMessage.error(e?.response?.data?.message || '报名失败，请稍后重试')
+      ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.applyFailed'))
     }
   } finally {
     applyLoading.value = false
@@ -490,28 +492,28 @@ const handleApply = async () => {
 // 重新申请
 const handleReapply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning('仅学生可重新申请微专业')
+    ElMessage.warning(t('microSpecialtyDetail.studentOnlyReapply'))
     return
   }
   if (!canReapply.value) {
-    ElMessage.warning('微专业当前未在招生中，暂不可重新申请')
+    ElMessage.warning(t('microSpecialtyDetail.reapplyNotRecruiting'))
     return
   }
   try {
     await ElMessageBox.confirm(
-      '确认重新申请该微专业？',
-      '重新申请',
-      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+      i18nT('microSpecialtyDetail.confirmReapply'),
+      i18nT('microSpecialtyDetail.reapply'),
+      { confirmButtonText: i18nT('app.confirm'), cancelButtonText: i18nT('app.cancel'), type: 'info' }
     )
     reapplyLoading.value = true
     await reapplyEnrollment(enrollmentId.value)
-    ElMessage.success('已重新申请')
+    ElMessage.success(t('microSpecialtyDetail.reapplied'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 重新申请失败:', e)
-      ElMessage.error(e?.response?.data?.message || '操作失败，请稍后重试')
+      ElMessage.error(e?.response?.data?.message || t('microSpecialtyDetail.operationFailed'))
     }
   } finally {
     reapplyLoading.value = false
@@ -542,13 +544,13 @@ const courseClickable = computed(() => {
 const goCourse = (courseId) => {
   if (!courseId) return
   if (!isLoggedIn.value) {
-    ElMessage.warning('请先登录再学习课程')
+    ElMessage.warning(t('microSpecialtyDetail.loginToStudy'))
     goLogin()
     return
   }
   const targetPath = resolveCourseDetailPath(courseId)
   if (!targetPath) {
-    ElMessage.warning('当前角色暂无可用的课程详情入口')
+    ElMessage.warning(t('microSpecialtyDetail.noCourseEntry'))
     return
   }
   if (isStaffViewer.value) {
@@ -556,17 +558,19 @@ const goCourse = (courseId) => {
     return
   }
   if (!enrollmentStatus.value) {
-    ElMessage.warning('请先报名微专业再学习课程')
+    ElMessage.warning(t('microSpecialtyDetail.enrollToStudy'))
     return
   }
   if (!courseClickable.value) {
-    const reapplyTip = ms.value?.status === 'RECRUITING' ? '需重新申请' : '当前未开放重新申请'
+    const reapplyTip = ms.value?.status === 'RECRUITING'
+      ? t('microSpecialtyDetail.needReapply')
+      : t('microSpecialtyDetail.reapplyClosed')
     const tipMap = {
-      DROPPED: `你已退出该微专业，${reapplyTip}`,
-      REJECTED: `你的报名已被驳回，${reapplyTip}`,
-      FAILED: `该微专业未通过，${reapplyTip}`
+      DROPPED: t('microSpecialtyDetail.droppedTip', { tip: reapplyTip }),
+      REJECTED: t('microSpecialtyDetail.rejectedTip', { tip: reapplyTip }),
+      FAILED: t('microSpecialtyDetail.failedTip', { tip: reapplyTip })
     }
-    ElMessage.warning(tipMap[enrollmentStatus.value] || '当前状态不可访问课程')
+    ElMessage.warning(tipMap[enrollmentStatus.value] || t('microSpecialtyDetail.courseNotAccessible'))
     return
   }
   router.push(targetPath)

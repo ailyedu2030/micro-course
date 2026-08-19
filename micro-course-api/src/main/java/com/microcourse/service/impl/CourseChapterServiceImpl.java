@@ -174,6 +174,40 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         return result;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PageResult<ChapterVO> searchChapters(String keyword, int page, int size) {
+        LambdaQueryWrapper<CourseChapter> wrapper = new LambdaQueryWrapper<>();
+        if (keyword != null && !keyword.isBlank()) {
+            wrapper.and(w -> w.like(CourseChapter::getTitle, keyword)
+                    .or().like(CourseChapter::getDescription, keyword));
+        }
+        wrapper.orderByAsc(CourseChapter::getSortOrder).orderByAsc(CourseChapter::getId);
+
+        IPage<CourseChapter> ipage = chapterRepository.selectPage(
+                new Page<>(page + 1, size), wrapper);
+
+        List<Long> chapterIds = ipage.getRecords().stream()
+                .map(CourseChapter::getId).collect(Collectors.toList());
+        java.util.Map<Long, Long> videoCountMap = batchCountVideosByChapter(chapterIds);
+
+        List<ChapterVO> vos = ipage.getRecords().stream()
+                .map(ch -> {
+                    ChapterVO vo = convertToVO(ch);
+                    vo.setVideoCount(videoCountMap.getOrDefault(ch.getId(), 0L).intValue());
+                    return vo;
+                })
+                .collect(Collectors.toList());
+
+        PageResult<ChapterVO> result = new PageResult<>();
+        result.setItems(vos);
+        result.setPage(page);
+        result.setSize(size);
+        result.setTotalElements(ipage.getTotal());
+        result.setTotalPages(ipage.getPages());
+        return result;
+    }
+
     private java.util.Map<Long, Long> batchCountVideosByChapter(List<Long> chapterIds) {
         if (chapterIds == null || chapterIds.isEmpty()) return java.util.Collections.emptyMap();
         List<com.microcourse.entity.Video> videos = videoRepository.selectList(
@@ -274,7 +308,9 @@ public class CourseChapterServiceImpl implements CourseChapterService {
         if (request.getChapterHours() != null) chapter.setChapterHours(request.getChapterHours());
 
         chapter.setUpdatedAt(LocalDateTime.now());
-        chapterRepository.updateById(chapter);
+        if (chapterRepository.updateById(chapter) == 0) {
+            throw new BusinessException(ErrorCode.CONCURRENT_MODIFICATION, "章节已被其他操作修改，请刷新后重试");
+        }
 
         ChapterVO vo = convertToVO(chapter);
         Long vc = videoRepository.selectCount(

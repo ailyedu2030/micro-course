@@ -10,8 +10,8 @@
       <div class="info-content">
         <el-icon :size="20" class="info-icon"><InfoFilled /></el-icon>
         <div>
-          <p class="info-title">系统设置管理</p>
-          <p class="info-desc">管理平台运行时配置参数，修改后即时生效。</p>
+          <p class="info-title">{{ $t('adminSettings.title') }}</p>
+          <p class="info-desc">{{ $t('adminSettings.desc') }}</p>
         </div>
       </div>
     </el-card>
@@ -22,11 +22,11 @@
       :closable="false"
       show-icon
       class="readonly-tip"
-      title="只读模式：教务处可查看系统配置，仅管理员可修改"
+      :title="$t('adminSettings.readonlyTip')"
     />
 
     <!-- 主体：左侧菜单 + 右侧表单 -->
-    <div class="settings-layout" v-loading="loading" element-loading-text="加载配置中...">
+    <div class="settings-layout" v-loading="loading" :element-loading-text="$t('adminSettings.loading')">
       <!-- 左侧菜单 -->
       <el-card class="menu-card" shadow="never">
         <el-menu
@@ -36,23 +36,23 @@
         >
           <el-menu-item index="system">
             <el-icon><Setting /></el-icon>
-            <template #title>系统参数</template>
+            <template #title>{{ $t('adminSettings.menuSystem') }}</template>
           </el-menu-item>
           <el-menu-item index="mail">
             <el-icon><Message /></el-icon>
-            <template #title>邮件配置</template>
+            <template #title>{{ $t('adminSettings.menuMail') }}</template>
           </el-menu-item>
           <el-menu-item index="security">
             <el-icon><Lock /></el-icon>
-            <template #title>安全设置</template>
+            <template #title>{{ $t('adminSettings.menuSecurity') }}</template>
           </el-menu-item>
           <el-menu-item v-if="isAdmin" index="cas">
             <el-icon><Key /></el-icon>
-            <template #title>CAS 配置</template>
+            <template #title>{{ $t('adminSettings.menuCas') }}</template>
           </el-menu-item>
           <el-menu-item index="about">
             <el-icon><InfoFilled /></el-icon>
-            <template #title>关于系统</template>
+            <template #title>{{ $t('adminSettings.menuAbout') }}</template>
           </el-menu-item>
         </el-menu>
       </el-card>
@@ -63,46 +63,46 @@
         <el-card v-show="activeMenu === 'system'" class="settings-card shadow-hover" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">系统参数</span>
-              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('system')" aria-label="保存">
-<el-icon><Check /></el-icon>保存修改
+              <span class="card-title">{{ $t('adminSettings.menuSystem') }}</span>
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('system')" :aria-label="$t('adminSettings.saveAria')">
+<el-icon><Check /></el-icon>{{ $t('adminSettings.save') }}
               </el-button>
             </div>
           </template>
           <el-form ref="systemFormRef" :model="systemForm" :rules="systemFormRules" label-width="140px" class="settings-form">
-            <el-form-item label="平台名称" prop="platformName">
-              <el-input v-model="systemForm.platformName" placeholder="请输入平台名称" />
+            <el-form-item :label="$t('adminSettings.platformName')" prop="platformName">
+              <el-input v-model="systemForm.platformName" :placeholder="$t('adminSettings.platformNamePlaceholder')" />
             </el-form-item>
-            <el-form-item label="平台 Logo URL">
-              <el-input v-model="systemForm.logoUrl" placeholder="请输入 Logo 地址" />
+            <el-form-item :label="$t('adminSettings.logoUrl')">
+              <el-input v-model="systemForm.logoUrl" :placeholder="$t('adminSettings.logoUrlPlaceholder')" />
             </el-form-item>
-            <el-form-item label="系统版本">
+            <el-form-item :label="$t('adminSettings.systemVersion')">
               <el-input :model-value="APP_VERSION" disabled />
             </el-form-item>
-            <el-form-item label="文件上传大小限制">
+            <el-form-item :label="$t('adminSettings.maxUploadSize')">
               <el-input-number
                 v-model="systemForm.max_video_size_mb"
                 :min="1"
                 :max="500"
                 controls-position="right"
               />
-              <span class="form-unit">MB</span>
+              <span class="form-unit">{{ $t('adminSettings.unitMb') }}</span>
             </el-form-item>
-            <el-form-item label="会话超时时间">
+            <el-form-item :label="$t('adminSettings.sessionTimeout')">
               <el-input-number
                 v-model="systemForm.sessionTimeout"
                 :min="5"
                 :max="1440"
                 controls-position="right"
               />
-              <span class="form-unit">分钟</span>
+              <span class="form-unit">{{ $t('adminSettings.unitMinutes') }}</span>
             </el-form-item>
-            <el-form-item label="启用注册">
+            <el-form-item :label="$t('adminSettings.allowRegistration')">
               <el-switch v-model="systemForm.allowRegistration" />
             </el-form-item>
-            <el-form-item label="维护模式">
+            <el-form-item :label="$t('adminSettings.maintenanceMode')">
               <el-switch v-model="systemForm.maintenanceMode" />
-              <span class="form-hint">开启后普通用户将无法登录</span>
+              <span class="form-hint">{{ $t('adminSettings.maintenanceHint') }}</span>
             </el-form-item>
           </el-form>
         </el-card>
@@ -111,17 +111,17 @@
         <el-card v-show="activeMenu === 'mail'" class="settings-card shadow-hover" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">邮件配置</span>
-              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('mail')" aria-label="保存">
-<el-icon><Check /></el-icon>保存修改
+              <span class="card-title">{{ $t('adminSettings.menuMail') }}</span>
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('mail')" :aria-label="$t('adminSettings.saveAria')">
+<el-icon><Check /></el-icon>{{ $t('adminSettings.save') }}
               </el-button>
             </div>
           </template>
           <el-form ref="mailFormRef" :model="mailForm" :rules="mailFormRules" label-width="140px" class="settings-form">
-            <el-form-item label="SMTP 服务器" prop="smtpHost">
+            <el-form-item :label="$t('adminSettings.smtpHost')" prop="smtpHost">
               <el-input v-model="mailForm.smtpHost" placeholder="smtp.example.com" />
             </el-form-item>
-            <el-form-item label="SMTP 端口">
+            <el-form-item :label="$t('adminSettings.smtpPort')">
               <el-input-number
                 v-model="mailForm.smtpPort"
                 :min="1"
@@ -129,28 +129,28 @@
                 controls-position="right"
               />
             </el-form-item>
-            <el-form-item label="用户名">
+            <el-form-item :label="$t('adminSettings.username')">
               <el-input v-model="mailForm.smtpUsername" placeholder="your@email.com" />
             </el-form-item>
-            <el-form-item label="密码">
+            <el-form-item :label="$t('adminSettings.password')">
               <el-input
                 v-model="mailForm.smtpPassword"
                 type="password"
                 show-password
-                placeholder="请输入密码"
+                :placeholder="$t('adminSettings.passwordPlaceholder')"
               />
             </el-form-item>
-            <el-form-item label="发件人昵称">
-              <el-input v-model="mailForm.fromName" placeholder="微课平台" />
+            <el-form-item :label="$t('adminSettings.senderName')">
+              <el-input v-model="mailForm.fromName" :placeholder="$t('adminSettings.senderNamePlaceholder')" />
             </el-form-item>
-            <el-form-item label="启用 SSL">
+            <el-form-item :label="$t('adminSettings.enableSsl')">
               <el-switch v-model="mailForm.useSsl" />
             </el-form-item>
-            <el-form-item label="启用 TLS">
+            <el-form-item :label="$t('adminSettings.enableTls')">
               <el-switch v-model="mailForm.useTls" />
             </el-form-item>
             <el-form-item>
-              <el-button @click="handleTestMail">发送测试邮件</el-button>
+              <el-button @click="handleTestMail">{{ $t('adminSettings.sendTestMail') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -159,14 +159,14 @@
         <el-card v-show="activeMenu === 'security'" class="settings-card shadow-hover" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">安全设置</span>
-              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('security')" aria-label="保存">
-<el-icon><Check /></el-icon>保存修改
+              <span class="card-title">{{ $t('adminSettings.menuSecurity') }}</span>
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('security')" :aria-label="$t('adminSettings.saveAria')">
+<el-icon><Check /></el-icon>{{ $t('adminSettings.save') }}
               </el-button>
             </div>
           </template>
           <el-form ref="securityFormRef" :model="securityForm" :rules="securityFormRules" label-width="140px" class="settings-form">
-            <el-form-item label="密码最小长度">
+            <el-form-item :label="$t('adminSettings.minPasswordLength')">
               <el-input-number
                 v-model="securityForm.minPasswordLength"
                 :min="6"
@@ -174,16 +174,16 @@
                 controls-position="right"
               />
             </el-form-item>
-            <el-form-item label="密码必须包含数字">
+            <el-form-item :label="$t('adminSettings.requireNumber')">
               <el-switch v-model="securityForm.requireNumber" />
             </el-form-item>
-            <el-form-item label="密码必须包含特殊字符">
+            <el-form-item :label="$t('adminSettings.requireSpecialChar')">
               <el-switch v-model="securityForm.requireSpecialChar" />
             </el-form-item>
-            <el-form-item label="登录失败锁定">
+            <el-form-item :label="$t('adminSettings.lockOnFailure')">
               <el-switch v-model="securityForm.lockOnFailure" />
             </el-form-item>
-            <el-form-item v-if="securityForm.lockOnFailure" label="失败次数上限">
+            <el-form-item v-if="securityForm.lockOnFailure" :label="$t('adminSettings.maxFailAttempts')">
               <el-input-number
                 v-model="securityForm.maxFailAttempts"
                 :min="3"
@@ -191,36 +191,36 @@
                 controls-position="right"
               />
             </el-form-item>
-            <el-form-item v-if="securityForm.lockOnFailure" label="锁定时长">
+            <el-form-item v-if="securityForm.lockOnFailure" :label="$t('adminSettings.lockDuration')">
               <el-input-number
                 v-model="securityForm.lockDuration"
                 :min="5"
                 :max="1440"
                 controls-position="right"
               />
-              <span class="form-unit">分钟</span>
+              <span class="form-unit">{{ $t('adminSettings.unitMinutes') }}</span>
             </el-form-item>
-            <el-form-item label="双因素认证">
+            <el-form-item :label="$t('adminSettings.require2FA')">
               <el-switch v-model="securityForm.require2FA" />
-              <span class="form-hint">开启后管理员登录需验证手机验证码</span>
+              <span class="form-hint">{{ $t('adminSettings.require2FAHint') }}</span>
             </el-form-item>
-            <el-form-item label="Token 有效期">
+            <el-form-item :label="$t('adminSettings.tokenExpiry')">
               <el-input-number
                 v-model="securityForm.tokenExpiry"
                 :min="30"
                 :max="86400"
                 controls-position="right"
               />
-              <span class="form-unit">分钟</span>
+              <span class="form-unit">{{ $t('adminSettings.unitMinutes') }}</span>
             </el-form-item>
-            <el-form-item label="刷新 Token 有效期">
+            <el-form-item :label="$t('adminSettings.refreshTokenExpiry')">
               <el-input-number
                 v-model="securityForm.refreshTokenExpiry"
                 :min="1"
                 :max="30"
                 controls-position="right"
               />
-              <span class="form-unit">天</span>
+              <span class="form-unit">{{ $t('adminSettings.unitDays') }}</span>
             </el-form-item>
           </el-form>
         </el-card>
@@ -229,64 +229,64 @@
         <el-card v-show="activeMenu === 'cas'" class="settings-card shadow-hover" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">CAS 统一身份认证配置</span>
-              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('cas')" aria-label="保存修改">
-<el-icon><Check /></el-icon>保存修改
+              <span class="card-title">{{ $t('adminSettings.casTitle') }}</span>
+              <el-button v-if="isAdmin" type="primary" size="small" :loading="saving" @click="handleSave('cas')" :aria-label="$t('adminSettings.save')">
+<el-icon><Check /></el-icon>{{ $t('adminSettings.save') }}
               </el-button>
             </div>
           </template>
           <el-alert type="info" :closable="false" show-icon style="margin-bottom: var(--space-4)">
             <template #title>
-              CAS 配置用于对接学校统一身份认证系统。配置后将支持师生通过学校账号一键登录。
+              {{ $t('adminSettings.casDesc') }}
             </template>
           </el-alert>
           <el-alert
             v-if="casLoadFailed"
             type="warning"
-            title="CAS 配置加载失败，表单显示默认值，保存将覆盖线上配置"
+            :title="$t('adminSettings.casLoadFailed')"
             :closable="false"
             show-icon
             style="margin-bottom: var(--space-4)"
           />
           <el-form ref="casFormRef" :model="casForm" :rules="casFormRules" label-width="140px" class="settings-form">
-            <el-form-item label="启用 CAS">
+            <el-form-item :label="$t('adminSettings.enableCas')">
               <el-switch v-model="casForm.enabled" />
-              <span class="form-hint">开启后将启用 CAS 单点登录</span>
+              <span class="form-hint">{{ $t('adminSettings.enableCasHint') }}</span>
             </el-form-item>
-            <el-form-item label="CAS 服务器 URL" prop="serverUrl">
+            <el-form-item :label="$t('adminSettings.casServerUrl')" prop="serverUrl">
               <el-input v-model="casForm.serverUrl" placeholder="https://cas.example.edu.cn" />
-              <span class="form-hint">学校 CAS 服务器地址</span>
+              <span class="form-hint">{{ $t('adminSettings.casServerUrlHint') }}</span>
             </el-form-item>
-            <el-form-item label="CAS Service URL">
+            <el-form-item :label="$t('adminSettings.casServiceUrl')">
               <el-input v-model="casForm.serviceUrl" placeholder="https://micro-course.example.edu.cn/cas/validate" />
-              <span class="form-hint">本系统用于 CAS 回调的 URL</span>
+              <span class="form-hint">{{ $t('adminSettings.casServiceUrlHint') }}</span>
             </el-form-item>
-            <el-form-item label="CAS 版本">
-              <el-select v-model="casForm.version" placeholder="请选择" class="full-width">
+            <el-form-item :label="$t('adminSettings.casVersion')">
+              <el-select v-model="casForm.version" :placeholder="$t('adminSettings.pleaseSelect')" class="full-width">
                 <el-option label="CAS 2.0" value="2.0" />
                 <el-option label="CAS 3.0" value="3.0" />
                 <el-option label="SAML 2.0" value="saml2" />
               </el-select>
             </el-form-item>
-            <el-form-item label="管理员账号">
-              <el-input v-model="casForm.adminUsername" placeholder="管理员 CAS 用户名" />
-              <span class="form-hint">拥有管理员权限的 CAS 账号</span>
+            <el-form-item :label="$t('adminSettings.adminAccount')">
+              <el-input v-model="casForm.adminUsername" :placeholder="$t('adminSettings.adminAccountPlaceholder')" />
+              <span class="form-hint">{{ $t('adminSettings.adminAccountHint') }}</span>
             </el-form-item>
-            <el-form-item label="超级管理员列表">
+            <el-form-item :label="$t('adminSettings.superAdmins')">
               <el-input
                 v-model="casForm.superAdmins"
                 type="textarea"
                 :rows="2"
-                placeholder="多个账号用逗号分隔，如: zhangsan,lisi"
+                :placeholder="$t('adminSettings.superAdminsPlaceholder')"
               />
-              <span class="form-hint">CAS 账号列表，列表内用户将自动获得管理员权限</span>
+              <span class="form-hint">{{ $t('adminSettings.superAdminsHint') }}</span>
             </el-form-item>
-            <el-form-item label="启用 SSL 校验">
+            <el-form-item :label="$t('adminSettings.validateSsl')">
               <el-switch v-model="casForm.validateSsl" />
-              <span class="form-hint">是否验证 CAS 服务器 SSL 证书</span>
+              <span class="form-hint">{{ $t('adminSettings.validateSslHint') }}</span>
             </el-form-item>
-            <el-form-item label="测试连接">
-              <el-button @click="handleTestCas">测试 CAS 连接</el-button>
+            <el-form-item :label="$t('adminSettings.testConnection')">
+              <el-button @click="handleTestCas">{{ $t('adminSettings.testCasBtn') }}</el-button>
             </el-form-item>
           </el-form>
         </el-card>
@@ -295,23 +295,23 @@
         <el-card v-show="activeMenu === 'about'" class="settings-card shadow-hover" shadow="never">
           <template #header>
             <div class="card-header">
-              <span class="card-title">关于系统</span>
+              <span class="card-title">{{ $t('adminSettings.menuAbout') }}</span>
             </div>
           </template>
           <el-descriptions :column="1" border class="about-descriptions">
-            <el-descriptions-item label="系统名称">微课管理平台</el-descriptions-item>
-            <el-descriptions-item label="当前版本">{{ APP_VERSION }}</el-descriptions-item>
-            <el-descriptions-item label="技术栈">
+            <el-descriptions-item :label="$t('adminSettings.aboutSystemName')">{{ $t('adminSettings.aboutPlatformName') }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutVersion')">{{ APP_VERSION }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutTechStack')">
               Spring Boot 3.2 + Vue 3.4 + Element Plus 2.5
             </el-descriptions-item>
-            <el-descriptions-item label="数据库">PostgreSQL 17.5</el-descriptions-item>
-            <el-descriptions-item label="缓存">Redis 7</el-descriptions-item>
-            <el-descriptions-item label="开发团队">微课平台开发组</el-descriptions-item>
-            <el-descriptions-item label="许可证">MIT License</el-descriptions-item>
-            <el-descriptions-item label="官方文档">
+            <el-descriptions-item :label="$t('adminSettings.aboutDatabase')">PostgreSQL 17.5</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutCache')">Redis 7</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutTeam')">{{ $t('adminSettings.aboutTeamName') }}</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutLicense')">MIT License</el-descriptions-item>
+            <el-descriptions-item :label="$t('adminSettings.aboutDocs')">
               <a href="#" class="about-link">https://docs.example.com</a>
             </el-descriptions-item>
-            <el-descriptions-item label="问题反馈">
+            <el-descriptions-item :label="$t('adminSettings.aboutFeedback')">
               <a href="#" class="about-link">https://github.com/example/micro-course/issues</a>
             </el-descriptions-item>
           </el-descriptions>
@@ -327,6 +327,7 @@
  * Vue 3.4 Composition API + script setup
  */
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 // 版本号从环境变量动态读取
 const APP_VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0'
 import { ElMessage } from 'element-plus'
@@ -336,6 +337,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getSettings, updateSettings, getCasConfig, updateCasConfig, sendTestEmail } from '@/api/admin-settings'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 // CAS 配置含解密后的管理员账号等敏感字段，后端仅 ADMIN 可读；
 // 非管理员只读视图不加载、不展示 CAS 菜单，避免无权限 403 与敏感信息暴露
@@ -403,34 +405,34 @@ const casForm = reactive({
 
 // 表单验证规则
 const systemFormRules = {
-  platformName: [{ required: true, message: '请输入平台名称', trigger: ['blur', 'change'] }]
+  platformName: [{ required: true, message: t('adminSettings.platformNameRequired'), trigger: ['blur', 'change'] }]
 }
 
 const mailFormRules = {
-  smtpHost: [{ required: true, message: '请输入 SMTP 服务器地址', trigger: ['blur', 'change'] }]
+  smtpHost: [{ required: true, message: t('adminSettings.smtpHostRequired'), trigger: ['blur', 'change'] }]
 }
 
 const securityFormRules = {
   minPasswordLength: [
-    { required: true, message: '请设置密码最小长度', trigger: 'blur' },
-    { type: 'number', min: 6, max: 32, message: '长度范围为 6-32', trigger: 'blur' }
+    { required: true, message: t('adminSettings.minPasswordLengthRequired'), trigger: 'blur' },
+    { type: 'number', min: 6, max: 32, message: t('adminSettings.minPasswordLengthRange'), trigger: 'blur' }
   ],
   tokenExpiry: [
-    { type: 'number', min: 30, max: 86400, message: 'Token 有效期范围为 30-86400 分钟', trigger: 'blur' }
+    { type: 'number', min: 30, max: 86400, message: t('adminSettings.tokenExpiryRange'), trigger: 'blur' }
   ],
   refreshTokenExpiry: [
-    { type: 'number', min: 1, max: 30, message: '刷新 Token 有效期范围为 1-30 天', trigger: 'blur' }
+    { type: 'number', min: 1, max: 30, message: t('adminSettings.refreshTokenExpiryRange'), trigger: 'blur' }
   ],
   maxFailAttempts: [
-    { type: 'number', min: 3, max: 10, message: '失败次数上限范围为 3-10', trigger: 'blur' }
+    { type: 'number', min: 3, max: 10, message: t('adminSettings.maxFailAttemptsRange'), trigger: 'blur' }
   ],
   lockDuration: [
-    { type: 'number', min: 5, max: 1440, message: '锁定时长范围为 5-1440 分钟', trigger: 'blur' }
+    { type: 'number', min: 5, max: 1440, message: t('adminSettings.lockDurationRange'), trigger: 'blur' }
   ]
 }
 
 const casFormRules = {
-  serverUrl: [{ required: true, message: '请输入 CAS 服务器 URL', trigger: ['blur', 'change'] }]
+  serverUrl: [{ required: true, message: t('adminSettings.casServerUrlRequired'), trigger: ['blur', 'change'] }]
 }
 
 // 获取设置列表
@@ -482,12 +484,12 @@ async function fetchSettings() {
         }
       } catch {
         casLoadFailed.value = true
-        ElMessage.warning('CAS 配置加载失败，请稍后重试')
+        ElMessage.warning(t('adminSettings.casLoadFailedMsg'))
       }
     }
   } catch (e) {
     console.warn('[AdminSettings] fetchSettings failed', e)
-    ElMessage.error('系统配置加载失败，当前表单显示默认值，保存将覆盖现有配置')
+    ElMessage.error(t('adminSettings.settingsLoadFailed'))
   } finally {
     loading.value = false
   }
@@ -533,7 +535,7 @@ async function handleSave(menu) {
         superAdmins: casForm.superAdmins ? casForm.superAdmins.split(',').map(s => s.trim()).filter(Boolean) : []
       }
       await updateCasConfig(casPayload)
-      ElMessage.success('CAS 配置已保存')
+      ElMessage.success(t('adminSettings.casSaved'))
       saving.value = false
       return
     }
@@ -559,10 +561,10 @@ async function handleSave(menu) {
     }))
 
     await updateSettings(updates)
-    ElMessage.success('操作成功')
+    ElMessage.success(t('common.success'))
   } catch (e) {
     console.warn('[AdminSettings] save failed', e)
-    ElMessage.error('保存失败，请稍后重试')
+    ElMessage.error(t('adminSettings.saveFailed'))
   } finally {
     saving.value = false
   }
@@ -571,18 +573,18 @@ async function handleSave(menu) {
 // 测试 CAS 连接
 async function handleTestCas() {
   if (!casForm.serverUrl) {
-    ElMessage.warning('请先填写 CAS 服务器 URL')
+    ElMessage.warning(t('adminSettings.casUrlRequired'))
     return
   }
   // ⚠️ P1C-055: 当前为模拟测试，后端暂无实际测试端点，请手动验证
   ElMessage.warning({
-    message: '当前为模拟测试，请手动访问 CAS 服务器验证配置是否可用',
+    message: t('adminSettings.casMockTest'),
     duration: 5000
   })
   setTimeout(() => {
     ElMessage({
       type: 'warning',
-      message: '模拟测试结束（后端暂未实现实际测试端点，配置保存后请手动验证）',
+      message: t('adminSettings.casMockEnd'),
       duration: 6000
     })
   }, 1000)
@@ -591,15 +593,15 @@ async function handleTestCas() {
 // 测试邮件
 async function handleTestMail() {
   if (!mailForm.smtpHost || !mailForm.smtpUsername) {
-    ElMessage.warning('请先填写完整的邮件配置')
+    ElMessage.warning(t('adminSettings.mailConfigRequired'))
     return
   }
   // B10.5 修复：真实 SMTP 发送（后端按已保存配置自测）
   try {
     await sendTestEmail()
-    ElMessage.success('测试邮件发送成功，请查收')
+    ElMessage.success(t('adminSettings.mailTestSent'))
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '邮件发送失败')
+    ElMessage.error(e?.response?.data?.message || t('adminSettings.mailSendFailed'))
   }
 }
 

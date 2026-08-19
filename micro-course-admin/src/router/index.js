@@ -2,8 +2,26 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated, removeToken } from '../utils/auth'
 import { useUserStore } from '../store/user'
 import { ElMessage } from 'element-plus'
+import i18n from '../i18n'
 import NProgress from 'nprogress'
 import 'nprogress/nprogress.css'
+
+/**
+ * 根据路由元信息计算浏览器标签页标题。
+ * 优先使用 {@code meta.titleKey}（i18n key）；若未配置则回退到 {@code meta.title}（硬编码中文，已废弃）。
+ * <p>P1-I-2026-08-15 · 修复路由 title 在英文模式下显示中文 + 浏览器标签页无标题。
+ */
+function resolveDocumentTitle(route) {
+  const appTitle = i18n.global.t('app.title')
+  if (route.meta?.titleKey) {
+    const pageTitle = i18n.global.t(route.meta.titleKey)
+    return pageTitle ? `${pageTitle} - ${appTitle}` : appTitle
+  }
+  if (route.meta?.title) {
+    return `${route.meta.title} - ${appTitle}`
+  }
+  return appTitle
+}
 
 // A11Y: NProgress 默认模板含无效 ARIA 角色 role="bar"/"spinner"（axe aria-roles critical）。
 // 改用合法 role="progressbar" + aria-label，并移除未启用的 spinner 节点。
@@ -18,7 +36,7 @@ NProgress.configure({
 })
 
 const routes = [
-  { path: '/micro-specialties', name: 'MicroSpecialtySquare', component: () => import('../views/public/MicroSpecialtySquare.vue'), meta: { requiresAuth: false, title: '微专业' } },
+  { path: '/micro-specialties', name: 'MicroSpecialtySquare', component: () => import('../views/public/MicroSpecialtySquare.vue'), meta: { requiresAuth: false, titleKey: 'route.MicroSpecialtySquare', title: '微专业' } },
   { path: '/login', name: 'Login', component: () => import('../views/auth/Login.vue'), meta: { requiresAuth: false } },
   { path: '/', name: 'Home', redirect: '/admin/dashboard' },
   // P0-2: 从 userStore 读取角色（beforeEach 中已填充），避免与 sessionStorage 双源不一致
@@ -84,26 +102,27 @@ const routes = [
   { path: '/admin/revenue', name: 'AdminRevenueDashboard', component: () => import('../views/admin/RevenueDashboard.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/banners', name: 'BannerList', component: () => import('../views/admin/BannerList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
   { path: '/admin/teaching-classes', name: 'TeachingClassList', component: () => import('../views/admin/TeachingClassList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
-  { path: '/admin/system-health', name: 'SystemHealth', component: () => import('../views/admin/SystemHealth.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '系统状态' } },
+  { path: '/admin/system-health', name: 'SystemHealth', component: () => import('../views/admin/SystemHealth.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], titleKey: 'route.SystemHealth', title: '系统状态' } },
   { path: '/admin/reports', name: 'ReportsManagement', component: () => import('../views/admin/ReportsManagement.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'] } },
-  { path: '/admin/audit/ghost-chapters', name: 'AuditGhostChapter', component: () => import('../views/admin/AuditGhostChapter.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], title: '幽灵章节审计' } },
+  { path: '/admin/audit/ghost-chapters', name: 'AuditGhostChapter', component: () => import('../views/admin/AuditGhostChapter.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], titleKey: 'route.AuditGhostChapter', title: '幽灵章节审计' } },
   // 【V333 简化方案】HTML 课件 + PPT 课件 2 种类型独立管理（复用 CourseList.vue 固定类型模式）
-  { path: '/admin/courseware/html', name: 'CoursewareHtmlList', component: () => import('../views/courseware/CoursewareHtmlList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'HTML 课件管理' } },
-  { path: '/admin/courseware/ppt', name: 'CoursewarePptList', component: () => import('../views/courseware/CoursewarePptList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], title: 'PPT 课件管理' } },
+  { path: '/admin/courseware/html', name: 'CoursewareHtmlList', component: () => import('../views/courseware/CoursewareHtmlList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], titleKey: 'route.CoursewareHtmlList', title: 'HTML 课件管理' } },
+  { path: '/admin/courseware/ppt', name: 'CoursewarePptList', component: () => import('../views/courseware/CoursewarePptList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC', 'TEACHER'], titleKey: 'route.CoursewarePptList', title: 'PPT 课件管理' } },
   // 【F-2026-08-10-05】5 种课件类型独立管理：admin/academic 端的线下课程入口
   // 复用 TeacherOfflineList 组件（line 215 已按 role=TEACHER 自动加 teacherId 过滤，
-  // admin/academic 不传 teacherId → 看全部线下场次）。
-  { path: '/admin/offline-sessions', name: 'AdminOfflineSessionList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['ADMIN', 'ACADEMIC'], title: '线下课程管理' } },
+  // 【2026-08-12 P1-C 修复】ACADEMIC 无 pageByChapter 权限（OfflineSessionController 仅
+  // TEACHER/ADMIN/STUDENT），入口会 403；线下课运营归教师/管理员（权限矩阵 §1.27）
+  { path: '/admin/offline-sessions', name: 'AdminOfflineSessionList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['ADMIN'], titleKey: 'route.AdminOfflineSessionList', title: '线下课程管理' } },
 
   // 教务处路由
   { path: '/academic/dashboard', name: 'AcademicDashboard', component: () => import('../views/academic/Dashboard.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/academic/stats', name: 'AcademicStats', component: () => import('../views/academic/LearningAnalytics.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/enrollments', name: 'AcademicEnrollments', component: () => import('../views/academic/EnrollmentOverview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'], title: '选课数据总览' } },
+  { path: '/academic/enrollments', name: 'AcademicEnrollments', component: () => import('../views/academic/EnrollmentOverview.vue'), meta: { requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'], titleKey: 'route.AcademicEnrollments', title: '选课数据总览' } },
 
   // 教师端路由
   { path: '/teacher/dashboard', name: 'TeacherDashboard', component: () => import('../views/teacher/TeacherDashboard.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/courses', name: 'TeacherCourseList', component: () => import('../views/courses/CourseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/courses/:id', name: 'TeacherCourseDetail', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['TEACHER'], title: '课程详情' } },
+  { path: '/teacher/courses/:id', name: 'TeacherCourseDetail', component: () => import('../views/courses/CourseDetail.vue'), meta: { requiresAuth: true, roles: ['TEACHER'], titleKey: 'route.TeacherCourseDetail', title: '课程详情' } },
   { path: '/teacher/videos', name: 'TeacherVideoList', component: () => import('../views/courses/VideoList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/exercises', name: 'TeacherExerciseList', component: () => import('../views/courses/ExerciseList.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/discussions', name: 'TeacherDiscussions', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['TEACHER'] } },
@@ -112,12 +131,12 @@ const routes = [
   { path: '/teacher/students', name: 'StudentList', component: () => import('../views/teacher/StudentList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   { path: '/teacher/grades', name: 'StudentGrades', component: () => import('../views/teacher/StudentGrades.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN', 'ACADEMIC'] } },
   { path: '/teacher/teaching-classes', name: 'TeacherTeachingClasses', component: () => import('../views/teacher/TeacherTeachingClasses.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/profile', name: 'TeacherProfile', component: () => import('../views/teacher/settings/TeacherProfile.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '个人设置' } },
+  { path: '/teacher/profile', name: 'TeacherProfile', component: () => import('../views/teacher/settings/TeacherProfile.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], titleKey: 'route.TeacherProfile', title: '个人设置' } },
   // P0-1: SlidePlayer & SlideManage 路由（修复教师工作台点击 PPT 播放 404）
   { path: '/teacher/courses/:courseId/slides/manage', name: 'TeacherSlideManage', component: () => import('../plugins/interactive/views/teacher/SlideManage.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/slides', name: 'TeacherSlideOverview', component: () => import('../views/teacher/TeacherSlideOverview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '课件管理' } },
-  { path: '/teacher/exams', name: 'TeacherExamList', component: () => import('../views/teacher/ExamList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '试卷管理' } },
-  { path: '/teacher/offline-list', name: 'TeacherOfflineList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], title: '线下课管理' } },
+  { path: '/teacher/slides', name: 'TeacherSlideOverview', component: () => import('../views/teacher/TeacherSlideOverview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], titleKey: 'route.TeacherSlideOverview', title: '课件管理' } },
+  { path: '/teacher/exams', name: 'TeacherExamList', component: () => import('../views/teacher/ExamList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], titleKey: 'route.TeacherExamList', title: '试卷管理' } },
+  { path: '/teacher/offline-list', name: 'TeacherOfflineList', component: () => import('../views/teacher/TeacherOfflineList.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'], titleKey: 'route.TeacherOfflineList', title: '线下课管理' } },
   { path: '/teacher/chapters/:chapterId/offline-sessions', name: 'TeacherOfflineSessions', component: () => import('../views/teacher/TeacherOfflineSessions.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
   // 章节级资源管理路由 (4 个) — 复用现有页面,不建新文件
   { path: '/teacher/courses/:courseId/chapters/:chapterId/manage-videos',
@@ -164,23 +183,23 @@ const routes = [
   { path: '/student/orders', name: 'StudentOrders', component: () => import('../views/student/MyOrders.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   { path: '/student/checkout', name: 'StudentCheckout', component: () => import('../views/student/Checkout.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Phase 14: 微专业路由
-  { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { title: '微专业详情', requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ACADEMIC', 'ADMIN'] } },
-  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { title: '我的微专业', requiresAuth: true, roles: ['STUDENT'] } },
-  { path: '/teacher/micro-specialties', name: 'TeacherMicroSpecialtyList', component: () => import('../views/teacher/MicroSpecialtyList.vue'), meta: { title: '微专业管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
-  { path: '/teacher/micro-specialties/:id/manage', name: 'TeacherMicroSpecialtyManage', component: () => import('../views/teacher/MicroSpecialtyManage.vue'), meta: { title: '微专业工作台', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
-  { path: '/teacher/micro-specialties/:id/courses', name: 'TeacherMicroSpecialtyCourseEdit', component: () => import('../views/teacher/MicroSpecialtyCourseEdit.vue'), meta: { title: '课程编排', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
-  { path: '/teacher/micro-specialties/:id/team', name: 'TeacherMicroSpecialtyTeamEdit', component: () => import('../views/teacher/MicroSpecialtyTeamEdit.vue'), meta: { title: '团队管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
-  { path: '/teacher/micro-specialties/invites', name: 'TeacherMicroSpecialtyInvites', component: () => import('../views/teacher/MicroSpecialtyInvites.vue'), meta: { title: '邀请列表', requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/micro-specialties/proposals', name: 'TeacherMicroSpecialtyProposal', component: () => import('../views/teacher/MicroSpecialtyProposal.vue'), meta: { title: '微专业申报', requiresAuth: true, roles: ['TEACHER'] } },
-  { path: '/teacher/micro-specialties/my-proposals', name: 'TeacherMyProposals', component: () => import('../views/teacher/MyProposals.vue'), meta: { title: '我的申报', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/student/micro-specialties/:id', name: 'StudentMicroSpecialtyDetail', component: () => import('../views/student/MicroSpecialtyDetail.vue'), meta: { titleKey: 'route.StudentMicroSpecialtyDetail', title: '微专业详情', requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ACADEMIC', 'ADMIN'] } },
+  { path: '/student/my-micro-specialties', name: 'StudentMyMicroSpecialties', component: () => import('../views/student/MyMicroSpecialties.vue'), meta: { titleKey: 'route.StudentMyMicroSpecialties', title: '我的微专业', requiresAuth: true, roles: ['STUDENT'] } },
+  { path: '/teacher/micro-specialties', name: 'TeacherMicroSpecialtyList', component: () => import('../views/teacher/MicroSpecialtyList.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyList', title: '微专业管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'] } },
+  { path: '/teacher/micro-specialties/:id/manage', name: 'TeacherMicroSpecialtyManage', component: () => import('../views/teacher/MicroSpecialtyManage.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyManage', title: '微专业工作台', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/:id/courses', name: 'TeacherMicroSpecialtyCourseEdit', component: () => import('../views/teacher/MicroSpecialtyCourseEdit.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyCourseEdit', title: '课程编排', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/:id/team', name: 'TeacherMicroSpecialtyTeamEdit', component: () => import('../views/teacher/MicroSpecialtyTeamEdit.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyTeamEdit', title: '团队管理', requiresAuth: true, roles: ['TEACHER', 'ADMIN'], requiresLead: true } },
+  { path: '/teacher/micro-specialties/invites', name: 'TeacherMicroSpecialtyInvites', component: () => import('../views/teacher/MicroSpecialtyInvites.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyInvites', title: '邀请列表', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/micro-specialties/proposals', name: 'TeacherMicroSpecialtyProposal', component: () => import('../views/teacher/MicroSpecialtyProposal.vue'), meta: { titleKey: 'route.TeacherMicroSpecialtyProposal', title: '微专业申报', requiresAuth: true, roles: ['TEACHER'] } },
+  { path: '/teacher/micro-specialties/my-proposals', name: 'TeacherMyProposals', component: () => import('../views/teacher/MyProposals.vue'), meta: { titleKey: 'route.TeacherMyProposals', title: '我的申报', requiresAuth: true, roles: ['TEACHER'] } },
   { path: '/teacher/micro-specialties/storage-preview/:id', name: 'StoragePreview', component: () => import('../views/teacher/StorageApplicationPreview.vue'), meta: { requiresAuth: true, roles: ['TEACHER', 'ACADEMIC'] } },
-  { path: '/academic/micro-specialties/review', name: 'AcademicMicroSpecialtyReview', component: () => import('../views/academic/MicroSpecialtyReview.vue'), meta: { title: '微专业审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/proposals', name: 'AcademicMicroSpecialtyProposalReview', component: () => import('../views/academic/MicroSpecialtyProposalReview.vue'), meta: { title: '申报审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/featured', name: 'AcademicMicroSpecialtyFeaturedReview', component: () => import('../views/academic/MicroSpecialtyFeaturedReview.vue'), meta: { title: '置顶审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/cross-dept', name: 'AcademicMicroSpecialtyCrossDeptReview', component: () => import('../views/academic/MicroSpecialtyCrossDeptReview.vue'), meta: { title: '跨学院审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { title: '班级导入', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { title: '金标管理', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
-  { path: '/academic/micro-specialties/storage-review', name: 'AcademicStorageApplicationReview', component: () => import('../views/academic/StorageApplicationReview.vue'), meta: { title: '存储申请表审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/review', name: 'AcademicMicroSpecialtyReview', component: () => import('../views/academic/MicroSpecialtyReview.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyReview', title: '微专业审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/proposals', name: 'AcademicMicroSpecialtyProposalReview', component: () => import('../views/academic/MicroSpecialtyProposalReview.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyProposalReview', title: '申报审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/featured', name: 'AcademicMicroSpecialtyFeaturedReview', component: () => import('../views/academic/MicroSpecialtyFeaturedReview.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyFeaturedReview', title: '置顶审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/cross-dept', name: 'AcademicMicroSpecialtyCrossDeptReview', component: () => import('../views/academic/MicroSpecialtyCrossDeptReview.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyCrossDeptReview', title: '跨学院审核', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/class-import', name: 'AcademicMicroSpecialtyClassImport', component: () => import('../views/academic/MicroSpecialtyClassImport.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyClassImport', title: '班级导入', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/gold', name: 'AcademicMicroSpecialtyGoldManage', component: () => import('../views/academic/MicroSpecialtyGoldManage.vue'), meta: { titleKey: 'route.AcademicMicroSpecialtyGoldManage', title: '金标管理', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
+  { path: '/academic/micro-specialties/storage-review', name: 'AcademicStorageApplicationReview', component: () => import('../views/academic/StorageApplicationReview.vue'), meta: { titleKey: 'route.AcademicStorageApplicationReview', title: '存储申请表审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
@@ -336,8 +355,9 @@ router.beforeEach(async (to, from, next) => {
   next()
 })
 
-router.afterEach(() => {
+router.afterEach((to) => {
   NProgress.done()
+  document.title = resolveDocumentTitle(to)
 })
 
 // P1-5: 路由加载异常时给用户可感知的反馈

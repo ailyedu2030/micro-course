@@ -5,7 +5,7 @@
   Author: jackie
 -->
 <template>
-  <el-config-provider :locale="zhCn">
+  <el-config-provider :locale="elementLocale">
     <div id="app" :class="appClass">
       <!-- D2: 全局上传进度浮窗 -->
       <UploadProgress />
@@ -35,6 +35,8 @@
 
 <script setup>
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
+import en from 'element-plus/dist/locale/en.mjs'
+import i18n from './i18n'
 import { ref, computed, onErrorCaptured, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -48,6 +50,10 @@ import { WarningFilled } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// P1-C 修复: Element Plus locale 与 vue-i18n locale 同步，
+// 避免切换到英文时 Element Plus 组件（分页/对话框/空状态）仍显示中文
+const elementLocale = computed(() => i18n.global.locale.value === 'en-US' ? en : zhCn)
 const userStore = useUserStore()
 
 const hasError = ref(false)

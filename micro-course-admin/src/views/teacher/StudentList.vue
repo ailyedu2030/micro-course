@@ -8,11 +8,11 @@
     <!-- 搜索筛选区 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="选择课程">
+        <el-form-item :label="$t('course.selectCourse')">
           <el-select
             v-model="searchForm.courseId"
-            placeholder="请选择课程"
-            aria-label="选择课程"
+            :placeholder="$t('exercise.selectCourse')"
+            :aria-label="$t('course.selectCourse')"
             clearable
             class="course-select"
             @change="handleCourseChange"
@@ -25,45 +25,45 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="班级">
+        <el-form-item :label="$t('userSearch.classLabel')">
           <el-input
             v-model="searchForm.className"
-            placeholder="输入班级名称"
+            :placeholder="$t('studentList.classNamePlaceholder')"
             clearable
             class="filter-input"
             @clear="handleSearch"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="专业">
+        <el-form-item :label="$t('userSearch.major')">
           <el-input
             v-model="searchForm.majorName"
-            placeholder="输入专业名称"
+            :placeholder="$t('studentList.majorNamePlaceholder')"
             clearable
             class="filter-input"
             @clear="handleSearch"
             @keyup.enter="handleSearch"
           />
         </el-form-item>
-        <el-form-item label="状态">
+        <el-form-item :label="$t('course.status')">
           <el-select
             v-model="searchForm.status"
-            placeholder="全部状态"
+            :placeholder="$t('studentList.allStatuses')"
             clearable
             class="status-select"
             @change="handleSearch"
           >
-            <el-option label="待审核" value="PENDING" />
-            <el-option label="已报名" value="ENROLLED" />
-            <el-option label="已取消" value="CANCELLED" />
+            <el-option :label="$t('course.pendingReview')" value="PENDING" />
+            <el-option :label="$t('studentList.statusEnrolled')" value="ENROLLED" />
+            <el-option :label="$t('studentList.statusCancelled')" value="CANCELLED" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch" aria-label="搜索">
-<el-icon><Search /></el-icon>搜索
+          <el-button type="primary" @click="handleSearch" :aria-label="$t('app.search')">
+<el-icon><Search /></el-icon>{{ $t('app.search') }}
           </el-button>
-          <el-button @click="handleReset" aria-label="重置">
-<el-icon><RefreshRight /></el-icon>重置
+          <el-button @click="handleReset" :aria-label="$t('app.reset')">
+<el-icon><RefreshRight /></el-icon>{{ $t('app.reset') }}
           </el-button>
         </el-form-item>
       </el-form>
@@ -73,14 +73,14 @@
     <el-card class="table-card shadow-hover" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">学员列表</span>
+          <span class="card-title">{{ $t('studentList.title') }}</span>
           <div class="card-actions">
             <el-button
               v-if="tableData.length > 0"
               type="primary"
               @click="handleExport"
             >
-              <el-icon><Download /></el-icon>导出 Excel
+              <el-icon><Download /></el-icon>{{ $t('operationLogs.exportExcel') }}
             </el-button>
           </div>
         </div>
@@ -93,23 +93,23 @@
       <el-result
         v-else-if="error"
         icon="error"
-        title="数据加载失败"
-        sub-title="请稍后重试"
+        :title="$t('studentList.loadFailed')"
+        :sub-title="$t('operationLogs.retryLater')"
         class="error-result"
       >
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
 
       <!-- 空状态 -->
       <el-empty
         v-else-if="!loading && tableData.length === 0"
-        description="未找到匹配的学员，尝试更换筛选条件"
+        :description="$t('studentList.noMatch')"
         :image-size="120"
       >
         <template #default>
-          <el-button type="primary" @click="handleReset">清除筛选</el-button>
+          <el-button type="primary" @click="handleReset">{{ $t('course.clearFilter') }}</el-button>
         </template>
       </el-empty>
 
@@ -127,39 +127,39 @@
         @row-click="handleRowClick"
         @row-keydown.enter="handleRowClick"
       >
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="username" label="学号" width="140" show-overflow-tooltip />
-        <el-table-column prop="realName" label="姓名" width="120" show-overflow-tooltip />
-        <el-table-column prop="className" label="班级" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="majorName" label="专业" min-width="140" show-overflow-tooltip />
-        <el-table-column prop="progress" label="学习进度" width="180" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="username" :label="$t('userList.studentNo')" width="140" show-overflow-tooltip />
+        <el-table-column prop="realName" :label="$t('user.realName')" width="120" show-overflow-tooltip />
+        <el-table-column prop="className" :label="$t('userSearch.classLabel')" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="majorName" :label="$t('userSearch.major')" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="progress" :label="$t('learning.progressLabel')" width="180" align="center">
           <template #default="{ row }">
             <div class="progress-cell">
               <el-progress
                 :percentage="row.progress || 0"
                 :stroke-width="8"
                 :color="getProgressColor(row.progress)"
-                :aria-label="`学习进度 ${row.progress || 0}%`"
+                :aria-label="$t('studentList.progressAria', { progress: row.progress || 0 })"
               />
               <span class="progress-text">{{ row.progress || 0 }}%</span>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="enrolledAt" label="选课时间" width="170" :formatter="$formatDateTime" />
-        <el-table-column prop="lastWatchAt" label="最近活跃" width="170">
+        <el-table-column prop="enrolledAt" :label="$t('studentList.enrolledAt')" width="170" :formatter="$formatDateTime" />
+        <el-table-column prop="lastWatchAt" :label="$t('studentList.lastActive')" width="170">
           <template #default="{ row }">
             <span :class="isRecent(row.lastWatchAt) ? 'text-primary-color' : 'text-secondary'">
               {{ formatDate(row.lastWatchAt) }}
             </span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="140" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="140" align="center" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link @click.stop="handleViewDetail(row)" aria-label="查看详情">
-<el-icon><View /></el-icon>详情
+            <el-button type="primary" link @click.stop="handleViewDetail(row)" :aria-label="$t('course.viewDetail')">
+<el-icon><View /></el-icon>{{ $t('app.detail') }}
             </el-button>
-            <el-button type="primary" link @click.stop="handleSendMessage(row)" aria-label="发送消息">
-<el-icon><Message /></el-icon>发消息
+            <el-button type="primary" link @click.stop="handleSendMessage(row)" :aria-label="$t('studentList.sendMessageAria')">
+<el-icon><Message /></el-icon>{{ $t('studentList.sendMessage') }}
             </el-button>
           </template>
         </el-table-column>
@@ -174,7 +174,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
@@ -182,55 +182,55 @@
     <!-- 详情弹窗 -->
     <el-dialog
       v-model="detailVisible"
-      title="学员详情"
+      :title="$t('studentList.detailTitle')"
       width="600px"
       destroy-on-close
      :close-on-press-escape="true"
 >
       <el-descriptions :column="2" border v-if="currentStudent">
-        <el-descriptions-item label="学号">{{ currentStudent.username }}</el-descriptions-item>
-        <el-descriptions-item label="姓名">{{ currentStudent.realName }}</el-descriptions-item>
-        <el-descriptions-item label="班级">{{ currentStudent.className || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="专业">{{ currentStudent.majorName || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="邮箱">{{ currentStudent.email || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="手机">{{ currentStudent.phone || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="选课时间" :span="2">{{ formatDate(currentStudent.enrolledAt) }}</el-descriptions-item>
-        <el-descriptions-item label="学习进度" :span="2">
-          <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" :aria-label="`学习进度 ${currentStudent.progress || 0}%`" />
+        <el-descriptions-item :label="$t('userList.studentNo')">{{ currentStudent.username }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('user.realName')">{{ currentStudent.realName }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('userSearch.classLabel')">{{ currentStudent.className || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('userSearch.major')">{{ currentStudent.majorName || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('user.email')">{{ currentStudent.email || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('userList.phoneLabel')">{{ currentStudent.phone || '-' }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('studentList.enrolledAt')" :span="2">{{ formatDate(currentStudent.enrolledAt) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('learning.progressLabel')" :span="2">
+          <el-progress :percentage="currentStudent.progress || 0" :stroke-width="10" :aria-label="$t('studentList.progressAria', { progress: currentStudent.progress || 0 })" />
         </el-descriptions-item>
-        <el-descriptions-item label="最近活跃" :span="2">{{ formatDate(currentStudent.lastWatchAt) }}</el-descriptions-item>
+        <el-descriptions-item :label="$t('studentList.lastActive')" :span="2">{{ formatDate(currentStudent.lastWatchAt) }}</el-descriptions-item>
       </el-descriptions>
       <template #footer>
-        <el-button @click="detailVisible = false">关闭</el-button>
+        <el-button @click="detailVisible = false">{{ $t('common.close') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 发消息弹窗 -->
     <el-dialog
       v-model="messageVisible"
-      title="发送消息"
+      :title="$t('studentList.sendMessageAria')"
       width="500px"
       destroy-on-close
      :close-on-press-escape="true"
 >
       <el-form :model="messageForm" label-width="80px">
-        <el-form-item label="收件人">
+        <el-form-item :label="$t('studentList.recipient')">
           <el-input :model-value="currentStudent?.realName || ''" disabled />
         </el-form-item>
-        <el-form-item label="消息内容" required>
+        <el-form-item :label="$t('studentList.messageContent')" required>
           <el-input
             v-model="messageForm.content"
             type="textarea"
             :rows="4"
-            placeholder="请输入消息内容"
+            :placeholder="$t('studentList.messageContentPlaceholder')"
             maxlength="500"
             show-word-limit
           />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="messageVisible = false">取消</el-button>
-        <el-button type="primary" :loading="sendingMessage" :disabled="sendingMessage" @click="confirmSendMessage">发送</el-button>
+        <el-button @click="messageVisible = false">{{ $t('app.cancel') }}</el-button>
+        <el-button type="primary" :loading="sendingMessage" :disabled="sendingMessage" @click="confirmSendMessage">{{ $t('studentList.send') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -243,12 +243,14 @@
  */
 import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Workbook } from 'exceljs'
 import {
   Search, RefreshRight, Download, View, Message
 } from '@element-plus/icons-vue'
 import { getCourses } from '@/api/course'
+import { fetchAllPages } from '@/utils/fetchAllPages'
 import { getCourseEnrollments, getEnrollments, getStudentDetail, exportEnrollments } from '@/api/enrollment'
 import { sendNotification } from '@/api/notification'
 import { useUserStore } from '@/store/user'
@@ -256,6 +258,7 @@ import { useTableKeyboardNavigation } from '@/composables/useTableKeyboardNaviga
 
 const route = useRoute()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 // 加载状态
 const loading = ref(false)
@@ -287,13 +290,11 @@ const messageForm = reactive({ content: '' })
 
 // 课程变化
 function handleCourseChange() {
+  // 审计 2026-08-14 修复: 清空课程后必须继续应用班级/专业/状态筛选,
+  // 不能直接清空表格 —— fetchData 在无 courseId 时走 getEnrollments
+  // (teacherId + className/majorName/status), 筛选与课程独立生效
   page.value = 1
-  if (searchForm.courseId) {
-    fetchData()
-  } else {
-    tableData.value = []
-    totalElements.value = 0
-  }
+  fetchData()
 }
 
 // 搜索
@@ -316,15 +317,15 @@ function handleReset() {
 async function fetchCourses() {
   try {
     const teacherId = userStore.userId
-    const { data } = await getCourses({ size: 9999, teacherId })
-    courseOptions.value = data.items || []
+    // P1-I-2026-08-15（R3 审查）· 循环分页拉全量课程，规避后端 size 上限触发 400
+    courseOptions.value = await fetchAllPages(getCourses, { teacherId }, 100)
     if (route.query.courseId) {
       searchForm.courseId = Number(route.query.courseId)
     }
   } catch (err) {
 // eslint-disable-next-line no-console
     console.debug('[StudentList] fetchCourses failed:', err)
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -362,7 +363,7 @@ async function fetchData() {
 // eslint-disable-next-line no-console
     console.debug('[StudentList] fetchData failed:', err)
     error.value = true
-    ElMessage.error('获取学员列表失败')
+    ElMessage.error(t('studentList.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -388,7 +389,7 @@ const { refreshTableKeyboard } = useTableKeyboardNavigation({
   tableRef,
   tableData,
   onActivate: handleRowClick,
-  getAriaLabel: (row) => `选择学员 ${row?.realName || row?.username || ''}`
+  getAriaLabel: (row) => t('studentList.selectStudentAria', { name: row?.realName || row?.username || '' })
 })
 onMounted(() => refreshTableKeyboard())
 
@@ -416,7 +417,7 @@ function handleSendMessage(row) {
 // 确认发送消息（P0-1: 补充 type/title 字段）
 async function confirmSendMessage() {
   if (!messageForm.content.trim()) {
-    ElMessage.warning('请输入消息内容')
+    ElMessage.warning(t('studentList.messageContentPlaceholder'))
     return
   }
   sendingMessage.value = true
@@ -424,15 +425,15 @@ async function confirmSendMessage() {
     await sendNotification({
       userId: currentStudent.value.userId,
       type: 'SYSTEM',
-      title: '教师通知',
+      title: t('studentList.teacherNotification'),
       content: messageForm.content
     })
-    ElMessage.success('消息已发送')
+    ElMessage.success(t('studentList.messageSent'))
     messageVisible.value = false
   } catch (err) {
 // eslint-disable-next-line no-console
     console.debug('[StudentList] sendNotification failed:', err)
-    ElMessage.error('发送失败，请稍后重试')
+    ElMessage.error(t('studentList.sendFailed'))
   } finally {
     sendingMessage.value = false
   }
@@ -441,7 +442,7 @@ async function confirmSendMessage() {
 // 导出 Excel（P1-修复: 优先使用后端导出接口，客户端 XLSX 作为兜底）
 async function handleExport() {
   if (!tableData.value.length) {
-    ElMessage.warning('暂无数据可导出')
+    ElMessage.warning(t('studentList.noExportData'))
     return
   }
 
@@ -457,7 +458,7 @@ async function handleExport() {
       link.download = `students-course-${searchForm.courseId}-${date}.xlsx`
       link.click()
       URL.revokeObjectURL(url)
-      ElMessage.success('导出成功')
+      ElMessage.success(t('studentList.exportSuccess'))
       return
     } catch (err) {
       console.warn('[StudentList] 后端导出失败，回退到客户端导出', err)
@@ -467,21 +468,21 @@ async function handleExport() {
 
   // 客户端 XLSX 兜底导出（当前页数据）
   const exportData = tableData.value.map((item, index) => ({
-    序号: index + 1,
-    学号: item.username || '',
-    姓名: item.realName || '',
-    班级: item.className || '',
-    专业: item.majorName || '',
-    进度: `${item.progress || 0}%`,
-    选课时间: formatDate(item.enrolledAt),
-    最近活跃: formatDate(item.lastWatchAt)
+    [t('course.index')]: index + 1,
+    [t('userList.studentNo')]: item.username || '',
+    [t('user.realName')]: item.realName || '',
+    [t('userSearch.classLabel')]: item.className || '',
+    [t('userSearch.major')]: item.majorName || '',
+    [t('studentList.progressShort')]: `${item.progress || 0}%`,
+    [t('studentList.enrolledAt')]: formatDate(item.enrolledAt),
+    [t('studentList.lastActive')]: formatDate(item.lastWatchAt)
   }))
   const wb = new Workbook()
-  const ws = wb.addWorksheet('学员列表')
+  const ws = wb.addWorksheet(t('studentList.title'))
   ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
   await wb.xlsx.writeFile(`students-${date}.xlsx`)
-  ElMessage.success('导出成功')
+  ElMessage.success(t('studentList.exportSuccess'))
 }
 
 // 工具方法

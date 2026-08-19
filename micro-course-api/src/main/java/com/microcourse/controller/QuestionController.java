@@ -19,6 +19,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/questions")
@@ -42,7 +43,7 @@ public class QuestionController {
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
             // P0-DoS-001 修复: size 上限收紧到 200,避免 size=100000 触发全表扫内存 OOM
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
         PageResult<QuestionVO> result = questionService.page(courseId, questionType, difficulty, keyword, categoryId, chapterId, page, size);
         return R.ok(result);
     }

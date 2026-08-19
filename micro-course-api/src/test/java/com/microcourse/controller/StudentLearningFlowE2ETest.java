@@ -309,8 +309,8 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/enrollments/my").header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isArray())
-                .andExpect(jsonPath("$.data[?(@.courseId == " + COURSE_ID + ")]").exists());
+                .andExpect(jsonPath("$.data.items").isArray())
+                .andExpect(jsonPath("$.data.items[?(@.courseId == " + COURSE_ID + ")]").exists());
     }
 
     // ==================== 7 · 选课后可获视频签名（Round 8-1） ====================
@@ -428,7 +428,7 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
         mockMvc.perform(get("/api/enrollments/my?completed=true").header("Authorization", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.items").isArray());
     }
 
     // ======================= 13 · 答题并自动批改 =======================
@@ -537,7 +537,7 @@ class StudentLearningFlowE2ETest extends BaseIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content(enrollBody(COURSE_ID)))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/enrollments/my").header("Authorization", token))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data").isArray());
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.items").isArray());
         // 统计 + 通知未读计数
         mockMvc.perform(get("/api/learning-progress/total-time").header("Authorization", token))
                 .andExpect(status().isOk());

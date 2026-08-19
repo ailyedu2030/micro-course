@@ -9,8 +9,8 @@
     <!-- ===== 练习入口：章节练习列表 ===== -->
     <div v-if="!exerciseStarted" class="exercise-list-view">
       <div class="page-header">
-        <h2 class="page-title">随堂练习</h2>
-        <p class="page-subtitle">共 {{ exerciseList.length }} 个练习</p>
+        <h2 class="page-title">{{ $t('exerciseTake.title') }}</h2>
+        <p class="page-subtitle">{{ $t('exerciseTake.count', { count: exerciseList.length }) }}</p>
       </div>
 
       <!-- Loading skeleton -->
@@ -19,7 +19,7 @@
       </div>
 
       <div v-else-if="exerciseList.length === 0" class="empty-wrap">
-        <el-empty description="本章节暂无练习" />
+        <el-empty :description="$t('exerciseTake.empty')" />
       </div>
 
       <!-- PC: 2-column card grid -->
@@ -35,13 +35,13 @@
               <h3 class="exercise-title">{{ ex.title }}</h3>
               <div class="exercise-meta">
                 <el-tag v-if="ex.questionCount" size="small" effect="plain">
-                  {{ ex.questionCount }} 题
+                  {{ $t('exerciseTake.questionCount', { count: ex.questionCount }) }}
                 </el-tag>
                 <el-tag v-if="ex.timeLimit" size="small" effect="plain" type="info">
-                  {{ ex.timeLimit }}分钟
+                  {{ $t('exerciseTake.minutes', { count: ex.timeLimit }) }}
                 </el-tag>
                 <el-tag v-if="ex.passScore" size="small" effect="plain" type="warning">
-                  及格 {{ ex.passScore }}分
+                  {{ $t('exerciseTake.passScore', { score: ex.passScore }) }}
                 </el-tag>
               </div>
             </div>
@@ -51,7 +51,7 @@
                 size="default"
                 @click="startExercise(ex)"
               >
-                开始答题
+                {{ $t('exerciseTake.start') }}
               </el-button>
             </div>
           </div>
@@ -71,13 +71,13 @@
               <h3 class="exercise-title">{{ ex.title }}</h3>
               <div class="exercise-meta">
                 <el-tag v-if="ex.questionCount" size="small" effect="plain">
-                  {{ ex.questionCount }} 题
+                  {{ $t('exerciseTake.questionCount', { count: ex.questionCount }) }}
                 </el-tag>
                 <el-tag v-if="ex.timeLimit" size="small" effect="plain" type="info">
-                  {{ ex.timeLimit }}分钟
+                  {{ $t('exerciseTake.minutes', { count: ex.timeLimit }) }}
                 </el-tag>
                 <el-tag v-if="ex.passScore" size="small" effect="plain" type="warning">
-                  及格 {{ ex.passScore }}分
+                  {{ $t('exerciseTake.passScore', { score: ex.passScore }) }}
                 </el-tag>
               </div>
             </div>
@@ -87,7 +87,7 @@
                 size="default"
                 @click="startExercise(ex)"
               >
-                开始答题
+                {{ $t('exerciseTake.start') }}
               </el-button>
             </div>
           </div>
@@ -102,7 +102,7 @@
         <!-- 顶部进度条（sticky） -->
         <div class="progress-bar-wrap">
           <div class="progress-inner">
-            <span class="progress-text" aria-live="polite">第 {{ currentIndex + 1 }} / {{ totalQuestions }} 题 · 已答 {{ answeredCount }} 题</span>
+            <span class="progress-text" aria-live="polite">{{ $t('exerciseTake.progress', { current: currentIndex + 1, total: totalQuestions, answered: answeredCount }) }}</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -115,7 +115,7 @@
             </span>
             <span class="time-elapsed">
               <el-icon><Timer /></el-icon>
-              已用 {{ formatTimeLeft(elapsedTime) }}
+              {{ $t('exerciseTake.elapsed', { time: formatTimeLeft(elapsedTime) }) }}
             </span>
           </div>
         </div>
@@ -192,7 +192,7 @@
                     type="textarea"
                     :rows="3"
                     :disabled="submitted"
-                    placeholder="请输入您的答案"
+                    :placeholder="$t('exerciseTake.answerPlaceholder')"
                     class="fill-input"
                   />
                 </template>
@@ -202,7 +202,7 @@
                     type="textarea"
                     :rows="5"
                     :disabled="submitted"
-                    placeholder="请输入您的解答"
+                    :placeholder="$t('exerciseTake.solutionPlaceholder')"
                     class="fill-input"
                   />
                 </template>
@@ -211,7 +211,7 @@
               <!-- 答案解析 -->
               <div v-if="submitted" class="answer-analysis">
                 <div class="analysis-row user-answer">
-                  <span class="analysis-label">您的答案：</span>
+                  <span class="analysis-label">{{ $t('exerciseTake.yourAnswer') }}</span>
                   <span
                     class="analysis-value"
                     :class="isCurrentCorrect ? 'text-success' : 'text-danger'"
@@ -222,14 +222,14 @@
                   </span>
                 </div>
                 <div class="analysis-row correct-answer">
-                  <span class="analysis-label">正确答案：</span>
+                  <span class="analysis-label">{{ $t('exerciseTake.correctAnswer') }}</span>
                   <span class="analysis-value text-success">
                     <el-icon><Check /></el-icon>
                     {{ formatCorrectAnswer(currentQuestion) }}
                   </span>
                 </div>
                 <div v-if="currentQuestion.explanation" class="analysis-row explanation">
-                  <span class="analysis-label">解析：</span>
+                  <span class="analysis-label">{{ $t('exerciseTake.explanation') }}</span>
                   <span class="analysis-value explanation-text">{{ currentQuestion.explanation }}</span>
                 </div>
               </div>
@@ -238,7 +238,7 @@
             <!-- 底部导航 -->
             <div class="bottom-nav-pc">
               <el-button @click="prevQuestion" :disabled="currentIndex === 0">
-                上一题
+                {{ $t('exerciseTake.prev') }}
               </el-button>
               <div class="nav-center">
                 <template v-if="!submitted">
@@ -247,7 +247,7 @@
                     type="primary"
                     @click="nextQuestion"
                   >
-                    下一题
+                    {{ $t('exerciseTake.next') }}
                   </el-button>
                   <el-button
                     v-else
@@ -256,7 +256,7 @@
                     :disabled="submitting"
                     @click="handleSubmit"
                   >
-                    提交答案
+                    {{ $t('exerciseTake.submit') }}
                   </el-button>
                 </template>
                 <template v-else>
@@ -266,14 +266,14 @@
                     type="danger"
                     @click="handleRetrySubmit"
                   >
-                    网络错误，点此重试
+                    {{ $t('exerciseTake.retrySubmit') }}
                   </el-button>
                   <el-button
                     v-if="currentIndex < totalQuestions - 1"
                     type="primary"
                     @click="nextQuestion"
                   >
-                    下一题
+                    {{ $t('exerciseTake.next') }}
                   </el-button>
                   <template v-else>
                     <el-button
@@ -281,13 +281,13 @@
                       type="warning"
                       @click="handleRetry"
                     >
-                      重新答题
+                      {{ $t('exerciseTake.retry') }}
                     </el-button>
                     <el-button
                       type="primary"
                       @click="handleBackToList"
                     >
-                      返回练习列表
+                      {{ $t('exerciseTake.backToList') }}
                     </el-button>
                   </template>
                 </template>
@@ -300,7 +300,7 @@
             <el-card class="answer-sheet-card" shadow="never">
               <template #header>
                 <div class="answer-sheet-header">
-                  <span class="answer-sheet-title">答题卡</span>
+                  <span class="answer-sheet-title">{{ $t('exerciseTake.answerSheet') }}</span>
                   <span class="answer-sheet-count">
                     {{ answeredCount }} / {{ totalQuestions }}
                   </span>
@@ -318,17 +318,17 @@
                     'dot-correct': submitted && isQuestionCorrect(qId),
                     'dot-wrong': submitted && isQuestionWrong(qId),
                   }"
-                  :aria-label="`跳转到第 ${idx + 1} 题`"
+                  :aria-label="$t('exerciseTake.jumpTo', { n: idx + 1 })"
                   @click="jumpToQuestion(idx)"
                 >
                   {{ idx + 1 }}
                 </button>
               </div>
               <div class="dot-legend">
-                <span class="legend-item"><span class="dot dot-answered"></span> 已答</span>
-                <span class="legend-item"><span class="dot dot-current"></span> 当前</span>
-                <span class="legend-item"><span class="dot dot-wrong"></span> 错误</span>
-                <span class="legend-item"><span class="dot dot-correct"></span> 正确</span>
+                <span class="legend-item"><span class="dot dot-answered"></span> {{ $t('exerciseTake.answered') }}</span>
+                <span class="legend-item"><span class="dot dot-current"></span> {{ $t('exerciseTake.current') }}</span>
+                <span class="legend-item"><span class="dot dot-wrong"></span> {{ $t('exerciseTake.wrong') }}</span>
+                <span class="legend-item"><span class="dot dot-correct"></span> {{ $t('exerciseTake.correct') }}</span>
               </div>
             </el-card>
           </div>
@@ -340,7 +340,7 @@
         <!-- 紧凑进度 -->
         <div class="h5-progress-bar">
           <div class="h5-progress-inner">
-            <span class="h5-progress-text" aria-live="polite">{{ currentIndex + 1 }}/{{ totalQuestions }} · 已答{{ answeredCount }}题</span>
+            <span class="h5-progress-text" aria-live="polite">{{ $t('exerciseTake.progressH5', { current: currentIndex + 1, total: totalQuestions, answered: answeredCount }) }}</span>
             <el-progress
               :percentage="progressPercent"
               :show-text="false"
@@ -354,7 +354,7 @@
             </span>
             <span class="time-elapsed">
               <el-icon><Timer /></el-icon>
-              已用 {{ formatTimeLeft(elapsedTime) }}
+              {{ $t('exerciseTake.elapsed', { time: formatTimeLeft(elapsedTime) }) }}
             </span>
           </div>
         </div>
@@ -428,7 +428,7 @@
                   type="textarea"
                   :rows="3"
                   :disabled="submitted"
-                  placeholder="请输入您的答案"
+                  :placeholder="$t('exerciseTake.answerPlaceholder')"
                   class="fill-input"
                 />
               </template>
@@ -438,7 +438,7 @@
                   type="textarea"
                   :rows="5"
                   :disabled="submitted"
-                  placeholder="请输入您的解答"
+                  :placeholder="$t('exerciseTake.solutionPlaceholder')"
                   class="fill-input"
                 />
               </template>
@@ -446,7 +446,7 @@
 
             <div v-if="submitted" class="answer-analysis">
               <div class="analysis-row user-answer">
-                <span class="analysis-label">您的答案：</span>
+                <span class="analysis-label">{{ $t('exerciseTake.yourAnswer') }}</span>
                 <span
                   class="analysis-value"
                   :class="isCurrentCorrect ? 'text-success' : 'text-danger'"
@@ -457,14 +457,14 @@
                 </span>
               </div>
               <div class="analysis-row correct-answer">
-                <span class="analysis-label">正确答案：</span>
+                <span class="analysis-label">{{ $t('exerciseTake.correctAnswer') }}</span>
                 <span class="analysis-value text-success">
                   <el-icon><Check /></el-icon>
                   {{ formatCorrectAnswer(currentQuestion) }}
                 </span>
               </div>
               <div v-if="currentQuestion.explanation" class="analysis-row explanation">
-                <span class="analysis-label">解析：</span>
+                <span class="analysis-label">{{ $t('exerciseTake.explanation') }}</span>
                 <span class="analysis-value explanation-text">{{ currentQuestion.explanation }}</span>
               </div>
             </div>
@@ -478,7 +478,7 @@
             @click="prevQuestion"
             :disabled="currentIndex === 0"
           >
-            上一题
+            {{ $t('exerciseTake.prev') }}
           </el-button>
           <template v-if="!submitted">
             <el-button
@@ -487,7 +487,7 @@
               class="h5-nav-btn"
               @click="nextQuestion"
             >
-              下一题
+              {{ $t('exerciseTake.next') }}
             </el-button>
             <el-button
               v-else
@@ -497,7 +497,7 @@
               :disabled="submitting"
               @click="handleSubmit"
             >
-              提交答案
+              {{ $t('exerciseTake.submit') }}
             </el-button>
           </template>
           <template v-else>
@@ -508,7 +508,7 @@
               class="h5-nav-btn"
               @click="handleRetrySubmit"
             >
-              网络错误，点此重试
+              {{ $t('exerciseTake.retrySubmit') }}
             </el-button>
             <el-button
               v-if="currentIndex < totalQuestions - 1"
@@ -516,7 +516,7 @@
               class="h5-nav-btn"
               @click="nextQuestion"
             >
-              下一题
+              {{ $t('exerciseTake.next') }}
             </el-button>
             <template v-else>
               <el-button
@@ -525,14 +525,14 @@
                 class="h5-nav-btn"
                 @click="handleRetry"
               >
-                重新答题
+                {{ $t('exerciseTake.retry') }}
               </el-button>
               <el-button
                 type="primary"
                 class="h5-nav-btn"
                 @click="handleBackToList"
               >
-                返回练习列表
+                {{ $t('exerciseTake.backToList') }}
               </el-button>
             </template>
           </template>
@@ -543,22 +543,22 @@
           <button
             type="button"
             class="answer-sheet-fab"
-            aria-label="打开答题卡"
+            :aria-label="$t('exerciseTake.openSheet')"
             :aria-expanded="String(sheetVisible)"
             @click="toggleAnswerSheet"
           >
             <el-icon><Grid /></el-icon>
-            <span>答题卡</span>
+            <span>{{ $t('exerciseTake.answerSheet') }}</span>
           </button>
           <transition name="fade">
             <div v-show="sheetVisible" class="answer-sheet-overlay" @click="closeAnswerSheet"></div>
           </transition>
           <transition name="slide-up">
-            <div v-show="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" aria-label="移动端答题卡">
+            <div v-show="sheetVisible" class="answer-sheet-panel" role="dialog" aria-modal="true" :aria-label="$t('exerciseTake.sheetAria')">
               <div class="answer-sheet-header">
-                <span>答题卡</span>
+                <span>{{ $t('exerciseTake.answerSheet') }}</span>
                 <span class="sheet-progress">{{ answeredCount }}/{{ totalQuestions }}</span>
-                <el-button text aria-label="关闭答题卡" @click="closeAnswerSheet">关闭</el-button>
+                <el-button text :aria-label="$t('exerciseTake.closeSheet')" @click="closeAnswerSheet">{{ $t('common.close') }}</el-button>
               </div>
               <div class="answer-sheet-grid">
                 <button
@@ -567,7 +567,7 @@
                   type="button"
                   class="answer-sheet-item"
                   :class="{ answered: answers[q.id], current: currentIndex === idx }"
-                  :aria-label="`跳转到第 ${idx + 1} 题`"
+                  :aria-label="$t('exerciseTake.jumpTo', { n: idx + 1 })"
                   @click="jumpToQuestion(idx); closeAnswerSheet()"
                 >
                   {{ idx + 1 }}
@@ -581,7 +581,7 @@
       <!-- ===== 结果展示 ===== -->
       <el-dialog
         v-model="resultVisible"
-        title="答题结果"
+        :title="$t('exerciseTake.resultTitle')"
         width="440px"
         style="max-width: 500px;"
         :close-on-click-modal="false"
@@ -589,9 +589,9 @@
 >
         <div class="result-content">
           <div class="result-score" :class="resultPassed ? 'passed' : 'failed'">
-            <div class="score-number">{{ submitResult.needsManualGrading && submitResult.score === 0 ? '待批改' : submitResult.score }}</div>
-            <div class="score-label">得分</div>
-            <div class="score-total">满分 {{ submitResult.totalScore }}</div>
+            <div class="score-number">{{ submitResult.needsManualGrading && submitResult.score === 0 ? $t('exerciseTake.pendingGrading') : submitResult.score }}</div>
+            <div class="score-label">{{ $t('exerciseTake.score') }}</div>
+            <div class="score-total">{{ $t('exerciseTake.totalScore', { score: submitResult.totalScore }) }}</div>
           </div>
           <div class="result-status">
             <el-tag
@@ -599,21 +599,21 @@
               size="large"
               effect="dark"
             >
-              {{ resultPassed ? '恭喜通过！' : '未通过' }}
+              {{ resultPassed ? $t('exerciseTake.passed') : $t('exerciseTake.failed') }}
             </el-tag>
           </div>
           <div class="result-detail">
-            答对 {{ correctCount }} / {{ totalQuestions }} 题
+            {{ $t('exerciseTake.correctCount', { count: correctCount, total: totalQuestions }) }}
           </div>
           <div v-if="submitResult.needsManualGrading" class="result-manual-hint">
             <el-icon><WarningFilled /></el-icon>
-            <span>部分题目需教师批改，最终成绩可能变化</span>
+            <span>{{ $t('exerciseTake.manualGradingHint') }}</span>
           </div>
         </div>
         <template #footer>
-          <el-button @click="handleViewAnalysis">查看解析</el-button>
-          <el-button v-if="canRetry" type="warning" @click="handleRetry">重新答题</el-button>
-          <el-button type="primary" @click="handleBackToList">返回练习列表</el-button>
+          <el-button @click="handleViewAnalysis">{{ $t('exerciseTake.viewAnalysis') }}</el-button>
+          <el-button v-if="canRetry" type="warning" @click="handleRetry">{{ $t('exerciseTake.retry') }}</el-button>
+          <el-button type="primary" @click="handleBackToList">{{ $t('exerciseTake.backToList') }}</el-button>
         </template>
       </el-dialog>
     </div>
@@ -622,6 +622,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Grid, Timer, Loading, WarningFilled } from '@element-plus/icons-vue'
@@ -629,6 +630,7 @@ import { getExercises, getExerciseById, submitExerciseRecord } from '@/api/exerc
 import { getMyAttemptCount } from '@/api/exercise-record'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -825,7 +827,7 @@ async function fetchExerciseList() {
       }
     }
   } catch {
-    ElMessage.error('获取练习列表失败')
+    ElMessage.error(t('exercise.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -836,7 +838,7 @@ async function startExercise(exercise) {
     const { data } = await getExerciseById(exercise.id)
     currentExercise.value = data
     // A11Y-030: 设置页面标题
-    document.title = (data.title || '随堂练习') + ' - 答题'
+    document.title = (data.title || t('exerciseTake.title')) + t('exerciseTake.titleSuffix')
 
     // 题目内容直接取自练习响应内嵌数据（R14 已内嵌完整题目：questionType/content/options/answer/explanation）。
     // P0 修复：此前逐题调用 getQuestionById（教师端接口）→ 学生 403「题目加载失败」，随堂练习不可用。
@@ -892,8 +894,8 @@ async function startExercise(exercise) {
       let options = normalizeOptions(q.options)
       if ((questionType === 'JUDGE' || questionType === 'TRUE_FALSE') && options.length === 0) {
         options = [
-          { value: 'true', label: 'A', text: '正确' },
-          { value: 'false', label: 'B', text: '错误' }
+          { value: 'true', label: 'A', text: t('exerciseTake.correct') },
+          { value: 'false', label: 'B', text: t('exerciseTake.wrong') }
         ]
       }
       return {
@@ -936,7 +938,7 @@ async function startExercise(exercise) {
     // 启动答题用时计时器
     startElapsedTimer()
   } catch {
-    ElMessage.error('加载练习详情失败')
+    ElMessage.error(t('exerciseTake.loadDetailFailed'))
   }
 }
 
@@ -958,9 +960,9 @@ function startTimer() {
     const remaining = Math.max(0, totalSeconds - elapsed)
     timeLeft.value = remaining
     // P1-C: 超时倒计时警告
-    if (remaining <= 60 && remaining > 58 && !warned60) { warned60 = true; ElMessage.warning('还剩 60 秒') }
-    if (remaining <= 30 && remaining > 28 && !warned30) { warned30 = true; ElMessage.warning('还剩 30 秒') }
-    if (remaining <= 10 && remaining > 8 && !warned10) { warned10 = true; ElMessage.warning('还剩 10 秒') }
+    if (remaining <= 60 && remaining > 58 && !warned60) { warned60 = true; ElMessage.warning(t('exerciseTake.timeWarn', { seconds: 60 })) }
+    if (remaining <= 30 && remaining > 28 && !warned30) { warned30 = true; ElMessage.warning(t('exerciseTake.timeWarn', { seconds: 30 })) }
+    if (remaining <= 10 && remaining > 8 && !warned10) { warned10 = true; ElMessage.warning(t('exerciseTake.timeWarn', { seconds: 10 })) }
     if (remaining <= 0) {
       clearTimer()
       // P1I-087: 超时提交前先序列化当前题目答案（确保 textarea 等 v-model 可能延迟刷新的场景不丢失)
@@ -974,7 +976,7 @@ function startTimer() {
           answers[curQ.id] = answers[curQ.id] || ''
         }
       }
-      ElMessage.warning('时间到，自动提交！')
+      ElMessage.warning(t('exerciseTake.timeUp'))
       doSubmit()
     }
   }, 1000)
@@ -1036,9 +1038,9 @@ async function handleSubmit() {
   if (unanswered.length > 0) {
     try {
       await ElMessageBox.confirm(
-        `还有 ${unanswered.length} 题未作答，确定要提交吗？`,
-        '未完成提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        t('exerciseTake.confirmUnanswered', { count: unanswered.length }),
+        t('exerciseTake.unfinishedTitle'),
+        { confirmButtonText: t('exerciseTake.confirmSubmit'), cancelButtonText: t('exerciseTake.continueAnswering'), type: 'warning' }
       )
     } catch {
       // 用户选择继续答题 → 跳转到第一个未答题目
@@ -1057,9 +1059,9 @@ async function handleSubmit() {
   if (partialMultiples.length > 0) {
     try {
       await ElMessageBox.confirm(
-        `有 ${partialMultiples.length} 道多选题仅选了 1 个选项，可能未完整作答，确定提交吗？`,
-        '多选题提示',
-        { confirmButtonText: '确定提交', cancelButtonText: '继续答题', type: 'warning' }
+        t('exerciseTake.confirmPartialMulti', { count: partialMultiples.length }),
+        t('exerciseTake.multipleTitle'),
+        { confirmButtonText: t('exerciseTake.confirmSubmit'), cancelButtonText: t('exerciseTake.continueAnswering'), type: 'warning' }
       )
     } catch {
       const firstPartialIdx = questionIds.value.findIndex(id => partialMultiples.includes(id))
@@ -1069,25 +1071,23 @@ async function handleSubmit() {
   }
   // P1-UX: 提交锁设置在 confirm 回调全部通过之后，避免 confirm 期间按钮锁定
   if (submitting.value) return // 幂等守卫
-  submitting.value = true
-  try {
-    await doSubmit()
-  } catch (e) {
-    submitting.value = false
-    throw e
-  }
+  // submitting 标志由 doSubmit 内部管理（doSubmit 同时被超时回调直接调用，
+  // 其入口幂等守卫 + 提交锁可防止手动提交与超时提交并发双提交）
+  await doSubmit()
 }
 
 async function doSubmit() {
-  // submitting 已由 handleSubmit 在 confirm 回调全部通过后设置为 true
+  // 幂等守卫：手动提交与超时自动提交可能同时触发（timer 到期直接调用 doSubmit），
+  // 防止双提交产生重复答题记录
+  if (submitting.value) return
   if (!currentExercise.value?.id) {
-    ElMessage.error('练习信息缺失，请刷新重试')
+    ElMessage.error(t('exerciseTake.missingInfo'))
     submitting.value = false
     return
   }
   const userId = userStore.userInfo?.id
   if (!userId) {
-    ElMessage.error('用户未登录，请重新登录')
+    ElMessage.error(t('exerciseTake.notLoggedIn'))
     submitting.value = false
     return
   }
@@ -1101,6 +1101,7 @@ async function doSubmit() {
       : (answers[qId] || '')
   }))
 
+  submitting.value = true
   try {
     const { data } = await submitExerciseRecord({
       exerciseId: currentExercise.value.id,
@@ -1115,11 +1116,11 @@ async function doSubmit() {
     submitResult.value = data
     resultVisible.value = true
     if (data.needsManualGrading) {
-      ElMessage.info('部分题目需教师批改，最终成绩可能变化')
+      ElMessage.info(t('exerciseTake.manualGradingHint'))
     }
   } catch {
     submitError.value = true
-    ElMessage.error('提交失败，请重试')
+    ElMessage.error(t('exerciseTake.submitFailed'))
     // submitted 保持 false，计时器继续运行，用户可重试
   } finally {
     submitting.value = false
@@ -1136,7 +1137,7 @@ async function handleRetrySubmit() {
 // ===== 重做 =====
 async function handleRetry() {
   if (!canRetry.value) {
-    ElMessage.warning('已达到最大答题次数')
+    ElMessage.warning(t('exerciseTake.maxAttemptsReached'))
     return
   }
   resultVisible.value = false
@@ -1205,7 +1206,7 @@ function isMultipleCorrect(value, answer) {
 }
 
 function questionTypeLabel(type) {
-  const map = { SINGLE: '单选题', MULTIPLE: '多选题', JUDGE: '判断题', FILL: '填空题', ESSAY: '综合题', SHORT_ANSWER: '简答题' }
+  const map = { SINGLE: t('question.typeSingle'), MULTIPLE: t('question.typeMultiple'), JUDGE: t('question.typeJudge'), FILL: t('question.typeFill'), ESSAY: t('question.typeEssay'), SHORT_ANSWER: t('question.typeShortAnswer') }
   return map[type] || type
 }
 
@@ -1217,14 +1218,14 @@ function questionTypeTagType(type) {
 function formatUserAnswer(q) {
   if (q.questionType === 'MULTIPLE') {
     const arr = multipleAnswers[q.id] || []
-    return arr.length ? arr.join('、') : '未作答'
+    return arr.length ? arr.join('、') : t('exerciseTake.notAnswered')
   }
   if (q.questionType === 'FILL') {
-    return answers[q.id] || '未作答'
+    return answers[q.id] || t('exerciseTake.notAnswered')
   }
   // SINGLE / JUDGE
   const opt = q.options?.find(o => o.value === answers[q.id])
-  return opt ? `${opt.label}. ${opt.text}` : (answers[q.id] || '未作答')
+  return opt ? `${opt.label}. ${opt.text}` : (answers[q.id] || t('exerciseTake.notAnswered'))
 }
 
 function formatCorrectAnswer(q) {
@@ -1236,7 +1237,7 @@ function formatCorrectAnswer(q) {
     }).join('、') || q.answer
   }
   if (q.questionType === 'FILL') {
-    return q.answer || '无'
+    return q.answer || t('course.none')
   }
   const opt = q.options?.find(o => String(o.value) === String(q.answer))
   return opt ? `${opt.label}. ${opt.text}` : q.answer

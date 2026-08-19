@@ -12,6 +12,7 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/course-categories")
@@ -28,7 +29,7 @@ public class CourseCategoryController {
     @PreAuthorize("isAuthenticated()")
     public R<PageResult<CourseCategoryVO>> page(
             @RequestParam(defaultValue = "0") @PositiveOrZero int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000) int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE) int size) {
         PageResult<CourseCategoryVO> result = courseCategoryService.page(page, size);
         return R.ok(result);
     }

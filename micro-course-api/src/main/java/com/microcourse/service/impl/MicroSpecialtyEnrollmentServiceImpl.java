@@ -420,174 +420,18 @@ throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "微专业已处于终�
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class, timeout = 300)
     public int classImport(Long msId, Long classId) {
-        MicroSpecialty ms = msRepository.selectForUpdate(msId);
-        if (ms == null) throw new BusinessException(ErrorCode.MS_NOT_FOUND);
-        if (!"RECRUITING".equals(ms.getStatus())) {
-            throw new BusinessException(ErrorCode.MS_STATUS_INVALID, "仅招生中状态可班级导入");
-        }
-        long currentCount = enrollmentRepository.selectCount(new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
-                // 名额占用口径与 uk_mse_active 一致（排除终态）
-                .notIn(MicroSpecialtyEnrollment::getStatus,
-                        "REJECTED", "DROPPED", "FAILED"));
-        Integer remainingSlots = null;
-        if (ms.getMaxStudents() != null && ms.getMaxStudents() > 0) {
-            remainingSlots = (int) (ms.getMaxStudents() - currentCount);
-            if (remainingSlots <= 0) throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "微专业已满员，无法导入班级");
-        }
-        List<User> students = userRepository.selectList(
-                new LambdaQueryWrapper<User>()
-                        .eq(User::getClassId, classId)
-                        .eq(User::getRole, UserRole.STUDENT));
-        if (students.isEmpty()) return 0;
-        List<MicroSpecialtyEnrollment> existingList = enrollmentRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyEnrollment>()
-                        .eq(MicroSpecialtyEnrollment::getMicroSpecialtyId, msId)
-                        // 与 uk_mse_active 部分唯一索引语义一致：排除终态后均视为已占名额，
-                        // 否则 PENDING 等状态学生导入时 insert 命中唯一约束必失败
-                        .notIn(MicroSpecialtyEnrollment::getStatus,
-                                "REJECTED", "DROPPED", "FAILED"));
-        Set<Long> existingUserIds = existingList.stream()
-                .map(MicroSpecialtyEnrollment::getUserId).collect(Collectors.toSet());
-        long newStudentCount = students.stream().filter(student -> !existingUserIds.contains(student.getId())).count();
-        if (remainingSlots != null && newStudentCount > remainingSlots) {
-            throw new BusinessException(ErrorCode.MS_MAX_STUDENTS_REACHED, "剩余名额不足，剩余 " + remainingSlots + " 个，待导入 " + newStudentCount + " 人");
-        }
-        List<MicroSpecialtyCourse> msCourses = msCourseRepository.selectList(
-                new LambdaQueryWrapper<MicroSpecialtyCourse>()
-                        .eq(MicroSpecialtyCourse::getMicroSpecialtyId, msId));
-        List<Long> courseIds = msCourses.stream()
-                .map(MicroSpecialtyCourse::getCourseId).collect(Collectors.toList());
+        // I18-2026-08-17: 委托 {@link MicroSpecialtyClassImportExecutor} 执行
+        return classImportExecutor().run(msId, classId).imported();
+    }
 
-        int imported = 0;
-        int totalPendingCount = 0;
-        int studentsWithPending = 0;
-        List<MicroSpecialtyEnrollment> batch = new ArrayList<>(BATCH_SIZE);
-        Map<Long, List<PendingCourseJsonUtil.PendingCourseItem>> pendingByUser = new HashMap<>();
-
-        for (User student : students) {
-            if (existingUserIds.contains(student.getId())) continue;
-
-            MicroSpecialtyEnrollment en = new MicroSpecialtyEnrollment();
-            en.setMicroSpecialtyId(msId);
-            en.setUserId(student.getId());
-            en.setSource("CLASS_IMPORT");
-            en.setClassId(classId);
-            en.setStatus("APPROVED");
-            en.setAppliedAt(LocalDateTime.now());
-            en.setApprovedAt(LocalDateTime.now());
-            en.setProgress(BigDecimal.ZERO);
-            en.setCreditsEarned(BigDecimal.ZERO);
-            en.setCoursesCompleted(0);
-            en.setCoursesRequired(msCourses.size());
-            en.setCreatedAt(LocalDateTime.now());
-            en.setUpdatedAt(LocalDateTime.now());
-            en.setVersion(0);
-            List<PendingCourseJsonUtil.PendingCourseItem> pending = new ArrayList<>();
-            for (Long courseId : courseIds) {
-                try {
-                    EnrollmentCreateRequest req = new EnrollmentCreateRequest();
-                    req.setUserId(student.getId());
-                    req.setCourseId(courseId);
-                    req.setSourceChannel("MICRO_SPECIALTY");
-                    // REQUIRES_NEW：选课失败回滚内层事务，不污染班级导入共享事务
-                    enrollmentService.enrollInNewTransaction(req);
-                } catch (BusinessException e) {
-                    Course course = courseRepository.selectById(courseId);
-                    String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
-                    pending.add(new PendingCourseJsonUtil.PendingCourseItem(courseId, courseName, e.getMessage()));
-                    log.info("[MS classImport] student={} course={} -> pending: {}",
-                            student.getId(), courseId, e.getMessage());
-                } catch (Exception e) {
-                    Course course = courseRepository.selectById(courseId);
-                    String courseName = (course != null) ? course.getTitle() : ("课程#" + courseId);
-                    pending.add(new PendingCourseJsonUtil.PendingCourseItem(courseId, courseName,
-                            e.getMessage() != null ? e.getMessage() : "未知错误"));
-                    log.warn("[MS classImport] student={} course={} unexpected: {}",
-                            student.getId(), courseId, e.getMessage());
-                }
-            }
-
-            if (!pending.isEmpty()) {
-                String json = PendingCourseJsonUtil.toPendingJson(pending);
-                en.setPendingCourses(json);
-                pendingByUser.put(student.getId(), pending);
-                totalPendingCount += pending.size();
-                studentsWithPending++;
-            }
-
-            batch.add(en);
-
-            if (batch.size() >= BATCH_SIZE) {
-                for (MicroSpecialtyEnrollment e : batch) {
-                    enrollmentRepository.insert(e);
-                }
-                imported += batch.size();
-                batch.clear();
-            }
-        }
-        // 处理剩余
-        if (!batch.isEmpty()) {
-            for (MicroSpecialtyEnrollment e : batch) {
-                enrollmentRepository.insert(e);
-            }
-            imported += batch.size();
-        }
-
-        // 更新 student_count
-        if (imported > 0) {
-            int oldVersion = ms.getVersion();
-            int affected = msRepository.update(null,
-                    new LambdaUpdateWrapper<MicroSpecialty>()
-                            .eq(MicroSpecialty::getId, msId)
-                            .eq(MicroSpecialty::getVersion, oldVersion)
-                            .setSql("student_count = COALESCE(student_count, 0) + " + imported)
-                            .set(MicroSpecialty::getUpdatedAt, LocalDateTime.now())
-                            .setSql("version = version + 1"));
-            if (affected == 0) {
-                throw new BusinessException(ErrorCode.MS_CONCURRENT_MODIFICATION,
-                        "微专业状态已被并发修改，请重试");
-            }
-        }
-
-        // 通知学生（含 pendingCourses 提示）
-        for (User student : students) {
-            if (existingUserIds.contains(student.getId())) continue;
-            List<PendingCourseJsonUtil.PendingCourseItem> pending = pendingByUser.get(student.getId());
-            String tip = "";
-            if (pending != null && !pending.isEmpty()) {
-                tip = "，其中 " + pending.size() + " 门课程需您或负责人后续处理（前置/容量/已选）";
-            }
-            notificationService.notifyAsync(student.getId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
-                    "已加入微专业",
-                    "您已被批量导入微专业《" + ms.getTitle() + "》" + tip,
-                    msId);
-        }
-
-        // 通知 LEAD（项目总负责要求 §9.1 step 8）
-        if (ms.getLeadTeacherId() != null) {
-            notificationService.notifyAsync(ms.getLeadTeacherId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
-                    "班级导入完成",
-                    String.format("班级已成功导入 %d 名学生（%d 门课程需人工处理）",
-                            imported, totalPendingCount),
-                    msId);
-        }
-
-        // 如果 >10% 的学生有 pending，额外通知 ACADEMIC
-        if (imported > 0 && (studentsWithPending * 10 > imported)) {
-            // 通过 UserRepository 查 ACADEMIC 角色
-            List<User> academicUsers = userRepository.selectList(
-                    new LambdaQueryWrapper<User>().eq(User::getRole, UserRole.ACADEMIC));
-            for (User au : academicUsers) {
-                notificationService.notifyAsync(au.getId(), NotificationType.MS_ENROLLMENT_AUTO_ENROLL,
-                        "微专业班级导入预警",
-                        String.format("微专业《%s》班级导入中 %d/%d 学生存在待处理课程，建议关注",
-                                ms.getTitle(), studentsWithPending, imported),
-                        msId);
-            }
-        }
-
-        return imported;
+    /**
+     * 构造 {@link MicroSpecialtyClassImportExecutor} 实例 — 注入所有依赖 + BATCH_SIZE 常量。
+     */
+    private MicroSpecialtyClassImportExecutor classImportExecutor() {
+        return new MicroSpecialtyClassImportExecutor(
+                msRepository, enrollmentRepository, userRepository,
+                msCourseRepository, courseRepository, enrollmentService,
+                notificationService, BATCH_SIZE);
     }
 
     // PendingCourseJsonUtil.PendingCourseItem / toPendingJson / jsonEscape 已提取到 PendingCourseJsonUtil

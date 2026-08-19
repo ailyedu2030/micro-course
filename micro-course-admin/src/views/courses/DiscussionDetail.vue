@@ -6,23 +6,23 @@
 -->
 <template>
   <div class="discussion-detail-page">
-    <h1 class="sr-only">{{ postData.title ? `讨论详情 - ${postData.title}` : '讨论详情' }}</h1>
+    <h1 class="sr-only">{{ postData.title ? $t('discussionDetail.titleWithName', { title: postData.title }) : $t('discussionDetail.title') }}</h1>
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item :to="{ path: '/discussions' }">讨论管理</el-breadcrumb-item>
-      <el-breadcrumb-item>讨论详情</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('layout.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/discussions' }">{{ $t('route.DiscussionList') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('discussionDetail.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 帖子卡片 -->
     <el-card class="post-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">帖子详情</span>
+          <span class="card-title">{{ $t('discussion.postDetail') }}</span>
           <div class="header-actions">
-            <el-button v-if="postData.status === 'PENDING'" type="success" @click="handleApprove">通过</el-button>
-            <el-button v-if="postData.status === 'PENDING'" type="danger" @click="handleReject">驳回</el-button>
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" @click="handleDelete">删除</el-button>
-            <el-button @click="handleBack">返回</el-button>
+            <el-button v-if="postData.status === 'PENDING'" type="success" @click="handleApprove">{{ $t('course.statusApproved') }}</el-button>
+            <el-button v-if="postData.status === 'PENDING'" type="danger" @click="handleReject">{{ $t('course.reject') }}</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" @click="handleDelete">{{ $t('app.delete') }}</el-button>
+            <el-button @click="handleBack">{{ $t('app.back') }}</el-button>
           </div>
         </div>
       </template>
@@ -32,12 +32,12 @@
         <div class="post-header">
           <h2 class="post-title">{{ postData.title }}</h2>
           <div class="post-meta">
-            <span class="meta-item">作者：{{ postData.authorName || '-' }}</span>
-            <span class="meta-item">课程：{{ postData.courseName || '-' }}</span>
-            <span class="meta-item">发布时间：{{ formatDateTime(postData.createdAt) || '-' }}</span>
-            <el-tag v-if="postData.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="postData.status === 'PUBLISHED'" type="success" size="small">已发布</el-tag>
-            <el-tag v-else-if="postData.status === 'DELETED'" type="info" size="small">已删除</el-tag>
+            <span class="meta-item">{{ $t('discussion.author') }}：{{ postData.authorName || '-' }}</span>
+            <span class="meta-item">{{ $t('course.title') }}：{{ postData.courseName || '-' }}</span>
+            <span class="meta-item">{{ $t('discussion.publishedAt') }}：{{ formatDateTime(postData.createdAt) || '-' }}</span>
+            <el-tag v-if="postData.status === 'PENDING'" type="warning" size="small">{{ $t('course.pendingReview') }}</el-tag>
+            <el-tag v-else-if="postData.status === 'PUBLISHED'" type="success" size="small">{{ $t('course.published') }}</el-tag>
+            <el-tag v-else-if="postData.status === 'DELETED'" type="info" size="small">{{ $t('course.deleted') }}</el-tag>
           </div>
         </div>
         <div class="post-content">{{ postData.content }}</div>
@@ -48,13 +48,13 @@
     <el-card class="reply-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">回复列表</span>
-          <span class="reply-count">共 {{ replies.length }} 条回复</span>
+          <span class="card-title">{{ $t('discussionDetail.replyList') }}</span>
+          <span class="reply-count">{{ $t('discussionDetail.replyTotal', { count: replies.length }) }}</span>
         </div>
       </template>
 
       <div v-if="replies.length === 0" class="empty-replies">
-        <el-empty description="暂无回复" />
+        <el-empty :description="$t('discussionDetail.noReplies')" />
       </div>
 
       <div v-else class="reply-list">
@@ -62,7 +62,7 @@
           <div class="reply-header">
             <span class="reply-author">{{ reply.authorName || '-' }}</span>
             <span class="reply-time">{{ formatDateTime(reply.createdAt) || '-' }}</span>
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDeleteReply(reply)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDeleteReply(reply)">{{ $t('app.delete') }}</el-button>
           </div>
           <div class="reply-content">{{ reply.content }}</div>
         </div>
@@ -74,11 +74,13 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDiscussionById, approveDiscussion, rejectDiscussion, deleteDiscussion, getComments, deleteComment } from '@/api/discussion'
 import { formatDateTime } from '@/utils/format'
 import { useUserStore } from '@/store/user'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 // P1-C 修复 (2026-08-04): userRole 未定义 → 管理员/教务删除帖子、回复按钮隐藏，违规内容无法清理
@@ -95,7 +97,7 @@ const fetchPost = async () => {
     const { data } = await getDiscussionById(route.params.id)
     postData.value = data || {}
   } catch {
-    ElMessage.error('获取帖子详情失败')
+    ElMessage.error(t('discussionDetail.fetchDetailFailed'))
   } finally {
     loading.value = false
   }
@@ -107,19 +109,19 @@ const fetchReplies = async () => {
     // P1I-15: 后端返回直接数组（R.ok(list)），但做 safety check 兼容可能的分页格式
     replies.value = data?.items || data || []
   } catch {
-    ElMessage.error('获取回复列表失败')
+    ElMessage.error(t('discussionDetail.fetchRepliesFailed'))
   }
 }
 
 const handleApprove = async () => {
   try {
-    await ElMessageBox.confirm('确定通过该讨论?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussionList.confirmApprove'), t('course.hintTitle'), { type: 'warning' })
     await approveDiscussion(route.params.id)
-    ElMessage.success('审核通过')
+    ElMessage.success(t('discussionList.approveSuccess'))
     fetchPost()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
@@ -127,45 +129,45 @@ const handleApprove = async () => {
 const handleReject = async () => {
   let reason = ''
   try {
-    await ElMessageBox.prompt('请填写驳回原因：', '驳回确认', {
-      confirmButtonText: '确定驳回',
-      cancelButtonText: '取消',
+    await ElMessageBox.prompt(t('discussionDetail.rejectPromptMsg'), t('discussionList.rejectConfirmTitle'), {
+      confirmButtonText: t('discussionList.confirmRejectBtn'),
+      cancelButtonText: t('common.cancel'),
       inputType: 'textarea',
-      inputPlaceholder: '请填写驳回原因（必填）',
-      inputValidator: (val) => !!val.trim() || '驳回原因不能为空'
+      inputPlaceholder: t('discussionList.rejectReasonPlaceholder'),
+      inputValidator: (val) => !!val.trim() || t('discussionList.rejectReasonRequired')
     }).then(({ value }) => { reason = value })
     await rejectDiscussion(route.params.id, reason)
-    ElMessage.success('驳回成功')
+    ElMessage.success(t('discussionList.rejectSuccess'))
     fetchPost()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('操作失败')
+      ElMessage.error(t('discussionList.operationFailed'))
     }
   }
 }
 
 const handleDelete = async () => {
   try {
-    await ElMessageBox.confirm('确定删除该讨论?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussionList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
     await deleteDiscussion(route.params.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('discussionList.deleteSuccess'))
     router.push('/discussions')
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('discussionList.deleteFailed'))
     }
   }
 }
 
 const handleDeleteReply = async (reply) => {
   try {
-    await ElMessageBox.confirm('确定删除该回复?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('discussionDetail.confirmDeleteReply'), t('course.hintTitle'), { type: 'warning' })
     await deleteComment(reply.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('discussionList.deleteSuccess'))
     fetchReplies()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('discussionList.deleteFailed'))
     }
   }
 }

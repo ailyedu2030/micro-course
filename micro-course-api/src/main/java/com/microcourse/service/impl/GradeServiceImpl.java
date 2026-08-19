@@ -144,7 +144,10 @@ public class GradeServiceImpl implements GradeService {
         // SECURITY: 只有课程教师、学生本人、ADMIN 或 ACADEMIC 可查看成绩
         if (grade.getCourseId() != null) {
             Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isAdminOrAcademic()
+            if (course == null) {
+                throw new BusinessException(ErrorCode.NO_PERMISSION);
+            }
+            if (!SecurityUtil.isAdminOrAcademic()
                     && !SecurityUtil.getCurrentUserId().equals(course.getTeacherId())
                     && !SecurityUtil.getCurrentUserId().equals(grade.getUserId())) {
                 throw new BusinessException(ErrorCode.NO_PERMISSION);
@@ -161,9 +164,7 @@ public class GradeServiceImpl implements GradeService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权为该课程创建成绩");
-        }
+        assertCourseOwner(course, "无权为该课程创建成绩");
 
         // P1: 重复提交防护 — 同一课程+学生+练习只允许一条成绩
         LambdaQueryWrapper<Grade> dupWrapper = new LambdaQueryWrapper<>();
@@ -219,12 +220,7 @@ public class GradeServiceImpl implements GradeService {
         BigDecimal oldScore = grade.getScore();
 
         // EXAM-NEW-4 修复:教师越权校验 — 只有课程教师或 ADMIN 可修改成绩
-        if (grade.getCourseId() != null) {
-            Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION);
-            }
-        }
+        assertCourseOwnerByGrade(grade, "无权修改该成绩记录");
 
         // P1C-089: 成绩锁定 — COMPLETED 状态后禁止修改成绩
         if (grade.getCourseId() != null && grade.getUserId() != null) {
@@ -290,12 +286,7 @@ public class GradeServiceImpl implements GradeService {
             throw new BusinessException(ErrorCode.GRADE_NOT_FOUND);
         }
         // P0-8: 删除权限校验 — 只有课程教师或 ADMIN 可删除
-        if (grade.getCourseId() != null) {
-            Course course = courseRepository.selectById(grade.getCourseId());
-            if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-                throw new BusinessException(ErrorCode.NO_PERMISSION, "无权删除该成绩记录");
-            }
-        }
+        assertCourseOwnerByGrade(grade, "无权删除该成绩记录");
         gradeRepository.deleteById(id);
     }
 
@@ -320,9 +311,7 @@ public class GradeServiceImpl implements GradeService {
         if (course == null) {
             throw new BusinessException(ErrorCode.COURSE_NOT_FOUND);
         }
-        if (!SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
-            throw new BusinessException(ErrorCode.NO_PERMISSION, "无权批改该课程成绩");
-        }
+        assertCourseOwner(course, "无权批改该课程成绩");
 
         // 3. 查找是否已有成绩记录（同课程+同学生，无 exerciseId）
         LambdaQueryWrapper<Grade> existWrapper = new LambdaQueryWrapper<>();
@@ -541,141 +530,30 @@ public class GradeServiceImpl implements GradeService {
     }
 
     /**
+     * I18-2026-08-17: 委托 {@link GradeVoBuilder} 处理批量预加载（保持向后兼容，
+     * 内部旧字段仍存在但不再重复实现 VO 转换逻辑）。
+     */
+    private GradeVoBuilder gradeVoBuilder() {
+        return new GradeVoBuilder(
+                courseRepository, userRepository, exerciseRepository,
+                enrollmentRepository, exerciseRecordRepository, objectMapper);
+    }
+
+    /**
      * 批量转换 — 预加载关联实体，避免 N+1
      */
     private List<GradeVO> batchConvertToVO(List<Grade> grades) {
         if (grades.isEmpty()) {
             return new ArrayList<>();
         }
-
-        // 收集所有需要查询的 ID
-        Set<Long> courseIds = new HashSet<>();
-        Set<Long> userIds = new HashSet<>();
-        Set<Long> exerciseIds = new HashSet<>();
-        for (Grade g : grades) {
-            if (g.getCourseId() != null) courseIds.add(g.getCourseId());
-            if (g.getUserId() != null) userIds.add(g.getUserId());
-            if (g.getGradedBy() != null) userIds.add(g.getGradedBy());
-            if (g.getExerciseId() != null) exerciseIds.add(g.getExerciseId());
-        }
-
-        // 批量查询
-        Map<Long, Course> courseMap = courseIds.isEmpty() ? Collections.emptyMap()
-                : courseRepository.selectBatchIds(courseIds).stream()
-                        .collect(Collectors.toMap(Course::getId, c -> c));
-        Map<Long, User> userMap = userIds.isEmpty() ? Collections.emptyMap()
-                : userRepository.selectBatchIds(userIds).stream()
-                        .collect(Collectors.toMap(User::getId, u -> u));
-        Map<Long, Exercise> exerciseMap = exerciseIds.isEmpty() ? Collections.emptyMap()
-                : exerciseRepository.selectBatchIds(exerciseIds).stream()
-                        .collect(Collectors.toMap(Exercise::getId, e -> e));
-
-        // Phase 6 P0: 批量查询选课（courseId, userId）→ enrollmentId
-        Map<Long, Map<Long, Long>> enrollmentIdMap = new HashMap<>();
-        if (!courseIds.isEmpty() && !userIds.isEmpty()) {
-            LambdaQueryWrapper<Enrollment> ew = new LambdaQueryWrapper<>();
-            ew.in(Enrollment::getCourseId, courseIds)
-              .in(Enrollment::getUserId, userIds)
-              .isNull(Enrollment::getDeletedAt);
-            for (Enrollment e : enrollmentRepository.selectList(ew)) {
-                enrollmentIdMap.computeIfAbsent(e.getCourseId(), k -> new HashMap<>())
-                               .put(e.getUserId(), e.getId());
-            }
-        }
-
-        return grades.stream().map(grade -> {
-            GradeVO vo = new GradeVO();
-            vo.setId(grade.getId());
-            vo.setCourseId(grade.getCourseId());
-            vo.setUserId(grade.getUserId());
-            vo.setExerciseId(grade.getExerciseId());
-            vo.setScore(grade.getScore());
-            vo.setTotalScore(grade.getTotalScore());
-            vo.setPassed(grade.getPassed());
-            vo.setAttemptNo(grade.getAttemptNo());
-            vo.setDuration(grade.getDuration());
-            vo.setSubmittedAt(grade.getSubmittedAt());
-            vo.setGradedBy(grade.getGradedBy());
-            vo.setGradedAt(grade.getGradedAt());
-            vo.setCreatedAt(grade.getCreatedAt());
-            vo.setComment(grade.getComment());
-
-            // P1-C 修复 (2026-08-04): 关联练习作答记录，识别"待人工批改"的主观题，
-            // 供前端成绩页展示批改入口与逐题批改（此前主观题永远 0 分且无批改入口）。
-            try {
-                LambdaQueryWrapper<ExerciseRecord> recWrapper = new LambdaQueryWrapper<>();
-                // ExerciseRecord 无 courseId 列，按 exerciseId+userId+attemptNo 定位最近作答记录
-                recWrapper.eq(ExerciseRecord::getUserId, grade.getUserId())
-                          .eq(grade.getExerciseId() != null, ExerciseRecord::getExerciseId, grade.getExerciseId())
-                          .eq(grade.getAttemptNo() != null, ExerciseRecord::getAttemptNo, grade.getAttemptNo())
-                          .orderByDesc(ExerciseRecord::getId)
-                          .last("LIMIT 1");
-                ExerciseRecord record = exerciseRecordRepository.selectOne(recWrapper);
-                if (record != null) {
-                    vo.setRecordId(record.getId());
-                    boolean needsManual = Boolean.TRUE.equals(record.getNeedsManualGrading());
-                    vo.setNeedsManualGrading(needsManual);
-                    if (needsManual && record.getAnswers() != null && !record.getAnswers().isBlank()) {
-                        List<Map<String, Object>> answerList = objectMapper.readValue(
-                                record.getAnswers(),
-                                new TypeReference<List<Map<String, Object>>>() {});
-                        List<Map<String, Object>> pending = new ArrayList<>();
-                        for (Map<String, Object> answer : answerList) {
-                            if (Boolean.TRUE.equals(answer.get("needsManualGrading"))) {
-                                Map<String, Object> item = new HashMap<>();
-                                Object qidObj = answer.get("questionId");
-                                item.put("questionId", qidObj instanceof Number
-                                        ? ((Number) qidObj).longValue() : null);
-                                item.put("studentAnswer", answer.get("answer"));
-                                // 满分取练习总分（单题主观题即该题满分；answer.score 是学生得分 0）
-                                item.put("maxScore", grade.getTotalScore() != null
-                                        ? grade.getTotalScore().intValue() : 0);
-                                pending.add(item);
-                            }
-                        }
-                        vo.setPendingQuestions(pending);
-                    }
-                }
-            } catch (Exception e) {
-                log.warn("[Grade] 关联作答记录解析失败 gradeId={}", grade.getId(), e);
-            }
-
-            Course course = courseMap.get(grade.getCourseId());
-            if (course != null) {
-                vo.setCourseName(course.getTitle());
-            }
-            User student = userMap.get(grade.getUserId());
-            if (student != null) {
-                vo.setStudentName(student.getRealName() != null ? student.getRealName() : student.getUsername());
-            }
-            Exercise exercise = exerciseMap.get(grade.getExerciseId());
-            if (exercise != null) {
-                vo.setExerciseTitle(exercise.getTitle());
-            }
-            User grader = userMap.get(grade.getGradedBy());
-            if (grader != null) {
-                vo.setGradedByName(grader.getRealName() != null ? grader.getRealName() : grader.getUsername());
-            }
-            // Phase 6 P0: 填充 enrollmentId（从批量预加载的选课映射）
-            if (grade.getCourseId() != null && grade.getUserId() != null) {
-                Map<Long, Long> byCourse = enrollmentIdMap.get(grade.getCourseId());
-                if (byCourse != null) {
-                    Long eid = byCourse.get(grade.getUserId());
-                    if (eid != null) {
-                        vo.setEnrollmentId(eid);
-                    }
-                }
-            }
-            return vo;
-        }).collect(Collectors.toList());
+        return gradeVoBuilder().buildAll(grades);
     }
 
     /**
      * P1/P0-6 修复: 单条转换委托 batchConvertToVO，消除 N+1
      */
     private GradeVO convertToVO(Grade grade) {
-        List<GradeVO> vos = batchConvertToVO(Collections.singletonList(grade));
-        return vos.isEmpty() ? new GradeVO() : vos.get(0);
+        return gradeVoBuilder().buildSingle(grade);
     }
 
     /**
@@ -713,5 +591,29 @@ public class GradeServiceImpl implements GradeService {
         // 用 page 方法取最大 EXPORT_MAX_SIZE 条
         PageResult<GradeVO> result = page(courseId, null, 0, EXPORT_MAX_SIZE);
         return result.getItems();
+    }
+
+    /**
+     * I18-2026-08-15 · 统一成绩权限校验：只有课程授课教师或 ADMIN 可操作。
+     * 消除 create/update/delete/teacherGrade 四处逐字重复的"反查 course + isOwnerOrAdmin"代码块。
+     */
+    private void assertCourseOwner(Course course, String deniedMessage) {
+        if (course != null && !SecurityUtil.isOwnerOrAdmin(course.getTeacherId())) {
+            throw new BusinessException(ErrorCode.NO_PERMISSION, deniedMessage);
+        }
+    }
+
+    /**
+     * 通过成绩记录反查课程并校验权限。
+     *
+     * @param grade 成绩记录（须非空）
+     * @param deniedMessage 越权时的提示语
+     */
+    private void assertCourseOwnerByGrade(Grade grade, String deniedMessage) {
+        if (grade.getCourseId() == null) {
+            return;
+        }
+        Course course = courseRepository.selectById(grade.getCourseId());
+        assertCourseOwner(course, deniedMessage);
     }
 }

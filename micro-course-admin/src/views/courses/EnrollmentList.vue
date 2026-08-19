@@ -7,35 +7,35 @@
 <template>
   <div class="enrollment-list-page">
     <el-breadcrumb separator="→" style="margin-bottom:20px">
-      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">首页</el-breadcrumb-item>
-      <el-breadcrumb-item>课程管理</el-breadcrumb-item>
-      <el-breadcrumb-item>选课列表</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/admin/dashboard' }">{{ $t('course.home') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('course.courseMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('enrollment.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 顶栏筛选卡 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="学员">
-          <el-input v-model="searchForm.studentName" placeholder="学员姓名" clearable @clear="handleSearch" class="filter-input-w140" />
+        <el-form-item :label="$t('enrollment.student')">
+          <el-input v-model="searchForm.studentName" :placeholder="$t('enrollment.studentNamePlaceholder')" clearable @clear="handleSearch" class="filter-input-w140" />
         </el-form-item>
-        <el-form-item label="课程">
-          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable @clear="handleSearch" class="filter-input-w180" />
+        <el-form-item :label="$t('course.title')">
+          <el-input v-model="searchForm.courseName" :placeholder="$t('course.courseName')" clearable @clear="handleSearch" class="filter-input-w180" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable class="filter-input-w120">
-            <el-option label="学习中" value="ENROLLED" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="待审核" value="PENDING" />
-            <el-option label="候补中" value="WAITLIST" />
-            <el-option label="已完成" value="COMPLETED" />
-            <el-option label="已取消" value="CANCELLED" />
-            <el-option label="已拒绝" value="REJECTED" />
-            <el-option label="已退课" value="DROPPED" />
+        <el-form-item :label="$t('course.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('enrollment.pleaseSelectStatus')" clearable class="filter-input-w120">
+            <el-option :label="$t('learning.tagLearning')" value="ENROLLED" />
+            <el-option :label="$t('course.approved')" value="APPROVED" />
+            <el-option :label="$t('course.pendingReview')" value="PENDING" />
+            <el-option :label="$t('course.waitlisted')" value="WAITLIST" />
+            <el-option :label="$t('course.completed')" value="COMPLETED" />
+            <el-option :label="$t('studentList.statusCancelled')" value="CANCELLED" />
+            <el-option :label="$t('enrollment.rejected')" value="REJECTED" />
+            <el-option :label="$t('teachingClass.studentStatusDropped')" value="DROPPED" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">搜索</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('app.search') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -44,25 +44,25 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">选课列表</span>
+          <span class="card-title">{{ $t('enrollment.title') }}</span>
           <el-button type="success" size="small" :loading="exporting" @click="handleExport">
-            <el-icon><Download /></el-icon>导出
+            <el-icon><Download /></el-icon>{{ $t('course.export') }}
           </el-button>
         </div>
       </template>
-      <el-result v-if="error" icon="error" title="加载失败" sub-title="网络异常，请稍后重试">
+      <el-result v-if="error" icon="error" :title="$t('enrollment.loadFailed')" :sub-title="$t('enrollment.networkError')">
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
       <template v-else>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无报名数据" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('enrollment.noData')" />
       <el-table v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="userName" label="学员" min-width="120" />
-        <el-table-column prop="courseName" label="课程" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="progress" label="学习进度" width="140" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="userName" :label="$t('enrollment.student')" min-width="120" />
+        <el-table-column prop="courseName" :label="$t('course.title')" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="progress" :label="$t('learning.progressLabel')" width="140" align="center">
           <template #default="{ row }">
             <div class="progress-cell">
               <el-progress :percentage="row.progress || 0" :stroke-width="8" />
@@ -70,34 +70,34 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="enrolledAt" label="报名时间" width="170" :formatter="$formatDateTime" />
-        <el-table-column prop="enrollmentStatus" label="状态" width="120" align="center">
+        <el-table-column prop="enrolledAt" :label="$t('enrollment.enrolledAt')" width="170" :formatter="$formatDateTime" />
+        <el-table-column prop="enrollmentStatus" :label="$t('course.status')" width="120" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.enrollmentStatus === 'ENROLLED'" type="primary" size="small">学习中</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'PENDING'" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'WAITLIST'" type="warning" size="small">候补中</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'APPROVED'" type="success" size="small">已通过</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'COMPLETED'" type="success" size="small">已完成</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">已取消</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'DROPPED'" type="danger" size="small">已退课</el-tag>
-            <el-tag v-else-if="row.enrollmentStatus === 'REJECTED'" type="danger" size="small">已拒绝</el-tag>
+            <el-tag v-if="row.enrollmentStatus === 'ENROLLED'" type="primary" size="small">{{ $t('learning.tagLearning') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'PENDING'" type="warning" size="small">{{ $t('course.pendingReview') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'WAITLIST'" type="warning" size="small">{{ $t('course.waitlisted') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'APPROVED'" type="success" size="small">{{ $t('course.approved') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'COMPLETED'" type="success" size="small">{{ $t('course.completed') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">{{ $t('studentList.statusCancelled') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'DROPPED'" type="danger" size="small">{{ $t('teachingClass.studentStatusDropped') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'REJECTED'" type="danger" size="small">{{ $t('enrollment.rejected') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.enrollmentStatus || '-' }}</el-tag>
           </template>
         </el-table-column>
         <!-- P1C-056: 审核操作列 -->
-        <el-table-column label="操作" width="220" align="center" fixed="right">
+        <el-table-column :label="$t('app.operation')" width="220" align="center" fixed="right">
           <template #default="{ row }">
             <template v-if="row.enrollmentStatus === 'PENDING'">
               <el-button type="success" link size="small" @click="handleApprove(row)">
-                <el-icon><Check /></el-icon>通过
+                <el-icon><Check /></el-icon>{{ $t('course.statusApproved') }}
               </el-button>
               <el-button type="danger" link size="small" @click="handleReject(row)">
-                <el-icon><Close /></el-icon>拒绝
+                <el-icon><Close /></el-icon>{{ $t('enrollment.reject') }}
               </el-button>
             </template>
             <template v-else-if="row.enrollmentStatus === 'WAITLIST'">
               <el-button type="warning" link size="small" @click="handlePromote(row)">
-                <el-icon><Top /></el-icon>晋升候补
+                <el-icon><Top /></el-icon>{{ $t('enrollment.promote') }}
               </el-button>
             </template>
             <span v-else class="text-secondary">-</span>
@@ -112,7 +112,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
       </template>
@@ -122,9 +122,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Check, Close, Top, Download } from '@element-plus/icons-vue'
 import { getEnrollments, updateEnrollment, exportEnrollments } from '@/api/enrollment'
+import { fetchAllPages } from '@/utils/fetchAllPages'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const error = ref(false)
@@ -156,7 +160,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('获取选课列表失败')
+    ElMessage.error(t('enrollment.fetchFailed'))
   } finally {
     loading.value = false
   }
@@ -189,41 +193,39 @@ const handleExport = async () => {
   if (exporting.value) return
   exporting.value = true
   try {
-    ElMessage.info('正在导出选课数据，请稍候…')
-    // 获取全量数据（最多 5000 条）用于客户端导出
+    ElMessage.info(t('enrollment.exporting'))
+    // 获取全量数据用于客户端导出
+    // P1-I-2026-08-15（R3 审查）· 改用 fetchAllPages 循环分页，规避后端 size 上限触发 400
     const exportParams = {
-      page: 0,
-      size: 5000,
       studentName: searchForm.studentName || undefined,
       courseName: searchForm.courseName || undefined,
       status: searchForm.status || undefined
     }
-    const { data } = await getEnrollments(exportParams)
-    const items = data?.items || []
+    const items = await fetchAllPages(getEnrollments, exportParams, 100)
 
     if (items.length === 0) {
-      ElMessage.warning('无可导出的选课数据')
+      ElMessage.warning(t('enrollment.noExportData'))
       return
     }
 
     // 客户端 exceljs 导出（F-2026-08-10-22: xlsx 替换）
     const { Workbook } = await import('exceljs')
     const exportRows = items.map((item, index) => ({
-      '序号': index + 1,
-      '学员': item.userName || '',
-      '课程': item.courseName || '',
-      '学习进度': (item.progress || 0) + '%',
-      '报名时间': item.enrolledAt || '',
-      '状态': item.enrollmentStatus || ''
+      [t('course.index')]: index + 1,
+      [t('enrollment.student')]: item.userName || '',
+      [t('course.title')]: item.courseName || '',
+      [t('learning.progressLabel')]: (item.progress || 0) + '%',
+      [t('enrollment.enrolledAt')]: item.enrolledAt || '',
+      [t('course.status')]: item.enrollmentStatus || ''
     }))
     const wb = new Workbook()
-    const ws = wb.addWorksheet('选课数据')
+    const ws = wb.addWorksheet(t('enrollment.exportSheetName'))
     ws.addRows(exportRows.map(row => Object.values(row)))
     const date = new Date().toISOString().split('T')[0]
     await wb.xlsx.writeFile(`enrollments-${date}.xlsx`)
-    ElMessage.success('导出成功')
+    ElMessage.success(t('enrollment.exportSuccess'))
   } catch (e) {
-    ElMessage.error('导出失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('enrollment.exportFailedMsg', { msg: e.message || t('enrollment.unknownError') }))
   } finally {
     exporting.value = false
   }
@@ -232,48 +234,48 @@ const handleExport = async () => {
 // P1C-056: 审核操作 - 通过选课
 const handleApprove = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定通过「${row.userName}」的选课申请？`, '通过确认', {
+    await ElMessageBox.confirm(t('enrollment.confirmApprove', { name: row.userName }), t('enrollment.approveTitle'), {
       type: 'success',
-      confirmButtonText: '确认通过',
-      cancelButtonText: '取消'
+      confirmButtonText: t('enrollment.confirmApproveBtn'),
+      cancelButtonText: t('app.cancel')
     })
     await updateEnrollment(row.id, { enrollmentStatus: 'APPROVED' })
-    ElMessage.success('已通过')
+    ElMessage.success(t('course.approved'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
   }
 }
 
 // P1C-056: 审核操作 - 拒绝选课
 const handleReject = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定拒绝「${row.userName}」的选课申请？`, '拒绝确认', {
+    await ElMessageBox.confirm(t('enrollment.confirmReject', { name: row.userName }), t('enrollment.rejectTitle'), {
       type: 'warning',
-      confirmButtonText: '确认拒绝',
-      cancelButtonText: '取消'
+      confirmButtonText: t('enrollment.confirmRejectBtn'),
+      cancelButtonText: t('app.cancel')
     })
     await updateEnrollment(row.id, { enrollmentStatus: 'REJECTED' })
-    ElMessage.success('已拒绝')
+    ElMessage.success(t('enrollment.rejected'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
   }
 }
 
 // P1C-056: 审核操作 - 晋升候补为已通过
 const handlePromote = async (row) => {
   try {
-    await ElMessageBox.confirm(`确定将「${row.userName}」从候补晋升为正式学员？`, '晋升确认', {
+    await ElMessageBox.confirm(t('enrollment.confirmPromote', { name: row.userName }), t('enrollment.promoteTitle'), {
       type: 'warning',
-      confirmButtonText: '确认晋升',
-      cancelButtonText: '取消'
+      confirmButtonText: t('enrollment.confirmPromoteBtn'),
+      cancelButtonText: t('app.cancel')
     })
     await updateEnrollment(row.id, { enrollmentStatus: 'APPROVED' })
-    ElMessage.success('已晋升')
+    ElMessage.success(t('enrollment.promoteSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error('操作失败')
+    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
   }
 }
 

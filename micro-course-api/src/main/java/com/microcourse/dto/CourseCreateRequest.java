@@ -1,8 +1,12 @@
 package com.microcourse.dto;
 
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
@@ -34,8 +38,11 @@ public class CourseCreateRequest {
     private String courseNature;
 
     // ===== 全部课程类型通用 =====
+    @Positive(message = "人数必须为正数")
     private Integer maxStudents;
 
+    @Min(value = 1, message = "难度系数至少为1")
+    @Max(value = 5, message = "难度系数不能超过5")
     private Integer difficulty;
 
     private String description;
@@ -49,6 +56,7 @@ public class CourseCreateRequest {
             message = "courseType 必须是 HTML_COURSEWARE / PPT_COURSEWARE / VIDEO / OFFLINE")
     private String courseType;
 
+    @DecimalMin(value = "0", message = "价格不能为负数")
     private java.math.BigDecimal price;
 
     private Boolean isFree;
@@ -58,6 +66,8 @@ public class CourseCreateRequest {
     private String freeDeptIds;
     private String discountScope;
     // ===== 折扣百分比：适用于所有含付费内容的课程类型 =====
+    @Min(value = 0, message = "折扣百分比不能为负数")
+    @Max(value = 100, message = "折扣百分比不能超过100")
     private Integer discountPercent;
 
     // ===== P1 Stage 1: 课程级元信息(Trae SKILL.md 模块 3.1 schema) =====

@@ -6,8 +6,8 @@
 <template>
   <div class="academic-enrollment-overview">
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item :to="{ path: '/academic/dashboard' }">教务处工作台</el-breadcrumb-item>
-      <el-breadcrumb-item>选课数据总览</el-breadcrumb-item>
+      <el-breadcrumb-item :to="{ path: '/academic/dashboard' }">{{ $t('enrollmentOverview.workbench') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('route.AcademicEnrollments') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 统计卡片 -->
@@ -15,25 +15,25 @@
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary">{{ stats.totalEnrollments }}</div>
-          <div class="stat-label">总选课数</div>
+          <div class="stat-label">{{ $t('enrollmentOverview.totalEnrollments') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-success">{{ stats.activeEnrollments }}</div>
-          <div class="stat-label">学习中</div>
+          <div class="stat-label">{{ $t('enrollmentOverview.statusEnrolled') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-warning">{{ stats.pendingEnrollments }}</div>
-          <div class="stat-label">待审核</div>
+          <div class="stat-label">{{ $t('enrollmentOverview.statusPending') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-info">{{ stats.completedEnrollments }}</div>
-          <div class="stat-label">已完成</div>
+          <div class="stat-label">{{ $t('enrollmentOverview.statusCompleted') }}</div>
         </div>
       </el-card>
     </div>
@@ -41,25 +41,25 @@
     <!-- 搜索筛选 -->
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="学员">
-          <el-input v-model="searchForm.studentName" placeholder="学员姓名" clearable @clear="handleSearch" class="filter-input" />
+        <el-form-item :label="$t('enrollment.student')">
+          <el-input v-model="searchForm.studentName" :placeholder="$t('enrollment.studentNamePlaceholder')" clearable @clear="handleSearch" class="filter-input" />
         </el-form-item>
-        <el-form-item label="课程">
-          <el-input v-model="searchForm.courseName" placeholder="课程名称" clearable @clear="handleSearch" class="filter-input" />
+        <el-form-item :label="$t('enrollmentOverview.course')">
+          <el-input v-model="searchForm.courseName" :placeholder="$t('enrollmentOverview.courseNamePlaceholder')" clearable @clear="handleSearch" class="filter-input" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="全部状态" clearable class="filter-input" @change="handleSearch">
-            <el-option label="学习中" value="ENROLLED" />
-            <el-option label="已通过" value="APPROVED" />
-            <el-option label="待审核" value="PENDING" />
-            <el-option label="已完成" value="COMPLETED" />
-            <el-option label="已取消" value="CANCELLED" />
-            <el-option label="已退课" value="DROPPED" />
+        <el-form-item :label="$t('app.status')">
+          <el-select v-model="searchForm.status" :placeholder="$t('enrollmentOverview.allStatuses')" clearable class="filter-input" @change="handleSearch">
+            <el-option :label="$t('enrollmentOverview.statusEnrolled')" value="ENROLLED" />
+            <el-option :label="$t('enrollmentOverview.statusApproved')" value="APPROVED" />
+            <el-option :label="$t('enrollmentOverview.statusPending')" value="PENDING" />
+            <el-option :label="$t('enrollmentOverview.statusCompleted')" value="COMPLETED" />
+            <el-option :label="$t('enrollmentOverview.statusCancelled')" value="CANCELLED" />
+            <el-option :label="$t('enrollmentOverview.statusDropped')" value="DROPPED" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('enrollmentOverview.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -68,33 +68,33 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">选课明细</span>
-          <span class="card-total">共 {{ totalElements }} 条</span>
+          <span class="card-title">{{ $t('enrollmentOverview.detailTitle') }}</span>
+          <span class="card-total">{{ $t('course.rows', { count: totalElements }) }}</span>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-empty v-else-if="tableData.length === 0" description="暂无选课数据" :image-size="120" />
+      <el-empty v-else-if="tableData.length === 0" :description="$t('enrollmentOverview.noData')" :image-size="120" />
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="#" width="60" align="center" />
-        <el-table-column prop="realName" label="学员" width="120" show-overflow-tooltip />
-        <el-table-column prop="courseName" label="课程" min-width="180" show-overflow-tooltip />
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column type="index" :label="$t('course.index')" width="60" align="center" />
+        <el-table-column prop="realName" :label="$t('enrollment.student')" width="120" show-overflow-tooltip />
+        <el-table-column prop="courseName" :label="$t('enrollmentOverview.course')" min-width="180" show-overflow-tooltip />
+        <el-table-column :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'ENROLLED'" type="primary" size="small">学习中</el-tag>
-            <el-tag v-else-if="row.status === 'APPROVED'" type="success" size="small">已通过</el-tag>
-            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">待审核</el-tag>
-            <el-tag v-else-if="row.status === 'COMPLETED'" type="success" size="small">已完成</el-tag>
-            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">已取消</el-tag>
-            <el-tag v-else-if="row.status === 'DROPPED'" type="danger" size="small">已退课</el-tag>
+            <el-tag v-if="row.status === 'ENROLLED'" type="primary" size="small">{{ $t('enrollmentOverview.statusEnrolled') }}</el-tag>
+            <el-tag v-else-if="row.status === 'APPROVED'" type="success" size="small">{{ $t('enrollmentOverview.statusApproved') }}</el-tag>
+            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">{{ $t('enrollmentOverview.statusPending') }}</el-tag>
+            <el-tag v-else-if="row.status === 'COMPLETED'" type="success" size="small">{{ $t('enrollmentOverview.statusCompleted') }}</el-tag>
+            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">{{ $t('enrollmentOverview.statusCancelled') }}</el-tag>
+            <el-tag v-else-if="row.status === 'DROPPED'" type="danger" size="small">{{ $t('enrollmentOverview.statusDropped') }}</el-tag>
             <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="progress" label="进度" width="100" align="center">
+        <el-table-column prop="progress" :label="$t('enrollmentOverview.progress')" width="100" align="center">
           <template #default="{ row }">
             <span>{{ row.progress != null ? row.progress + '%' : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" label="选课时间" width="170" :formatter="$formatDateTime" />
+        <el-table-column prop="createdAt" :label="$t('enrollmentOverview.enrolledAt')" width="170" :formatter="$formatDateTime" />
       </el-table>
       <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
@@ -113,8 +113,11 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { getEnrollments } from '@/api/enrollment'
+
+const { t } = useI18n()
 
 const loading = ref(false)
 const tableData = ref([])
@@ -138,7 +141,7 @@ const stats = reactive({
 async function fetchStats() {
   try {
     // 获取全量选课数据用于统计（不分页）
-    const { data } = await getEnrollments({ page: 0, size: 1000 })
+    const { data } = await getEnrollments({ page: 0, size: 100 })
     const items = data.items || []
     stats.totalEnrollments = data.totalElements || items.length
     stats.activeEnrollments = items.filter(i => i.status === 'ENROLLED').length
@@ -163,7 +166,7 @@ async function fetchData() {
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
   } catch {
-    ElMessage.error('获取选课数据失败')
+    ElMessage.error(t('enrollmentOverview.fetchFailed'))
   } finally {
     loading.value = false
   }

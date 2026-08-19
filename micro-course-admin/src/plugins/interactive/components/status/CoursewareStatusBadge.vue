@@ -12,12 +12,15 @@
 <template>
   <el-tag :type="tagType" :effect="effect" :size="size" class="cs-badge">
     <span class="cs-label">{{ label }}</span>
-    <span v-if="showCount" class="cs-count">{{ audioReadyCount }} / {{ totalCount }} 音频就绪</span>
+    <span v-if="showCount" class="cs-count">{{ t('courseware.status.audioReadyCount', { ready: audioReadyCount, total: totalCount }) }}</span>
   </el-tag>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({
   status: { type: String, default: 'PENDING' },
@@ -41,12 +44,12 @@ const tagType = computed(() => {
 
 const label = computed(() => {
   switch (props.status) {
-    case 'AUDIO_READY': return '音频就绪'
-    case 'AUDIO_GENERATING': return '生成中'
-    case 'AUDIO_FAILED': return '失败'
-    case 'PENDING': return '待生成'
-    case 'AUDIO_PENDING': return '待生成'
-    case 'EMPTY': return '空'
+    case 'AUDIO_READY': return t('courseware.status.ready')
+    case 'AUDIO_GENERATING': return t('courseware.status.generating')
+    case 'AUDIO_FAILED': return t('courseware.status.failed')
+    case 'PENDING': return t('courseware.status.pending')
+    case 'AUDIO_PENDING': return t('courseware.status.pending')
+    case 'EMPTY': return t('courseware.status.empty')
     default: return props.status
   }
 })

@@ -9,11 +9,13 @@ import com.microcourse.dto.CoursePageQuery;
 import com.microcourse.dto.CourseStatsVO;
 import com.microcourse.dto.CourseUpdateRequest;
 import com.microcourse.dto.CourseVO;
+import com.microcourse.dto.ChapterVO;
 import com.microcourse.dto.EnrollmentVO;
 import com.microcourse.dto.PageResult;
 import com.microcourse.dto.R;
 import com.microcourse.enums.CourseStatus;
 import com.microcourse.service.CourseAdminService;
+import com.microcourse.service.CourseChapterService;
 import com.microcourse.service.CourseQueryService;
 import com.microcourse.service.CourseService;
 import com.microcourse.service.EnrollmentService;
@@ -29,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/courses")
@@ -39,18 +42,23 @@ public class CourseController {
     private final CourseQueryService courseQueryService;
     private final EnrollmentService enrollmentService;
     private final CourseAdminService courseAdminService;
+    private final CourseChapterService chapterService;
 
     public CourseController(CourseService courseService,
                             CourseQueryService courseQueryService,
                             EnrollmentService enrollmentService,
-                            CourseAdminService courseAdminService) {
+                            CourseAdminService courseAdminService,
+                            CourseChapterService chapterService) {
         this.courseService = courseService;
         this.courseQueryService = courseQueryService;
         this.enrollmentService = enrollmentService;
         this.courseAdminService = courseAdminService;
+        this.chapterService = chapterService;
     }
 
-    private static final int MAX_PAGE_SIZE = 200;
+    // P1-I-2026-08-15（R1/R3 审查）· 统一分页上限：Service 层实际生效由 MyBatis-Plus setMaxLimit(ApiLimits.MAX_PAGE_SIZE=100) 兜底
+    // （原私有 MAX_PAGE_SIZE=1000 已移除，避免与 ApiLimits 双标准矛盾）
+    private static final int MAX_PAGE_SIZE = com.microcourse.constants.ApiLimits.MAX_PAGE_SIZE;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
@@ -90,6 +98,21 @@ public class CourseController {
         query.setOfferDepartmentId(offerDepartmentId);
         PageResult<CourseVO> result = courseService.page(query);
         return R.ok(result);
+    }
+
+    /**
+     * P1-C: 跨课程关键字搜索章节（不要求 courseId）。
+     * 前端 GET /api/courses/chapters/search 调用（src/api/chapter.js searchChapters）。
+     * 与 /api/chapters 分页端点并存：本端点支持 keyword 搜索，courseId 可为空。
+     */
+    @GetMapping("/chapters/search")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "按关键字搜索章节（跨课程，不要求 courseId）")
+    public R<PageResult<ChapterVO>> searchChapters(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") @PositiveOrZero int page,
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
+        return R.ok(chapterService.searchChapters(keyword, page, size));
     }
 
     @GetMapping("/{id}")

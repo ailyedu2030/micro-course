@@ -17,6 +17,7 @@ import org.hibernate.validator.constraints.Range;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/videos")
@@ -36,7 +37,7 @@ public class CourseVideoController {
             @PathVariable Long courseId,
             @RequestParam(required = false) Long chapterId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "20") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
         return R.ok(videoService.page(courseId, chapterId, page, size));
     }
 

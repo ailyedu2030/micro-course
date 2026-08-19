@@ -6,7 +6,7 @@
 <template>
   <div class="course-square fade-in">
 <!-- ============ P0 闭环修复 Round 4: Banner 轮播（学生端首页） ============ -->
-    <section v-if="banners.length > 0" class="banner-section" aria-label="运营 Banner">
+    <section v-if="banners.length > 0" class="banner-section" :aria-label="$t('courseSquare.bannerAria')">
       <el-carousel height="260px" trigger="click" arrow="always" indicator-position="outside" :interval="4000">
         <el-carousel-item v-for="banner in banners" :key="banner.id">
           <a
@@ -21,14 +21,14 @@
     </section>
 
     <!-- ============ Hero + Search ============ -->
-    <section class="hero-section" aria-label="课程广场 — 发现并搜索你感兴趣的课程">
+    <section class="hero-section" :aria-label="$t('courseSquare.heroAria')">
       <div class="hero-content">
         <h1 class="hero-title">{{ $t('course.discover') }}</h1>
         <p class="hero-subtitle">{{ $t('course.startJourney') }}</p>
         <div class="hero-search">
           <el-input
             v-model="searchForm.keyword" :placeholder="$t('course.search')" clearable
-            class="hero-search-input" aria-label="搜索关键词"
+            class="hero-search-input" :aria-label="$t('courseSquare.searchAria')"
             @keyup.enter="handleSearch"
           >
             <template #prefix><el-icon><Search /></el-icon></template>
@@ -44,8 +44,8 @@
     <div class="filter-bar">
       <div class="filter-row">
           <el-select
-            v-model="searchForm.difficulty" :placeholder="$t('course.allDifficulty')" clearable title="难度筛选"
-            class="difficulty-select" aria-label="难度筛选" @change="handleSearch"
+            v-model="searchForm.difficulty" :placeholder="$t('course.allDifficulty')" clearable :title="$t('courseSquare.difficultyFilterAria')"
+            class="difficulty-select" :aria-label="$t('courseSquare.difficultyFilterAria')" @change="handleSearch"
           >
             <el-option :label="$t('app.all')" value="" />
             <el-option :label="$t('course.beginner')" :value="1" />
@@ -54,27 +54,27 @@
           </el-select>
           <!-- P1C-004: 学院维度筛选 -->
           <el-select
-            v-model="searchForm.offerDepartmentId" :placeholder="$t('course.allDepartments')" clearable title="学院筛选"
-            class="dept-select" aria-label="学院筛选" @change="handleSearch"
+            v-model="searchForm.offerDepartmentId" :placeholder="$t('course.allDepartments')" clearable :title="$t('courseSquare.deptFilterAria')"
+            class="dept-select" :aria-label="$t('courseSquare.deptFilterAria')" @change="handleSearch"
           >
           <el-option :label="$t('app.all')" value="" />
           <el-option v-for="dept in departmentList" :key="dept.id" :label="dept.name" :value="dept.id" />
         </el-select>
         <!-- P1C-075: 课程类型筛选 -->
         <el-select
-          v-model="searchForm.courseType" placeholder="课程类型" clearable title="课程类型"
-          class="type-select" aria-label="课程类型" @change="handleSearch"
+          v-model="searchForm.courseType" :placeholder="$t('course.courseType')" clearable :title="$t('courseSquare.courseTypeAria')"
+          class="type-select" :aria-label="$t('courseSquare.courseTypeAria')" @change="handleSearch"
         >
-          <el-option label="全部" value="" />
-          <el-option label="视频课件" value="VIDEO" />
-          <el-option label="HTML 课件" value="HTML_COURSEWARE" />
-          <el-option label="PPT 课件" value="PPT_COURSEWARE" />
-          <el-option label="线下课程" value="OFFLINE" />
+          <el-option :label="$t('app.all')" value="" />
+          <el-option :label="$t('course.videoCourse')" value="VIDEO" />
+          <el-option :label="$t('course.typeHtmlCourseware')" value="HTML_COURSEWARE" />
+          <el-option :label="$t('course.typePptCourseware')" value="PPT_COURSEWARE" />
+          <el-option :label="$t('course.typeOfflineCourse')" value="OFFLINE" />
         </el-select>
         <div class="category-scroll" v-loading="categoriesLoading">
           <el-radio-group
             v-model="selectedCategoryId" class="category-chip-group"
-            aria-label="课程分类" @change="handleCategoryChange"
+            :aria-label="$t('courseSquare.categoryAria')" @change="handleCategoryChange"
           >
             <el-radio-button value="">{{ $t('app.all') }}</el-radio-button>
             <el-radio-button v-for="cat in categoryList" :key="cat.id" :value="cat.id">
@@ -96,7 +96,7 @@
           <div
             v-for="(course, rIndex) in recommendedCourses" :key="'rec-'+course.id"
             class="rec-card" role="button" tabindex="0"
-            :aria-label="`推荐课程 ${course.title}`"
+            :aria-label="$t('courseSquare.recommendAria', { title: course.title })"
             :style="{ '--rec-index': rIndex }"
             @click="handleCourseClick(course)" @keydown.enter="handleCourseClick(course)"
           >
@@ -107,10 +107,10 @@
             </div>
             <div class="rec-info">
               <h3 class="rec-title">{{ course.title }}</h3>
-              <p class="rec-meta">{{ course.teacherName || '未知教师' }} · {{ formatStudentCount(course.studentCount) }}</p>
+              <p class="rec-meta">{{ course.teacherName || $t('courseSquare.unknownTeacher') }} · {{ formatStudentCount(course.studentCount) }}</p>
               <div class="rec-footer">
                 <span class="rec-rating"><el-icon :size="12"><Star /></el-icon> {{ formatRating(course.avgRating) }}</span>
-                <span class="rec-price" :class="{ 'rec-price--free': !displayPrice(course) }">{{ displayPrice(course) ? `¥${displayPrice(course)}` : '免费' }}</span>
+                <span class="rec-price" :class="{ 'rec-price--free': !displayPrice(course) }">{{ displayPrice(course) ? `¥${displayPrice(course)}` : $t('app.free') }}</span>
               </div>
             </div>
           </div>
@@ -130,7 +130,7 @@
       </header>
 
       <!-- Loading -->
-      <div v-if="loading" class="course-grid" aria-label="加载中">
+      <div v-if="loading" class="course-grid" :aria-label="$t('courseSquare.loadingAria')">
         <el-row :gutter="24">
           <el-col v-for="n in 8" :key="n" :xs="24" :sm="12" :md="8" :lg="8">
             <el-card class="course-card skeleton-card" shadow="never" :style="{ animationDelay: `${(n - 1) * 0.08}s` }">
@@ -159,21 +159,21 @@
       <!-- Empty (无课程) -->
       <el-empty v-else-if="courseList.length === 0 && !isSearchActive" class="state-block" :description="$t('course.noCourses')">
         <template #image><el-icon :size="64" class="state-icon"><Notebook /></el-icon></template>
-        <p class="state-detail">换个分类或筛选条件试试</p>
+        <p class="state-detail">{{ $t('courseSquare.emptyHint') }}</p>
         <el-button type="primary" class="state-action" @click="handleReset">{{ $t('common.reset') }}</el-button>
       </el-empty>
 
       <!-- Empty (无搜索结果) -->
       <el-empty
 v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
-        :description="`未找到与 '${searchForm.keyword || '当前筛选'}' 相关的课程`"
+        :description="$t('courseSquare.noSearchResult', { keyword: searchForm.keyword || $t('courseSquare.currentFilter') })"
       >
         <template #image><el-icon :size="64" class="state-icon"><Search /></el-icon></template>
         <p class="state-detail">{{ $t('common.noData') }}</p>
         <el-button type="primary" class="state-action" @click="handleReset">{{ $t('common.reset') }}</el-button>
         <!-- 搜索无结果时展示热门课程推荐 -->
         <div v-if="hotCourses.length > 0" class="search-recommend-section">
-          <p class="recommend-hint">你可能感兴趣的课程：</p>
+          <p class="recommend-hint">{{ $t('courseSquare.youMayLike') }}</p>
           <div class="search-recommend-grid">
             <div
               v-for="course in hotCourses.slice(0, 4)"
@@ -189,7 +189,7 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
               </div>
               <div class="sr-info">
                 <span class="sr-title">{{ course.title }}</span>
-                <span class="sr-meta">{{ course.studentCount || 0 }}人在学</span>
+                <span class="sr-meta">{{ $t('courseSquare.studentsLearning', { count: course.studentCount || 0 }) }}</span>
               </div>
             </div>
           </div>
@@ -202,7 +202,11 @@ v-else-if="courseList.length === 0 && isSearchActive" class="state-block"
           <el-col v-for="(course, cIndex) in courseList" :key="course.id" :xs="24" :sm="12" :md="8" :lg="8">
             <div
 class="course-card" :style="{ '--card-index': cIndex }" role="button" tabindex="0"
-              :aria-label="`课程 ${course.title}，教师 ${course.teacherName || '未知'}，${course.studentCount || 0} 人学习`"
+              :aria-label="$t('courseSquare.courseCardAria', {
+                title: course.title,
+                teacher: course.teacherName || $t('courseSquare.unknownTeacher'),
+                count: course.studentCount || 0
+              })"
               @click="handleCourseClick(course)" @keydown.enter="handleCourseClick(course)" @keydown.space.prevent="handleCourseClick(course)"
 >
               <div class="course-cover">
@@ -217,19 +221,19 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
               </div>
               <div class="course-info">
                 <h3 class="course-title" :title="course.title">{{ course.title }}</h3>
-                <p class="course-meta"><el-icon class="meta-icon"><User /></el-icon><span>{{ course.teacherName || '未知教师' }}</span><span class="sep">·</span><span>{{ course.categoryName || '未分类' }}</span><span class="sep">·</span><span>{{ formatStudentCount(course.studentCount) }}</span></p>
+                <p class="course-meta"><el-icon class="meta-icon"><User /></el-icon><span>{{ course.teacherName || $t('courseSquare.unknownTeacher') }}</span><span class="sep">·</span><span>{{ course.categoryName || $t('courseSquare.uncategorized') }}</span><span class="sep">·</span><span>{{ formatStudentCount(course.studentCount) }}</span></p>
                 <div class="course-footer">
-                  <div class="rating" :aria-label="`评分 ${formatRating(course.avgRating)}`">
+                  <div class="rating" :aria-label="$t('courseSquare.ratingAria', { rating: formatRating(course.avgRating) })">
                     <el-icon class="rating-star"><Star /></el-icon>
                     <span class="rating-value">{{ formatRating(course.avgRating) }}</span>
                     <span class="rating-count" v-if="course.ratingCount">({{ course.ratingCount }})</span>
-                    <span class="rating-none" v-else>暂无评分</span>
+                    <span class="rating-none" v-else>{{ $t('courseSquare.noRating') }}</span>
                   </div>
                   <div class="price" :class="{ 'price--free': !displayPrice(course) || course.isFree }">
                     <template v-if="course.freeAccessScopeLabel">
                       <el-tag size="small" type="success" effect="light" class="free-tag">{{ course.freeAccessScopeLabel }}</el-tag>
                     </template>
-                    <template v-else-if="course.isFree || !displayPrice(course)">免费</template>
+                    <template v-else-if="course.isFree || !displayPrice(course)">{{ $t('app.free') }}</template>
                     <template v-else>¥{{ displayPrice(course) }}</template>
                   </div>
                 </div>
@@ -242,7 +246,7 @@ v-if="getCardTypeConfig(course.courseType)" class="course-type-badge"
 v-model:current-page="page" v-model:page-size="size" :total="totalElements"
             :page-sizes="[12, 24, 48]" :disabled="loading" layout="total, sizes, prev, pager, next, jumper"
             background class="course-pagination" @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航"
+            @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         </div>
       </div>
@@ -252,28 +256,28 @@ v-model:current-page="page" v-model:page-size="size" :total="totalElements"
     <section v-if="bundles.length > 0 && !isSearchActive" class="section">
       <header class="section-header">
         <h2 class="section-title">{{ $t('course.bundles') }}</h2>
-        <el-button text type="primary" @click="goBundles">查看全部 →</el-button>
+        <el-button text type="primary" @click="goBundles">{{ $t('courseSquare.viewAll') }}</el-button>
       </header>
       <div class="bundle-scroll">
         <div
 v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
-          :aria-label="'课程套件：' + b.title" @click="goBundle(b.id)"
+          :aria-label="$t('courseSquare.bundleAria', { title: b.title })" @click="goBundle(b.id)"
           @keydown.enter="goBundle(b.id)" @keydown.space.prevent="goBundle(b.id)"
 >
           <div class="b-chip-icon"><el-icon :size="20"><FolderOpened /></el-icon></div>
           <div class="b-chip-info">
             <span class="b-chip-title">{{ b.title }}</span>
-            <span class="b-chip-price" :class="{ free: b.isFree || !b.price }">{{ b.isFree || !b.price ? '免费' : '¥' + b.price }}</span>
+            <span class="b-chip-price" :class="{ free: b.isFree || !b.price }">{{ b.isFree || !b.price ? $t('app.free') : '¥' + b.price }}</span>
           </div>
         </div>
       </div>
     </section>
 
     <!-- ============ 微专业 (加载完成时显示,有数据/无数据/加载中三态) ============ -->
-    <section v-if="!isSearchActive" class="section micro-specialty-section" aria-label="微专业">
+    <section v-if="!isSearchActive" class="section micro-specialty-section" :aria-label="$t('courseSquare.msAria')">
       <header class="section-header">
         <h2 class="section-title">{{ $t('course.microSpecialty') }}</h2>
-        <el-button v-if="hasMSData" text type="primary" @click="showAllMS = true; fetchAllMS()">查看更多 →</el-button>
+        <el-button v-if="hasMSData" text type="primary" @click="showAllMS = true; fetchAllMS()">{{ $t('courseSquare.viewMore') }}</el-button>
       </header>
       <div v-if="msLoading" class="rec-scroll-wrap">
         <div class="ms-loading-row">
@@ -290,9 +294,9 @@ v-for="b in bundles" :key="b.id" class="bundle-chip" tabindex="0" role="button"
           </div>
         </div>
       </div>
-      <el-result v-else-if="msError" status="error" title="加载失败" sub-title="请检查网络后重试">
+      <el-result v-else-if="msError" status="error" :title="$t('teacherDashboard.loadFailed')" :sub-title="$t('courseSquare.checkNetwork')">
         <template #extra>
-          <el-button type="primary" @click="fetchMicroSpecialties">重试</el-button>
+          <el-button type="primary" @click="fetchMicroSpecialties">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
       <template v-else-if="hasMSData">
@@ -302,7 +306,7 @@ v-for="item in goldFeatured" :key="'gold-'+item.id"
             class="ms-gold-card" role="button" tabindex="0"
             :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)"
 >
-            <span class="gold-badge">学校重点推荐</span>
+            <span class="gold-badge">{{ $t('courseSquare.goldBadge') }}</span>
             <div class="gold-cover">
               <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="gold-cover-img" />
               <div v-else class="gold-cover-placeholder"><el-icon :size="40"><Notebook /></el-icon></div>
@@ -310,8 +314,8 @@ v-for="item in goldFeatured" :key="'gold-'+item.id"
             <div class="gold-info">
               <h3 class="gold-title">{{ item.title }}</h3>
               <p class="gold-meta">{{ item.departmentName }} {{ item.leadTeacherName }}</p>
-              <p class="gold-stats">{{ item.totalCredits || 0 }} 学分 | {{ item.courseCount || 0 }} 门课</p>
-              <el-button type="primary" size="small" round class="gold-cta">立即了解</el-button>
+              <p class="gold-stats">{{ $t('courseSquare.creditCount', { count: item.totalCredits || 0 }) }} | {{ $t('courseSquare.courseCount', { count: item.courseCount || 0 }) }}</p>
+              <el-button type="primary" size="small" round class="gold-cta">{{ $t('courseSquare.learnNow') }}</el-button>
             </div>
           </div>
         </div>
@@ -336,20 +340,20 @@ v-for="item in featured" :key="'feat-'+item.id"
         </div>
       </template>
       <!-- P1-C-12-03 fix: 无数据时显示空态文案,不再整段隐藏 -->
-      <el-empty v-else description="暂无微专业项目，敬请期待" />
+      <el-empty v-else :description="$t('courseSquare.noMSProjects')" />
     </section>
 
     <!-- 全部微专业弹窗 -->
     <el-dialog
-v-model="showAllMS" title="全部微专业" width="900px"
+v-model="showAllMS" :title="$t('courseSquare.allMS')" width="900px"
       :close-on-click-modal="true" class="ms-all-dialog"
 >
       <div class="ms-all-filter-bar mg-bottom-12">
         <el-radio-group v-model="dialogFilter" size="small">
-          <el-radio-button value="">全部</el-radio-button>
-          <el-radio-button value="RECRUITING">招生中</el-radio-button>
-          <el-radio-button value="APPROVED">报名中</el-radio-button>
-          <el-radio-button value="COMPLETED">已结业</el-radio-button>
+          <el-radio-button value="">{{ $t('app.all') }}</el-radio-button>
+          <el-radio-button value="RECRUITING">{{ $t('courseSquare.msRecruiting') }}</el-radio-button>
+          <el-radio-button value="APPROVED">{{ $t('courseSquare.msApproved') }}</el-radio-button>
+          <el-radio-button value="COMPLETED">{{ $t('courseSquare.msCompleted') }}</el-radio-button>
         </el-radio-group>
       </div>
       <div v-loading="allMSLoading" class="ms-all-grid">
@@ -365,17 +369,18 @@ v-for="item in filteredAllMS" :key="'all-ms-' + item.id"
           <div class="ms-all-info">
             <h4 class="ms-all-title">{{ item.title }}</h4>
             <p class="ms-all-dept">{{ item.departmentName || '-' }}</p>
-            <p class="ms-all-stats">{{ item.totalCredits || 0 }} 学分 | {{ item.courseCount || 0 }} 门课</p>
+            <p class="ms-all-stats">{{ $t('courseSquare.creditCount', { count: item.totalCredits || 0 }) }} | {{ $t('courseSquare.courseCount', { count: item.courseCount || 0 }) }}</p>
           </div>
         </div>
       </div>
-      <el-empty v-if="!allMSLoading && !allMSList.length" description="暂无微专业" />
+      <el-empty v-if="!allMSLoading && !allMSList.length" :description="$t('courseSquare.noMS')" />
     </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRouter } from 'vue-router'
@@ -403,6 +408,7 @@ import { getDefaultCover } from '@/utils/coverHelper'
 import { isCoursewareCourseType } from '@/config/courseTypeConfig'
 import { getDepartments } from '@/api/department'
 
+const { t } = useI18n()
 const router = useRouter()
 const pluginStore = usePluginStore()
 const userStore = useUserStore()
@@ -410,9 +416,9 @@ const userRole = computed(() => userStore.role)
 
 // Phase 2: 错误消息常量
 const ERROR_MESSAGES = {
-  LOAD_FAILED: '加载失败，请稍后重试',
-  NETWORK_ERROR: '网络错误，请检查连接',
-  AUTH_FAILED: '登录已过期，请重新登录'
+  LOAD_FAILED: t('courseSquare.loadFailedRetry'),
+  NETWORK_ERROR: t('courseSquare.networkError'),
+  AUTH_FAILED: t('courseSquare.authFailed')
 }
 
 // 状态
@@ -447,13 +453,13 @@ const handleBannerClick = (banner) => {
   // 阻止 javascript: 协议（XSS 攻击向量）
   if (/^javascript:/i.test(url)) {
     console.warn('[CourseSquare] 阻止 javascript: 协议 URL:', url)
-    ElMessage.warning('不可用的跳转链接')
+    ElMessage.warning(t('courseSquare.invalidLink'))
     return
   }
   // 阻止非 HTTP(S) 协议（如 data:, file:, ftp: 等）
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(url) && !/^https?:\/\//i.test(url)) {
     console.warn('[CourseSquare] 阻止非 HTTP 协议 URL:', url)
-    ElMessage.warning('不可用的跳转链接')
+    ElMessage.warning(t('courseSquare.invalidLink'))
     return
   }
   if (/^https?:\/\//i.test(url)) {
@@ -506,11 +512,11 @@ const isSearchActive = computed(
 
 // 难度映射（1 初级 / 2 中级 / 3 高级）
 const DIFFICULTY_MAP = {
-  1: { label: '初级', type: 'success' },
-  2: { label: '中级', type: 'warning' },
-  3: { label: '高级', type: 'danger' }
+  1: { label: t('course.beginner'), type: 'success' },
+  2: { label: t('course.intermediate'), type: 'warning' },
+  3: { label: t('course.advanced'), type: 'danger' }
 }
-const getDifficultyLabel = (d) => DIFFICULTY_MAP[d]?.label || '全部'
+const getDifficultyLabel = (d) => DIFFICULTY_MAP[d]?.label || t('app.all')
 const getDifficultyType = (d) => DIFFICULTY_MAP[d]?.type || 'info'
 
 const getCardTypeConfig = (courseType) => {
@@ -521,9 +527,9 @@ const getCardTypeConfig = (courseType) => {
 // 学员数格式化（>1000 显示 k）
 const formatStudentCount = (n) => {
   const count = n || 0
-  if (count === 0) return '首学者'
-  if (count >= 1000) return `${(count / 1000).toFixed(1)}k 人学习`
-  return `${count} 人学习`
+  if (count === 0) return t('courseSquare.firstLearner')
+  if (count >= 1000) return t('courseSquare.peopleLearning', { count: (count / 1000).toFixed(1) + 'k' })
+  return t('courseSquare.peopleLearning', { count })
 }
 
 // 评分格式化
@@ -536,7 +542,7 @@ const displayPrice = (course) => course?.listPrice || course?.price || 0
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
   const d = new Date(dateStr)
-  return `${d.getMonth() + 1}月${d.getDate()}日`
+  return t('courseSquare.monthDay', { month: d.getMonth() + 1, day: d.getDate() })
 }
 
 // P1C-004: 拉取学院列表
@@ -668,6 +674,12 @@ const handlePageChange = (newPage) => {
   page.value = newPage
   fetchCourses()
 }
+
+// 排序 Tab 切换（推荐/热门/最新）→ 回到第一页并重新拉取课程
+watch(courseSort, () => {
+  page.value = 1
+  fetchCourses()
+})
 
 // 跳详情/学习
 const handleCourseClick = (course) => {

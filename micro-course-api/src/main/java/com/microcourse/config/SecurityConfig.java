@@ -126,7 +126,7 @@ public class SecurityConfig {
                         .contentTypeOptions(Customizer.withDefaults())
                         .httpStrictTransportSecurity(hsts -> hsts
                                 .includeSubDomains(true)
-                                .maxAgeInSeconds(31536000))
+                                .maxAgeInSeconds(com.microcourse.constants.ApiConstants.COOKIE_MAX_AGE_YEAR))
                         .frameOptions(frame -> frame.deny())
                         .referrerPolicy(referrer -> referrer.policy(
                                 org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))

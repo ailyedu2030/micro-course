@@ -8,27 +8,27 @@
   <div class="class-list">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>组织管理</el-breadcrumb-item>
-      <el-breadcrumb-item>班级列表</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('classList.orgMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('classList.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入班级名称" clearable class="search-input" />
+        <el-form-item :label="$t('classList.name')">
+          <el-input v-model="searchForm.name" :placeholder="$t('classList.namePlaceholder')" clearable class="search-input" />
         </el-form-item>
-        <el-form-item label="专业">
-          <el-select v-model="searchForm.majorId" placeholder="请选择专业" clearable class="search-select">
+        <el-form-item :label="$t('classList.major')">
+          <el-select v-model="searchForm.majorId" :placeholder="$t('classList.selectMajorPlaceholder')" clearable class="search-select">
             <el-option v-for="item in majorOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="年级">
-          <el-input v-model="searchForm.grade" placeholder="请输入年级" clearable class="search-input" />
+        <el-form-item :label="$t('classList.grade')">
+          <el-input v-model="searchForm.grade" :placeholder="$t('classList.gradePlaceholder')" clearable class="search-input" />
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('classList.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -37,28 +37,28 @@
     <el-card class="table-card">
       <template #header>
         <div class="card-header">
-          <span class="card-title">班级列表</span>
-          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">新增班级</el-button>
+          <span class="card-title">{{ $t('classList.title') }}</span>
+          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">{{ $t('classList.create') }}</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-result v-else-if="error" icon="error" title="数据加载失败" sub-title="请稍后重试">
+      <el-result v-else-if="error" icon="error" :title="$t('classList.loadFailed')" :sub-title="$t('microSpecialtyManage.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
-      <el-empty v-else-if="!loading && tableData.length === 0" description="暂无班级数据" :image-size="120" />
+      <el-empty v-else-if="!loading && tableData.length === 0" :description="$t('classList.noData')" :image-size="120" />
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="majorName" label="所属专业" min-width="150" />
-        <el-table-column prop="grade" label="年级" width="100" />
-        <el-table-column prop="sortOrder" label="排序" width="100" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" :formatter="$formatDateTime" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="name" :label="$t('classList.name')" min-width="150" />
+        <el-table-column prop="majorName" :label="$t('classList.belongMajor')" min-width="150" />
+        <el-table-column prop="grade" :label="$t('classList.grade')" width="100" />
+        <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="100" />
+        <el-table-column prop="createdAt" :label="$t('classList.createdAt')" width="180" :formatter="$formatDateTime" />
+        <el-table-column :label="$t('app.operation')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -70,32 +70,32 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
 
     <!-- 弹窗区 -->
-    <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose" :close-on-press-escape="true">
+    <el-dialog v-model="dialogVisible" :title="$t(dialogTitle)" width="580px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入班级名称" />
+        <el-form-item :label="$t('classList.name')" prop="name">
+          <el-input v-model="formData.name" :placeholder="$t('classList.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="所属专业" prop="majorId">
-          <el-select v-model="formData.majorId" placeholder="请选择专业" class="full-width">
+        <el-form-item :label="$t('classList.belongMajor')" prop="majorId">
+          <el-select v-model="formData.majorId" :placeholder="$t('classList.selectMajorPlaceholder')" class="full-width">
             <el-option v-for="item in majorOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="年级" prop="grade">
-          <el-input v-model="formData.grade" placeholder="请输入年级" />
+        <el-form-item :label="$t('classList.grade')" prop="grade">
+          <el-input v-model="formData.grade" :placeholder="$t('classList.gradePlaceholder')" />
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -103,6 +103,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/store/user'
 import { getClasses, createClass, updateClass, deleteClass } from '@/api/class'
@@ -111,6 +112,7 @@ import { getMajors } from '@/api/major'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const { t } = useI18n()
 
 const loading = ref(false)
 const error = ref(false)
@@ -135,7 +137,7 @@ const searchForm = reactive({
 bindToQuery(page, size, searchForm, ['name', 'majorId', 'grade'])
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增班级')
+const dialogTitle = ref('classList.create')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -148,18 +150,18 @@ const formData = reactive({
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入班级名称', trigger: 'blur' }],
-  majorId: [{ required: true, message: '请选择所属专业', trigger: 'change' }],
-  grade: [{ required: true, message: '请输入年级', trigger: 'blur' }],
-  sortOrder: [{ required: true, message: '请输入排序值', trigger: 'blur' }]
+  name: [{ required: true, message: t('classList.nameRequired'), trigger: 'blur' }],
+  majorId: [{ required: true, message: t('classList.selectMajorRequired'), trigger: 'change' }],
+  grade: [{ required: true, message: t('classList.gradeRequired'), trigger: 'blur' }],
+  sortOrder: [{ required: true, message: t('classList.sortOrderRequired'), trigger: 'blur' }]
 }
 
 const fetchMajors = async () => {
   try {
-    const { data } = await getMajors({ page: 0, size: 1000 })
+    const { data } = await getMajors({ page: 0, size: 100 })
     majorOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取专业列表失败')
+    ElMessage.error(t('classList.fetchMajorsFailed'))
   }
 }
 
@@ -179,7 +181,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('获取班级列表失败')
+    ElMessage.error(t('classList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -208,7 +210,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '新增班级'
+  dialogTitle.value = 'classList.create'
   isEdit.value = false
   currentId.value = null
   formData.name = ''
@@ -219,7 +221,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑班级'
+  dialogTitle.value = 'classList.edit'
   isEdit.value = true
   currentId.value = row.id
   formData.name = row.name
@@ -231,22 +233,22 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该班级?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('classList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
   } catch {
     return
   }
   try {
     await deleteClass(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     const msg = error.response?.data?.message
     if (error.response?.data?.code === 4002) {
-      ElMessage.error(msg || '该班级下存在学生，无法删除')
+      ElMessage.error(msg || t('classList.deleteHasStudents'))
     } else if (error.response?.status === 409) {
-      ElMessage.error(msg || '该班级下存在关联数据，无法删除')
+      ElMessage.error(msg || t('classList.deleteHasAssoc'))
     } else {
-      ElMessage.error(msg || '删除失败')
+      ElMessage.error(msg || t('course.deleteFailed'))
     }
   }
 }
@@ -261,15 +263,15 @@ const handleSubmit = async () => {
     try {
       if (isEdit.value) {
         await updateClass(currentId.value, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('classList.editSuccess'))
       } else {
         await createClass(formData)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('classList.editFailed') : t('course.createFailed'))
     } finally {
       submitLoading.value = false
     }

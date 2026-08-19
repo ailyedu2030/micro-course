@@ -17,6 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import com.microcourse.constants.ApiLimits;
 
 @RestController
 @RequestMapping("/api/courses/{courseId}/exercises")
@@ -40,7 +41,7 @@ public class CourseExerciseController {
             @RequestParam(required = false) Long chapterId,
             @RequestParam(required = false) Boolean isExam,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") @Range(min = 1, max = 10000, message = "size 不能超过 10000") int size) {
+            @RequestParam(defaultValue = "10") @Range(min = 1, max = ApiLimits.MAX_REQUEST_SIZE, message = "size 不能超过 {max}") int size) {
         PageResult<ExerciseVO> result = exerciseService.page(courseId, chapterId, isExam, page, size);
         return R.ok(result);
     }

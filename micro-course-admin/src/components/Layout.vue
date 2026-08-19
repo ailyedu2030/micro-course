@@ -16,7 +16,7 @@
       <div class="layout-logo">
         <el-icon class="logo-icon"><Microphone /></el-icon>
         <span v-show="!collapsed" class="logo-text">{{ $t('app.titleFull') }}</span>
-        <span v-show="collapsed" class="logo-text-short">微课</span>
+        <span v-show="collapsed" class="logo-text-short">{{ t('layout.shortLogo') }}</span>
       </div>
 
       <!-- 菜单（配置驱动） -->
@@ -31,11 +31,11 @@
           <el-sub-menu :index="group.group">
             <template #title>
               <el-icon><component :is="iconMap[group.icon]" /></el-icon>
-              <span v-show="!collapsed">{{ group.group }}</span>
+              <span v-show="!collapsed">{{ group.groupKey ? t(group.groupKey) : group.group }}</span>
             </template>
             <el-menu-item v-for="item in group.children" :key="item.path" :index="item.path">
               <el-icon><component :is="iconMap[item.icon]" /></el-icon>
-              <template #title>{{ item.label }}</template>
+              <template #title>{{ item.labelKey ? t(item.labelKey) : item.label }}</template>
             </el-menu-item>
           </el-sub-menu>
         </template>
@@ -49,39 +49,42 @@
         <div class="header-left">
           <button class="header-collapse-btn header-mobile-btn header-btn-reset" @click="handleMobileMenuToggle">
             <el-icon aria-hidden="true"><Menu /></el-icon>
-            <span class="sr-only">打开菜单</span>
+            <span class="sr-only">{{ t('layout.openMenu') }}</span>
           </button>
           <button class="header-collapse-btn header-btn-reset" @click="toggleCollapse">
             <el-icon aria-hidden="true"><Fold v-if="!collapsed" /><Expand v-else /></el-icon>
-            <span class="sr-only">{{ collapsed ? '展开侧边栏' : '收起侧边栏' }}</span>
+            <span class="sr-only">{{ collapsed ? t('layout.expandSidebar') : t('layout.collapseSidebar') }}</span>
           </button>
           <div class="header-breadcrumb" role="group" aria-label="面包屑">
             <el-breadcrumb separator="→">
-              <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-              <el-breadcrumb-item v-if="route.meta.title">{{ route.meta.title }}</el-breadcrumb-item>
+              <el-breadcrumb-item :to="{ path: '/' }">{{ t('layout.home') }}</el-breadcrumb-item>
+              <el-breadcrumb-item v-if="route.meta.titleKey || route.meta.title">
+                {{ route.meta.titleKey ? t(route.meta.titleKey) : route.meta.title }}
+              </el-breadcrumb-item>
             </el-breadcrumb>
           </div>
         </div>
 
         <!-- 右侧：主题切换 + 通知 + 用户 -->
         <div class="header-right">
-          <el-tooltip :content="isDark ? '切换亮色模式' : '切换深色模式'" placement="bottom">
+          <el-tooltip :content="isDark ? t('layout.switchLightMode') : t('layout.switchDarkMode')" placement="bottom">
             <button class="header-icon theme-toggle-btn header-btn-reset" @click="toggleTheme">
               <el-icon aria-hidden="true"><Moon v-if="!isDark" /><Sunny v-else /></el-icon>
-              <span class="sr-only">{{ isDark ? '切换亮色模式' : '切换深色模式' }}</span>
+              <span class="sr-only">{{ isDark ? t('layout.switchLightMode') : t('layout.switchDarkMode') }}</span>
             </button>
           </el-tooltip>
-          <button class="header-icon header-btn-reset" @click="toggleLang" :aria-label="$t('app.toggleLang')">
-            <el-icon aria-hidden="true"><Document /></el-icon>
-            <span class="sr-only">{{ $t('app.toggleLang') }}</span>
-          </button>
+          <el-tooltip :content="t('app.toggleLang')" placement="bottom">
+            <button class="header-icon lang-toggle-btn header-btn-reset" @click="toggleLang" :aria-label="t('app.toggleLang')">
+              <span class="lang-indicator">{{ locale === 'zh-CN' ? '中' : 'EN' }}</span>
+            </button>
+          </el-tooltip>
           <button class="header-icon header-btn-reset" @click="$router.push('/notifications')">
             <el-icon aria-hidden="true">
               <el-badge :value="notificationStore.unreadCount" :hidden="!notificationStore.unreadCount" :max="99">
                 <Bell />
               </el-badge>
             </el-icon>
-            <span class="sr-only">通知中心</span>
+            <span class="sr-only">{{ t('layout.notifications') }}</span>
           </button>
 
           <el-dropdown trigger="click" @command="handleCommand">
@@ -153,14 +156,14 @@ import {
   TrendCharts, PictureFilled, Menu, Medal, Present, Calendar
 } from '@element-plus/icons-vue'
 import { menuConfig } from '@/config/menuConfig'
-import { ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const notificationStore = useNotificationStore()
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 
 // 图标名称到组件的映射（用于配置驱动菜单的动态渲染）
 const iconMap = {
@@ -195,16 +198,18 @@ function toggleTheme() {
   isDark.value = !isDark.value
   if (isDark.value) {
     document.documentElement.setAttribute('data-theme', 'dark')
-    localStorage.setItem('theme', 'dark')
+    try { localStorage.setItem('theme', 'dark') } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   } else {
     document.documentElement.removeAttribute('data-theme')
-    localStorage.setItem('theme', 'light')
+    try { localStorage.setItem('theme', 'light') } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   }
 }
 
 function toggleLang() {
-  locale.value = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
-  localStorage.setItem('lang', locale.value)
+  const newLocale = locale.value === 'zh-CN' ? 'en-US' : 'zh-CN'
+  locale.value = newLocale
+  try { localStorage.setItem('lang', newLocale) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
+  ElMessage.success(newLocale === 'en-US' ? t('app.langSwitchToEn') : t('app.langSwitchToZh'))
 }
 
 // 侧边栏折叠状态
@@ -296,139 +301,25 @@ const activeMenu = computed(() => {
 
 // 角色标签文本
 const roleLabel = computed(() => {
-  const roleMap = {
-    ADMIN: '管理员',
-    TEACHER: '教师',
-    ACADEMIC: '教务处',
-    STUDENT: '学生'
-  }
-  return roleMap[userStore.role] || userStore.role || ''
+  if (!userStore.role) return ''
+  return t('role.' + userStore.role)
 })
 
-// 页面标题映射表（axe page-has-heading-one compliance）
-// 优先使用 route.meta.title，未设置时从此映射表获取中文标题
-const routeNameTitleMap = {
-  TeacherDashboard: '教师看板',
-  TeacherCourseList: '课程管理',
-  TeacherVideoList: '视频课件',
-  TeacherExerciseList: '练习课件',
-  TeacherDiscussions: '答疑讨论',
-  TeacherFavorites: '收藏管理',
-  TeacherQuestions: '题库管理',
-  StudentList: '学员管理',
-  StudentGrades: '成绩明细',
-  TeacherTeachingClasses: '教学班管理',
-  TeacherProfile: '个人设置',
-  TeacherOfflineList: '线下课程',
-  TeacherMicroSpecialtyList: '微专业管理',
-  TeacherMicroSpecialtyInvites: '微专业邀请',
-  TeacherMicroSpecialtyProposal: '微专业申报',
-  TeacherMyProposals: '我的申报',
-  StudentLearning: '学习中心',
-  TeacherSlideManage: '课件管理',
-  CourseEdit: '课程编辑',
-  CourseVideoList: '课程视频',
-  CourseExerciseList: '课程练习',
-  ExerciseForm: '练习表单',
-  DiscussionDetail: '讨论详情',
-  ChapterManageVideos: '章节视频管理',
-  ChapterManageSlides: '章节课件管理',
-  ChapterManageOffline: '章节线下课',
-  ChapterManageExam: '章节考试管理',
-  TeacherOfflineSessions: '线下课程',
-  StudentVideoPlay: '视频播放',
-  StudentExerciseTake: '章节练习',
-  StudentOfflineSession: '线下课程',
-  TeacherMicroSpecialtyManage: '微专业工作台',
-  TeacherMicroSpecialtyCourseEdit: '课程编排',
-  TeacherMicroSpecialtyTeamEdit: '团队管理',
-  // 管理后台/教务处路由
-  AdminDashboard: '管理后台',
-  AdminUserList: '用户管理',
-  OperationLogs: '操作日志',
-  AdminSettings: '系统设置',
-  PlatformShareConfig: '分润配置',
-  TeacherRatingManage: '教师评分管理',
-  AdminRevenueDashboard: '营收看板',
-  BannerList: '轮播图管理',
-  TeachingClassList: '教学班管理',
-  SystemHealth: '系统状态',
-  ReportsManagement: '举报处理',
-  AcademicDashboard: '教务看板',
-  AcademicStats: '学习分析',
-  AcademicEnrollments: '选课数据总览',
-  // 学生端路由（备用）
-  StudentCourseSquare: '课程广场',
-  StudentCourseDetail: '课程详情',
-  StudentBundleSquare: '课程套件',
-  StudentBundleDetail: '套件详情',
-  StudentMyCourses: '我的课程',
-  StudentTraining: '训练中心',
-  StudentLearningStats: '学习统计',
-  StudentNotifications: '消息中心',
-  StudentExams: '考试中心',
-  StudentProfile: '个人中心',
-  StudentWeeklyReport: '周报',
-  StudentFavorites: '我的收藏',
-  StudentOrders: '我的订单',
-  StudentCheckout: '结算',
-  StudentMyMicroSpecialties: '我的微专业',
-  StudentDiscussion: '讨论区',
-  StudentMyReviews: '我的评价',
-  StudentSettings: '设置',
-  StudentAchievements: '成就墙',
-  StudentSlidePlayer: 'PPT播放',
-  // 共享/公共路由
-  MicroSpecialtySquare: '微专业广场',
-  CourseList: '课程列表',
-  CourseView: '课程详情',
-  CourseCreate: '创建课程',
-  ChapterList: '章节管理',
-  VideoList: '视频课件',
-  EnrollmentList: '选课管理',
-  FavoriteList: '收藏管理',
-  QuestionList: '题库管理',
-  ExerciseList: '练习课件',
-  DiscussionList: '讨论管理',
-  NotificationList: '消息管理',
-  BundleList: '课程套件',
-  ReviewManagement: '审核管理',
-  CourseApproval: '课程审核',
-  DepartmentList: '部门管理',
-  MajorList: '专业管理',
-  ClassList: '班级管理',
-  UserCreate: '创建用户',
-  UserEdit: '编辑用户',
-  UserList: '用户管理',
-  TagList: '标签管理',
-  CourseCategoryList: '课程分类',
-  TeacherCourseDetail: '课程详情',
-  TeacherExamList: '试卷管理',
-  TeacherSlideOverview: '课件总览',
-  AcademicMicroSpecialtyReview: '微专业审核',
-  AcademicMicroSpecialtyProposalReview: '申报审批',
-  AcademicMicroSpecialtyFeaturedReview: '置顶审核',
-  AcademicMicroSpecialtyCrossDeptReview: '跨学院审核',
-  AcademicMicroSpecialtyClassImport: '班级导入',
-  AcademicMicroSpecialtyGoldManage: '金标管理',
-  AcademicStorageApplicationReview: '存储申请审批',
-  StoragePreview: '存储申请表预览',
-  StudentMicroSpecialtyDetail: '微专业详情',
-  // 未匹配兜底
-  Home: '首页'
-}
+// routeNameTitleMap 已迁移到 i18n (route.* keys)，由 pageTitle/slotPageTitle 通过 $t('route.' + name) 调用
 
 const pageTitle = computed(() => {
+  if (route.meta?.titleKey) return t(route.meta.titleKey)
   if (route.meta?.title) return route.meta.title
-  if (route.name && routeNameTitleMap[route.name]) return routeNameTitleMap[route.name]
+  if (route.name) return t('route.' + route.name) || ''
   return ''
 })
 
 // 基于 router-view slot route 计算页面标题（slot route 与当前渲染严格一致）
 function slotPageTitle(r) {
   if (!r) return ''
+  if (r.meta?.titleKey) return t(r.meta.titleKey)
   if (r.meta?.title) return r.meta.title
-  if (r.name && routeNameTitleMap[r.name]) return routeNameTitleMap[r.name]
+  if (r.name) return t('route.' + r.name) || ''
   return ''
 }
 
@@ -436,7 +327,7 @@ function slotPageTitle(r) {
 const sidebarTransitioning = ref(false)
 function toggleCollapse() {
   collapsed.value = !collapsed.value
-  localStorage.setItem('sidebar_collapsed', String(collapsed.value))
+  try { localStorage.setItem('sidebar_collapsed', String(collapsed.value)) } catch (e) { if (e.name !== 'QuotaExceededError') console.warn(e) }
   // 显示淡入遮罩，300ms 后自动消失
   sidebarTransitioning.value = true
   setTimeout(() => { sidebarTransitioning.value = false }, 300)
@@ -446,13 +337,13 @@ function toggleCollapse() {
 async function handleCommand(cmd) {
   if (cmd === 'logout') {
     try {
-      await ElMessageBox.confirm('确定退出登录?', '提示', { type: 'warning' })
+      await ElMessageBox.confirm(t('layout.logoutConfirm'), t('layout.logoutTitle'), { type: 'warning' })
     } catch { return }
     try {
       notificationStore.stopPolling()  // 先停轮询再清token
       await userStore.logout()
       router.push('/login')
-    } catch (e) { ElMessage.error(e?.response?.data?.message || '退出失败') }
+    } catch (e) { ElMessage.error(e?.response?.data?.message || t('layout.logoutFailed')) }
   } else if (cmd === 'profile') {
     // 教师进教师设置（含 API Key 管理），其他角色进通用 Profile
     if (userStore.role === 'TEACHER') {
@@ -726,6 +617,18 @@ onUnmounted(() => {
 
 .theme-toggle-btn {
   font-size: 20px;
+}
+
+.lang-toggle-btn {
+  font-size: 13px;
+  font-weight: 600;
+  min-width: 32px;
+  letter-spacing: 0;
+}
+
+.lang-indicator {
+  font-family: inherit;
+  line-height: 1;
 }
 
 .user-avatar-wrapper {

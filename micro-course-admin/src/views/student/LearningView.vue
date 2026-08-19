@@ -8,7 +8,7 @@
 <template>
   <div class="learning-view" :class="{ 'is-mobile': isMobile }">
     <!-- A11Y: 页面标题（视觉隐藏），避免子组件标题层级跳级 -->
-    <h1 class="sr-only">学习中心</h1>
+    <h1 class="sr-only">{{ $t('student.dashboard') }}</h1>
 
     <!-- ===================== 1. 顶部导航栏 ===================== -->
     <ResourceToolbar
@@ -43,19 +43,19 @@
     </div>
 
     <!-- ===================== 3. 主体内容 ===================== -->
-    <div class="learning-body" v-loading="loading && !loadError" element-loading-text="正在加载课程..." element-loading-background="var(--el-bg-color-page)">
+    <div class="learning-body" v-loading="loading && !loadError" :element-loading-text="$t('learningView.loadingCourse')" element-loading-background="var(--el-bg-color-page)">
       <!-- P1: loadCourse 失败时显示错误覆层 + 重试入口 -->
       <div v-if="loadError" class="load-error-overlay">
-        <el-result icon="error" title="加载失败" sub-title="课程数据加载失败，请检查网络后重试">
+        <el-result icon="error" :title="$t('learningView.loadFailed')" :sub-title="$t('learningView.loadErrorSubtitle')">
           <template #extra>
-            <el-button type="primary" @click="retryLoad">重新加载</el-button>
-            <el-button @click="goBack">返回课程</el-button>
+            <el-button type="primary" @click="retryLoad">{{ $t('learning.reload') }}</el-button>
+            <el-button @click="goBack">{{ $t('learningView.backToCourse') }}</el-button>
           </template>
         </el-result>
       </div>
 
       <!-- 左：主内容区（60%） -->
-      <div class="content-main" role="region" aria-label="学习内容">
+      <div class="content-main" role="region" :aria-label="$t('learningView.learningContentAria')">
         <!-- 视频播放器 — 仅 VIDEO 章节显示 -->
         <VideoSection
           v-if="currentChapter?.sectionType === 'VIDEO'"
@@ -71,18 +71,18 @@
 
         <!-- 非 VIDEO 章节:显示类型对应的操作按钮 -->
         <div v-else-if="currentChapter?.sectionType === 'INTERACTIVE'" class="chapter-content-placeholder">
-          <el-empty :description="currentChapter?.coursewareType === 'PPT' ? '此章节为 PPT 课件' : '此章节为 HTML 课件'">
-            <el-button type="primary" @click="goChapterContent(currentChapter, 'INTERACTIVE')">进入课件</el-button>
+          <el-empty :description="currentChapter?.coursewareType === 'PPT' ? $t('learningView.chapterPptCourseware') : $t('learningView.chapterHtmlCourseware')">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'INTERACTIVE')">{{ $t('learningView.enterCourseware') }}</el-button>
           </el-empty>
         </div>
         <div v-else-if="currentChapter?.sectionType === 'OFFLINE'" class="chapter-content-placeholder">
-          <el-empty description="此章节为线下课程">
-            <el-button type="primary" @click="goChapterContent(currentChapter, 'OFFLINE')">查看场次</el-button>
+          <el-empty :description="$t('learningView.chapterOfflineCourse')">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'OFFLINE')">{{ $t('learningView.viewSessions') }}</el-button>
           </el-empty>
         </div>
         <div v-else-if="currentChapter?.sectionType === 'EXERCISE'" class="chapter-content-placeholder">
-          <el-empty description="此章节为练习">
-            <el-button type="primary" @click="goChapterContent(currentChapter, 'EXERCISE')">开始练习</el-button>
+          <el-empty :description="$t('learningView.chapterExercise')">
+            <el-button type="primary" @click="goChapterContent(currentChapter, 'EXERCISE')">{{ $t('learningView.startExercise') }}</el-button>
           </el-empty>
         </div>
 
@@ -121,9 +121,9 @@
     </div>
 
     <!-- 移动端：底部大纲抽屉触发按钮 -->
-    <div v-if="isMobile && !drawerOpen" class="mobile-drawer-trigger" role="button" tabindex="0" aria-label="打开课程大纲" @click="drawerOpen = true" @keydown.enter="drawerOpen = true">
+    <div v-if="isMobile && !drawerOpen" class="mobile-drawer-trigger" role="button" tabindex="0" :aria-label="$t('learningView.openOutlineAria')" @click="drawerOpen = true" @keydown.enter="drawerOpen = true">
       <el-icon><List /></el-icon>
-      <span>课程大纲</span>
+      <span>{{ $t('course.outline') }}</span>
       <span class="trigger-progress">{{ totalProgress }}%</span>
     </div>
 
@@ -135,6 +135,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Document, Bell, ChatDotRound, Edit, List } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
@@ -155,6 +156,7 @@ import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressH
 // ==================== 路由 & 状态 ====================
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 const courseId = computed(() => parseInt(route.query.courseId) || null)
 const chapterIdFromQuery = computed(() => parseInt(route.query.chapterId) || null)
 
@@ -176,10 +178,10 @@ onUnmounted(() => {
 
 // ==================== Tab 配置 ====================
 const tabs = [
-  { key: 'course', label: '课程', icon: 'Document' },
-  { key: 'announcement', label: '公告', icon: 'Bell' },
-  { key: 'discussion', label: '讨论', icon: 'ChatDotRound' },
-  { key: 'exam', label: '考试', icon: 'Edit' }
+  { key: 'course', label: t('learningView.tabCourse'), icon: 'Document' },
+  { key: 'announcement', label: t('learningView.tabAnnouncement'), icon: 'Bell' },
+  { key: 'discussion', label: t('learningView.tabDiscussion'), icon: 'ChatDotRound' },
+  { key: 'exam', label: t('learningView.tabExam'), icon: 'Edit' }
 ]
 const activeTab = ref('course')
 
@@ -195,8 +197,8 @@ const expandedChapters = ref([])
 
 // 课程状态警告
 const courseStatusWarning = computed(() => {
-  if (course.value?.status === 5) return '该课程已下架，您仍可继续学习已选内容'
-  if (course.value?.status === 6) return '该课程已归档'
+  if (course.value?.status === 5) return t('learningView.courseUnpublishedWarning')
+  if (course.value?.status === 6) return t('learningView.courseArchivedWarning')
   return ''
 })
 
@@ -265,7 +267,7 @@ const {
   onError: ({ error, failureCount }) => {
     console.warn('[LearningView] saveVideoProgress 保存进度失败', error)
     if (failureCount % 3 === 0) {
-      ElMessage.warning('进度保存异常，请检查网络')
+      ElMessage.warning(t('learningView.progressSaveWarning'))
     }
   }
 })
@@ -336,14 +338,14 @@ async function loadCourse(cid) {
     const [courseRes, progressRes, videosRes] = await Promise.all([
       getCourseById(cid),
       getLearningProgress({ courseId: cid }),
-      getVideos({ courseId: cid, size: 200 })
+      getVideos({ courseId: cid, size: 100 })
     ])
 
     course.value = courseRes.data || {}
 
     // A11Y-023: 动态设置页面标题
     if (course.value.title) {
-      document.title = course.value.title + ' - 学习 - 微课平台'
+      document.title = t('learningView.documentTitle', { title: course.value.title })
     }
 
     // ✅ 构建 progressMap（key=sectionId）+ 保存原始列表供 chapterId 查询
@@ -369,7 +371,7 @@ async function loadCourse(cid) {
         if (videos.length === 0) {
           lessons = [{
             id: `empty-${ch.id}`,
-            title: '本章节暂无视频',
+            title: t('learningView.noVideosInChapter'),
             type: 'VIDEO',
             chapterId: ch.id,
             status: 'NOT_STARTED',
@@ -392,7 +394,7 @@ async function loadCourse(cid) {
       } else if (ch.sectionType === 'INTERACTIVE') {
         lessons = [{
           id: `slide-${ch.id}`,
-          title: ch.coursewareType === 'PPT' ? 'PPT 课件' : 'HTML 课件',
+          title: ch.coursewareType === 'PPT' ? t('course.typePptCourseware') : t('course.typeHtmlCourseware'),
           type: 'INTERACTIVE',
           chapterId: ch.id,
           status: 'NOT_STARTED',
@@ -401,7 +403,7 @@ async function loadCourse(cid) {
       } else if (ch.sectionType === 'OFFLINE') {
         lessons = [{
           id: `offline-${ch.id}`,
-          title: '线下课签到',
+          title: t('learningView.offlineCheckIn'),
           type: 'OFFLINE',
           chapterId: ch.id,
           status: 'NOT_STARTED',
@@ -411,7 +413,7 @@ async function loadCourse(cid) {
         // 练习:生成一个可点击的"开始练习"条目
         lessons = [{
           id: `exercise-${ch.id}`,
-          title: '章节练习',
+          title: t('learningView.lessonExercise'),
           type: 'EXERCISE',
           chapterId: ch.id,
           status: 'NOT_STARTED',
@@ -437,7 +439,7 @@ async function loadCourse(cid) {
 // eslint-disable-next-line no-console
     console.debug('loadCourse error:', err)
     loadError.value = true
-    ElMessage.error('加载课程失败，请检查网络后重试')
+    ElMessage.error(t('learningView.loadCourseFailed'))
   } finally {
     loading.value = false
   }
@@ -483,7 +485,7 @@ async function loadProgress() {
   } catch (err) {
 // eslint-disable-next-line no-console
     console.debug('loadProgress error:', err)
-    ElMessage.warning('学习进度加载失败，部分数据可能不完整')
+    ElMessage.warning(t('learningView.progressLoadWarning'))
   }
 }
 
@@ -507,19 +509,19 @@ async function toggleFavorite() {
       if (fav) {
         await removeFavorite(fav.id)
         isFavorited.value = false
-        ElMessage.success('已取消收藏')
+        ElMessage.success(t('learningView.favoriteRemoved'))
       }
     } else {
       const res = await addFavorite({ courseId: courseId.value })
       isFavorited.value = true
       if (res.data?.alreadyFavorited) {
-        ElMessage.warning('已在收藏列表')
+        ElMessage.warning(t('learningView.alreadyFavorited'))
       } else {
-        ElMessage.success('已添加收藏')
+        ElMessage.success(t('learningView.favoriteAdded'))
       }
     }
   } catch (err) {
-    ElMessage.error('操作失败')
+    ElMessage.error(t('course.operationFailed'))
   }
 }
 
@@ -568,7 +570,7 @@ async function markLessonComplete() {
     marked = await persistLessonProgress({ force: true, completed: true })
   } catch (e) {
     console.warn('[LearningView] markLessonComplete 标记完成失败', e)
-    ElMessage.warning('完成标记失败，可稍后重试')
+    ElMessage.warning(t('learningView.completeMarkFailed'))
   } finally {
     // P2-3: 仅在 API 成功后更新本地状态
     if (marked) {
@@ -616,7 +618,7 @@ function continueLearning() {
   if (next) {
     goToLesson(next)
   } else {
-    ElMessage.info('已完成所有课时')
+    ElMessage.info(t('learningView.allLessonsCompleted'))
   }
 }
 

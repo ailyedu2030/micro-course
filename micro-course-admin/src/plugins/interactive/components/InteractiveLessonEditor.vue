@@ -12,17 +12,20 @@
         @generate-tts="handleGenerateTTS"
         @save-script="handleSaveScript"
 />
-      <div v-else class="editor-empty-hint">点击左侧缩略图编辑讲述稿</div>
+      <div v-else class="editor-empty-hint">{{ t('interactiveLesson.editor.selectPageHint') }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSlideManager } from '../composables/useSlideManager'
 import SlideUploadZone from './SlideUploadZone.vue'
 import SlideThumbnailGrid from './SlideThumbnailGrid.vue'
 import SlideEditorPanel from './SlideEditorPanel.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({ lessonId: { type: [Number, String], required: true }, courseId: { type: [Number, String], required: true } })
 const { slide, pages, selectedPage, editingScript, uploading, aiLoading, ttsLoading, loadData, selectPage, handleUpload, handleGenerateAI, handleGenerateTTS, handleSaveScript } = useSlideManager(props)

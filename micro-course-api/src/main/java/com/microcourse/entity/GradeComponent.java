@@ -9,6 +9,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @TableName("grade_components")
+@Deprecated
 public class GradeComponent {
 
     @TableId(type = IdType.AUTO)

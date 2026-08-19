@@ -85,7 +85,7 @@
             </template>
           </el-empty>
           <div class="retry-wrap">
-            <el-button type="primary" @click="fetchEnrollments">点击重新加载</el-button>
+            <el-button type="primary" @click="fetchEnrollments">{{ $t('myCourses.reload') }}</el-button>
           </div>
         </div>
 
@@ -121,7 +121,7 @@
                 shadow="hover"
                 role="button"
                 tabindex="0"
-                :aria-label="`继续学习 ${course.courseTitle || ''}`"
+                :aria-label="$t('myCourses.continueAria', { title: course.courseTitle || '' })"
                 @click="handleContinue(course.courseId)"
                 @keydown.enter="handleContinue(course.courseId)"
                 @keydown.space.prevent="handleContinue(course.courseId)"
@@ -173,7 +173,7 @@
                   <h3 class="course-title">{{ course.courseTitle }}</h3>
                   <p class="course-meta">
                     <el-icon><User /></el-icon>
-                    <span>{{ course.teacherName || '未知教师' }}</span>
+                    <span>{{ course.teacherName || $t('myCourses.unknownTeacher') }}</span>
                   </p>
 
                   <!-- 进度条 (进行中) -->
@@ -202,7 +202,11 @@
                     class="video-progress"
                   >
                     <span class="video-progress-text">
-                      视频 {{ videoProgressMap[course.courseId].completed }}/{{ videoProgressMap[course.courseId].total }} ({{ videoProgressMap[course.courseId].percent }}%)
+                      {{ $t('myCourses.videoProgress', {
+                        completed: videoProgressMap[course.courseId].completed,
+                        total: videoProgressMap[course.courseId].total,
+                        percent: videoProgressMap[course.courseId].percent
+                      }) }}
                     </span>
                   </div>
 
@@ -251,7 +255,7 @@
               layout="total, sizes, prev, pager, next"
               background
               @size-change="handleSizeChange"
-              @current-change="handlePageChange" aria-label="分页导航"
+              @current-change="handlePageChange" :aria-label="$t('myCourses.paginationAria')"
 />
           </div>
         </div>
@@ -263,7 +267,7 @@
       <!-- 紧凑 Header -->
       <div class="h5-header student-welcome">
         <!-- P2-7: 欢迎文案——当前硬编码，后续可从后端配置接口获取 welcomeText 替换 -->
-        <h1 class="h5-title">欢迎学习，{{ userStore.realName || '同学' }}</h1>
+        <h1 class="h5-title">{{ $t('student.welcome') }}，{{ userStore.realName || $t('learning.classmate') }}</h1>
       </div>
 
       <!-- P0-4: H5 横向滚动 Tab Bar——切换时重置页码 -->
@@ -281,7 +285,7 @@
               @keydown.space.prevent="handleH5TabChange('in-progress')"
             >
               <el-icon><Reading /></el-icon>
-              进行中
+              {{ $t('myCourses.tabInProgress') }}
               <span v-if="inProgressCourses.length > 0" class="h5-tab-badge">{{ inProgressCourses.length }}</span>
             </div>
             <div
@@ -295,7 +299,7 @@
               @keydown.space.prevent="handleH5TabChange('completed')"
             >
               <el-icon><CircleCheck /></el-icon>
-              已完成
+              {{ $t('myCourses.tabCompleted') }}
               <span v-if="completedCourses.length > 0" class="h5-tab-badge">{{ completedCourses.length }}</span>
             </div>
             <div
@@ -309,7 +313,7 @@
               @keydown.space.prevent="handleH5TabChange('favorited')"
             >
               <el-icon><Star /></el-icon>
-              收藏
+              {{ $t('myCourses.tabFavorited') }}
               <span v-if="favoritedCourses.length > 0" class="h5-tab-badge">{{ favoritedCourses.length }}</span>
             </div>
           </div>
@@ -342,7 +346,7 @@
           </template>
         </el-empty>
         <div class="retry-wrap">
-          <el-button type="primary" @click="fetchEnrollments">点击重新加载</el-button>
+          <el-button type="primary" @click="fetchEnrollments">{{ $t('myCourses.reload') }}</el-button>
         </div>
       </div>
 
@@ -368,7 +372,7 @@
           shadow="hover"
           role="button"
           tabindex="0"
-          :aria-label="`继续学习 ${course.courseTitle || ''}`"
+          :aria-label="$t('myCourses.continueAria', { title: course.courseTitle || '' })"
           @click="handleContinue(course.courseId)"
           @keydown.enter="handleContinue(course.courseId)"
           @keydown.space.prevent="handleContinue(course.courseId)"
@@ -420,7 +424,7 @@
             <h3 class="h5-course-title">{{ course.courseTitle }}</h3>
             <p class="h5-course-meta">
               <el-icon><User /></el-icon>
-              {{ course.teacherName || '未知教师' }}
+              {{ course.teacherName || $t('myCourses.unknownTeacher') }}
             </p>
 
             <!-- 进度条 -->
@@ -449,7 +453,11 @@
               class="h5-video-progress"
             >
               <span class="h5-video-progress-text">
-                视频 {{ videoProgressMap[course.courseId].completed }}/{{ videoProgressMap[course.courseId].total }} ({{ videoProgressMap[course.courseId].percent }}%)
+                {{ $t('myCourses.videoProgress', {
+                  completed: videoProgressMap[course.courseId].completed,
+                  total: videoProgressMap[course.courseId].total,
+                  percent: videoProgressMap[course.courseId].percent
+                }) }}
               </span>
             </div>
 
@@ -495,6 +503,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -532,6 +541,7 @@ const effectiveCover = (course) => {
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 // 响应式设备检测
 const isMobile = ref(window.innerWidth <= 768)
@@ -567,7 +577,7 @@ const dataLoaded = ref(false)
 /** P1-4: 加载失败标志 */
 const loadError = ref(false)
 /** P2-2: 区分错误类型的提示信息 */
-const loadErrorMessage = ref('加载课程失败')
+const loadErrorMessage = ref(t('student.loading'))
 
 // P1-2: 封面图加载失败占位图
 const FALLBACK_COVER = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22320%22%20height%3D%22180%22%3E%3Crect%20fill%3D%22%23f0f0f0%22%20width%3D%22320%22%20height%3D%22180%22/%3E%3Ctext%20fill%3D%22%23bbb%22%20font-size%3D%2216%22%20x%3D%2250%25%22%20y%3D%2250%25%22%20text-anchor%3D%22middle%22%20dy%3D%22.3em%22%3E%E6%9A%82%E6%97%A0%E5%B0%81%E9%9D%A2%3C/text%3E%3C/svg%3E'
@@ -611,17 +621,17 @@ const totalDisplayElements = computed(() => {
 })
 
 const emptyDescription = computed(() => {
-  if (activeTab.value === 'in-progress') return '暂无进行中的课程'
-  if (activeTab.value === 'completed') return '暂无已完成的课程'
-  return '暂无收藏的课程'
+  if (activeTab.value === 'in-progress') return t('myCourses.emptyInProgress')
+  if (activeTab.value === 'completed') return t('myCourses.emptyCompleted')
+  return t('myCourses.emptyFavorited')
 })
 
 /** P2-1: formatTime——使用显式时区转换，兜底处理无效日期 */
 const formatTime = (timeStr) => {
-  if (!timeStr) return '暂无'
+  if (!timeStr) return t('myCourses.noData')
   try {
     const d = new Date(timeStr)
-    if (isNaN(d.getTime())) return '暂无'
+    if (isNaN(d.getTime())) return t('myCourses.noData')
     // 使用 toLocaleDateString 确保按浏览器本地时区显示
     return d.toLocaleDateString('zh-CN', {
       year: 'numeric',
@@ -630,7 +640,7 @@ const formatTime = (timeStr) => {
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
     }).replace(/\//g, '-')
   } catch {
-    return '暂无'
+    return t('myCourses.noData')
   }
 }
 
@@ -644,13 +654,13 @@ const handleImgError = (event) => {
 
 /** P2-2: 根据错误类型生成对应的提示消息 */
 const getErrorMessage = (err) => {
-  if (!err) return '加载课程失败，请稍后重试'
+  if (!err) return t('myCourses.loadFailedRetry')
   const status = err?.response?.status
-  if (status === 401 || status === 403) return '登录已过期，请重新登录'
-  if (status === 500) return '服务器异常，请稍后重试'
-  if (status >= 502 && status <= 504) return '服务暂时不可用，请稍后重试'
-  if (!navigator.onLine || err?.message === 'Network Error') return '网络连接异常，请检查网络后重试'
-  return '加载课程失败，请稍后重试'
+  if (status === 401 || status === 403) return t('myCourses.sessionExpired')
+  if (status === 500) return t('myCourses.serverError')
+  if (status >= 502 && status <= 504) return t('myCourses.serviceUnavailable')
+  if (!navigator.onLine || err?.message === 'Network Error') return t('myCourses.networkError')
+  return t('myCourses.loadFailedRetry')
 }
 
 const fetchEnrollments = async () => {
@@ -659,7 +669,7 @@ const fetchEnrollments = async () => {
   }
   const userId = userStore.userInfo?.id
   if (!userId) {
-    ElMessage.error('无法获取用户信息')
+    ElMessage.error(t('myCourses.getUserFailed'))
     return
   }
   loading.value = true
@@ -668,7 +678,7 @@ const fetchEnrollments = async () => {
   try {
     // P0-5: 不再传 userId——后端从 JWT 中获取
     const res = await getMyEnrollments()
-    const list = filterCourseCollectionEnrollments(res.data || [])
+    const list = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
     const completionData = await getCompletion().catch(() => ({}))
@@ -726,7 +736,7 @@ const fetchEnrollments = async () => {
             const course = result.value.data
             newExtraFavorites.push({
               courseId: fav.courseId,
-              courseTitle: course.title || course.courseTitle || fav.courseTitle || '未知课程',
+              courseTitle: course.title || course.courseTitle || fav.courseTitle || t('myCourses.unknownCourse'),
               coverUrl: course.coverUrl || course.cover || null,
               teacherName: course.teacherName || course.teacher || null,
               favorited: true,
@@ -739,7 +749,7 @@ const fetchEnrollments = async () => {
             // 即使获取课程详情失败，也展示基本信息
             newExtraFavorites.push({
               courseId: fav.courseId,
-              courseTitle: fav.courseTitle || '未知课程',
+              courseTitle: fav.courseTitle || t('myCourses.unknownCourse'),
               coverUrl: null,
               teacherName: null,
               favorited: true,
@@ -788,7 +798,7 @@ async function loadVideoProgress() {
   const inProgress = inProgressCourses.value
   if (inProgress.length === 0) return
   const chapterResults = await Promise.allSettled(
-    inProgress.map(e => getChapters({ courseId: e.courseId, size: 1000 }))
+    inProgress.map(e => getChapters({ courseId: e.courseId, size: 100 }))
   )
   const newVideoProgressMap = {}
   chapterResults.forEach((result, idx) => {
@@ -869,7 +879,7 @@ const handleContinue = async (courseId) => {
 // course 对象来自 API 返回的选课记录,course.id = enrollmentId
 const handleDropOut = async (course) => {
   if (!course || !course.id) {
-    ElMessage.error('退课失败:缺少选课记录 ID')
+    ElMessage.error(t('myCourses.dropOutNoId'))
     return
   }
   try {
@@ -883,19 +893,19 @@ const handleDropOut = async (course) => {
       console.warn('[MyCourses] 查询订单失败', orderErr)
     }
     const message = hasPaidOrder
-      ? '确认退课？退课后课程将不再显示在您的课程列表中，并将同步发起退款。'
-      : '确认退课？退课后课程将不再显示在您的课程列表中。'
+      ? t('myCourses.dropOutConfirmPaid')
+      : t('myCourses.dropOutConfirm')
     await ElMessageBox.confirm(
       message,
-      '退课确认',
-      { confirmButtonText: '确认退课', cancelButtonText: '取消', type: 'warning' }
+      t('myCourses.dropOutTitle'),
+      { confirmButtonText: t('myCourses.confirmDropOut'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await cancelEnrollment(course.id)
-    ElMessage.success('退课成功')
+    ElMessage.success(t('myCourses.dropOutSuccess'))
     await fetchEnrollments()
   } catch (e) {
     if (e === 'cancel' || e?.message === 'cancel') return
-    ElMessage.error('退课失败: ' + (e?.response?.data?.message || e?.message || '未知错误'))
+    ElMessage.error(t('myCourses.dropOutFailed', { msg: e?.response?.data?.message || e?.message || t('myCourses.unknownError') }))
   }
 }
 </script>

@@ -11,6 +11,12 @@ public interface CourseChapterService {
 
     PageResult<ChapterVO> page(int page, int size, Long courseId);
 
+    /**
+     * P1-C: 按关键字搜索章节（不要求 courseId）。
+     * 前端 GET /api/courses/chapters/search 调用，支持跨课程关键字搜索。
+     */
+    PageResult<ChapterVO> searchChapters(String keyword, int page, int size);
+
     ChapterVO getById(Long id);
 
     ChapterVO create(ChapterCreateRequest request);

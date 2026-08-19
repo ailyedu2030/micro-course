@@ -18,24 +18,24 @@
       type="info"
       :closable="false"
       show-icon
-      title="章节级 HTML 课件暂不支持在线编辑"
-      description="请到课时层级（每个课时）管理 HTML 课件内容；章节级历史课件仅可预览与删除。"
+      :title="t('htmlBlock.editor.chapterNotSupportedTitle')"
+      :description="t('htmlBlock.editor.chapterNotSupportedDesc')"
       class="hbe-chapter-notice"
     />
     <div class="hbe-header">
       <h3 class="hbe-title">
         <el-icon><Document /></el-icon>
-        HTML 课件内容
+        {{ t('htmlBlock.editor.title') }}
         <el-tag v-if="unit" size="small" type="info">id={{ unit.id }}</el-tag>
       </h3>
       <div class="hbe-actions">
         <el-radio-group v-model="editorMode" size="small">
-          <el-radio-button value="wysiwyg">富文本</el-radio-button>
-          <el-radio-button value="source">HTML 源码</el-radio-button>
+          <el-radio-button value="wysiwyg">{{ t('htmlBlock.editor.wysiwygMode') }}</el-radio-button>
+          <el-radio-button value="source">{{ t('htmlBlock.editor.sourceMode') }}</el-radio-button>
         </el-radio-group>
-        <el-button :icon="View" size="small" plain @click="previewOpen = true">预览</el-button>
+        <el-button :icon="View" size="small" plain @click="previewOpen = true">{{ t('htmlBlock.editor.preview') }}</el-button>
         <el-button type="primary" size="small" :icon="Check" :loading="saving" @click="handleSave" :disabled="!htmlDirty">
-          保存
+          {{ t('htmlBlock.editor.save') }}
         </el-button>
       </div>
     </div>
@@ -58,14 +58,14 @@
           v-model="htmlContent"
           type="textarea"
           :rows="20"
-          placeholder="<p>在这里粘贴 HTML 内容...</p>"
+          :placeholder="t('htmlBlock.editor.sourcePlaceholder')"
           class="hbe-source"
           @input="htmlDirty = true"
         />
       </div>
     </div>
 
-    <el-dialog v-model="previewOpen" title="预览 (学生视角)" width="80%" top="5vh">
+    <el-dialog v-model="previewOpen" :title="t('htmlBlock.editor.previewTitle')" width="80%" top="5vh">
       <iframe
         v-if="previewOpen"
         :srcdoc="htmlContent"
@@ -77,13 +77,16 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Document, Check, View } from '@element-plus/icons-vue'
 import { QuillEditor } from '@vueup/vue-quill'
 import '@vueup/vue-quill/dist/vue-quill.snow.css'
 import { getHtmlUnitBySection, createHtmlUnit, updateHtmlUnit } from '../api/htmlCourseware'
 import { getSlidePages } from '../api/slide'
+
+const { t } = useI18n()
 
 const props = defineProps({
   courseId: { type: Number, required: true },
@@ -100,7 +103,7 @@ const saving = ref(false)
 const previewOpen = ref(false)
 const editorMode = ref('wysiwyg')
 
-const quillOptions = {
+const quillOptions = computed(() => ({
   theme: 'snow',
   modules: {
     toolbar: [
@@ -116,46 +119,53 @@ const quillOptions = {
       ['clean']
     ]
   },
-  placeholder: '在这里编辑课件内容...'
-}
+  placeholder: t('htmlBlock.editor.quillPlaceholder')
+}))
 
 async function load() {
-  if (!props.sectionId) {
-    unit.value = null
-    htmlContent.value = ''
-    return
-  }
-  const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
-  // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
-  // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
-  // （PUT /html/units/undefined → 500），导致单元永远无法创建。
-  const payload = res?.data
-  const unitData = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
-  unit.value = unitData || null
-  if (unit.value) {
-    htmlContent.value = unit.value.htmlSanitized || unit.value.htmlContent || ''
-    htmlDirty.value = false
-  } else {
-    htmlContent.value = ''
-    // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
-    // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
-    try {
-      const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
-      const pages = pagesRes?.data || []
-      const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
-      if (htmlPage?.htmlContent) {
-        htmlContent.value = htmlPage.htmlContent
-        htmlDirty.value = true
-      }
-    } catch (e) {
-      // 预载失败不阻断编辑器，保持空内容
+  try {
+    if (!props.sectionId) {
+      unit.value = null
+      htmlContent.value = ''
+      return
     }
+    const res = await getHtmlUnitBySection(props.courseId, props.sectionId)
+    // P1-C 修复：后端 R 包装 {code,data} 且单元不存在时 data=null，
+    // 原 `res.data || res` 回退成整个 R 包装对象（truthy）→ 误走 update 路径
+    // （PUT /html/units/undefined → 500），导致单元永远无法创建。
+    const payload = res?.data
+    const unitData = payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload
+    unit.value = unitData || null
+    if (unit.value) {
+      htmlContent.value = unit.value.htmlSanitized || unit.value.htmlContent || ''
+      htmlDirty.value = false
+    } else {
+      htmlContent.value = ''
+      // 无单元时预载已上传的 HTML 课件内容（course_slides + slide_pages HTML_DIRECT），
+      // 避免「上传 HTML 后编辑器为空、保存清空内容」的内容丢失问题。
+      try {
+        const pagesRes = await getSlidePages(props.courseId, null, props.sectionId)
+        const pages = pagesRes?.data || []
+        const htmlPage = pages.find(p => p.contentType === 'HTML_DIRECT' && p.htmlContent)
+        if (htmlPage?.htmlContent) {
+          htmlContent.value = htmlPage.htmlContent
+          htmlDirty.value = true
+        }
+      } catch (e) {
+        // 预载失败不阻断编辑器，保持空内容
+      }
+    }
+  } catch (e) {
+    // P1-C 修复: 原 load() 无 try/catch → getHtmlUnitBySection 失败时
+    // 编辑器静默空白且无任何反馈
+    console.error('Failed to load HTML unit:', e)
+    ElMessage.error(t('htmlBlock.editor.loadFailed', { msg: e.message || t('htmlBlock.editor.unknownError') }))
   }
 }
 
 async function handleSave() {
   if (!props.sectionId) {
-    ElMessage.warning('章节级 HTML 课件暂不支持在线编辑，请到课时层级管理')
+    ElMessage.warning(t('htmlBlock.editor.chapterNotSupportedMsg'))
     return
   }
   saving.value = true
@@ -173,15 +183,15 @@ async function handleSave() {
         fileSizeBytes: new Blob([htmlContent.value]).size
       }
       const res = await createHtmlUnit(props.courseId, props.sectionId, dto)
-      ElMessage.success(`已创建 unit id=${res?.data?.data ?? res?.data ?? res}`)
+      ElMessage.success(t('htmlBlock.editor.unitCreated', { id: res?.data?.data ?? res?.data ?? res }))
     }
-    ElMessage.success('已保存')
+    ElMessage.success(t('htmlBlock.editor.saved'))
     htmlDirty.value = false
     await load()
     // 通知工作台刷新 tree（单元创建/更新后分段脚本面板才能正确渲染）
     emit('unit-saved')
   } catch (e) {
-    ElMessage.error('保存失败: ' + (e.message || '未知错误'))
+    ElMessage.error(t('htmlBlock.editor.saveFailed', { msg: e.message || t('htmlBlock.editor.unknownError') }))
   } finally {
     saving.value = false
   }

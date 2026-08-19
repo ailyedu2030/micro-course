@@ -9,10 +9,10 @@
     <el-card class="search-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
         <!-- P1I-071: 按院系筛选（ADMIN/ACADEMIC 可见） -->
-        <el-form-item v-if="['ADMIN', 'ACADEMIC'].includes(userStore.role)" label="选择院系">
+        <el-form-item v-if="['ADMIN', 'ACADEMIC'].includes(userStore.role)" :label="$t('studentGrades.selectDepartment')">
           <el-select
             v-model="searchForm.departmentId"
-            placeholder="请选择院系"
+            :placeholder="$t('userList.departmentPlaceholder')"
             clearable
             :loading="deptLoading"
             class="course-select"
@@ -26,10 +26,10 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="选择课程">
+        <el-form-item :label="$t('course.selectCourse')">
           <el-select
             v-model="searchForm.courseId"
-            placeholder="请输入课程名搜索"
+            :placeholder="$t('studentGrades.courseSearchPlaceholder')"
             clearable
             filterable
             remote
@@ -54,7 +54,7 @@
       <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary-color">{{ stats.averageScore ?? '-' }}</div>
-          <div class="stat-label">平均分</div>
+          <div class="stat-label">{{ $t('studentGrades.averageScore') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card shadow-hover" shadow="never">
@@ -62,19 +62,19 @@
           <div class="stat-value" :class="stats.passRate >= 60 ? 'text-success' : 'text-danger'">
             {{ stats.passRate != null ? stats.passRate + '%' : '-' }}
           </div>
-          <div class="stat-label">及格率</div>
+          <div class="stat-label">{{ $t('studentGrades.passRate') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-primary-color">{{ stats.maxScore ?? '-' }}</div>
-          <div class="stat-label">最高分</div>
+          <div class="stat-label">{{ $t('studentGrades.maxScore') }}</div>
         </div>
       </el-card>
       <el-card class="stat-card shadow-hover" shadow="never">
         <div class="stat-item">
           <div class="stat-value text-secondary">{{ stats.gradedCount ?? 0 }} / {{ stats.totalCount ?? 0 }}</div>
-          <div class="stat-label">已批改 / 总人数</div>
+          <div class="stat-label">{{ $t('studentGrades.gradedTotal') }}</div>
         </div>
       </el-card>
     </div>
@@ -85,7 +85,7 @@
       <el-card class="chart-card shadow-hover" shadow="never">
         <template #header>
           <div class="card-header">
-            <span class="card-title">成绩分布</span>
+            <span class="card-title">{{ $t('studentGrades.distribution') }}</span>
           </div>
         </template>
         <div ref="chartRef" class="chart-container"></div>
@@ -95,7 +95,7 @@
       <el-card class="table-card shadow-hover" shadow="never">
         <template #header>
           <div class="card-header">
-            <span class="card-title">成绩明细</span>
+            <span class="card-title">{{ $t('teacher.gradeDetail') }}</span>
           </div>
         </template>
 
@@ -105,7 +105,7 @@
         <!-- 空状态 -->
         <el-empty
           v-else-if="!loading && searchForm.courseId && tableData.length === 0"
-          description="该课程暂无成绩数据"
+          :description="$t('studentGrades.noData')"
           :image-size="120"
         />
 
@@ -118,28 +118,28 @@
           border
           class="data-table"
         >
-          <el-table-column type="index" label="序号" width="70" align="center" />
-          <el-table-column prop="realName" label="学生" min-width="120" show-overflow-tooltip />
-          <el-table-column prop="courseName" label="课程" min-width="160" show-overflow-tooltip />
-          <el-table-column prop="score" label="分数" width="100" align="center">
+          <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+          <el-table-column prop="realName" :label="$t('course.student')" min-width="120" show-overflow-tooltip />
+          <el-table-column prop="courseName" :label="$t('course.title')" min-width="160" show-overflow-tooltip />
+          <el-table-column prop="score" :label="$t('studentGrades.score')" width="100" align="center">
             <template #default="{ row }">
               <span v-if="row.score != null" :class="getScoreClass(row.score)">
                 {{ row.score.toFixed(1) }}
               </span>
-              <el-tag v-else type="info" size="small">待批改</el-tag>
+              <el-tag v-else type="info" size="small">{{ $t('exerciseTake.pendingGrading') }}</el-tag>
             </template>
           </el-table-column>
-          <el-table-column prop="comment" label="评语" min-width="200" show-overflow-tooltip>
+          <el-table-column prop="comment" :label="$t('studentGrades.comment')" min-width="200" show-overflow-tooltip>
             <template #default="{ row }">
               <span class="text-secondary">{{ row.comment || '-' }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="gradedAt" label="批改时间" width="170">
+          <el-table-column prop="gradedAt" :label="$t('studentGrades.gradedAt')" width="170">
             <template #default="{ row }">
               <span class="text-secondary">{{ formatDate(row.gradedAt) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" align="center" fixed="right">
+          <el-table-column :label="$t('app.operation')" width="120" align="center" fixed="right">
             <template #default="{ row }">
               <!-- P1C-076: ACADEMIC 角色只读查看，不显示批改按钮 -->
               <el-button
@@ -147,9 +147,9 @@
                 type="info"
                 link
                 @click="handleGrade(row)"
-                aria-label="查看"
+                :aria-label="$t('course.view')"
               >
-                查看
+                {{ $t('course.view') }}
               </el-button>
               <el-button
                 v-else
@@ -157,9 +157,9 @@
                 link
                 :disabled="!searchForm.courseId"
                 @click="handleGrade(row)"
-               aria-label="编辑"
+               :aria-label="$t('app.edit')"
 >
-<el-icon><Edit /></el-icon>{{ row.score != null && !row.needsManualGrading ? '查看' : '批改' }}
+<el-icon><Edit /></el-icon>{{ row.score != null && !row.needsManualGrading ? $t('course.view') : $t('studentGrades.grade') }}
               </el-button>
             </template>
           </el-table-column>
@@ -174,7 +174,7 @@
             :page-sizes="[10, 20, 50, 100]"
             layout="total, sizes, prev, pager, next"
             @size-change="handleSizeChange"
-            @current-change="handlePageChange" aria-label="分页导航"
+            @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
         </div>
       </el-card>
@@ -183,7 +183,7 @@
     <!-- 空状态提示（无数据） -->
     <el-empty
       v-if="!loading && tableData.length === 0 && !searchForm.courseId"
-      description="请选择课程查看成绩"
+      :description="$t('studentGrades.selectCourseHint')"
       :image-size="120"
       class="empty-hint"
     />
@@ -197,31 +197,31 @@
      :close-on-press-escape="true"
 >
       <el-form :model="gradeForm" :rules="gradeRules" ref="gradeFormRef" label-width="80px">
-        <el-form-item label="学生">
+        <el-form-item :label="$t('course.student')">
           <el-input :model-value="currentStudent?.realName || ''" disabled />
         </el-form-item>
-        <el-form-item label="课程">
+        <el-form-item :label="$t('course.title')">
           <el-input :model-value="currentStudent?.courseName || ''" disabled />
         </el-form-item>
         <!-- P1-C 修复 (2026-08-04): 主观题逐题批改区 -->
         <template v-if="gradeForm.pendingQuestions && gradeForm.pendingQuestions.length">
-          <el-divider content-position="left">主观题批改（{{ gradeForm.pendingQuestions.length }} 题待批）</el-divider>
+          <el-divider content-position="left">{{ $t('studentGrades.manualGradingTitle', { count: gradeForm.pendingQuestions.length }) }}</el-divider>
           <div v-for="(q, qi) in gradeForm.pendingQuestions" :key="qi" class="manual-grade-item">
             <div class="mg-question">
-              <span class="mg-label">第 {{ qi + 1 }} 题</span>
-              <div class="mg-answer">学生答案：{{ q.studentAnswer || '（未作答）' }}</div>
-              <div class="mg-answer">满分：{{ q.maxScore }}</div>
+              <span class="mg-label">{{ $t('studentGrades.questionNo', { n: qi + 1 }) }}</span>
+              <div class="mg-answer">{{ $t('studentGrades.answerPrefix') }}{{ q.studentAnswer || $t('studentGrades.notAnswered') }}</div>
+              <div class="mg-answer">{{ $t('studentGrades.maxScoreLabel', { score: q.maxScore }) }}</div>
             </div>
-            <el-form-item label="得分" :prop="`pendingQuestions.${qi}.score`">
+            <el-form-item :label="$t('studentGrades.scoreLabel')" :prop="`pendingQuestions.${qi}.score`">
               <el-input-number v-model="q.score" :min="0" :max="Number(q.maxScore) || 100" :step="0.5" controls-position="right" class="score-input" />
             </el-form-item>
-            <el-form-item label="评语">
-              <el-input v-model="q.comment" type="textarea" :rows="2" placeholder="该题评语（选填）" maxlength="200" />
+            <el-form-item :label="$t('studentGrades.comment')">
+              <el-input v-model="q.comment" type="textarea" :rows="2" :placeholder="$t('studentGrades.questionCommentPlaceholder')" maxlength="200" />
             </el-form-item>
           </div>
         </template>
         <template v-else>
-        <el-form-item label="分数" prop="score" required>
+        <el-form-item :label="$t('studentGrades.score')" prop="score" required>
           <el-input-number
             v-model="gradeForm.score"
             :min="0"
@@ -232,13 +232,13 @@
             class="score-input"
           />
         </el-form-item>
-        <el-form-item label="评语">
+        <el-form-item :label="$t('studentGrades.comment')">
           <el-input
             v-model="gradeForm.comment"
             type="textarea"
             :rows="3"
             :disabled="isReadOnlyGradeView"
-            placeholder="请输入评语（选填）"
+            :placeholder="$t('studentGrades.commentPlaceholder')"
             maxlength="200"
             show-word-limit
           />
@@ -246,12 +246,12 @@
         </template>
       </el-form>
       <template #footer>
-        <el-button @click="gradeVisible = false">关闭</el-button>
+        <el-button @click="gradeVisible = false">{{ $t('common.close') }}</el-button>
         <el-button v-if="!isReadOnlyGradeView && !(gradeForm.pendingQuestions && gradeForm.pendingQuestions.length)" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
-          提交成绩
+          {{ $t('studentGrades.submitScore') }}
         </el-button>
         <el-button v-if="gradeForm.pendingQuestions && gradeForm.pendingQuestions.length" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmManualGrade">
-          提交批改
+          {{ $t('studentGrades.submitGrading') }}
         </el-button>
       </template>
     </el-dialog>
@@ -265,6 +265,7 @@
  */
 import { ref, reactive, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts/core'
 import { BarChart } from 'echarts/charts'
@@ -277,6 +278,7 @@ import { useUserStore } from '@/store/user'
 
 echarts.use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
+const { t } = useI18n()
 const route = useRoute()
 const userStore = useUserStore()
 const isTeacher = computed(() => userStore.role === 'TEACHER')
@@ -326,15 +328,15 @@ const gradeForm = reactive({
 
 const gradeRules = {
   score: [
-    { required: true, message: '请输入分数', trigger: 'blur' },
-    { type: 'number', min: 0, max: 100, message: '分数应在 0-100 之间', trigger: 'blur' }
+    { required: true, message: t('studentGrades.scoreRequired'), trigger: 'blur' },
+    { type: 'number', min: 0, max: 100, message: t('studentGrades.scoreRange'), trigger: 'blur' }
   ]
 }
 
 // 是否已批改
 const isGraded = computed(() => currentStudent.value?.score != null)
 const isReadOnlyGradeView = computed(() => isGraded.value || userStore.role === 'ACADEMIC')
-const gradeDialogTitle = computed(() => (isReadOnlyGradeView.value ? '查看成绩' : '批改成绩'))
+const gradeDialogTitle = computed(() => (isReadOnlyGradeView.value ? t('studentGrades.viewTitle') : t('studentGrades.gradeTitle')))
 
 // 获取课程列表（初始加载小批量）
 async function fetchCourses() {
@@ -358,7 +360,7 @@ async function fetchCourses() {
       }
     }
   } catch {
-    ElMessage.error('获取课程列表失败')
+    ElMessage.error(t('course.fetchCoursesFailed'))
   }
 }
 
@@ -377,7 +379,7 @@ async function searchCourses(keyword) {
     if (searchForm.departmentId) params.offerDepartmentId = searchForm.departmentId
     const { data } = await getCourses(params)
     courseOptions.value = data.items || []
-  } catch (e) { ElMessage.error(e?.response?.data?.message || '搜索课程失败') }
+  } catch (e) { ElMessage.error(e?.response?.data?.message || t('studentGrades.searchCoursesFailed')) }
   finally {
     courseLoading.value = false
   }
@@ -418,7 +420,7 @@ async function fetchData() {
       chartInstance = null
     }
   } catch {
-    ElMessage.error('获取成绩数据失败')
+    ElMessage.error(t('studentGrades.fetchDataFailed'))
   } finally {
     loading.value = false
   }
@@ -509,7 +511,7 @@ function renderChart(items) {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
-      formatter: '{b}: {c}人'
+      formatter: '{b}: {c}' + t('studentGrades.personUnit')
     },
     grid: {
       left: '3%',
@@ -557,10 +559,10 @@ async function fetchDepartments() {
   if (!['ADMIN', 'ACADEMIC'].includes(userStore.role)) return
   deptLoading.value = true
   try {
-    const { data } = await getDepartments({ page: 0, size: 200 })
+    const { data } = await getDepartments({ page: 0, size: 100 })
     deptOptions.value = data?.items || []
   } catch {
-    ElMessage.error('获取院系列表失败')
+    ElMessage.error(t('studentGrades.fetchDepartmentsFailed'))
   } finally {
     deptLoading.value = false
   }
@@ -635,11 +637,11 @@ async function confirmGrade() {
       score: gradeForm.score,
       comment: gradeForm.comment
     })
-    ElMessage.success('成绩提交成功')
+    ElMessage.success(t('studentGrades.submitSuccess'))
     gradeVisible.value = false
     fetchData()
   } catch {
-    ElMessage.error('提交失败，请稍后重试')
+    ElMessage.error(t('studentGrades.submitFailed'))
   } finally {
     savingGrade.value = false
   }
@@ -650,11 +652,11 @@ async function confirmManualGrade() {
   if (savingGrade.value) return
   const questions = gradeForm.pendingQuestions || []
   if (!questions.length || !currentStudent.value?.recordId) {
-    ElMessage.warning('无待批改题目或记录缺失')
+    ElMessage.warning(t('studentGrades.noPendingQuestions'))
     return
   }
   if (questions.some((q) => q.score == null)) {
-    ElMessage.warning('请为每道主观题填写得分')
+    ElMessage.warning(t('studentGrades.fillAllScores'))
     return
   }
   savingGrade.value = true
@@ -666,11 +668,11 @@ async function confirmManualGrade() {
         comment: q.comment || ''
       })
     }
-    ElMessage.success('批改完成')
+    ElMessage.success(t('studentGrades.gradeComplete'))
     gradeVisible.value = false
     fetchData()
   } catch {
-    ElMessage.error('批改失败，请稍后重试')
+    ElMessage.error(t('studentGrades.gradeFailed'))
   } finally {
     savingGrade.value = false
   }
@@ -698,7 +700,7 @@ function handleResize() {
 }
 
 onMounted(async () => {
-  document.title = '成绩分布 - 微课平台'
+  document.title = `${t('studentGrades.distribution')} - ${t('app.title')}`
   // P1I-071: ADMIN/ACADEMIC 角色加载院系列表
   await fetchDepartments()
   await fetchCourses()

@@ -1,8 +1,10 @@
 package com.microcourse.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.microcourse.dto.hermes.HermesChapterRequest;
 import com.microcourse.dto.hermes.HermesChapterVO;
 import com.microcourse.dto.hermes.HermesCourseListVO;
+import com.microcourse.dto.hermes.HermesSectionRequest;
 import com.microcourse.dto.hermes.HermesSectionVO;
 import com.microcourse.entity.Course;
 import com.microcourse.entity.CourseChapter;
@@ -127,7 +129,7 @@ public class HermesWebhookManagementServiceImpl implements HermesWebhookManageme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public HermesSectionVO createSection(String hermesCourseId, String apiKey, CourseSection body) {
+    public HermesSectionVO createSection(String hermesCourseId, String apiKey, HermesSectionRequest body) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
@@ -137,24 +139,32 @@ public class HermesWebhookManagementServiceImpl implements HermesWebhookManageme
                 throw new BusinessException(ErrorCode.BAD_REQUEST_PARAM, "章节 ID 不属于该课程");
             }
         }
-        body.setId(null);
-        body.setCourseId(mapping.getCourseId());
+        CourseSection section = new CourseSection();
+        section.setCourseId(mapping.getCourseId());
+        section.setChapterId(body.getChapterId());
+        section.setTitle(body.getTitle());
+        section.setSectionType(body.getSectionType());
+        section.setSortOrder(body.getSortOrder());
+        section.setDuration(body.getDuration());
+        section.setVisible(body.getVisible() != null ? body.getVisible() : true);
+        section.setDescription(body.getDescription());
+        section.setScriptContent(body.getScriptContent());
+        section.setContentUrl(body.getContentUrl());
+        section.setVersion(body.getVersion() != null ? body.getVersion() : 1);
         LocalDateTime now = LocalDateTime.now();
-        body.setCreatedAt(now);
-        body.setUpdatedAt(now);
-        if (body.getVersion() == null) body.setVersion(1);
-        if (body.getVisible() == null) body.setVisible(true);
-        sectionRepository.insert(body);
+        section.setCreatedAt(now);
+        section.setUpdatedAt(now);
+        sectionRepository.insert(section);
         return new HermesSectionVO(
-                body.getId(), body.getChapterId(), body.getTitle(), body.getSectionType(),
-                body.getSortOrder(), body.getDuration(), body.getVisible(),
-                body.getDescription(), body.getScriptContent(), body.getContentUrl(),
-                body.getCreatedAt(), body.getUpdatedAt());
+                section.getId(), section.getChapterId(), section.getTitle(), section.getSectionType(),
+                section.getSortOrder(), section.getDuration(), section.getVisible(),
+                section.getDescription(), section.getScriptContent(), section.getContentUrl(),
+                section.getCreatedAt(), section.getUpdatedAt());
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public HermesSectionVO updateSection(String hermesCourseId, String apiKey, Long sectionId, CourseSection body) {
+    public HermesSectionVO updateSection(String hermesCourseId, String apiKey, Long sectionId, HermesSectionRequest body) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);
@@ -184,7 +194,7 @@ public class HermesWebhookManagementServiceImpl implements HermesWebhookManageme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public HermesChapterVO updateChapter(String hermesCourseId, String apiKey, Long chapterId, CourseChapter body) {
+    public HermesChapterVO updateChapter(String hermesCourseId, String apiKey, Long chapterId, HermesChapterRequest body) {
         User caller = authenticate(apiKey);
         HermesCourseMapping mapping = resolveMapping(hermesCourseId);
         verifyCourseOwnership(caller, mapping);

@@ -27,6 +27,9 @@ public interface EnrollmentService {
 
     List<EnrollmentVO> getMyEnrollments(Long userId, Boolean completed);
 
+    /** P1-C: 当前用户选课分页查询（/api/enrollments/my 返回 PageResult，与其余端点一致） */
+    PageResult<EnrollmentVO> getMyEnrollmentPage(Long userId, Boolean completed, int page, int size);
+
     PageResult<EnrollmentVO> getEnrollmentPage(EnrollmentQueryRequest query);
 
     /** P1-2: 课程学员分页查询 */

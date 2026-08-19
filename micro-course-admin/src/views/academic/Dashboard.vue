@@ -11,18 +11,18 @@
       <div class="welcome-left">
         <div class="welcome-date">{{ welcomeDate }}</div>
         <div class="welcome-greeting">
-          <span class="greeting-name">教务处</span>
-          <span class="greeting-suffix">{{ greeting }}</span>
+          <span class="greeting-name">{{ $t('role.ACADEMIC') }}</span>
+          <span class="greeting-suffix">{{ $t(greeting) }}</span>
         </div>
       </div>
       <div class="welcome-right">
-        <span class="last-updated">最后更新: {{ lastUpdatedText }}</span>
+        <span class="last-updated">{{ $t('admin.lastUpdated') }}{{ lastUpdatedText }}</span>
         <el-button
           :icon="Refresh"
           circle
           :loading="isRefreshing"
           class="refresh-btn"
-          aria-label="刷新数据"
+          :aria-label="$t('academicDashboard.refreshAria')"
           @click="handleRefresh"
         />
       </div>
@@ -32,21 +32,21 @@
     <el-card v-if="departmentId" shadow="never" class="drilldown-banner">
       <div class="drilldown-inner">
         <el-button text @click="handleBackToOverview">
-          <el-icon><ArrowLeft /></el-icon> 返回全校概览
+          <el-icon><ArrowLeft /></el-icon> {{ $t('academicDashboard.backToOverview') }}
         </el-button>
-        <span class="drilldown-title">当前查看：<strong>{{ departmentName || '院系详情' }}</strong></span>
+        <span class="drilldown-title">{{ $t('academicDashboard.currentViewingLabel') }}<strong>{{ departmentName || $t('academicDashboard.departmentDetail') }}</strong></span>
       </div>
     </el-card>
 
     <!-- 快捷入口 -->
     <el-row :gutter="16" class="quick-actions-row">
-      <el-col v-for="action in quickActions" :key="action.label" :xs="12" :sm="6">
-        <el-card class="quick-action-card" shadow="hover" role="button" tabindex="0" :aria-label="`快速操作 ${action.label}`" @click="handleQuickAction(action)" @keydown.enter="handleQuickAction(action)" @keydown.space.prevent="handleQuickAction(action)">
+      <el-col v-for="action in quickActions" :key="action.labelKey" :xs="12" :sm="6">
+        <el-card class="quick-action-card" shadow="hover" role="button" tabindex="0" :aria-label="$t('academicDashboard.quickActionAria', { label: $t(action.labelKey) })" @click="handleQuickAction(action)" @keydown.enter="handleQuickAction(action)" @keydown.space.prevent="handleQuickAction(action)">
           <div class="quick-action-inner">
             <div class="quick-action-icon">
               <el-icon :size="22"><component :is="action.icon" /></el-icon>
             </div>
-            <span class="quick-action-label">{{ action.label }}</span>
+            <span class="quick-action-label">{{ $t(action.labelKey) }}</span>
           </div>
         </el-card>
       </el-col>
@@ -66,7 +66,7 @@
                 <div class="stat-value">{{ displayStats.totalCourses }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">总课程数</div>
+            <div class="stat-label">{{ $t('academicDashboard.statTotalCourses') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -82,7 +82,7 @@
                 <div class="stat-value">{{ displayStats.totalEnrollments }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">总选课人次</div>
+            <div class="stat-label">{{ $t('academicDashboard.statTotalEnrollments') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -98,7 +98,7 @@
                 <div class="stat-value">{{ displayStats.avgCompletionRate }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">平均完成率</div>
+            <div class="stat-label">{{ $t('academicDashboard.statAvgCompletionRate') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -114,7 +114,7 @@
                 <div class="stat-value">{{ displayStats.avgAccuracyRate }}</div>
               </template>
             </el-skeleton>
-            <div class="stat-label">平均正确率</div>
+            <div class="stat-label">{{ $t('academicDashboard.statAvgAccuracyRate') }}</div>
           </div>
         </el-card>
       </el-col>
@@ -126,15 +126,15 @@
       <el-col :xs="24" :md="12">
         <el-card class="chart-card" shadow="never">
           <template #header>
-            <div class="card-header">院系完成率对比</div>
+            <div class="card-header">{{ $t('academicDashboard.deptCompareTitle') }}</div>
           </template>
           <el-skeleton :loading="deptLoading" animated :rows="3">
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="deptError" class="chart-error">
-                <span>加载失败</span>
+                <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="deptChartRef" class="chart-container" role="img" aria-label="院系完成率对比图"></div>
+              <div v-else ref="deptChartRef" class="chart-container" role="img" :aria-label="$t('academicDashboard.deptChartAria')"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -144,13 +144,13 @@
         <el-card class="chart-card" shadow="never">
           <template #header>
             <div class="card-header">
-              参与率趋势
+              {{ $t('academicDashboard.trendTitle') }}
               <el-select
                 v-model="selectedSemester"
                 size="small"
                 style="width:150px; margin-left:auto"
-                placeholder="选择学期"
-                aria-label="选择学期"
+                :placeholder="$t('academicDashboard.selectSemester')"
+                :aria-label="$t('academicDashboard.selectSemester')"
                 clearable
                 @change="handleSemesterChange"
               >
@@ -167,9 +167,9 @@
             <template #template><el-skeleton-item class="skeleton-chart" /></template>
             <template #default>
               <div v-if="trendError" class="chart-error">
-                <span>加载失败</span>
+                <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
-              <div v-else ref="trendChartRef" class="chart-container" role="img" aria-label="参与率趋势图"></div>
+              <div v-else ref="trendChartRef" class="chart-container" role="img" :aria-label="$t('academicDashboard.trendChartAria')"></div>
             </template>
           </el-skeleton>
         </el-card>
@@ -183,7 +183,7 @@
         <el-card class="table-card" shadow="never">
           <template #header>
             <div class="card-header">
- 完成率预警
+              {{ $t('academicDashboard.warningTitle') }}
               <el-tag size="small" type="danger" class="header-tag">completionRate &lt; 30%</el-tag>
               <!-- P1I-061: 阈值 30% 与后端 COMPLETION_WARNING_THRESHOLD 保持一致，修改时需同步更新 -->
             </div>
@@ -196,18 +196,18 @@
             </template>
             <template #default>
               <div v-if="warningsError" class="table-error">
-                <span>加载失败</span>
+                <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
-              <el-table v-else :data="warnings" class="warning-table" empty-text="暂无数据">
-                <el-table-column prop="name" label="课程名称" min-width="160" show-overflow-tooltip />
-                <el-table-column prop="completionRate" label="完成率" width="100" align="center">
+              <el-table v-else :data="warnings" class="warning-table" :empty-text="$t('common.noData')">
+                <el-table-column prop="name" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="completionRate" :label="$t('teacherDashboard.completionRate')" width="100" align="center">
                   <template #default="{ row }">
                     <span :class="row.completionRate < 30 ? 'rate-danger' : 'rate-success'">
                       {{ formatPercent(row.completionRate) }}
                     </span>
                   </template>
                 </el-table-column>
-                <el-table-column prop="enrollmentCount" label="选课人数" width="90" align="center" />
+                <el-table-column prop="enrollmentCount" :label="$t('academicDashboard.enrollmentCount')" width="90" align="center" />
               </el-table>
             </template>
           </el-skeleton>
@@ -217,7 +217,7 @@
       <el-col :xs="24" :md="12">
         <el-card class="table-card" shadow="never">
           <template #header>
-            <div class="card-header">热门课程（按选课人次）</div>
+            <div class="card-header">{{ $t('academicDashboard.hotCoursesTitle') }}</div>
           </template>
           <el-skeleton :loading="hotCourseLoading" animated :rows="3">
             <template #template>
@@ -227,14 +227,14 @@
             </template>
             <template #default>
               <div v-if="hotCourseError" class="table-error">
-                <span>加载失败</span>
+                <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
-              <el-table v-else :data="hotCourses" class="hot-table" empty-text="暂无数据">
-                <el-table-column type="index" label="排名" width="60" align="center" />
-                <el-table-column prop="title" label="课程名称" min-width="160" show-overflow-tooltip />
-                <el-table-column prop="categoryName" label="分类" width="100" align="center" />
-                <el-table-column prop="teacherName" label="教师" width="100" align="center" />
-                <el-table-column prop="enrollmentCount" label="选课人次" width="100" align="center" sortable />
+              <el-table v-else :data="hotCourses" class="hot-table" :empty-text="$t('common.noData')">
+                <el-table-column type="index" :label="$t('academicDashboard.rank')" width="60" align="center" />
+                <el-table-column prop="title" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="categoryName" :label="$t('course.category')" width="100" align="center" />
+                <el-table-column prop="teacherName" :label="$t('course.teacher')" width="100" align="center" />
+                <el-table-column prop="enrollmentCount" :label="$t('academicDashboard.enrollmentLabel')" width="100" align="center" sortable />
               </el-table>
             </template>
           </el-skeleton>
@@ -247,6 +247,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
@@ -261,6 +262,7 @@ import { getCourses } from '@/api/course'
 
 const router = useRouter()
 const route = useRoute()
+const { t } = useI18n()
 
 // P1C-063: 数据下钻 — 从 query 参数获取 departmentId
 const departmentId = computed(() => route.query.departmentId ? Number(route.query.departmentId) : null)
@@ -269,26 +271,26 @@ const departmentName = ref('')
 const now = ref(new Date())
 const welcomeDate = computed(() => {
   const d = now.value
-  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
+  return t('academicDashboard.dateFormat', { year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() })
 })
 const greeting = computed(() => {
   const h = now.value.getHours()
-  if (h < 12) return '，上午好'
-  if (h < 14) return '，中午好'
-  if (h < 18) return '，下午好'
-  return '，晚上好'
+  if (h < 12) return 'teacher.greetingAM'
+  if (h < 14) return 'teacher.greetingNoon'
+  if (h < 18) return 'teacher.greetingPM'
+  return 'teacher.greetingEvening'
 })
 
 // ===== 最后更新时间 =====
 const lastUpdatedAt = ref(null)
 const lastUpdatedText = computed(() => {
-  if (!lastUpdatedAt.value) return '加载中...'
+  if (!lastUpdatedAt.value) return t('common.loading')
   // 依赖 now.value 以便定时重算
   const diff = now.value.getTime() - lastUpdatedAt.value
-  if (diff < 10000) return '刚刚'
-  if (diff < 60000) return `${Math.floor(diff / 1000)}秒前`
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
-  return `${Math.floor(diff / 3600000)}小时前`
+  if (diff < 10000) return t('admin.justNow')
+  if (diff < 60000) return t('admin.secondsAgo', { seconds: Math.floor(diff / 1000) })
+  if (diff < 3600000) return t('admin.minutesAgo', { minutes: Math.floor(diff / 60000) })
+  return t('admin.hoursAgo', { hours: Math.floor(diff / 3600000) })
 })
 let lastUpdatedTimer = null
 
@@ -312,10 +314,10 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: '课程审核', icon: markRaw(Reading), route: '/courses' },
-  { label: '选课管理', icon: markRaw(Collection), route: '/enrollments' },
-  { label: '教学班管理', icon: markRaw(Setting), route: '/admin/teaching-classes' },
-  { label: '统计分析', icon: markRaw(DataAnalysis), route: '/academic/dashboard' }
+  { labelKey: 'academicDashboard.quickCourseReview', icon: markRaw(Reading), route: '/courses' },
+  { labelKey: 'academicDashboard.quickEnrollment', icon: markRaw(Collection), route: '/enrollments' },
+  { labelKey: 'academicDashboard.quickTeachingClasses', icon: markRaw(Setting), route: '/admin/teaching-classes' },
+  { labelKey: 'academicDashboard.quickStats', icon: markRaw(DataAnalysis), route: '/academic/dashboard' }
 ]
 
 function handleQuickAction(action) {
@@ -339,8 +341,8 @@ const selectedSemester = ref('')
 const semesterOptions = computed(() => {
   const semesters = []
   for (let year = currentYear - 1; year <= currentYear + 1; year++) {
-    semesters.push({ label: `${year}-${year + 1} 第一学期`, value: `${year}-1` })
-    semesters.push({ label: `${year}-${year + 1} 第二学期`, value: `${year}-2` })
+    semesters.push({ label: t('academicDashboard.semesterFirst', { start: year, end: year + 1 }), value: `${year}-1` })
+    semesters.push({ label: t('academicDashboard.semesterSecond', { start: year, end: year + 1 }), value: `${year}-2` })
   }
   return semesters
 })
@@ -526,7 +528,7 @@ function renderDeptChart(data) {
     },
     yAxis: {
       type: 'value',
-      name: '完成率',
+      name: t('teacherDashboard.completionRate'),
       minInterval: 1,
       max: 100,
       axisLabel: { formatter: '{value}%', color: '#64748B', fontSize: 12 },
@@ -535,7 +537,7 @@ function renderDeptChart(data) {
       splitLine: { lineStyle: { color: '#F1F5F9' } }
     },
     series: [{
-      name: '完成率',
+      name: t('teacherDashboard.completionRate'),
       type: 'bar',
       data: rates,
       itemStyle: {
@@ -596,7 +598,7 @@ function renderTrendChart(participationData, completionData) {
       shadowBlur: 8,
       textStyle: { color: '#1E293B', fontSize: 13 }
     },
-    legend: { data: ['参与率', '完成率'], bottom: 0, textStyle: { color: '#64748B', fontSize: 12 } },
+    legend: { data: [t('academicDashboard.participationRate'), t('teacherDashboard.completionRate')], bottom: 0, textStyle: { color: '#64748B', fontSize: 12 } },
     grid: { left: '3%', right: '4%', bottom: '18%', top: '8%', containLabel: true },
     xAxis: {
       type: 'category',
@@ -608,7 +610,7 @@ function renderTrendChart(participationData, completionData) {
     },
     yAxis: {
       type: 'value',
-      name: '比率',
+      name: t('academicDashboard.rate'),
       minInterval: 1,
       max: 100,
       axisLabel: { formatter: '{value}%', color: '#64748B', fontSize: 12 },
@@ -618,7 +620,7 @@ function renderTrendChart(participationData, completionData) {
     },
     series: [
       {
-        name: '参与率',
+        name: t('academicDashboard.participationRate'),
         type: 'line',
         smooth: true,
         data: participationData.map(item => item.value ?? 0),
@@ -627,7 +629,7 @@ function renderTrendChart(participationData, completionData) {
         areaStyle: { opacity: 0.12 }
       },
       {
-        name: '完成率',
+        name: t('teacherDashboard.completionRate'),
         type: 'line',
         smooth: true,
         data: completionData.map(item => item.value ?? 0),

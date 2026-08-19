@@ -1,10 +1,10 @@
 # 微课平台权限矩阵 v4.0 (机器可读)
 # 用途: EndpointPermissionTest 自动验证 @PreAuthorize 与权限矩阵一致性
 # 同步来源: docs/权限矩阵.md v4.0
-# 最后更新: 2026-07-07
+# 最后更新: 2026-08-12
 
 version: "4.1"
-last_updated: "2026-07-07"
+last_updated: "2026-08-12"
 
 # 端点 × 角色矩阵
 # 角色: STUDENT / TEACHER / ADMIN / ACADEMIC
@@ -460,3 +460,59 @@ endpoints:
     method: DELETE
     roles: [STUDENT]
     description: "取消收藏"
+
+  # ========== 线下课 offline_session (9 端点, 2026-08-12 补录 §1.27) ==========
+  - path: "/api/offline-sessions/{chapterId}/chapters"
+    method: GET
+    roles: [TEACHER, ADMIN, STUDENT]
+    description: "分页查询章节线下课列表"
+
+  - path: "/api/offline-sessions/{chapterId}/chapters"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "创建线下课 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新线下课 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}"
+    method: DELETE
+    roles: [TEACHER, ADMIN]
+    description: "删除线下课 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}/attendance"
+    method: GET
+    roles: [TEACHER, ADMIN]
+    description: "获取考勤列表 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}/attendance/{recordId}"
+    method: PUT
+    roles: [TEACHER, ADMIN]
+    description: "更新签到状态 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}/manual-checkin/{studentId}"
+    method: POST
+    roles: [TEACHER, ADMIN]
+    description: "教师手动签到 (教师/管理员)"
+
+  - path: "/api/offline-sessions/{id}/checkin"
+    method: POST
+    roles: [STUDENT]
+    description: "学生签到"
+
+  - path: "/api/offline-sessions/{chapterId}/my-attendance"
+    method: GET
+    roles: [STUDENT]
+    description: "获取我的考勤 (学生)"
+
+  - path: "/api/offline-sessions/course/{courseId}"
+    method: GET
+    roles: [TEACHER, ADMIN]
+    description: "获取课程线下课列表"
+
+  - path: "/api/offline-sessions/course/{courseId}/attendance-stats"
+    method: GET
+    roles: [TEACHER, ADMIN]
+    description: "获取考勤统计 (教师/管理员)"

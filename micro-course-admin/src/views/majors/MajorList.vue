@@ -8,24 +8,24 @@
   <div class="major-list">
     <!-- 面包屑导航 -->
     <el-breadcrumb separator="→" class="page-breadcrumb">
-      <el-breadcrumb-item>组织管理</el-breadcrumb-item>
-      <el-breadcrumb-item>专业列表</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('majorList.orgMgmt') }}</el-breadcrumb-item>
+      <el-breadcrumb-item>{{ $t('majorList.title') }}</el-breadcrumb-item>
     </el-breadcrumb>
 
     <!-- 搜索区 -->
     <el-card class="search-card filter-card" shadow="never">
       <el-form :inline="true" :model="searchForm" @submit.prevent>
-        <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入专业名称" clearable class="filter-input" />
+        <el-form-item :label="$t('majorList.name')">
+          <el-input v-model="searchForm.name" :placeholder="$t('majorList.namePlaceholder')" clearable class="filter-input" />
         </el-form-item>
-        <el-form-item label="院系">
-          <el-select v-model="searchForm.departmentId" placeholder="请选择院系" clearable class="filter-select">
+        <el-form-item :label="$t('majorList.department')">
+          <el-select v-model="searchForm.departmentId" :placeholder="$t('majorList.selectDepartmentPlaceholder')" clearable class="filter-select">
             <el-option v-for="item in departmentOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
         <el-form-item>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-          <el-button @click="handleReset">重置</el-button>
+          <el-button type="primary" @click="handleSearch">{{ $t('majorList.query') }}</el-button>
+          <el-button @click="handleReset">{{ $t('app.reset') }}</el-button>
         </el-form-item>
       </el-form>
     </el-card>
@@ -34,28 +34,28 @@
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span class="card-title">专业列表</span>
-          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">新增专业</el-button>
+          <span class="card-title">{{ $t('majorList.title') }}</span>
+          <el-button type="primary" v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" @click="handleCreate">{{ $t('majorList.create') }}</el-button>
         </div>
       </template>
       <el-skeleton v-if="loading" :rows="6" animated />
-      <el-result v-else-if="error" icon="error" title="数据加载失败" sub-title="请稍后重试">
+      <el-result v-else-if="error" icon="error" :title="$t('majorList.loadFailed')" :sub-title="$t('majorList.loadFailedSubtitle')">
         <template #extra>
-          <el-button type="primary" @click="fetchData">重试</el-button>
+          <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
         </template>
       </el-result>
-      <el-empty v-else-if="!loading && tableData.length === 0" description="暂无专业数据" :image-size="120" />
+      <el-empty v-else-if="!loading && tableData.length === 0" :description="$t('majorList.noData')" :image-size="120" />
       <el-table v-loading="loading" v-else :data="tableData" stripe border class="data-table">
-        <el-table-column type="index" label="序号" width="70" align="center" />
-        <el-table-column prop="name" label="名称" min-width="150" />
-        <el-table-column prop="code" label="编码" width="120" />
-        <el-table-column prop="departmentName" label="所属院系" width="150" />
-        <el-table-column prop="sortOrder" label="排序" width="100" />
-        <el-table-column prop="createdAt" label="创建时间" width="180" :formatter="$formatDateTime" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column type="index" :label="$t('course.index')" width="70" align="center" />
+        <el-table-column prop="name" :label="$t('majorList.name')" min-width="150" />
+        <el-table-column prop="code" :label="$t('majorList.code')" width="120" />
+        <el-table-column prop="departmentName" :label="$t('majorList.belongDepartment')" width="150" />
+        <el-table-column prop="sortOrder" :label="$t('course.sortOrder')" width="100" />
+        <el-table-column prop="createdAt" :label="$t('majorList.createdAt')" width="180" :formatter="$formatDateTime" />
+        <el-table-column :label="$t('app.operation')" width="150" fixed="right">
           <template #default="{ row }">
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'ADMIN' || userRole === 'ACADEMIC'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -67,7 +67,7 @@
           :page-sizes="[10, 20, 50, 100]"
           layout="total,sizes,prev,pager,next"
           @size-change="handleSizeChange"
-          @current-change="handlePageChange" aria-label="分页导航"
+          @current-change="handlePageChange" :aria-label="$t('course.paginationAria')"
 />
       </div>
     </el-card>
@@ -75,24 +75,24 @@
     <!-- 弹窗区 -->
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="580px" @close="handleDialogClose" :close-on-press-escape="true">
       <el-form ref="formRef" :model="formData" :rules="formRules" label-position="top">
-        <el-form-item label="名称" prop="name">
-          <el-input v-model="formData.name" placeholder="请输入专业名称" />
+        <el-form-item :label="$t('majorList.name')" prop="name">
+          <el-input v-model="formData.name" :placeholder="$t('majorList.namePlaceholder')" />
         </el-form-item>
-        <el-form-item label="编码" prop="code">
-          <el-input v-model="formData.code" placeholder="请输入专业编码" />
+        <el-form-item :label="$t('majorList.code')" prop="code">
+          <el-input v-model="formData.code" :placeholder="$t('majorList.codePlaceholder')" />
         </el-form-item>
-        <el-form-item label="所属院系" prop="departmentId">
-          <el-select v-model="formData.departmentId" placeholder="请选择院系" class="full-width">
+        <el-form-item :label="$t('majorList.belongDepartment')" prop="departmentId">
+          <el-select v-model="formData.departmentId" :placeholder="$t('majorList.selectDepartmentPlaceholder')" class="full-width">
             <el-option v-for="item in departmentOptions" :key="item.id" :label="item.name" :value="item.id" />
           </el-select>
         </el-form-item>
-        <el-form-item label="排序" prop="sortOrder">
+        <el-form-item :label="$t('course.sortOrder')" prop="sortOrder">
           <el-input-number v-model="formData.sortOrder" :min="0" class="full-width" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">确定</el-button>
+        <el-button @click="dialogVisible = false">{{ $t('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">{{ $t('course.dialogConfirm') }}</el-button>
       </template>
     </el-dialog>
   </div>
@@ -100,6 +100,7 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUrlPagination } from '@/composables/useUrlPagination';
 import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -109,6 +110,7 @@ import { getDepartments } from '@/api/department'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.role)
+const { t } = useI18n()
 
 const loading = ref(false)
 const error = ref(false)
@@ -130,7 +132,7 @@ const { bindToQuery } = useUrlPagination()
 bindToQuery(page, size, searchForm, ['name', 'departmentId'])
 
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增专业')
+const dialogTitle = ref('majorList.create')
 const isEdit = ref(false)
 const currentId = ref(null)
 const formRef = ref(null)
@@ -143,18 +145,18 @@ const formData = reactive({
 })
 
 const formRules = {
-  name: [{ required: true, message: '请输入专业名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入专业编码', trigger: 'blur' }],
-  departmentId: [{ required: true, message: '请选择所属院系', trigger: 'change' }],
-  sortOrder: [{ required: true, message: '请输入排序值', trigger: 'blur' }]
+  name: [{ required: true, message: t('majorList.nameRequired'), trigger: 'blur' }],
+  code: [{ required: true, message: t('majorList.codeRequired'), trigger: 'blur' }],
+  departmentId: [{ required: true, message: t('majorList.selectDepartmentRequired'), trigger: 'change' }],
+  sortOrder: [{ required: true, message: t('majorList.sortOrderRequired'), trigger: 'blur' }]
 }
 
 const fetchDepartments = async () => {
   try {
-    const { data } = await getDepartments({ page: 0, size: 1000 })
+    const { data } = await getDepartments({ page: 0, size: 100 })
     departmentOptions.value = data.items || []
   } catch {
-    ElMessage.error('获取院系列表失败')
+    ElMessage.error(t('majorList.fetchDepartmentsFailed'))
   }
 }
 
@@ -173,7 +175,7 @@ const fetchData = async () => {
     totalElements.value = data.totalElements || 0
   } catch {
     error.value = true
-    ElMessage.error('获取专业列表失败')
+    ElMessage.error(t('majorList.fetchListFailed'))
   } finally {
     loading.value = false
   }
@@ -201,7 +203,7 @@ const handlePageChange = () => {
 }
 
 const handleCreate = () => {
-  dialogTitle.value = '新增专业'
+  dialogTitle.value = 'majorList.create'
   isEdit.value = false
   currentId.value = null
   formData.name = ''
@@ -212,7 +214,7 @@ const handleCreate = () => {
 }
 
 const handleEdit = (row) => {
-  dialogTitle.value = '编辑专业'
+  dialogTitle.value = 'majorList.edit'
   isEdit.value = true
   currentId.value = row.id
   formData.name = row.name
@@ -224,20 +226,20 @@ const handleEdit = (row) => {
 
 const handleDelete = async (row) => {
   try {
-    await ElMessageBox.confirm('确定删除该专业?', '提示', { type: 'warning' })
+    await ElMessageBox.confirm(t('majorList.confirmDelete'), t('course.hintTitle'), { type: 'warning' })
   } catch {
     return
   }
   try {
     await deleteMajor(row.id)
-    ElMessage.success('删除成功')
+    ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
     const code = error.response?.data?.code
     if (code === 3002) {
-      ElMessage.error('该专业下存在班级，无法删除')
+      ElMessage.error(t('majorList.deleteHasClasses'))
     } else {
-      ElMessage.error('删除失败')
+      ElMessage.error(t('course.deleteFailed'))
     }
   }
 }
@@ -252,15 +254,15 @@ const handleSubmit = async () => {
     try {
       if (isEdit.value) {
         await updateMajor(currentId.value, formData)
-        ElMessage.success('编辑成功')
+        ElMessage.success(t('majorList.editSuccess'))
       } else {
         await createMajor(formData)
-        ElMessage.success('创建成功')
+        ElMessage.success(t('course.createSuccess'))
       }
       dialogVisible.value = false
       fetchData()
     } catch {
-      ElMessage.error(isEdit.value ? '编辑失败' : '创建失败')
+      ElMessage.error(isEdit.value ? t('majorList.editFailed') : t('course.createFailed'))
     } finally {
       submitLoading.value = false
     }

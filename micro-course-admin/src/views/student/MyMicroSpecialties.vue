@@ -6,9 +6,9 @@
 <template>
   <div class="my-ms fade-in">
     <!-- Breadcrumb -->
-    <nav class="page-breadcrumb" aria-label="面包屑">
-      <span>我的微专业</span>
-      <span class="sub-hint">专业修读记录</span>
+    <nav class="page-breadcrumb" :aria-label="$t('myMicroSpecialties.breadcrumbAria')">
+      <span>{{ $t('myMicroSpecialties.title') }}</span>
+      <span class="sub-hint">{{ $t('myMicroSpecialties.subtitle') }}</span>
     </nav>
 
     <!-- Loading -->
@@ -20,23 +20,23 @@
     <el-result
       v-if="error"
       icon="error"
-      title="加载失败"
-      sub-title="网络异常，请稍后重试"
+      :title="$t('myMicroSpecialties.loadFailed')"
+      :sub-title="$t('myMicroSpecialties.networkError')"
       class="my-ms-error"
     >
       <template #extra>
-        <el-button type="primary" @click="fetchData">重试</el-button>
+        <el-button type="primary" @click="fetchData">{{ $t('common.retry') }}</el-button>
       </template>
     </el-result>
 
     <!-- Empty -->
     <template v-else-if="enrollments.length === 0">
-      <el-empty description="暂未报名微专业" class="my-ms-empty">
+      <el-empty :description="$t('myMicroSpecialties.empty')" class="my-ms-empty">
         <template #image>
           <el-icon :size="80" style="opacity: .3;"><Notebook /></el-icon>
         </template>
         <el-button type="primary" @click="$router.push('/student/courses')">
-          去课程广场看看
+          {{ $t('myMicroSpecialties.goSquare') }}
         </el-button>
       </el-empty>
     </template>
@@ -47,25 +47,25 @@
       <el-row :gutter="16" class="ms-stats-row">
         <el-col :span="6">
           <div class="ms-stat-card">
-            <span class="ms-stat-label">已报名</span>
+            <span class="ms-stat-label">{{ $t('myMicroSpecialties.statEnrolled') }}</span>
             <span class="ms-stat-value">{{ stats.enrolled }}</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="ms-stat-card ms-stat-card--warning">
-            <span class="ms-stat-label">待审核</span>
+            <span class="ms-stat-label">{{ $t('myMicroSpecialties.statPending') }}</span>
             <span class="ms-stat-value">{{ stats.pending }}</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="ms-stat-card ms-stat-card--progress">
-            <span class="ms-stat-label">进行中</span>
+            <span class="ms-stat-label">{{ $t('myMicroSpecialties.statInProgress') }}</span>
             <span class="ms-stat-value">{{ stats.inProgress }}</span>
           </div>
         </el-col>
         <el-col :span="6">
           <div class="ms-stat-card ms-stat-card--completed">
-            <span class="ms-stat-label">已结业</span>
+            <span class="ms-stat-label">{{ $t('myMicroSpecialties.statCompleted') }}</span>
             <span class="ms-stat-value">{{ stats.completed }}</span>
           </div>
         </el-col>
@@ -109,12 +109,12 @@
                 @click="goDetail(item.microSpecialtyId)"
                 @keydown.enter="goDetail(item.microSpecialtyId)"
               >
-                {{ item.title || item.microSpecialtyTitle || '未命名微专业' }}
+                {{ item.title || item.microSpecialtyTitle || $t('myMicroSpecialties.unnamed') }}
               </h3>
               <div class="ms-item-meta">
                 <span>{{ item.departmentName || '—' }}</span>
                 <span class="meta-sep">·</span>
-                <span>{{ item.totalCredits || 0 }} 学分</span>
+                <span>{{ $t('myMicroSpecialties.creditsUnit', { count: item.totalCredits || 0 }) }}</span>
               </div>
 
               <!-- Status Tag -->
@@ -131,14 +131,14 @@
                   class="ms-progress-bar"
                 />
                 <span class="ms-progress-text">
-                  {{ item.creditsEarned || 0 }} / {{ item.totalCredits || 0 }} 学分
+                  {{ $t('myMicroSpecialties.creditsProgress', { earned: item.creditsEarned || 0, total: item.totalCredits || 0 }) }}
                 </span>
               </div>
 
               <!-- Failed reason -->
               <div v-if="item.status === 'FAILED' && item.failReason" class="ms-item-fail">
                 <el-alert
-                  :title="'未通过原因：' + item.failReason"
+                  :title="$t('myMicroSpecialties.failReasonPrefix', { reason: item.failReason })"
                   type="error"
                   :closable="false"
                   show-icon
@@ -151,7 +151,7 @@
               <!-- IN_PROGRESS / ENROLLED -->
               <template v-if="['IN_PROGRESS', 'APPROVED'].includes(item.status)">
                 <el-button size="small" type="primary" @click.stop="goContinueLearning(item)">
-                  继续学习
+                  {{ $t('myMicroSpecialties.continueLearning') }}
                 </el-button>
                 <el-button
                   size="small"
@@ -159,14 +159,14 @@
                   plain
                   @click.stop="handleDrop(item)"
                 >
-                  退出修读
+                  {{ $t('myMicroSpecialties.dropOut') }}
                 </el-button>
               </template>
 
               <!-- COMPLETED: 已结业，等待发证或查看详情 -->
               <template v-else-if="item.status === 'COMPLETED'">
                 <el-button size="small" type="success" @click.stop="goDetail(item.microSpecialtyId)">
-                  查看详情
+                  {{ $t('myMicroSpecialties.viewDetail') }}
                 </el-button>
               </template>
 
@@ -178,10 +178,10 @@
                   type="success"
                   @click.stop="viewCertificate(item)"
                 >
-                  查看证书
+                  {{ $t('myMicroSpecialties.viewCertificate') }}
                 </el-button>
                 <el-button size="small" @click.stop="goDetail(item.microSpecialtyId)">
-                  查看详情
+                  {{ $t('myMicroSpecialties.viewDetail') }}
                 </el-button>
               </template>
 
@@ -192,7 +192,7 @@
                   type="warning"
                   @click.stop="handleViewFailedCourses(item)"
                 >
-                  查看不合格课程
+                  {{ $t('myMicroSpecialties.viewFailedCourses') }}
                 </el-button>
                 <el-button
                   size="small"
@@ -200,7 +200,7 @@
                   :loading="reapplying === item.id"
                   @click.stop="handleReapply(item)"
                 >
-                  重新申请
+                  {{ $t('myMicroSpecialties.reapply') }}
                 </el-button>
                 <el-button
                   size="small"
@@ -208,7 +208,7 @@
                   plain
                   @click.stop="contactAcademic"
                 >
-                  联系教务处
+                  {{ $t('myMicroSpecialties.contactAcademic') }}
                 </el-button>
               </template>
 
@@ -220,22 +220,22 @@
                   :loading="reapplying === item.id"
                   @click.stop="handleReapply(item)"
                 >
-                  重新申请
+                  {{ $t('myMicroSpecialties.reapply') }}
                 </el-button>
                 <el-button size="small" @click.stop="goDetail(item.microSpecialtyId)">
-                  查看详情
+                  {{ $t('myMicroSpecialties.viewDetail') }}
                 </el-button>
               </template>
 
               <!-- PENDING -->
               <template v-else-if="item.status === 'PENDING'">
-                <el-tag type="warning">审核中</el-tag>
+                <el-tag type="warning">{{ $t('myMicroSpecialties.statusPending') }}</el-tag>
               </template>
 
               <!-- Default -->
               <template v-else>
                 <el-button size="small" @click.stop="goDetail(item.microSpecialtyId)">
-                  查看详情
+                  {{ $t('myMicroSpecialties.viewDetail') }}
                 </el-button>
               </template>
             </div>
@@ -250,6 +250,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Notebook } from '@element-plus/icons-vue'
 import { downloadCertificate } from '@/api/certificate'
@@ -259,6 +260,7 @@ import {
   reapplyEnrollment
 } from '@/api/microSpecialty'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const loading = ref(false)
@@ -277,19 +279,29 @@ const stats = computed(() => {
   return result
 })
 
-const STATUS_MAP = {
-  PENDING: { label: '审核中', type: 'warning' },
-  APPROVED: { label: '已报名', type: '' },
-  IN_PROGRESS: { label: '进行中', type: 'primary' },
-  COMPLETED: { label: '已结业', type: 'success' },
-  CERTIFIED: { label: '已认证', type: 'success' },
-  FAILED: { label: '未通过', type: 'danger' },
-  DROPPED: { label: '已退出', type: 'info' },
-  REJECTED: { label: '已驳回', type: 'danger' }
+const STATUS_LABEL_KEYS = {
+  PENDING: 'myMicroSpecialties.statusPending',
+  APPROVED: 'myMicroSpecialties.statusApproved',
+  IN_PROGRESS: 'myMicroSpecialties.statusInProgress',
+  COMPLETED: 'myMicroSpecialties.statusCompleted',
+  CERTIFIED: 'myMicroSpecialties.statusCertified',
+  FAILED: 'myMicroSpecialties.statusFailed',
+  DROPPED: 'myMicroSpecialties.statusDropped',
+  REJECTED: 'myMicroSpecialties.statusRejected'
+}
+const STATUS_TAG_TYPES = {
+  PENDING: 'warning',
+  APPROVED: '',
+  IN_PROGRESS: 'primary',
+  COMPLETED: 'success',
+  CERTIFIED: 'success',
+  FAILED: 'danger',
+  DROPPED: 'info',
+  REJECTED: 'danger'
 }
 
-const getStatusLabel = (s) => STATUS_MAP[s]?.label || s || '—'
-const getStatusTagType = (s) => STATUS_MAP[s]?.type || 'info'
+const getStatusLabel = (s) => STATUS_LABEL_KEYS[s] ? t(STATUS_LABEL_KEYS[s]) : (s || '—')
+const getStatusTagType = (s) => STATUS_TAG_TYPES[s] || 'info'
 
 const fetchData = async () => {
   loading.value = true
@@ -319,18 +331,18 @@ const goContinueLearning = (item) => {
 const handleDrop = async (item) => {
   try {
     await ElMessageBox.confirm(
-      '确认退出该微专业修读？退出后可能需要重新申请。',
-      '退出确认',
-      { confirmButtonText: '确认退出', cancelButtonText: '取消', type: 'warning' }
+      t('myMicroSpecialties.dropConfirmMsg'),
+      t('myMicroSpecialties.dropConfirmTitle'),
+      { confirmButtonText: t('myMicroSpecialties.confirmDropBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
     await dropEnrollment(item.id, { reason: '主动退出' })
-    ElMessage.success('已退出修读')
+    ElMessage.success(t('myMicroSpecialties.dropSuccess'))
     await fetchData()
   } catch (e) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 退出失败:', e)
-      ElMessage.error(e?.response?.data?.message || '操作失败')
+      ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))
     }
   }
 }
@@ -339,18 +351,18 @@ const handleReapply = async (item) => {
   reapplying.value = item.id
   try {
     await ElMessageBox.confirm(
-      '确认重新申请该微专业？',
-      '重新申请',
-      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'info' }
+      t('myMicroSpecialties.reapplyConfirmMsg'),
+      t('myMicroSpecialties.reapplyConfirmTitle'),
+      { confirmButtonText: t('app.confirm'), cancelButtonText: t('common.cancel'), type: 'info' }
     )
     await reapplyEnrollment(item.id)
-    ElMessage.success('已重新申请')
+    ElMessage.success(t('myMicroSpecialties.reapplySuccess'))
     await fetchData()
   } catch (e) {
     if (e !== 'cancel') {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 重新申请失败:', e)
-      ElMessage.error(e?.response?.data?.message || '操作失败')
+      ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))
     }
   } finally {
     reapplying.value = null
@@ -369,7 +381,7 @@ const viewCertificate = async (item) => {
       a.click()
       URL.revokeObjectURL(url)
     } catch (e) {
-      ElMessage.error('下载证书失败')
+      ElMessage.error(t('myMicroSpecialties.downloadFailed'))
     }
   }
 }
@@ -381,9 +393,9 @@ const handleViewFailedCourses = (item) => {
 
 const contactAcademic = () => {
   ElMessageBox.alert(
-    '如有疑问，请联系教务处获取更多信息。',
-    '联系教务处',
-    { confirmButtonText: '知道了', type: 'info' }
+    t('myMicroSpecialties.contactMsg'),
+    t('myMicroSpecialties.contactTitle'),
+    { confirmButtonText: t('myMicroSpecialties.gotIt'), type: 'info' }
   )
 }
 

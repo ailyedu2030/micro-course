@@ -1,15 +1,15 @@
 <template>
   <div class="interactive-props">
     <div class="prop-row">
-      <span class="prop-label">PPT文件</span>
-      <span class="prop-value">{{ slide?.fileName || '未上传' }}</span>
+      <span class="prop-label">{{ t('interactiveLesson.properties.pptFile') }}</span>
+      <span class="prop-value">{{ slide?.fileName || t('interactiveLesson.properties.notUploaded') }}</span>
     </div>
     <div class="prop-row">
-      <span class="prop-label">总页数</span>
+      <span class="prop-label">{{ t('interactiveLesson.properties.totalPages') }}</span>
       <span class="prop-value">{{ slide?.totalPages || 0 }}</span>
     </div>
     <div class="prop-row">
-      <span class="prop-label">已配音</span>
+      <span class="prop-label">{{ t('interactiveLesson.properties.voiced') }}</span>
       <span class="prop-value">{{ audioReadyCount }}/{{ pages.length }}</span>
     </div>
     <el-progress v-if="pages.length > 0" :percentage="progressPercent" :stroke-width="6" color="#67c23a" />
@@ -18,6 +18,9 @@
 
 <script setup>
 import { computed, watch, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps({ courseId: { type: [Number, String], required: true } })
 const pages = ref([])
@@ -37,7 +40,7 @@ watch(() => props.courseId, async (id) => {
       pages.value = p.data || []
     }
   } catch (e) {
-    console.warn('[InteractiveLessonProperties] 加载课件信息失败', e?.message)
+    console.warn('[InteractiveLessonProperties]', t('interactiveLesson.properties.loadFailed'), e?.message)
   }
 }, { immediate: true })
 </script>

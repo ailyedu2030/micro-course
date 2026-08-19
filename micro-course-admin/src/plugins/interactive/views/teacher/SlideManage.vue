@@ -11,9 +11,9 @@
     <!-- Breadcrumb -->
     <div class="breadcrumb-bar">
       <el-breadcrumb separator="→">
-        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">课程管理</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: userRole === 'TEACHER' ? '/teacher/courses' : '/courses' }">{{ t('slide.manage.breadcrumbCourse') }}</el-breadcrumb-item>
         <el-breadcrumb-item v-if="courseTitle" :to="{ path: `/courses/${courseId}` }">{{ courseTitle }}</el-breadcrumb-item>
-        <el-breadcrumb-item>课件管理</el-breadcrumb-item>
+        <el-breadcrumb-item>{{ t('slide.manage.breadcrumbCourseware') }}</el-breadcrumb-item>
       </el-breadcrumb>
       <div v-if="courseTitle || chapterTitle" class="context-tags">
         <el-tag v-if="courseTitle" type="primary" size="small" effect="plain">{{ courseTitle }}</el-tag>
@@ -24,9 +24,9 @@
           :model-value="Number(chapterId)"
           size="small"
           class="sm-chapter-switch"
-          placeholder="切换章节"
+          :placeholder="t('slide.manage.switchChapter')"
           @change="switchChapter"
-          aria-label="切换章节"
+          :aria-label="t('slide.manage.switchChapter')"
         >
           <el-option v-for="c in chapterOptions" :key="c.id" :label="c.title" :value="Number(c.id)" />
         </el-select>
@@ -35,22 +35,22 @@
 
     <!-- 章节级：课时课件概览（每个课时一种课件，跳转课时级管理） -->
     <div v-if="chapterId && !sectionId" class="sm-chapter-overview">
-      <h3 class="sm-co-title">章节课时课件概览</h3>
+      <h3 class="sm-co-title">{{ t('slide.manage.chapterOverviewTitle') }}</h3>
       <!-- L0 Task 3: 章节尚无课时的真实空状态 → 告诉用户该怎么办 -->
       <div
         v-if="!sectionsLoading && sectionStatus.length === 0"
         class="sm-co-empty"
       >
         <el-icon :size="36" class="sm-co-empty-icon"><Files /></el-icon>
-        <p class="sm-co-empty-title">该章节还没有课时</p>
-        <p class="sm-co-empty-desc">请先在「课程管理」中为该章节添加课时，之后即可为每个课时配置 PPT 或 HTML 课件。</p>
+        <p class="sm-co-empty-title">{{ t('slide.manage.noSectionsTitle') }}</p>
+        <p class="sm-co-empty-desc">{{ t('slide.manage.noSectionsDesc') }}</p>
         <el-button
           type="primary"
           plain
           size="small"
           @click="router.push(`/courses/${courseId.value}`)"
         >
-          前往课程管理添加课时
+          {{ t('slide.manage.goAddSections') }}
         </el-button>
       </div>
       <el-table
@@ -61,24 +61,24 @@
         border
         class="sm-co-table"
       >
-        <el-table-column prop="title" label="课时" min-width="220" />
-        <el-table-column label="课件类型" width="140">
+        <el-table-column prop="title" :label="t('slide.manage.colSection')" min-width="220" />
+        <el-table-column :label="t('slide.manage.colCoursewareType')" width="140">
           <template #default="{ row }">
-            <el-tag v-if="row.type === 'PPT'" type="primary" size="small">PPT 课件</el-tag>
-            <el-tag v-else-if="row.type === 'HTML'" type="success" size="small">HTML 课件</el-tag>
-            <el-tag v-else type="info" size="small">暂无课件</el-tag>
+            <el-tag v-if="row.type === 'PPT'" type="primary" size="small">{{ t('slide.manage.pptCourseware') }}</el-tag>
+            <el-tag v-else-if="row.type === 'HTML'" type="success" size="small">{{ t('slide.manage.htmlCourseware') }}</el-tag>
+            <el-tag v-else type="info" size="small">{{ t('slide.manage.noCourseware') }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220">
+        <el-table-column :label="t('slide.manage.colActions')" width="220">
           <template #default="{ row }">
-            <el-button size="small" type="primary" plain @click="goManageSection(row.id)">管理课件</el-button>
+            <el-button size="small" type="primary" plain @click="goManageSection(row.id)">{{ t('slide.manage.manageCourseware') }}</el-button>
             <!-- P2-5：章节概览直接预览该课时课件（无课件时禁用），复用 SlidePreview 学生视角 -->
-            <el-button size="small" :disabled="!row.type" @click="openSectionPreview(row.id)">预览</el-button>
+            <el-button size="small" :disabled="!row.type" @click="openSectionPreview(row.id)">{{ t('slide.manage.preview') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
       <!-- P2-5：章节级预览 dialog（课时 = row.id 即 sectionId） -->
-      <el-dialog v-model="showSectionPreview" title="学生视角预览" fullscreen :destroy-on-close="true">
+      <el-dialog v-model="showSectionPreview" :title="t('slide.manage.studentPreviewTitle')" fullscreen :destroy-on-close="true">
         <SlidePreview
           v-if="showSectionPreview && previewSectionId !== null"
           :course-id="courseId"
@@ -90,7 +90,7 @@
         type="info"
         :closable="false"
         show-icon
-        title="课件按课时（课时）管理：每个课时独立维护 PPT 或 HTML 课件"
+        :title="t('slide.manage.coursewareTip')"
         class="sm-co-tip"
       />
     </div>
@@ -105,10 +105,10 @@
           :closable="false"
           show-icon
           class="sm-type-mismatch"
-          :title="`该课时课件类型为「${tree.type === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」，与当前「${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」管理入口不一致`"
+          :title="typeMismatchText"
         >
           <template #default>
-            <el-button size="small" type="primary" plain @click="clearRestrictedType">查看全部课件类型</el-button>
+            <el-button size="small" type="primary" plain @click="clearRestrictedType">{{ t('slide.manage.viewAllTypes') }}</el-button>
           </template>
         </el-alert>
 
@@ -136,22 +136,18 @@
         <div v-else class="sm-empty">
           <div v-if="upload.renderPending.value" class="sm-render">
             <el-icon class="is-loading"><Loading /></el-icon>
-            <span>PPT 正在后台渲染处理，完成后将自动进入课件工作区…</span>
+            <span>{{ t('slide.manage.renderPending') }}</span>
           </div>
           <el-card v-else class="sm-create-card">
             <template #header>
-              <h2 class="sm-create-title">{{ sectionId ? '该课时' : '该章节' }}暂无课件</h2>
-              <p class="sm-create-sub">
-{{ restrictedType
-                ? `当前处于「${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}」管理入口，仅可创建${restrictedType === 'PPT' ? 'PPT 课件' : 'HTML 课件'}。`
-                : '请选择要创建的课件类型。创建后该' + (sectionId ? '课时' : '章节') + '将固定为该类型，如需切换请先删除现有课件。' }}
-</p>
+              <h2 class="sm-create-title">{{ noCoursewareTitle }}</h2>
+              <p class="sm-create-sub">{{ createSubText }}</p>
             </template>
             <div class="sm-create-options" :class="{ 'sm-create-options-single': restrictedType }">
               <div v-if="!restrictedType || restrictedType === 'PPT'" class="sm-option">
                 <el-icon :size="36" class="sm-option-icon"><Picture /></el-icon>
-                <h3>PPT 课件</h3>
-                <p class="sm-option-desc">上传 .pptx，系统自动逐页渲染高清图片，支持页级讲述稿、音频与页间跳转。</p>
+                <h3>{{ t('slide.manage.pptCourseware') }}</h3>
+                <p class="sm-option-desc">{{ t('slide.manage.optionPptDesc') }}</p>
                 <el-upload
                   drag
                   :show-file-list="false"
@@ -161,14 +157,14 @@
                   class="sm-upload"
                 >
                   <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-                  <div class="el-upload__text">拖拽 .pptx 到此处，或 <em>点击上传</em></div>
-                  <template #tip><div class="el-upload__tip">支持 .pptx（最大 50MB），上传后自动渲染</div></template>
+                  <div class="el-upload__text">{{ t('slide.manage.dragPptHint') }} <em>{{ t('slide.manage.clickToUpload') }}</em></div>
+                  <template #tip><div class="el-upload__tip">{{ t('slide.manage.pptUploadTip') }}</div></template>
                 </el-upload>
               </div>
               <div v-if="!restrictedType || restrictedType === 'HTML'" class="sm-option">
                 <el-icon :size="36" class="sm-option-icon"><Document /></el-icon>
-                <h3>HTML 课件</h3>
-                <p class="sm-option-desc">上传 .html 或在线编辑，支持分段讲述稿、段级音频与播放时段落高亮。</p>
+                <h3>{{ t('slide.manage.htmlCourseware') }}</h3>
+                <p class="sm-option-desc">{{ t('slide.manage.optionHtmlDesc') }}</p>
                 <el-upload
                   drag
                   :show-file-list="false"
@@ -178,8 +174,8 @@
                   class="sm-upload"
                 >
                   <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
-                  <div class="el-upload__text">拖拽 .html 到此处，或 <em>点击上传</em></div>
-                  <template #tip><div class="el-upload__tip">支持 .html（最大 5MB），上传后可直接在线播放</div></template>
+                  <div class="el-upload__text">{{ t('slide.manage.dragHtmlHint') }} <em>{{ t('slide.manage.clickToUpload') }}</em></div>
+                  <template #tip><div class="el-upload__tip">{{ t('slide.manage.htmlUploadTip') }}</div></template>
                 </el-upload>
               </div>
             </div>
@@ -193,6 +189,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { ElMessage } from 'element-plus'
 import { Picture, Document, UploadFilled, Loading, Files } from '@element-plus/icons-vue'
 import { getCourseById } from '@/api/course'
@@ -205,6 +202,7 @@ import PptCoursewareManage from '../../components/PptCoursewareManage.vue'
 import HtmlCoursewareManage from '../../components/HtmlCoursewareManage.vue'
 import SlidePreview from '../../components/SlidePreview.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
@@ -214,14 +212,40 @@ const chapterId = computed(() => route.params.chapterId || route.query.chapterId
 const sectionId = computed(() => route.query.sectionId || null)
 // 【V333】类型限定模式：?type=HTML / ?type=PPT（从独立管理页进入时只允许该类型）
 const restrictedType = computed(() => {
-  const t = route.query.type
-  return t === 'HTML' || t === 'PPT' ? t : null
+  const rt = route.query.type
+  return rt === 'HTML' || rt === 'PPT' ? rt : null
 })
 function clearRestrictedType() {
   const q = { ...route.query }
   delete q.type
   router.replace({ path: route.path, query: q })
 }
+
+// 【i18n】类型不一致提示（限定类型与课时实际类型冲突）
+const typeMismatchText = computed(() => {
+  if (!tree.value?.type || !restrictedType.value) return ''
+  return t('slide.manage.typeMismatch', {
+    actual: tree.value.type === 'PPT' ? t('slide.manage.pptCourseware') : t('slide.manage.htmlCourseware'),
+    restricted: restrictedType.value === 'PPT' ? t('slide.manage.pptCourseware') : t('slide.manage.htmlCourseware')
+  })
+})
+
+// 【i18n】空状态标题：该课时/该章节暂无课件
+const noCoursewareTitle = computed(() =>
+  t('slide.manage.noCoursewareTitle', {
+    scope: sectionId.value ? t('slide.manage.scopeSection') : t('slide.manage.scopeChapter')
+  })
+)
+
+// 【i18n】创建卡副标题：限定类型 / 自由选择两种文案
+const createSubText = computed(() => {
+  if (restrictedType.value) {
+    const typeLabel = restrictedType.value === 'PPT' ? t('slide.manage.pptCourseware') : t('slide.manage.htmlCourseware')
+    return t('slide.manage.createSubRestricted', { type: typeLabel })
+  }
+  const scope = sectionId.value ? t('slide.manage.scopeSection') : t('slide.manage.scopeChapter')
+  return t('slide.manage.createSubFree', { scope })
+})
 
 const courseTitle = ref('')
 const chapterTitle = ref('')
@@ -255,7 +279,7 @@ async function loadTree() {
     const res = await getCoursewareTree(courseId.value, sectionId.value, chapterId.value)
     tree.value = res.data || res
   } catch (e) {
-    ElMessage.error(e?.response?.data?.message || '加载课件失败')
+    ElMessage.error(e?.response?.data?.message || t('slide.manage.loadTreeFailed'))
   } finally {
     typeLoading.value = false
   }
@@ -272,14 +296,14 @@ async function loadSectionOverview() {
     const statuses = await Promise.all(rows.map(async (s) => {
       let type = null
       try {
-        const t = await getCoursewareTree(courseId.value, s.id, null)
-        type = t?.data?.type === 'EMPTY' ? null : t?.data?.type
+        const tw = await getCoursewareTree(courseId.value, s.id, null)
+        type = tw?.data?.type === 'EMPTY' ? null : tw?.data?.type
       } catch { /* 单课时加载失败按无课件处理 */ }
-      return { id: s.id, title: s.title || `课时 ${s.id}`, type }
+      return { id: s.id, title: s.title || t('slide.manage.sectionFallbackTitle', { id: s.id }), type }
     }))
     sectionStatus.value = statuses
   } catch (e) {
-    ElMessage.warning('章节课时列表加载失败')
+    ElMessage.warning(t('slide.manage.loadSectionsFailed'))
   } finally {
     sectionsLoading.value = false
   }
@@ -310,7 +334,7 @@ function switchChapter(id) {
 async function loadChapters() {
   if (!courseId.value) return
   try {
-    const res = await getChapters({ courseId: courseId.value, size: 999 })
+    const res = await getChapters({ courseId: courseId.value, size: 100 })
     chapterOptions.value = res?.data?.items || res?.data || []
   } catch {
     chapterOptions.value = []

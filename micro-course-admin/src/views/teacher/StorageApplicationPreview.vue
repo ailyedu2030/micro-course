@@ -2,18 +2,18 @@
   <div class="preview-page" v-loading="loading">
     <!-- 顶部操作栏 -->
     <div class="toolbar">
-      <el-button @click="$router.back()">返回</el-button>
+      <el-button @click="$router.back()">{{ $t('app.back') }}</el-button>
       <el-button type="primary" :loading="exportingType === 'word'" :disabled="!!exportingType" @click="handleExport('word')">
-        {{ exportingType === 'word' ? '正在导出 Word…' : '下载Word' }}
+        {{ exportingType === 'word' ? $t('storagePreview.exportingWord') : $t('storagePreview.downloadWord') }}
       </el-button>
       <el-button type="primary" :loading="exportingType === 'pdf'" :disabled="!!exportingType" @click="handleExport('pdf')">
-        {{ exportingType === 'pdf' ? '正在导出 PDF…' : '下载PDF' }}
+        {{ exportingType === 'pdf' ? $t('storagePreview.exportingPdf') : $t('storagePreview.downloadPdf') }}
       </el-button>
     </div>
 
     <!-- 错误状态 -->
-    <el-result v-if="error" icon="error" title="加载失败" :sub-title="errorMessage">
-      <template #extra><el-button type="primary" @click="loadData">重试</el-button></template>
+    <el-result v-if="error" icon="error" :title="$t('storagePreview.loadFailed')" :sub-title="errorMessage">
+      <template #extra><el-button type="primary" @click="loadData">{{ $t('common.retry') }}</el-button></template>
     </el-result>
 
     <!-- A4 纸样式预览 -->
@@ -22,117 +22,117 @@
   <div v-if="data?.status" class="status-banner" :class="`status-${(data.status || '').toLowerCase()}`">
     <el-icon><DocumentCopy v-if="data.status === 'DRAFT'" /><Loading v-else-if="data.status === 'PENDING_REVIEW'" /><CircleCheck v-else-if="data.status === 'APPROVED'" /><CircleClose v-else-if="data.status === 'REJECTED'" /><Refresh v-else /></el-icon>
     <span class="status-text">{{ statusLabel(data.status) }}</span>
-    <span v-if="data.status === 'DRAFT'" class="status-tip">仅供预览，尚未提交审核</span>
-    <span v-else-if="data.status === 'PENDING_REVIEW'" class="status-tip">审核中，暂不可编辑</span>
-    <span v-else-if="data.status === 'REJECTED' && data.reviewComment" class="status-tip">驳回原因：{{ data.reviewComment }}</span>
-    <span v-else-if="data.status === 'WITHDRAWN'" class="status-tip">已撤回，可继续编辑</span>
+    <span v-if="data.status === 'DRAFT'" class="status-tip">{{ $t('storagePreview.statusTipDraft') }}</span>
+    <span v-else-if="data.status === 'PENDING_REVIEW'" class="status-tip">{{ $t('storagePreview.statusTipPendingReview') }}</span>
+    <span v-else-if="data.status === 'REJECTED' && data.reviewComment" class="status-tip">{{ $t('storagePreview.rejectReason', { reason: data.reviewComment }) }}</span>
+    <span v-else-if="data.status === 'WITHDRAWN'" class="status-tip">{{ $t('storagePreview.statusTipWithdrawn') }}</span>
   </div>
 
   <!-- 标题 -->
-  <h1 class="preview-title">高校开放共享"微专业"资源平台推荐表</h1>
+  <h1 class="preview-title">{{ $t('storagePreview.pageTitle') }}</h1>
 
       <!-- 模块1：基本信息 -->
       <table class="preview-table">
         <tr>
-          <td class="label-cell">申报高校</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.applyingUniversity') }}</td>
           <td class="value-cell">{{ data.title || '' }}</td>
-          <td class="label-cell">微专业名称</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.microSpecialtyName') }}</td>
           <td class="value-cell">{{ data.microSpecialtyName || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">专业负责人</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.professionalLeader') }}</td>
           <td class="value-cell">{{ data.leadName || '' }}</td>
-          <td class="label-cell">联系电话</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.contactPhone') }}</td>
           <td class="value-cell">{{ data.contactPhone || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">申请时间</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.applyDate') }}</td>
           <td class="value-cell" colspan="3">{{ data.applyDate || '' }}</td>
         </tr>
       </table>
 
       <!-- 模块2：微专业基本情况 -->
-      <h2 class="section-title">一、微专业基本情况</h2>
+      <h2 class="section-title">{{ $t('storagePreview.section1Title') }}</h2>
       <table class="preview-table">
         <tr>
-          <td class="label-cell">类型</td>
-          <td class="value-cell">{{ data.type || '急需紧缺型' }}</td>
-          <td class="label-cell">面向对象</td>
+          <td class="label-cell">{{ $t('app.type') }}</td>
+          <td class="value-cell">{{ data.type || $t('microSpecialtyProposal.typeUrgent') }}</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.targetAudience') }}</td>
           <td class="value-cell">{{ data.targetAudience || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">目标学科</td>
+          <td class="label-cell">{{ $t('storagePreview.targetDisciplines') }}</td>
           <td class="value-cell">{{ data.targetDisciplines || '' }}</td>
-          <td class="label-cell">总学分</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.totalCredits') }}</td>
           <td class="value-cell">{{ data.totalCredits || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">课程数量</td>
+          <td class="label-cell">{{ $t('storagePreview.courseCount') }}</td>
           <td class="value-cell">{{ data.courseCount || '' }}</td>
-          <td class="label-cell">招生人数</td>
+          <td class="label-cell">{{ $t('storagePreview.enrollmentQuota') }}</td>
           <td class="value-cell">{{ data.enrollmentQuota || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">开班人数</td>
+          <td class="label-cell">{{ $t('storagePreview.classSize') }}</td>
           <td class="value-cell">{{ data.classSize || '' }}</td>
-          <td class="label-cell">学制</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.duration') }}</td>
           <td class="value-cell">{{ data.duration || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">开课时间</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.startDate') }}</td>
           <td class="value-cell">{{ data.startDate || '' }}</td>
-          <td class="label-cell">产教融合</td>
-          <td class="value-cell">{{ data.isIndustryAcademic ? '是' : '否' }}</td>
+          <td class="label-cell">{{ $t('storagePreview.isIndustryAcademic') }}</td>
+          <td class="value-cell">{{ data.isIndustryAcademic ? $t('app.yes') : $t('app.no') }}</td>
         </tr>
         <tr v-if="data.industryPartners">
-          <td class="label-cell">合作企业</td>
+          <td class="label-cell">{{ $t('storagePreview.industryPartners') }}</td>
           <td class="value-cell" colspan="3">{{ data.industryPartners }}</td>
         </tr>
         <tr v-if="data.coBuildUniversities">
-          <td class="label-cell">共建高校</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.coBuildUniversities') }}</td>
           <td class="value-cell" colspan="3">{{ data.coBuildUniversities }}</td>
         </tr>
         <tr v-if="data.plannedShareUniversities">
-          <td class="label-cell">拟共享高校</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.plannedShareUniversities') }}</td>
           <td class="value-cell" colspan="3">{{ data.plannedShareUniversities }}</td>
         </tr>
       </table>
 
       <!-- 微专业介绍（富文本） -->
       <div v-if="data.introduction" class="rich-section">
-        <strong class="block-label">微专业介绍：</strong>
+        <strong class="block-label">{{ $t('microSpecialtyProposal.introduction') }}：</strong>
         <div v-html="sanitizeHtml(data.introduction)" class="rich-content"></div>
       </div>
 
       <!-- 市场需求分析 -->
       <div v-if="data.marketDemandAnalysis" class="rich-section">
-        <strong class="block-label">市场需求分析：</strong>
+        <strong class="block-label">{{ $t('storagePreview.marketDemandAnalysis') }}：</strong>
         <div v-html="sanitizeHtml(data.marketDemandAnalysis)" class="rich-content"></div>
       </div>
 
       <!-- 专业概述 -->
       <div v-if="data.specialtyOverview" class="rich-section">
-        <strong class="block-label">专业概况：</strong>
+        <strong class="block-label">{{ $t('storagePreview.specialtyOverview') }}：</strong>
         <div v-html="sanitizeHtml(data.specialtyOverview)" class="rich-content"></div>
       </div>
 
       <!-- 课程设计 -->
       <div v-if="data.curriculumDesign" class="rich-section">
-        <strong class="block-label">课程设计思路：</strong>
+        <strong class="block-label">{{ $t('storagePreview.curriculumDesign') }}：</strong>
         <div v-html="sanitizeHtml(data.curriculumDesign)" class="rich-content"></div>
       </div>
 
       <!-- 课程表 -->
       <div v-if="data.courses && data.courses.length" class="table-section">
-        <strong class="block-label">课程设置：</strong>
+        <strong class="block-label">{{ $t('storagePreview.courseSetup') }}：</strong>
         <table class="preview-table">
           <thead>
             <tr>
-              <th>模块</th>
-              <th>课程名称</th>
-              <th style="width:60px">学时</th>
-              <th style="width:60px">学分</th>
-              <th>学期</th>
+              <th>{{ $t('microSpecialtyProposal.module') }}</th>
+              <th>{{ $t('microSpecialtyProposal.courseName') }}</th>
+              <th style="width:60px">{{ $t('microSpecialtyProposal.hours') }}</th>
+              <th style="width:60px">{{ $t('microSpecialtyProposal.credits') }}</th>
+              <th>{{ $t('course.semester') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -149,38 +149,38 @@
 
       <!-- 建设保障 -->
       <div v-if="data.constructionGuarantee" class="rich-section">
-        <strong class="block-label">建设保障：</strong>
+        <strong class="block-label">{{ $t('microSpecialtyProposal.constructionGuarantee') }}：</strong>
         <div v-html="sanitizeHtml(data.constructionGuarantee)" class="rich-content"></div>
       </div>
 
       <!-- 模块3：教学团队情况 -->
-      <h2 class="section-title">二、微专业教学团队情况</h2>
+      <h2 class="section-title">{{ $t('storagePreview.section2Title') }}</h2>
 
       <!-- 负责人信息 -->
       <table class="preview-table">
         <tr>
-          <td class="label-cell">负责人</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.leader') }}</td>
           <td class="value-cell">{{ data.leadName || '' }}</td>
-          <td class="label-cell">职称</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.title') }}</td>
           <td class="value-cell">{{ data.leadTitle || '' }}</td>
         </tr>
         <tr>
-          <td class="label-cell">职务</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.position') }}</td>
           <td class="value-cell">{{ data.leadPosition || '' }}</td>
-          <td class="label-cell">研究方向</td>
+          <td class="label-cell">{{ $t('microSpecialtyProposal.researchDirection') }}</td>
           <td class="value-cell">{{ data.leadResearchDirection || '' }}</td>
         </tr>
       </table>
 
       <!-- 负责人授课课程 -->
       <div v-if="data.leadCourses && data.leadCourses.length" class="table-section">
-        <strong class="block-label">负责人授课课程：</strong>
+        <strong class="block-label">{{ $t('storagePreview.leadCoursesLabel') }}</strong>
         <table class="preview-table">
           <thead>
             <tr>
-              <th>课程名称</th>
-              <th style="width:80px">学分</th>
-              <th style="width:80px">学时</th>
+              <th>{{ $t('microSpecialtyProposal.courseName') }}</th>
+              <th style="width:80px">{{ $t('microSpecialtyProposal.credits') }}</th>
+              <th style="width:80px">{{ $t('microSpecialtyProposal.hours') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -195,18 +195,18 @@
 
       <!-- 团队成员 -->
       <div v-if="data.teamMembers && data.teamMembers.length" class="table-section">
-        <strong class="block-label">团队成员：</strong>
+        <strong class="block-label">{{ $t('microSpecialtyProposal.teamMembers') }}：</strong>
         <table class="preview-table">
           <thead>
             <tr>
-              <th style="width:50px">序号</th>
-              <th>姓名</th>
-              <th style="width:60px">年龄</th>
-              <th>职称</th>
-              <th>所在单位</th>
-              <th>专业/行业</th>
-              <th>曾授课程</th>
-              <th>拟授课程</th>
+              <th style="width:50px">{{ $t('course.index') }}</th>
+              <th>{{ $t('microSpecialtyProposal.name') }}</th>
+              <th style="width:60px">{{ $t('microSpecialtyProposal.age') }}</th>
+              <th>{{ $t('microSpecialtyProposal.title') }}</th>
+              <th>{{ $t('microSpecialtyProposal.organization') }}</th>
+              <th>{{ $t('microSpecialtyProposal.profession') }}</th>
+              <th>{{ $t('microSpecialtyProposal.taughtCourses') }}</th>
+              <th>{{ $t('microSpecialtyProposal.plannedCourses') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -225,17 +225,17 @@
       </div>
 
       <!-- 模块4：签字/盖章 -->
-      <h2 class="section-title">三、审批意见</h2>
+      <h2 class="section-title">{{ $t('storagePreview.section3Title') }}</h2>
       <div v-if="data.signatures && data.signatures.length" class="signatures-section">
         <table class="preview-table">
           <thead>
             <tr>
-              <th style="width:50px">序号</th>
-              <th style="width:100px">审批层级</th>
-              <th>审批意见</th>
-              <th style="width:90px">签字</th>
-              <th style="width:90px">公章</th>
-              <th style="width:90px">日期</th>
+              <th style="width:50px">{{ $t('course.index') }}</th>
+              <th style="width:100px">{{ $t('storagePreview.approvalLevel') }}</th>
+              <th>{{ $t('storagePreview.approvalOpinion') }}</th>
+              <th style="width:90px">{{ $t('microSpecialtyProposal.signature') }}</th>
+              <th style="width:90px">{{ $t('microSpecialtyProposal.seal') }}</th>
+              <th style="width:90px">{{ $t('course.date') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -244,15 +244,15 @@
               <td>{{ signLevelLabel(s.signLevel) }}</td>
               <td>
                 <template v-if="s.opinionText">{{ s.opinionText }}</template>
-                <template v-if="s.remark"><br />备注：{{ s.remark }}</template>
+                <template v-if="s.remark"><br />{{ $t('storagePreview.remarkLabel') }}{{ s.remark }}</template>
               </td>
               <td class="text-center">
-                <img v-if="s.signatureImageUrl" :src="s.signatureImageUrl" class="signature-img" alt="签字" />
+                <img v-if="s.signatureImageUrl" :src="s.signatureImageUrl" class="signature-img" :alt="$t('microSpecialtyProposal.signature')" />
                 <span v-else-if="s.signatureText">{{ s.signatureText }}</span>
                 <span v-else>-</span>
               </td>
               <td class="text-center">
-                <img v-if="s.sealImageUrl" :src="s.sealImageUrl" class="seal-img" alt="公章" />
+                <img v-if="s.sealImageUrl" :src="s.sealImageUrl" class="seal-img" :alt="$t('microSpecialtyProposal.seal')" />
                 <span v-else>-</span>
               </td>
               <td class="text-center">{{ s.signDate || '' }}</td>
@@ -261,18 +261,18 @@
         </table>
       </div>
       <div v-else class="empty-section">
-        <p class="empty-text">暂无审批记录</p>
+        <p class="empty-text">{{ $t('storagePreview.noApprovalRecords') }}</p>
       </div>
 
       <!-- 模块5：共享单位 -->
-      <h2 class="section-title">四、共享单位信息</h2>
+      <h2 class="section-title">{{ $t('storagePreview.section4Title') }}</h2>
       <div v-if="data.sharedUnits && data.sharedUnits.length" class="table-section">
         <table class="preview-table">
           <thead>
             <tr>
-              <th style="width:50px">序号</th>
-              <th>单位名称</th>
-              <th style="width:120px">单位类型</th>
+              <th style="width:50px">{{ $t('course.index') }}</th>
+              <th>{{ $t('microSpecialtyProposal.unitName') }}</th>
+              <th style="width:120px">{{ $t('microSpecialtyProposal.unitType') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -285,12 +285,12 @@
         </table>
       </div>
       <div v-else class="empty-section">
-        <p class="empty-text">暂无共享单位信息</p>
+        <p class="empty-text">{{ $t('storagePreview.noSharedUnits') }}</p>
       </div>
 
       <!-- 页脚 -->
       <div class="preview-footer">
-        教育部高校学生司（高校毕业生就业服务司）制 &nbsp;&nbsp; 文件编制时间：2026年3月
+        {{ $t('storagePreview.footerIssuer') }} &nbsp;&nbsp; {{ $t('storagePreview.footerFileDate') }}
       </div>
     </div>
   </div>
@@ -298,12 +298,15 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { DocumentCopy, Loading, CircleCheck, CircleClose, Refresh } from '@element-plus/icons-vue'
 import { getStoragePreview, exportStorageWord, exportStoragePdf } from '@/api/storageApplication'
 
 import DOMPurify from 'dompurify'
+
+const { t } = useI18n()
 
 const sanitizeHtml = (html) => {
   if (!html) return ''
@@ -325,7 +328,7 @@ const loadData = async () => {
     data.value = res.data
   } catch (e) {
     error.value = true
-    errorMessage.value = e?.response?.data?.message || e?.message || '无法加载预览数据，请稍后重试'  // P2-F: 显示具体错误
+    errorMessage.value = e?.response?.data?.message || e?.message || t('storagePreview.loadFailedMsg')  // P2-F: 显示具体错误
   } finally {
     loading.value = false
   }
@@ -344,11 +347,11 @@ const handleExport = async (type) => {
       if (err.errors && Array.isArray(err.errors) && err.errors.length) {
         ElMessageBox.alert(
           err.errors.map(e => `• ${e}`).join('\n'),
-          err.message || '请补全必填项后再导出',
-          { type: 'warning', confirmButtonText: '我知道了' }
+          err.message || t('storagePreview.completeRequiredBeforeExport'),
+          { type: 'warning', confirmButtonText: t('storagePreview.gotIt') }
         )
       } else {
-        ElMessage.error(err.message || '导出校验失败')
+        ElMessage.error(err.message || t('storagePreview.exportValidateFailed'))
       }
       return
     }
@@ -358,14 +361,14 @@ const handleExport = async (type) => {
     a.href = url
     const ext = type === 'word' ? 'docx' : 'pdf'
     // P1-UX: 文件名更专业 - 含微专业名+日期
-    const title = data.value?.title || data.value?.microSpecialtyName || '微专业'
+    const title = data.value?.title || data.value?.microSpecialtyName || t('course.microSpecialty')
     const date = new Date().toISOString().slice(0, 10)
-    a.download = `【${title}】整理收纳微专业申请表_${date}.${ext}`
+    a.download = t('storagePreview.exportFileName', { title, date, ext })
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success(`${ext.toUpperCase()} 导出成功`)
+    ElMessage.success(t('storagePreview.exportSuccess', { format: ext.toUpperCase() }))
   } catch (e) {
-    const msg = e?.response?.data?.message || e?.message || '导出失败'  // P2-F: 显示具体错误
+    const msg = e?.response?.data?.message || e?.message || t('storagePreview.exportFailed')  // P2-F: 显示具体错误
     ElMessage.error(msg)
   } finally {
     // P1-UX: 恢复按钮可点状态
@@ -374,29 +377,37 @@ const handleExport = async (type) => {
 }
 
 const memberTypeLabel = (type) => {
-  const map = { INTERNAL: '校内', EXTERNAL: '校外', LEAD: '负责人' }
+  const map = { INTERNAL: t('storagePreview.memberTypeInternal'), EXTERNAL: t('storagePreview.memberTypeExternal'), LEAD: t('microSpecialtyProposal.leader') }
   return map[type] || type || ''
 }
 
 const signLevelLabel = (level) => {
+  // 审计 2026-08-14 修复: 申报表签字的 signLevel 枚举为 LEAD/DEPT/SCHOOL,
+  // 原映射只有 DEPARTMENT/COLLEGE/ACADEMIC/UNIVERSITY/SHARED_UNIT,
+  // 导致显示原始英文代码(如 "LEAD")。补充真实枚举映射。
   const map = {
-    DEPARTMENT: '院系审批',
-    COLLEGE: '学院审批',
-    ACADEMIC: '教务处审批',
-    UNIVERSITY: '学校审批',
-    SHARED_UNIT: '共享单位意见'
+    // 微专业申报表真实枚举 (MicroSpecialtyProposal.vue signatures)
+    LEAD: t('storagePreview.signLevelLead'),
+    DEPT: t('storagePreview.signLevelDept'),
+    SCHOOL: t('storagePreview.signLevelSchool'),
+    // 兼容其它存储单据的旧枚举
+    DEPARTMENT: t('storagePreview.signLevelDepartment'),
+    COLLEGE: t('storagePreview.signLevelCollege'),
+    ACADEMIC: t('storagePreview.signLevelAcademic'),
+    UNIVERSITY: t('storagePreview.signLevelUniversity'),
+    SHARED_UNIT: t('storagePreview.signLevelSharedUnit')
   }
   return map[level] || level || ''
 }
 
 // P1-UX: 状态徽章文本映射
 const statusLabel = (s) => {
-  const map = { DRAFT: '草稿', PENDING_REVIEW: '审核中', APPROVED: '已通过', REJECTED: '已驳回', WITHDRAWN: '已撤回' }
+  const map = { DRAFT: t('course.draft'), PENDING_REVIEW: t('storagePreview.statusPendingReview'), APPROVED: t('course.approved'), REJECTED: t('storagePreview.statusRejected'), WITHDRAWN: t('storagePreview.statusWithdrawn') }
   return map[s] || s || ''
 }
 
 const unitTypeLabel = (type) => {
-  const map = { UNIVERSITY: '高校', ENTERPRISE: '企业', RESEARCH: '科研机构', SHARE_UNIV: '拟共享高校', CO_BUILD_UNIV: '共建高校', OTHER: '其他' }
+  const map = { UNIVERSITY: t('storagePreview.unitTypeUniversity'), ENTERPRISE: t('storagePreview.unitTypeEnterprise'), RESEARCH: t('storagePreview.unitTypeResearch'), SHARE_UNIV: t('microSpecialtyProposal.plannedShareUniversities'), CO_BUILD_UNIV: t('microSpecialtyProposal.coBuildUniversities'), OTHER: t('storagePreview.unitTypeOther') }
   return map[type] || type || ''
 }
 
