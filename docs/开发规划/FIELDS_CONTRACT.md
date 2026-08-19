@@ -2,7 +2,7 @@
 
 > 生成时间: 2026-06-24
 
-> 实体数: 291 | Vue 视图数: 61 | Controller 数: 77 | API 文件数: 47
+> 实体数: 291 | Vue 视图数: 61 | Controller 数: 78 | API 文件数: 47
 
 ---
 
@@ -890,6 +890,8 @@
 | FrontendError | /api/frontend-errors | 1 | - |
 
 | Grade | /api/grades | 10 | - |
+
+| GrayRelease | /api/gray-release | 1 | - |
 
 | HermesEvent | /api/hermes/webhook/events | 1 | - |
 
