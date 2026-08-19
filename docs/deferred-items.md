@@ -10,11 +10,11 @@
 
 | # | 类型 | 描述 | 当前影响 | 放行结论 | 后续动作 |
 |---|---|---|---|---|---|
-| **D19-1** | **P1-I** | **前端栈大版本升级 (vite 5→6 / vite-plugin-vue-devtools 7→8 / @vitejs/plugin-vue 5→6 / vitest 1→2)** | 当前功能正常, 客户不可感知; 但 dependabot PR #156 (vite-plugin-vue-devtools 7→8) 因 peer dep 冲突 (vite 5 vs devtools 8 要求 vite 6+) 被关闭 | 登记放行 | **启动独立 PR-4 "vite-stack 升级"** (本期不做, 涉及约 50 文件 + 完整回归); 在此之前 .github/dependabot.yml 排除 vite-plugin-vue-devtools (避免重复触发失败 PR) |
+| **D19-1** | **P1-I** | **前端栈大版本升级 (vue 3.4→3.5 / vite 5→6 / vite-plugin-vue-devtools 7→8 / @vitejs/plugin-vue 5→6 / vitest 1→2)** | **已 100% 闭环** (2026-08-19 接管 + D19-1 4 阶段 PR): PR #274 vue 3.5 + PR #275 vite 6 + PR #276 devtools 8 + PR #278 vitest 2 (含 SlidePlayer.vue 真实 bug `page` undefined 防御). dependabot.yml build-tools 排除已撤销 (PR #279 merged) | **已闭环** | ✅ 4 阶段 PR 全部 merged. 验证: test:unit 224/224 PASS + mvn test 1367/0/0/1 + precheck 28/28. D19-1 + D19-5 合并闭环 |
 | **D19-2** | **P1-I** | **6 个 dependabot MAJOR 升级** (#192 vue-i18n 9→11 / #159 pinia 2→4 / #157 happy-dom 15→20 / #155 springdoc 2.5→3.1 / #154 easyexcel 3.3→4.0 / #153 openpdf 1.3→3.0) | 4/6 已升级: PR #280 (happy-dom) / #281 (easyexcel) / #282 (pinia) / #283 (vue-i18n). 2/6 暂缓: #155 springdoc 需 Spring Boot 3.3+ (项目 3.2.12 升级超 D19-2 范围); #153 openpdf 3 移除 PdfPageEvent 等 lowagie API (项目 CertificateServiceImpl + StorageApplicationPdfGenerator 需代码迁移) + AGPL 许可证风险 | 4 项已闭环 + 2 项明确暂缓 | D19-2 67% 完成. 后续 2 项: springdoc 等 Spring Boot 升级专题 / openpdf 等代码迁移 + 许可证评估专题 |
 | **D19-3** | P1-I | **PR #266 P0 漏洞触发的"PR 自审验证隐式依赖"教训** | 已根治: PR #266 squash commit d00172e7 含 id: filter 修复; 验证 run 32247275893 全部 SUCCESS (5/5 required checks) | 已闭环 (本次) | ✅ **【防止再发】已落地**: (a) precheck.sh R6 规则 check_workflow_outputs_id (PR #267 merged c98e8e55); (b) tracker 治理日志登记 (PR #268 merged d3fa2ed0); (c) 后续 AGENTS.md 增补硬约束 (本次治理 PR) |
 | **D19-4** | P1-I | **PR #142 #143 旧 takeover 任务 (24天 OPEN)** | 包含 31 commits / 63 文件大改, 风险高 | 已关闭 | ✅ **已处理**: 24天过期, 本次接管 (2026-08-19) 已部分覆盖; 分支 fix/takeover-phase3-final-2026-07-27 保留在 origin, 后续如需 cherry-pick 单个 commit 评估 |
-| **D19-5** | P1-I | **PR #156 vite-plugin-vue-devtools 7→8 (peer dep 冲突关闭)** | 不影响客户 (CI/前端构建正常), 但 dev 体验退化 (停在新版) | 关闭 + 排除 | 同 D19-1, 依赖 vite-stack 升级 |
+| **D19-5** | P1-I | **PR #156 vite-plugin-vue-devtools 7→8 (peer dep 冲突关闭)** | **已通过 D19-1 解决**: devtools 已升级到 8.2.1 (PR #276 merged). PR #156 已加 comment 链接 PR #276 | **已闭环** | ✅ PR #276 merged. dependabot 后续 devtools 8→9 升级自动触发 |
 | **D19-6** | P1-I | **AGENTS.md / docs/开发流程 增补 workflows outputs id 硬约束 + commit hook 检查** | 已落地 R6 规则 + tracker 登记, 但 AGENTS.md 文档化未完成 | 治理改进 | ✅ **本次完成**: AGENTS.md 新增 "## 🔒 GitHub Actions 隐式依赖硬约束" 章节 (含 R6 规则引用 + fix commit 必检项) |
 
 ### 评估
