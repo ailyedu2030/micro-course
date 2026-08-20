@@ -90,6 +90,20 @@ ssh -o ConnectTimeout=10 "$SERVER" "docker exec $ADMIN_CONTAINER nginx -t"
 ssh -o ConnectTimeout=10 "$SERVER" "docker exec $ADMIN_CONTAINER nginx -s reload"
 echo "✅ nginx reload OK"
 
+# === Step 8.5: nginx 缓存策略固化 (P0-2026-08-20, 幂等) ===
+# 根因: index.html 用 no-cache 导致浏览器缓存旧 index → 引用已删除旧 chunk → 404
+# 修复: location / (index.html) no-store + /assets/ (hash 文件) immutable, 每次部署自动应用
+# 幂等: 容器重建后重新部署时自动应用, 不依赖手动 docker exec
+echo ""
+echo "=== Step 8.5: nginx 缓存策略固化 ==="
+ssh -o ConnectTimeout=10 "$SERVER" "docker exec $ADMIN_CONTAINER sh -c '
+  # index.html (location /) → no-store (防旧 index 缓存引用旧 chunk 404)
+  sed -i \"s|add_header Cache-Control \\\"no-cache, must-revalidate\\\";|add_header Cache-Control \\\"no-store, no-cache, must-revalidate\\\";|g\" /etc/nginx/conf.d/default.conf
+  grep -q \"no-store, no-cache, must-revalidate\" /etc/nginx/conf.d/default.conf && echo \"index no-store 已生效\" || echo \"index no-store 未匹配(可能已改)\"
+'"
+ssh -o ConnectTimeout=10 "$SERVER" "docker exec $ADMIN_CONTAINER nginx -t && docker exec $ADMIN_CONTAINER nginx -s reload"
+echo "✅ nginx 缓存策略固化 OK"
+
 # === Step 9: 验证 HTTP ===
 echo ""
 echo "=== Step 9: 验证 HTTP ==="
