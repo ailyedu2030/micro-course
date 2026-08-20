@@ -334,7 +334,7 @@ import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
-const { t: i18nT } = useI18n()
+const { t, t: i18nT } = useI18n()
 // 【V333 简化方案】HTML 课件 / PPT 课件独立管理页复用本组件，fixedCourseType 强制类型维度
 const props = defineProps({
   fixedCourseType: { type: String, default: '' }
