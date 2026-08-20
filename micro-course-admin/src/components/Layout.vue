@@ -476,9 +476,15 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* 菜单项 */
+/* 菜单项 — 显式 color 覆盖 Element Plus 默认深灰 (P1-C 对比度修复 2026-08-20) */
 :deep(.el-menu-item) {
   padding-left: 20px !important;
+  color: var(--sidebar-text, #e5e7eb) !important;
+}
+
+/* 二级 inline 菜单项（el-sub-menu 展开后）— 同样显式高对比度 */
+:deep(.el-menu--inline .el-menu-item) {
+  color: var(--sidebar-text, #e5e7eb) !important;
 }
 
 /* 菜单项 hover */
@@ -512,9 +518,10 @@ onUnmounted(() => {
   color: var(--role-primary);
 }
 
-/* 子菜单 */
+/* 子菜单 title（一级菜单）— 显式高对比度 */
 :deep(.el-sub-menu__title) {
   padding-left: 20px !important;
+  color: var(--sidebar-text, #e5e7eb) !important;
 }
 
 /* 子菜单 hover */
