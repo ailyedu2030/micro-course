@@ -59,22 +59,26 @@ export function useVideoProgressFlow(options = {}) {
         progressId.value = record.id
       }
     },
-    createPayload: () => {
+    createPayload: (ctx) => {
       const snapshot = getCurrentProgressSnapshot()
-      return {
+      const payload = {
         userId: unref(userId),
         courseId: unref(courseId),
         chapterId: unref(chapterId),
         videoPosition: Math.floor(snapshot?.current || 0),
         videoProgress: Math.round(snapshot?.progressPercentVal || 0)
       }
+      if (ctx?.completed) payload.completed = true
+      return payload
     },
-    updatePayload: () => {
+    updatePayload: (ctx) => {
       const snapshot = getCurrentProgressSnapshot()
-      return {
+      const payload = {
         videoPosition: Math.floor(snapshot?.current || 0),
         videoProgress: Math.round(snapshot?.progressPercentVal || 0)
       }
+      if (ctx?.completed) payload.completed = true
+      return payload
     },
     createProgress: createLearningProgress,
     updateProgress: updateLearningProgress,
@@ -113,14 +117,15 @@ export function useVideoProgressFlow(options = {}) {
     }
   })
 
-  async function reportProgress(force = false) {
+  async function reportProgress(force = false, completed = false) {
     const snapshot = getCurrentProgressSnapshot()
     if (!snapshot) return
 
     const { progressPercentVal } = snapshot
     if (!force && Math.abs(progressPercentVal - lastReportedProgress) < 1 && lastFailedProgress === null) return
 
-    await persistProgress({ force })
+    // P1-2026-08-21: 视频看完(@ended)时 force+completed 落库，此前终态不持久化致章节完成/证书判定失效
+    await persistProgress({ force, completed })
   }
 
   return {

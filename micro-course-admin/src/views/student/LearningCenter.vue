@@ -1109,9 +1109,9 @@ async function checkTodayStatus() {
       return String(c.checkinDate).slice(0, 10) === todayStr
     })
   } catch (e) {
-      console.warn("[LearningCenter]", e)
-      ElMessage.warning(t('learning.trendDataLoadFailed'))
-    chartData.value = []
+    // P2-2026-08-21: 复制粘贴错误——打卡状态查询失败不应清空图表数据/提示趋势加载失败
+    console.warn("[LearningCenter] checkTodayStatus", e)
+    checkedInToday.value = false
   }
 }
 

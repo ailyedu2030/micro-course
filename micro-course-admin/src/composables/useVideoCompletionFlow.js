@@ -29,7 +29,8 @@ export function useVideoCompletionFlow(options = {}) {
     }
 
     try {
-      await reportProgress()
+      // P1-2026-08-21: 完成态必须 force+completed 落库(原 reportProgress() 无 force → paused=true 不持久化)
+      await reportProgress(true, true)
     } catch {
       // 进度上报失败不阻塞完成流程
     }
