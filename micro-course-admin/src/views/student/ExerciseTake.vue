@@ -654,6 +654,8 @@ const submitError = ref(false)
 const sheetVisible = ref(false)
 
 const chapterId = computed(() => route.params.chapterId)
+// P1-C-2026-08-21: 课程级练习支持（无章节归属的练习对学生可见）
+const courseId = computed(() => route.params.courseId || route.query.courseId)
 
 // ===== 答题相关状态 =====
 const currentExercise = ref(null)
@@ -809,10 +811,11 @@ function handleKeydown(e) {
 
 // ===== API =====
 async function fetchExerciseList() {
-  if (!chapterId.value) return
+  if (!chapterId.value && !courseId.value) return
   loading.value = true
   try {
-    const { data } = await getExercises({ chapterId: chapterId.value })
+    const params = chapterId.value ? { chapterId: chapterId.value } : { courseId: courseId.value }
+    const { data } = await getExercises(params)
     exerciseList.value = Array.isArray(data) ? data : (data?.items || [])
 
     // P0-1: 如果路由 query 包含 examId，自动开始考试（从考试列表导航过来）
