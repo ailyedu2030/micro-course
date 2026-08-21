@@ -13,7 +13,7 @@
     <el-alert v-if="paid" :title="$t('order.success')" type="success" show-icon :closable="false" class="mg-bottom-16" />
 
     <el-row :gutter="20">
-      <el-col :span="16">
+      <el-col :xs="24" :sm="16">
         <el-card shadow="never" class="section-card">
           <template #header>{{ $t('cart.confirmOrder') }}</template>
           <el-table v-loading="loading" :data="store.items" stripe border>
@@ -49,7 +49,7 @@
         </el-card>
       </el-col>
 
-      <el-col :span="8">
+      <el-col :xs="24" :sm="8">
         <el-card shadow="never" class="summary-card">
           <template #header>{{ $t('cart.orderSummary') }}</template>
           <div class="summary-row"><span>{{ $t('cart.courseCount') }}</span><span>{{ store.count }} {{ $t('course.title') }}</span></div>
@@ -63,7 +63,7 @@
     </el-row>
 
     <!-- 支付结果明细弹窗 -->
-    <el-dialog v-model="showResultDialog" :title="$t('order.paymentResult')" width="600px" :close-on-click-modal="false" :aria-label="$t('order.paymentResult')">
+    <el-dialog v-model="showResultDialog" :title="$t('order.paymentResult')" width="600px" class="checkout-result-dialog" :close-on-click-modal="false" :aria-label="$t('order.paymentResult')">
       <p><strong>{{ $t('order.successCount') }}：{{ resultSummary.success.length }}</strong></p>
       <ul v-if="resultSummary.success.length > 0" style="margin-bottom:16px">
         <li v-for="o in resultSummary.success" :key="o.courseTitle">
@@ -148,12 +148,12 @@ async function handleSubmit() {
       const failedOrders = []
       orders.forEach((order, idx) => {
         if (order && order.status === 'PAID') {
-          successItems.push({ courseTitle: items[idx]?.title || order.courseName, amount: order.amount, status: 'PAID' })
+          successItems.push({ courseTitle: items[idx]?.title || order.courseTitle || '未知课程', amount: order.amount, status: 'PAID' })
           store.removeItem(items[idx]?.courseId)
         } else {
           failedOrders.push({
             courseId: items[idx]?.courseId,
-            courseTitle: items[idx]?.title || order?.courseName || t('course.unknown'),
+            courseTitle: items[idx]?.title || order?.courseTitle || t('course.unknown'),
             amount: order?.amount ?? items[idx]?.price,
             errorMsg: order?.status === 'PENDING' ? t('cart.orderPendingMsg') : t('order.failed'),
             status: order?.status || 'FAILED'
@@ -255,4 +255,6 @@ async function handleRetryFailed() {
 .total-price { color: var(--el-color-danger); font-size: 20px; font-weight: var(--weight-bold); }
 .full-width { width: 100%; }
 .mg-bottom-16 { margin-bottom: 16px; }
+/* P2-2026-08-21: 支付结果弹窗 375px 不溢出 */
+:deep(.checkout-result-dialog) { width: 92vw !important; max-width: 600px; }
 </style>
