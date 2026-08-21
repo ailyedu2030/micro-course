@@ -18,7 +18,7 @@
       <el-table v-loading="loading" :data="items" stripe border>
         <template #empty><el-empty :description="$t('microSpecialtyReview.emptyPending')" style="max-width: 100%; min-width: 0; --el-empty-padding: 0;" /></template>
         <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="collegeName" :label="$t('microSpecialtyReview.college')" width="120" />
+        <el-table-column prop="departmentName" :label="$t('microSpecialtyReview.college')" width="120" />
         <el-table-column prop="creatorName" :label="$t('microSpecialtyReview.creator')" width="100" />
         <el-table-column :label="$t('app.status')" width="120" align="center">
           <template #default="{ row }">
@@ -69,7 +69,7 @@
     <el-dialog v-model="detailVisible" :title="$t('microSpecialtyReview.detailTitle')" width="560px">
       <div class="detail-grid" v-if="detailRow">
         <div class="detail-item"><label>{{ $t('course.tableTitle') }}</label><span>{{ detailRow.title }}</span></div>
-        <div class="detail-item"><label>{{ $t('microSpecialtyReview.college') }}</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyReview.college') }}</label><span>{{ detailRow.departmentName || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('microSpecialtyReview.creator') }}</label><span>{{ detailRow.creatorName || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('course.semester') }}</label><span>{{ detailRow.semester || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('microSpecialtyReview.maxStudents') }}</label><span>{{ detailRow.maxStudents || '-' }}</span></div>

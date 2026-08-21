@@ -80,12 +80,16 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     }
 
     @Override
-    public PageResult<?> getPendingCrossDeptInvites(int page, int size) {
-        IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
-                new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .in(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC", "PENDING")
-                        .orderByDesc(MicroSpecialtyTeacher::getInvitedAt));
+    public PageResult<?> getPendingCrossDeptInvites(int page, int size, String inviteStatus) {
+        LambdaQueryWrapper<MicroSpecialtyTeacher> qw = new LambdaQueryWrapper<>();
+        // P1-2026-08-21: 支持"全部"tab(不传 status 查全部状态)；默认只查待审批
+        if (inviteStatus != null && !inviteStatus.isBlank()) {
+            qw.eq(MicroSpecialtyTeacher::getInviteStatus, inviteStatus);
+        } else {
+            qw.in(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC", "PENDING");
+        }
+        qw.orderByDesc(MicroSpecialtyTeacher::getInvitedAt);
+        IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(new Page<>(page + 1, size), qw);
         // P1-2026-08-21: 实体无 teacherName/微专业标题/学院名 → 前端 4 列空白，映射为 VO 补齐展示字段
         java.util.List<com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO> voList = new java.util.ArrayList<>();
         java.util.Map<Long, MicroSpecialty> msCache = new java.util.HashMap<>();

@@ -110,15 +110,8 @@
           <el-tab-pane :label="$t('microSpecialtyDetail.tabCourses')" name="courses">
             <el-empty v-if="!courses.length" :description="$t('microSpecialtyDetail.noCourses')" />
             <template v-else>
-              <!-- 不合格课程提示 -->
-              <el-alert
-                v-if="focusFailed"
-                type="warning"
-                :title="$t('microSpecialtyDetail.focusFailedAlert')"
-                :closable="false"
-                show-icon
-                class="mg-bottom-12"
-              />
+              <!-- P1-2026-08-21: 移除 focus=failed 误导占位(课程 VO 无 per-course failed 字段，无法按失败过滤，
+                   原 alert 声称"以下是未通过考核的课程"但列表实为全量课程) -->
               <!-- 修读要求汇总卡片 -->
               <div class="ms-requirements-card">
                 <div class="ms-req-item">
@@ -362,7 +355,7 @@ const stats = ref(null)
 const loading = ref(false)
 const error = ref(false)
 const activeTab = ref(route.query.tab || 'courses')
-const focusFailed = ref(route.query.focus === 'failed')
+// P1-2026-08-21: focusFailed 死代码已移除（无 failed 过滤数据支撑）
 const gotoFirst = ref(route.query.goto === 'first')
 
 const courses = ref([])

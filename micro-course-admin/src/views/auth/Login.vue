@@ -254,10 +254,9 @@ const handleLogin = async () => {
         : getRoleHomePage(userStore.role)
       router.push(safeRedirect)
     } catch (e) {
-      // 拦截器已处理 401/500/423，这里兜底 + 差异化展示
-      if (e.response?.status === 423) {
-        ElMessage.warning('登录失败次数过多，账号已锁定，请 15 分钟后再试')
-      } else if (!e.response) {
+      // P1-2026-08-21: 423/401/网络错误均已由 request.js 拦截器提示（含锁定 15 分钟文案），
+      // 组件内重复弹 toast 会造成双提示且时长矛盾 → 仅对未拦截的异常兜底
+      if (!e.response) {
         ElMessage.error('网络连接失败，请检查后重试')
       }
     } finally {

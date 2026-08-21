@@ -190,7 +190,8 @@ request.interceptors.response.use(response => {
       ElMessage.error('无权访问该资源，请联系管理员获取权限')
     }
   } else if (status === 423) {
-    ElMessage.warning(responseMessage || '登录失败次数过多，账号已锁定，请 30 分钟后重试')
+    // P1-2026-08-21: 账号锁定为 15 分钟(IP 熔断才是 30 分钟)，默认文案对齐，且后端 responseMessage 优先
+        ElMessage.warning(responseMessage || '登录失败次数过多，账号已锁定，请 15 分钟后重试')
   } else if (status === 429) {
     ElMessage.warning(responseMessage || '操作过于频繁，请稍后重试')
   } else if (status === 413) {

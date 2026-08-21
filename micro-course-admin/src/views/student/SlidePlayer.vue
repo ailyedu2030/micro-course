@@ -1567,14 +1567,21 @@ const sectionId = computed(() => props.sectionId ?? (route.query.sectionId || ro
 async function ensureProgress() {
   if (!courseId.value || !isStudent.value) return
   try {
+    // P1-2026-08-21: 主流程无 chapterId 时 Number(null)=0 永不匹配 null 记录 → 每次新建重复记录；
+    // 用页面派生的 effective ids 并按 sectionId 匹配
+    const page = currentPage.value
+    const effSectionId = sectionId.value ?? page?.sectionId ?? null
+    const effChapterId = chapterId.value ?? page?.chapterId ?? null
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []
-    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
+    const slideRecord = effSectionId != null
+      ? records.find(r => r.sectionId != null && Number(r.sectionId) === Number(effSectionId))
+      : records.find(r => r.chapterId != null && Number(r.chapterId) === Number(effChapterId))
     if (!slideRecord) {
       await createLearningProgress({
         courseId: courseId.value,
-        chapterId: chapterId.value ? Number(chapterId.value) : undefined,
-        sectionId: sectionId.value ? Number(sectionId.value) : undefined,
+        chapterId: effChapterId != null ? Number(effChapterId) : undefined,
+        sectionId: effSectionId != null ? Number(effSectionId) : undefined,
       })
     }
   } catch (e) { if (courseId.value) console.warn('[SlidePlayer] ensureProgress failed', e.message) }
@@ -1584,16 +1591,22 @@ async function ensureProgress() {
 async function markSlideComplete() {
   if (!courseId.value || !isStudent.value) return
   try {
+    // P1-2026-08-21: 与 ensureProgress 一致的 effective ids + 按 sectionId 匹配
+    const page = currentPage.value
+    const effSectionId = sectionId.value ?? page?.sectionId ?? null
+    const effChapterId = chapterId.value ?? page?.chapterId ?? null
     const existing = await getLearningProgress({ courseId: courseId.value })
     const records = existing.data || []
-    const slideRecord = records.find(r => r.chapterId === Number(chapterId.value))
+    const slideRecord = effSectionId != null
+      ? records.find(r => r.sectionId != null && Number(r.sectionId) === Number(effSectionId))
+      : records.find(r => r.chapterId != null && Number(r.chapterId) === Number(effChapterId))
     if (slideRecord?.id) {
       await updateLearningProgress(slideRecord.id, { completed: true })
     } else {
       await createLearningProgress({
         courseId: courseId.value,
-        chapterId: chapterId.value ? Number(chapterId.value) : undefined,
-        sectionId: sectionId.value ? Number(sectionId.value) : undefined,
+        chapterId: effChapterId != null ? Number(effChapterId) : undefined,
+        sectionId: effSectionId != null ? Number(effSectionId) : undefined,
         completed: true,
       })
     }
@@ -1608,12 +1621,15 @@ async function markSlideComplete() {
 // 服务端算出的 video_progress 百分比与真实播放进度一致；ratio<=0（刚进入未播放）跳过，
 // 避免翻页瞬间以 0 进度覆盖已累计的真实进度。
 function updateVideoProgress() {
-  if (!courseId.value || !sectionId.value || !isStudent.value) return
+  // P1-2026-08-21: 学生主入口不带 sectionId 参数 → 原恒早退致 video_progress 永不落库；
+  // 与 advanceToNextPage 一致，从当前页 VO 派生 effectiveSectionId
   const page = currentPage.value
+  const effectiveSectionId = sectionId.value ?? page?.sectionId ?? null
+  if (!courseId.value || !effectiveSectionId || !isStudent.value) return
   if (!page) return
   const ratio = currentPlaybackProgress()
   if (ratio <= 0) return
-  reportVideoProgress(courseId.value, sectionId.value, Math.round(ratio * 1000), 1000)
+  reportVideoProgress(courseId.value, effectiveSectionId, Math.round(ratio * 1000), 1000)
     .catch(() => { /* fire-and-forget：上报失败不影响播放 */ })
 }
 

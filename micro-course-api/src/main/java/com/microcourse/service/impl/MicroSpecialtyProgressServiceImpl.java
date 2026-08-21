@@ -130,9 +130,10 @@ public class MicroSpecialtyProgressServiceImpl implements MicroSpecialtyProgress
                             .eq(Enrollment::getUserId, en.getUserId())
                             .ne(Enrollment::getEnrollmentStatus, EnrollmentStatus.CANCELLED.getValue()));
             if (courseEn != null) {
-                // P1-11: 收集课程级 progress
+                // P1-2026-08-21: enrollment.progress 全链路统一为 0-100(教师录入/退课拦截/前端渲染均按百分比)，
+                // 原 ×100.0 会把 80% 算成 8000%，微专业进度被放大 100 倍
                 if (courseEn.getProgress() != null) {
-                    totalProgress += courseEn.getProgress() * 100.0;
+                    totalProgress += courseEn.getProgress();
                     progressCount++;
                 }
                 if (courseEn.getFinalScore() != null) {

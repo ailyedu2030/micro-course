@@ -251,6 +251,7 @@ import { Calendar, Timer, Edit, Aim, Key, ArrowRight } from '@element-plus/icons
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments } from '../../api/enrollment'
 import { getMyCheckIns } from '../../api/checkin'
+import { getAccuracyTrend } from '../../api/exercise-record'
 import { filterCourseCollectionEnrollments } from '../../utils/enrollmentFilters'
 import i18n from '@/i18n'
 
@@ -384,7 +385,8 @@ const fetchWeekCheckins = async () => {
   }
 }
 
-const calculateReport = () => {
+// P1-2026-08-21: 聚合 accuracy-trend 周数据需要 await，改为 async
+const calculateReport = async () => {
   const { start } = getWeekRange()
   const startDate = new Date(start)
   const today = new Date()
@@ -404,8 +406,9 @@ const calculateReport = () => {
     videoMinutes += Math.round((c.duration || 0) / 60)
   }
 
-  // 2. 练习数据：从 enrollment 的 lastWatchTime 筛选本周记录（回退方案，粒度有限）
-  //    如后端提供按周统计 API 应优先使用
+  // 2. 练习数据：从 accuracy-trend 聚合本周真实数据（后端按日返回 totalCount/correctCount）
+  //    P1-2026-08-21: 原无条件累加 enrollment 终身 exerciseCount/correctCount → 周报数据实为累计值，
+  //    误导 AI 建议阈值；改为按日聚合本周
   for (const e of enrollments.value) {
     if (e.lastWatchTime) {
       const d = new Date(e.lastWatchTime)
@@ -413,10 +416,15 @@ const calculateReport = () => {
         learningDaysSet.add(d.toDateString())
       }
     }
-    // 仅在 enrollment 级别有精确周数据时累加
-    exerciseCount += e.exerciseCount || 0
-    correctCount += e.correctCount || 0
   }
+  try {
+    const trendRes = await getAccuracyTrend({ days: 7 })
+    const trend = trendRes?.data || []
+    const weekStartStr = startDate.toISOString ? startDate.toISOString().slice(0, 10) : String(startDate)
+    const weekData = trend.filter(d => d.date >= weekStartStr)
+    exerciseCount = weekData.reduce((s, d) => s + (d.totalCount || 0), 0)
+    correctCount = weekData.reduce((s, d) => s + (d.correctCount || 0), 0)
+  } catch { /* 练习数据不可用时保持 0 */ }
 
   reportData.value.learningDays = learningDaysSet.size
   reportData.value.videoMinutes = videoMinutes
@@ -444,7 +452,7 @@ onMounted(async () => {
         fetchEnrollments(userId),
         fetchWeekCheckins()
       ])
-      calculateReport()
+      await calculateReport()
     }
   } finally {
     loading.value = false

@@ -82,28 +82,8 @@
                 <span>{{ $t('examCenter.duration', { minutes: exam.duration }) }}</span>
               </p>
               <div class="exam-actions">
-                <el-button
-                  v-if="exam._expired"
-                  type="info"
-                  size="small"
-                  disabled
-                >
-                  {{ $t('examCenter.expired') }}
-                </el-button>
-                <el-tooltip
-                  v-else-if="exam._notStarted"
-                  :content="$t('examCenter.notStartedTip', { startTime: formatTime(exam.examTime) })"
-                  placement="top"
-                >
-                  <el-button
-                    type="info"
-                    size="small"
-                    disabled
-                  >
-                    {{ $t('course.notStarted') }}
-                  </el-button>
-                </el-tooltip>
-                <el-tooltip v-else-if="exam._attempted && !exam._passed" :content="$t('examCenter.alreadySubmittedTip') || '考试已提交，不可重复作答'" placement="top">
+                <!-- P1-2026-08-21: 移除依赖后端不存在 startTime 的死分支(_expired/_notStarted 永不触发) -->
+                <el-tooltip v-if="exam._attempted && !exam._passed" :content="$t('examCenter.alreadySubmittedTip') || '考试已提交，不可重复作答'" placement="top">
                   <el-button type="primary" size="small" disabled>
                     {{ $t('examCenter.joinExam') }}
                   </el-button>
@@ -333,10 +313,9 @@ const fetchExams = async () => {
       examId: exam.id,
       examTitle: exam.title,
       courseTitle: exam.courseTitle || t('examCenter.unknownCourse'),
-      // P1-C 修复 (2026-08-04): 未安排考试时间的试卷 startTime 为 null，
-      // 原逻辑回退 createdAt（创建时刻）→ 新试卷立即被判定"已过期"，
-      // 学生考试中心永远看不到新考试。未安排时间的考试应归入"待参加"（时间显示"未定"）。
-      examTime: exam.startTime || null,
+      // P1-2026-08-21: 后端 ExerciseVO/exercises 表无 startTime/排期字段(仅 timeLimit)，
+      // 原 examTime 恒 null → _expired/_notStarted 恒 false 是死代码，已移除对应 UI 分支
+      examTime: null,
       duration: exam.timeLimit || null
     }))
 

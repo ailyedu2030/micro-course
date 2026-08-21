@@ -678,7 +678,8 @@ const fetchEnrollments = async () => {
   dataLoaded.value = false
   try {
     // P0-5: 不再传 userId——后端从 JWT 中获取
-    const res = await getMyEnrollments()
+    // P1-2026-08-21: 不带 size 时后端默认 20 条，第 21+ 门课不可见 → 显式拉大
+    const res = await getMyEnrollments({ page: 0, size: 200 })
     const list = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
