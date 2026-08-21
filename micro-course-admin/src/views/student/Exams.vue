@@ -103,6 +103,11 @@
                     {{ $t('course.notStarted') }}
                   </el-button>
                 </el-tooltip>
+                <el-tooltip v-else-if="exam._attempted && !exam._passed" :content="$t('examCenter.alreadySubmittedTip') || '考试已提交，不可重复作答'" placement="top">
+                  <el-button type="primary" size="small" disabled>
+                    {{ $t('examCenter.joinExam') }}
+                  </el-button>
+                </el-tooltip>
                 <el-button
                   v-else-if="!exam._passed"
                   type="primary"

@@ -205,7 +205,7 @@ const handleRefund = async (row) => {
     handleSuccess(t('myOrders.refundSubmitted'))
     fetchOrders()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
       handleError(e, t('myOrders.refundFailed'))
     }
   } finally {
@@ -223,7 +223,7 @@ const handleCancel = async (row) => {
     ElMessage.success(t('myOrders.cancelledSuccess'))
     fetchOrders()
   } catch (e) {
-    if (e !== 'cancel') handleError(e, t('myOrders.cancelFailed'))
+    if (!['cancel', 'close'].includes(e)) handleError(e, t('myOrders.cancelFailed'))
   } finally {
     cancellingId.value = null
   }

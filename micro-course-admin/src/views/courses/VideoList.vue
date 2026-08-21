@@ -469,7 +469,7 @@ const handleDelete = async (row) => {
     ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('course.deleteFailed'))
     }
   }

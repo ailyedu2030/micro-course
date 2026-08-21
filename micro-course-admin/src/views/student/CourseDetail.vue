@@ -760,7 +760,7 @@ const fetchReviews = async (append = false) => {
     }
     reviewTotalElements.value = data?.totalElements || items.length
   }
-  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning(t('course.reviewsLoadFailed')); reviews.value = [] }
+  catch (e) { console.warn('[CourseDetail] fetchReviews 获取评价失败', e); ElMessage.warning(t('course.reviewsLoadFailed')); if (!append) reviews.value = [] /* P1: 加载更多失败不应当清空已加载列表 */ }
   finally { reviewLoading.value = false }
 }
 
@@ -841,6 +841,7 @@ const handleReply = (review) => {
 }
 
 const handleSubmitReply = async () => {
+  reviewPage.value = 0 // P1: 提交后回到第一页，保证新评价可见
   if (!replyForm.value.content.trim()) {
     ElMessage.warning(t('course.inputReplyRequired'))
     return
@@ -864,6 +865,7 @@ const handleSubmitReply = async () => {
 
 const handleSubmitReview = async () => {
   if (!reviewForm.value.rating) { ElMessage.warning(t('course.selectRatingRequired')); return }
+  reviewPage.value = 0 // P1: 提交后回到第一页，保证新评价可见
   reviewSubmitting.value = true
   try { await createReview(courseId.value, { rating: reviewForm.value.rating, content: reviewForm.value.content }); ElMessage.success(t('course.reviewSubmitSuccess')); reviewDialogVisible.value = false; fetchReviews(); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   catch (e) { ElMessage.error(e?.response?.data?.message || t('course.submitFailedRetry')) }

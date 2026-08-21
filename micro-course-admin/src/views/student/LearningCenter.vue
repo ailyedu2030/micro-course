@@ -808,7 +808,8 @@ async function getStats(sharedEnrollments) {
     let streakDays = 0
     try {
       const streakRes = await getCheckInStreak()
-      streakDays = streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0
+      // P1-2026-08-21: 后端 GET /check-ins/streak 返回 R<Integer> 裸整数(非对象)，兼容两种形态
+      streakDays = typeof streakRes?.data === 'number' ? streakRes.data : (streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0)
     } catch { /* P1C-029: 连续天数为 0 就显示 0，不 fallback 到总学习天数 */ streakDays = 0 }
 
     // 证书数量
@@ -893,7 +894,13 @@ async function getChart() {
         chartData.value = dayLabels.map((day, idx) => {
           const found = trendData.find(t => {
             const tDay = t.day ?? t.date
-            return typeof tDay === 'number' ? tDay === idx + 1 : tDay === day
+            if (typeof tDay === 'number') return tDay === idx + 1
+            // P1-2026-08-21: 后端返回 date 字符串(如 2026-08-19)，需转星期标签匹配，否则正确率趋势恒全 0
+            if (typeof tDay === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tDay)) {
+              const dow = new Date(tDay + 'T00:00:00').getDay() // 0=周日
+              return dayLabels[(dow === 0 ? 6 : dow - 1)] === day
+            }
+            return tDay === day
           })
           return {
             day,

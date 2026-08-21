@@ -519,7 +519,8 @@ import {
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
 import { getMyOrders } from '../../api/order'
-import { getCompletion, batchGetLearningProgress } from '../../api/learning-progress'
+// P0-2026-08-21: 补 getLearningProgress import（原缺失 → 课件类课程继续学习被 catch 吞掉静默失效）
+import { getCompletion, batchGetLearningProgress, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'

@@ -712,7 +712,14 @@ const handleExport = async () => {
     const wb = new Workbook()
     const ws = wb.addWorksheet(i18nT('course.courseList'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(i18nT('course.exportFileName', { date: Date.now() }))
+    const wbout = await wb.xlsx.writeBuffer()
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = i18nT('course.exportFileName', { date: Date.now() })
+    link.click()
+    URL.revokeObjectURL(url)
     ElMessage.success(i18nT('course.exportSuccess', { count: exportData.length }))
   } catch {
     ElMessage.error(t('course.exportFailed'))

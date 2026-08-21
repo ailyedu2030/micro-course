@@ -190,7 +190,7 @@ async function handleBatchApprove() {
     selectedRows.value = []
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('courseApproval.batchApproveFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(e?.response?.data?.message || t('courseApproval.batchApproveFailed'))
   }
 }
 

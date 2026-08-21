@@ -339,7 +339,7 @@ const handleDrop = async (item) => {
     ElMessage.success(t('myMicroSpecialties.dropSuccess'))
     await fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 退出失败:', e)
       ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))
@@ -359,7 +359,7 @@ const handleReapply = async (item) => {
     ElMessage.success(t('myMicroSpecialties.reapplySuccess'))
     await fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 重新申请失败:', e)
       ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))

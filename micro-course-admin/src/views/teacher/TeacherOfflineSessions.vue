@@ -351,7 +351,7 @@ async function handleDelete(session) {
     ElMessage.success(t('course.deleteSuccess'))
     await fetchSessions()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
       ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
     }
   }
@@ -384,7 +384,10 @@ async function handleStatusChange(row, newStatus) {
 }
 
 function handleSessionClick(session) {
-  router.push(`/teacher/courses/${courseId.value}/chapters/${session.id}/manage-offline`)
+  // P1-2026-08-21: 原把 session.id(场次ID) 塞进 :chapterId 路由段 → 目标页按场次ID查章节/场次内容错误。
+  // 修正：章节 ID 应为 session.chapterId（回退当前页路由章节 ID）
+  const targetChapterId = session.chapterId || chapterId.value
+  router.push(`/teacher/courses/${courseId.value}/chapters/${targetChapterId}/manage-offline`)
 }
 
 onMounted(async () => {

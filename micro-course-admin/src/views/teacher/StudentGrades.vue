@@ -250,7 +250,8 @@
         <el-button v-if="!isReadOnlyGradeView && !(gradeForm.pendingQuestions && gradeForm.pendingQuestions.length)" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmGrade">
           {{ $t('studentGrades.submitScore') }}
         </el-button>
-        <el-button v-if="gradeForm.pendingQuestions && gradeForm.pendingQuestions.length" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmManualGrade">
+        <!-- P1-2026-08-21: 手动批改提交也须排除只读角色(ACADEMIC)，与 :144 注释"ACADEMIC 只读"一致 -->
+        <el-button v-if="!isReadOnlyGradeView && gradeForm.pendingQuestions && gradeForm.pendingQuestions.length" type="primary" :loading="savingGrade" :disabled="savingGrade" @click="confirmManualGrade">
           {{ $t('studentGrades.submitGrading') }}
         </el-button>
       </template>

@@ -61,7 +61,8 @@ const allBadges = computed(() => {
     { badgeType: 'SEVEN_DAY_STREAK', badgeName: '连续打卡' }
   ]
   return badgeTypes.map(b => {
-    const earned = earnedBadges.value.find(e => e.badgeType === b.badgeType)
+    // P1-2026-08-21: 后端 AchievementVO 字段是 badgeCode(非 badgeType)，原匹配恒不中 → 已获徽章显示未解锁
+    const earned = earnedBadges.value.find(e => e.badgeCode === b.badgeType)
     return earned ? { ...b, ...earned } : { ...b, earnedAt: null }
   })
 })

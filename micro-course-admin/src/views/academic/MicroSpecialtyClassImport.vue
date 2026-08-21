@@ -78,6 +78,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, classImport } from '@/api/microSpecialty'
 import { getClasses } from '@/api/class'
 import { getDepartments } from '@/api/department'
+import { getMajors } from '@/api/major'
 
 const { t } = useI18n()
 
@@ -96,9 +97,12 @@ const classOptions = ref([])
 // P1I-068: 院系列筛
 const departmentFilter = ref(null)
 const departmentOptions = ref([])
+// P1-2026-08-21: ClassVO 无 departmentId/departmentName(仅 majorId/majorName)，原筛选恒空锁死导入；
+// 加载专业表建立 majorId→departmentId 映射后按映射筛选
+const majorDeptMap = ref({})
 const filteredClassOptions = computed(() => {
   if (!departmentFilter.value) return classOptions.value
-  return classOptions.value.filter(c => c.departmentId === departmentFilter.value || c.departmentName === departmentOptions.value.find(d => d.id === departmentFilter.value)?.name)
+  return classOptions.value.filter(c => majorDeptMap.value[c.majorId] === departmentFilter.value)
 })
 const result = ref(null)
 const importResultDialogVisible = ref(false)
@@ -182,9 +186,21 @@ const fetchDepartments = async () => {
   } catch { /* 院系加载失败不影响主流程 */ }
 }
 
+// P1-2026-08-21: 建立 专业→院系 映射(ClassVO 无院系字段，需经 major 关联)
+const fetchMajorDeptMap = async () => {
+  try {
+    const { data } = await getMajors({ size: 500 })
+    const majors = data?.items || data || []
+    const map = {}
+    for (const m of majors) if (m.id != null && m.departmentId != null) map[m.id] = m.departmentId
+    majorDeptMap.value = map
+  } catch { /* 映射加载失败则院系筛选不可用但主流程可用 */ }
+}
+
 onMounted(() => {
   fetchSpecialties()
   fetchDepartments()
+  fetchMajorDeptMap()
 })
 </script>
 

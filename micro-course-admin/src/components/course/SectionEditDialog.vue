@@ -77,6 +77,10 @@ watch(() => props.section, (s) => {
     coursewareType: s.coursewareType || null,
     sortOrder: s.sortOrder ?? 0, duration: s.duration ?? 0, description: s.description || ''
   })
+  else {
+    // P1-2026-08-21: 新增模式(section=null)必须清空表单，否则残留上一课时数据易误提交重复课时
+    Object.assign(form, { title: '', sectionType: 'VIDEO', coursewareType: null, sortOrder: 0, duration: 0, description: '' })
+  }
 }, { immediate: true })
 
 const handleClose = () => emit('update:modelValue', false)

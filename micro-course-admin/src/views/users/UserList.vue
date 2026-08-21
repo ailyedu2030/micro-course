@@ -20,6 +20,13 @@
       @major-change="handleSearchMajorChange"
     />
 
+    <!-- P1-2026-08-21: 补回批量导入/教师审核/新增用户入口（原组件存在但无按钮置 visible，功能不可达） -->
+    <div v-if="userRole === 'ADMIN'" class="user-toolbar" style="display:flex;gap:8px;margin-bottom:12px">
+      <el-button type="primary" @click="batchImportVisible = true">{{ $t('admin.excelImport') }}</el-button>
+      <el-button type="warning" plain @click="teacherApprovalVisible = true">{{ $t('userList.teacherApproval') || '教师审核' }}</el-button>
+      <el-button type="success" plain @click="handleCreate">{{ $t('admin.quickActions.addUser') }}</el-button>
+    </div>
+
     <!-- 用户表格（共享组件） -->
     <UserTable
       :loading="loading"
@@ -71,7 +78,8 @@
 
       <!-- 操作栏插槽 -->
       <template #actions="{ row }">
-        <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+        <!-- P1-2026-08-21: 后端 PUT /users/{id} 仅 ADMIN 或本人，ACADEMIC 编辑他人必 403 → 编辑按钮 ADMIN-only -->
+        <el-button v-if="userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
         <el-button v-if="userRole === 'ADMIN'" type="danger" link size="small" @click="handleSoftDelete(row)">{{ $t('app.delete') }}</el-button>
       </template>
     </UserTable>
@@ -469,12 +477,16 @@ const fetchDepartments = async () => {
 }
 
 const fetchData = async () => {
+  // P1-2026-08-21 修复: 缓存键必须与请求参数一致（此前缺 majorId/classId/status → 筛选命中旧缓存显示错数据）
   const params = {
     page: page.value - 1,
     size: size.value,
     keyword: searchForm.keyword || undefined,
     role: searchForm.role || undefined,
     departmentId: searchForm.departmentId || undefined,
+    majorId: searchForm.majorId || undefined,
+    classId: searchForm.classId || undefined,
+    status: searchForm.status !== '' ? searchForm.status : undefined
   }
   const cacheKey = `UserList:${JSON.stringify(params)}`
   const cached = swrCache.get(cacheKey)
@@ -491,13 +503,7 @@ const fetchData = async () => {
   loading.value = true
   error.value = false
   try {
-    const fullParams = {
-      ...params,
-      majorId: searchForm.majorId || undefined,
-      classId: searchForm.classId || undefined,
-      status: searchForm.status !== '' ? searchForm.status : undefined
-    }
-    const { data } = await getUsers(fullParams)
+    const { data } = await getUsers(params)
     swrCache.set(cacheKey, { data, ts: Date.now() })
     tableData.value = data.items || []
     totalElements.value = data.totalElements || 0
@@ -652,7 +658,7 @@ const handleToggleStatus = async (row) => {
     userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
       ElMessage.error(e?.response?.data?.message || e?.message || t('userList.actionFailed', { action: actionText }))
     }
   }
@@ -667,7 +673,7 @@ const handleSoftDelete = async (row) => {
     userStore.refreshUserInfo()
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
       ElMessage.error(e?.response?.data?.message || e?.message || t('userList.actionFailed', { action: actionText }))
     }
   }

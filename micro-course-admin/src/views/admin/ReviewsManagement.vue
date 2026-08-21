@@ -149,7 +149,7 @@ async function handleApprove(row) {
     ElMessage.success(t('reviewsManagement.approved'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('common.failed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('common.failed'))
   }
 }
 

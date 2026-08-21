@@ -516,9 +516,10 @@ async function toggleFavorite() {
     if (isFavorited.value) {
       // 取消收藏（需要找到收藏ID）
       const res = await getMyFavorites()
-      const fav = (res.data || []).find(f => f.courseId === courseId.value)
+      const fav = (res.data || []).find(f => String(f.courseId) === String(courseId.value))
       if (fav) {
-        await removeFavorite(fav.id)
+        // P1-2026-08-21: 后端 DELETE /favorites/{id} 的 id 是 courseId 语义(非记录id)，必须传 courseId
+        await removeFavorite(fav.courseId)
         isFavorited.value = false
         ElMessage.success(t('learningView.favoriteRemoved'))
       }

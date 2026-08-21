@@ -468,7 +468,7 @@ const handleDeletePost = async () => {
     page.value = 1
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       const msg = error?.response?.data?.message || t('course.deleteFailed')
       ElMessage.error(msg)
     }

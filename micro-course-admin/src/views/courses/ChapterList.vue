@@ -237,7 +237,7 @@ const handleDeleteSection = async (chapter, section) => {
     ElMessage.success(t('course.deleteSuccess'))
     fetchSections(chapter.id)
   } catch (error) {
-    if (error !== 'cancel') ElMessage.error(t('course.deleteFailed'))
+    if (!['cancel', 'close'].includes(error)) ElMessage.error(t('course.deleteFailed'))
   }
 }
 
@@ -370,7 +370,7 @@ const handleDelete = async (row) => {
     ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('course.deleteFailed'))
     }
   }

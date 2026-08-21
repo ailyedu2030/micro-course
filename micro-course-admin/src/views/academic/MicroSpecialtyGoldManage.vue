@@ -21,16 +21,16 @@
       <el-table v-loading="loading" :data="items" stripe border>
         <template #empty><el-empty description="暂无微专业可设金标" /></template>
         <el-table-column prop="title" label="微专业" min-width="200" show-overflow-tooltip />
-        <el-table-column prop="collegeName" label="学院" width="120" />
+        <el-table-column prop="departmentName" label="学院" width="120" />
         <el-table-column label="当前金标" width="120" align="center">
           <template #default="{ row }">
             <el-tag v-if="row.isGoldFeatured" type="warning" size="small">金标</el-tag>
             <span v-else class="no-tag">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="enrollmentCount" label="选课人数" width="100" align="center" />
-        <el-table-column prop="featuredAt" label="置顶时间" width="130" align="center">
-          <template #default="{ row }">{{ row.featuredAt?.slice(0, 10) || '-' }}</template>
+        <el-table-column prop="totalEnrollments" label="选课人数" width="100" align="center" />
+        <el-table-column prop="featuredApplyAt" label="置顶时间" width="130" align="center">
+          <template #default="{ row }">{{ row.featuredApplyAt?.slice(0, 10) || '-' }}</template>
         </el-table-column>
         <el-table-column label="操作" width="180" align="center" fixed="right">
           <template #default="{ row }">

@@ -210,7 +210,7 @@ const handleApprove = async (row) => {
     ElMessage.success(t('discussionList.approveSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -230,7 +230,7 @@ const handleReject = async (row) => {
     ElMessage.success(t('discussionList.rejectSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -244,7 +244,7 @@ const handleTogglePin = async (row) => {
     ElMessage.success(t(newPinned ? 'discussionList.pinSuccess' : 'discussionList.unpinSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -258,7 +258,7 @@ const handleToggleEssence = async (row) => {
     ElMessage.success(t(newEssence ? 'discussionList.essenceSuccess' : 'discussionList.unessenceSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -271,7 +271,7 @@ const handleDelete = async (row) => {
     ElMessage.success(t('discussionList.deleteSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.deleteFailed'))
     }
   }

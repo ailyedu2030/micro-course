@@ -276,7 +276,7 @@ const handleCancel = async () => {
     await cancelMicroSpecialty(msId.value, value)
     ElMessage.success(t('microSpecialtyManage.cancelSuccess'))
     fetchDetail()
-  } catch (e) { if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
+  } catch (e) { if (!['cancel', 'close'].includes(e)) ElMessage.error(e?.response?.data?.message || t('course.operationFailed')) }
   finally { actioning.value = false }
 }
 

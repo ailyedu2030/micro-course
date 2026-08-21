@@ -1095,7 +1095,9 @@ async function doSubmit() {
     return
   }
 
-  const duration = elapsedTime.value || (timeLimit.value ? timeLimit.value * 60 - timeLeft.value : 0)
+  // P1-2026-08-21: 切后台超时后 elapsedTime 可能 > timeLimit*60 → 后端拒绝且重试死循环(答案丢失)；钳制到限时内
+  const rawDuration = elapsedTime.value || (timeLimit.value ? timeLimit.value * 60 - timeLeft.value : 0)
+  const duration = timeLimit.value ? Math.min(rawDuration, timeLimit.value * 60) : rawDuration
 
   const answerList = questionIds.value.map(qId => ({
     questionId: qId,

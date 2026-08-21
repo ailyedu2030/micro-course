@@ -199,7 +199,7 @@
                 <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
               <el-table v-else :data="warnings" class="warning-table" :empty-text="$t('common.noData')">
-                <el-table-column prop="name" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="courseTitle" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="completionRate" :label="$t('teacherDashboard.completionRate')" width="100" align="center">
                   <template #default="{ row }">
                     <span :class="row.completionRate < 30 ? 'rate-danger' : 'rate-success'">
@@ -623,7 +623,8 @@ function renderTrendChart(participationData, completionData) {
         name: t('academicDashboard.participationRate'),
         type: 'line',
         smooth: true,
-        data: participationData.map(item => item.value ?? 0),
+        // P1-2026-08-21: 后端参与率为 0-1 小数(与完成率 0-100 共用 max:100 轴会贴 0)，归一化为百分比
+        data: participationData.map(item => { const v = item.value ?? 0; return v <= 1 ? Math.round(v * 100) : v }),
         itemStyle: { color: '#4F46E5' },
         lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 }
@@ -664,7 +665,8 @@ async function loadHotCourses() {
     const res = await getCourses({
       page: 0,
       size: 10,
-      sort: 'studentCount,desc',
+      sortBy: 'studentCount',
+      sortOrder: 'desc',
       status: 4  // PUBLISHED
     })
     const items = res.data?.items || res.data || []

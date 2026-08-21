@@ -79,11 +79,12 @@ function goCourse(courseId) {
 async function handleRemove(item) {
   try {
     await ElMessageBox.confirm(t('studentFavorites.confirmRemove'), t('course.hintTitle'), { type: 'warning' })
-    await cancelFavorite(item.id)
+    // P1-2026-08-21: 后端废弃端点 DELETE /favorites/{id} 的 id 语义是 courseId(非记录id)，传 courseId 否则删错/删不掉
+    await cancelFavorite(item.courseId)
     ElMessage.success(t('studentFavorites.removed'))
     items.value = items.value.filter(i => i.id !== item.id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('common.failed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('common.failed'))
   }
 }
 

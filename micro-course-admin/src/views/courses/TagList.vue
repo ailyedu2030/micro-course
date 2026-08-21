@@ -35,8 +35,9 @@
         </el-table-column>
         <el-table-column :label="$t('app.operation')" width="150" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
+            <!-- P1-2026-08-21: 后端 Tag POST/PUT/DELETE 仅 ADMIN，编辑/删除按钮补角色守卫（ACADEMIC 点击必 403） -->
+            <el-button v-if="userRole === 'ADMIN'" type="primary" link size="small" @click="handleEdit(row)">{{ $t('app.edit') }}</el-button>
+            <el-button v-if="userRole === 'ADMIN'" type="danger" link size="small" @click="handleDelete(row)">{{ $t('app.delete') }}</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -161,7 +162,7 @@ const handleDelete = async (row) => {
     ElMessage.success(t('tagList.deleteSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('tagList.deleteFailed'))
     }
   }

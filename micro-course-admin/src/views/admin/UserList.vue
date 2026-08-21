@@ -27,13 +27,14 @@
           <span class="card-count">{{ $t('adminUserList.totalRecords', { count: totalElements }) }}</span>
         </div>
         <div class="toolbar-right">
-          <el-button type="primary" @click="handleCreate" :aria-label="$t('admin.quickActions.addUser')">
+          <!-- P1-2026-08-21: 后端创建/导入/导出均 ADMIN-only，按钮补角色守卫（ACADEMIC 可见但点击必失败） -->
+          <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleCreate" :aria-label="$t('admin.quickActions.addUser')">
             <el-icon><Plus /></el-icon>{{ $t('admin.quickActions.addUser') }}
           </el-button>
-          <el-button type="success" @click="handleImport" :aria-label="$t('app.confirm')">
+          <el-button v-if="userRole === 'ADMIN'" type="success" @click="handleImport" :aria-label="$t('app.confirm')">
             <el-icon><Upload /></el-icon>{{ $t('admin.excelImport') }}
           </el-button>
-          <el-button type="primary" @click="handleExport" :aria-label="$t('adminUserList.download')">
+          <el-button v-if="userRole === 'ADMIN'" type="primary" @click="handleExport" :aria-label="$t('adminUserList.download')">
             <el-icon><Download /></el-icon>{{ $t('admin.export') }}
           </el-button>
         </div>
@@ -414,7 +415,15 @@ async function handleExport() {
   const ws = wb.addWorksheet(t('adminUserList.userListSheetName'))
   ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
-  await wb.xlsx.writeFile(`users-${date}.xlsx`)
+  // P1-2026-08-21: writeFile 浏览器端不可用(exceljs UMD 无 fs), 改 writeBuffer + Blob 下载
+  const wbout = await wb.xlsx.writeBuffer()
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'users-' + date + '.xlsx'
+  link.click()
+  URL.revokeObjectURL(url)
   ElMessage.success(t('adminUserList.exportSuccess'))
 }
 
@@ -447,7 +456,7 @@ async function handleSoftDelete(row) {
     ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
       ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
     }
   }

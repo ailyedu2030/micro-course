@@ -36,7 +36,8 @@
         </el-table-column>
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="{ row }">
-            <template v-if="row.inviteStatus === 'PENDING' || row.inviteStatus === 'PENDING_ACADEMIC'">
+            <!-- P1-2026-08-21: 后端 reviewCrossDept 唯一合法前置状态是 PENDING_ACADEMIC，PENDING 行按钮点击必被拒 -->
+            <template v-if="row.inviteStatus === 'PENDING_ACADEMIC'">
               <el-button size="small" type="success" :loading="actingId === row.id" @click="handleApprove(row)">批准</el-button>
               <el-button size="small" type="danger" :loading="actingId === row.id" @click="handleReject(row)">驳回</el-button>
             </template>

@@ -81,7 +81,14 @@ async function handleDownloadTemplate() {
   const ws = wb.addWorksheet('用户导入')
   ws.addRows(wsData)
   ws.columns = [{ width: 15 }, { width: 12 }, { width: 15 }, { width: 28 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 12 }, { width: 10 }]
-  await wb.xlsx.writeFile('用户导入样表.xlsx')
+  const wbout = await wb.xlsx.writeBuffer()
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '用户导入样表.xlsx'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 async function handleBatchImport() {

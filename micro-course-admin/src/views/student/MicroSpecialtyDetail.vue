@@ -394,14 +394,14 @@ const canReapply = computed(() => {
 const statusLabel = computed(() => {
   if (!ms.value) return ''
   const map = {
-    DRAFT: t('course.draft'),
-    PENDING_REVIEW: t('microSpecialtyDetail.reviewing'),
-    APPROVED: t('course.approved'),
-    REJECTED: t('microSpecialtyDetail.rejected'),
-    ARCHIVED: t('course.archived'),
-    RECRUITING: t('courseSquare.msRecruiting'),
-    COMPLETED: t('microSpecialtyDetail.completed'),
-    CANCELLED: t('microSpecialtyDetail.cancelled')
+    DRAFT: i18nT('course.draft'),
+    PENDING_REVIEW: i18nT('microSpecialtyDetail.reviewing'),
+    APPROVED: i18nT('course.approved'),
+    REJECTED: i18nT('microSpecialtyDetail.rejected'),
+    ARCHIVED: i18nT('course.archived'),
+    RECRUITING: i18nT('courseSquare.msRecruiting'),
+    COMPLETED: i18nT('microSpecialtyDetail.completed'),
+    CANCELLED: i18nT('microSpecialtyDetail.cancelled')
   }
   return map[ms.value.status] || ms.value.status || '—'
 })
@@ -465,7 +465,7 @@ const checkEnrollment = async () => {
 // 报名
 const handleApply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning(t('microSpecialtyDetail.studentOnlyApply'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.studentOnlyApply'))
     return
   }
   try {
@@ -479,7 +479,7 @@ const handleApply = async () => {
     ElMessage.success(i18nT('course.signupSuccess'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 报名失败:', e)
       ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.applyFailed'))
@@ -492,11 +492,11 @@ const handleApply = async () => {
 // 重新申请
 const handleReapply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning(t('microSpecialtyDetail.studentOnlyReapply'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.studentOnlyReapply'))
     return
   }
   if (!canReapply.value) {
-    ElMessage.warning(t('microSpecialtyDetail.reapplyNotRecruiting'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.reapplyNotRecruiting'))
     return
   }
   try {
@@ -507,13 +507,13 @@ const handleReapply = async () => {
     )
     reapplyLoading.value = true
     await reapplyEnrollment(enrollmentId.value)
-    ElMessage.success(t('microSpecialtyDetail.reapplied'))
+    ElMessage.success(i18nT('microSpecialtyDetail.reapplied'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 重新申请失败:', e)
-      ElMessage.error(e?.response?.data?.message || t('microSpecialtyDetail.operationFailed'))
+      ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.operationFailed'))
     }
   } finally {
     reapplyLoading.value = false
@@ -544,13 +544,13 @@ const courseClickable = computed(() => {
 const goCourse = (courseId) => {
   if (!courseId) return
   if (!isLoggedIn.value) {
-    ElMessage.warning(t('microSpecialtyDetail.loginToStudy'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.loginToStudy'))
     goLogin()
     return
   }
   const targetPath = resolveCourseDetailPath(courseId)
   if (!targetPath) {
-    ElMessage.warning(t('microSpecialtyDetail.noCourseEntry'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.noCourseEntry'))
     return
   }
   if (isStaffViewer.value) {
@@ -558,19 +558,19 @@ const goCourse = (courseId) => {
     return
   }
   if (!enrollmentStatus.value) {
-    ElMessage.warning(t('microSpecialtyDetail.enrollToStudy'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.enrollToStudy'))
     return
   }
   if (!courseClickable.value) {
     const reapplyTip = ms.value?.status === 'RECRUITING'
-      ? t('microSpecialtyDetail.needReapply')
-      : t('microSpecialtyDetail.reapplyClosed')
+      ? i18nT('microSpecialtyDetail.needReapply')
+      : i18nT('microSpecialtyDetail.reapplyClosed')
     const tipMap = {
-      DROPPED: t('microSpecialtyDetail.droppedTip', { tip: reapplyTip }),
-      REJECTED: t('microSpecialtyDetail.rejectedTip', { tip: reapplyTip }),
-      FAILED: t('microSpecialtyDetail.failedTip', { tip: reapplyTip })
+      DROPPED: i18nT('microSpecialtyDetail.droppedTip', { tip: reapplyTip }),
+      REJECTED: i18nT('microSpecialtyDetail.rejectedTip', { tip: reapplyTip }),
+      FAILED: i18nT('microSpecialtyDetail.failedTip', { tip: reapplyTip })
     }
-    ElMessage.warning(tipMap[enrollmentStatus.value] || t('microSpecialtyDetail.courseNotAccessible'))
+    ElMessage.warning(tipMap[enrollmentStatus.value] || i18nT('microSpecialtyDetail.courseNotAccessible'))
     return
   }
   router.push(targetPath)

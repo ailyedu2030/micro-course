@@ -222,7 +222,14 @@ const handleExport = async () => {
     const ws = wb.addWorksheet(t('enrollment.exportSheetName'))
     ws.addRows(exportRows.map(row => Object.values(row)))
     const date = new Date().toISOString().split('T')[0]
-    await wb.xlsx.writeFile(`enrollments-${date}.xlsx`)
+    const wbout = await wb.xlsx.writeBuffer()
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'enrollments-' + date + '.xlsx'
+    link.click()
+    URL.revokeObjectURL(url)
     ElMessage.success(t('enrollment.exportSuccess'))
   } catch (e) {
     ElMessage.error(t('enrollment.exportFailedMsg', { msg: e.message || t('enrollment.unknownError') }))
@@ -243,7 +250,7 @@ const handleApprove = async (row) => {
     ElMessage.success(t('course.approved'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('course.operationFailed'))
   }
 }
 
@@ -259,7 +266,7 @@ const handleReject = async (row) => {
     ElMessage.success(t('enrollment.rejected'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('course.operationFailed'))
   }
 }
 
@@ -275,7 +282,7 @@ const handlePromote = async (row) => {
     ElMessage.success(t('enrollment.promoteSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('course.operationFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('course.operationFailed'))
   }
 }
 

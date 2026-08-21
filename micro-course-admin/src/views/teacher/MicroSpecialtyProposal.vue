@@ -859,7 +859,13 @@ function buildSavePayload() {
     leadCourses: leadCourses.value,
     teamMembers: teamMembers.value,
     signatures: signatures.value,
-    sharedUnits: sharedUnits.value,
+    sharedUnits: sharedUnits.value.map(u => ({
+      ...u,
+      // P1-2026-08-21: 后端 ProposalSharedUnitItem 只接受嵌套 signature/seal(SignatureFile)，
+      // 顶层 signatureImageUrl/sealImageUrl 会被 Jackson 丢弃 → 签名/盖章图片保存即丢失
+      signature: u.signatureImageUrl ? { type: 'IMAGE', text: '', imageUrl: u.signatureImageUrl } : (u.signature || { type: 'TEXT', text: '', imageUrl: '' }),
+      seal: u.sealImageUrl ? { type: 'IMAGE', text: '', imageUrl: u.sealImageUrl } : (u.seal || { type: 'TEXT', text: '', imageUrl: '' })
+    })),
     chapterAssignments: chapterAssignments.value.map(a => {
       // V202 P0-2 修复: 不传 teacherId 字段,让后端用 NULL 写入
       // 即使前端 toggleChapter 误设了 teacherId 旧值,这里也强制清掉
@@ -867,7 +873,8 @@ function buildSavePayload() {
       return {
         courseId: a.courseId,
         chapterId: a.chapterId,
-        teamMemberIndex: a.teamMemberIndex,
+        // P1-2026-08-21: 字段与后端 DTO 对齐(memberIndex), 否则保存即丢失、重载全归第1位成员
+        memberIndex: a.teamMemberIndex,
         source: a.source || 'TBD',
         acceptStatus: a.acceptStatus || 'PENDING'
         // teacherId 故意不传
@@ -1288,11 +1295,17 @@ async function loadDraft(id) {
             sigs[1] || { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' },
             sigs[2] || { opinionText: '', signature: { type: 'TEXT', text: '', imageUrl: '' }, seal: { type: 'TEXT', text: '', imageUrl: '' }, signDate: '', remark: '' }
           ]
-      sharedUnits.value = data.sharedUnits || []
+      // P1-2026-08-21: 嵌套 signature/seal → 顶层 signatureImageUrl/sealImageUrl（与上传组件绑定字段一致）
+      sharedUnits.value = (data.sharedUnits || []).map(u => ({
+        ...u,
+        signatureImageUrl: u.signature?.imageUrl || u.signatureImageUrl || '',
+        sealImageUrl: u.seal?.imageUrl || u.sealImageUrl || ''
+      }))
       // 加载章节分配
       if (data.chapterAssignments) {
+        // P1-2026-08-21: 优先用后端持久化的 memberIndex(占位条目 teacherId=null 时旧映射全部归第1位成员)
         chapterAssignments.value = data.chapterAssignments.map(a => ({
-          ...a, teamMemberIndex: (a.teacherId || 1) - 1
+          ...a, teamMemberIndex: a.memberIndex ?? ((a.teacherId || 1) - 1)
         }))
       }
     }
