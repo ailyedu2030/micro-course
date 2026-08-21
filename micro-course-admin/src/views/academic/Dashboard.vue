@@ -248,6 +248,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
@@ -417,6 +418,8 @@ const hotCourses = ref([])
 // 定时刷新
 const refreshInterval = ref(60000)
 let refreshTimer = null
+// P2-2026-08-21: 院系详情缓存（loadStats 与 loadDepartmentStats 各调一次 getDepartmentDetail → 重复请求）
+let deptDetailCache = { deptId: null, data: null }
 
 async function refreshAll() {
   await Promise.all([
@@ -433,10 +436,13 @@ async function refreshAll() {
 async function loadStats() {
   statsLoading.value = true
   try {
-    // P1C-063: 数据下钻 — 如果指定了 departmentId，加载院系详情
+    // P1C-063: 数据下钻 — 如果指定了 departmentId，加载院系详情（P2: 走缓存避免与 loadDepartmentStats 重复请求）
     if (departmentId.value) {
-      const res = await getDepartmentDetail(departmentId.value)
-      const d = res.data || {}
+      if (!deptDetailCache.deptId || deptDetailCache.deptId !== departmentId.value) {
+        const res = await getDepartmentDetail(departmentId.value)
+        deptDetailCache = { deptId: departmentId.value, data: res.data || {} }
+      }
+      const d = deptDetailCache.data || {}
       departmentName.value = d.departmentName || ''
       stats.value = {
         totalCourses: d.totalCourses ?? 0,
@@ -456,7 +462,9 @@ async function loadStats() {
     }
     animateAllStats(stats.value)
   } catch {
-    // silent
+    // P2-2026-08-21: 失败静默会让统计卡停留 0/0% 误导 → 给用户反馈
+    console.warn('[AcademicDashboard] loadStats 失败', new Error().stack)
+    ElMessage.warning(t('academicDashboard.statsLoadFailed') || '统计数据加载失败')
   } finally {
     statsLoading.value = false
   }
@@ -470,7 +478,12 @@ async function loadDepartmentStats() {
     // P1C-063: 数据下钻 — 只显示选中院系
     let items = []
     if (departmentId.value) {
-      const res = await getDepartmentDetail(departmentId.value)
+      // P2: 复用 loadStats 已缓存的院系详情
+      let res = { data: deptDetailCache.deptId === departmentId.value ? deptDetailCache.data : null }
+      if (!res.data) {
+        res = await getDepartmentDetail(departmentId.value)
+        deptDetailCache = { deptId: departmentId.value, data: res.data || null }
+      }
       if (res.data) {
         // 构造单条院系数据给图表
         items = [{

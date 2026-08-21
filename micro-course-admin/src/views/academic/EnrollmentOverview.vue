@@ -188,21 +188,20 @@ function handleReset() {
   fetchData()
 }
 
+// P2-2026-08-21: el-pagination 切 size 同时触发 size-change 与 current-change → 去重
+let sizeChangePending = false
 function handleSizeChange() {
   page.value = 1
+  sizeChangePending = true
   fetchData()
 }
 
 function handlePageChange() {
+  if (sizeChangePending) { sizeChangePending = false; return }
   fetchData()
 }
 
-function formatDate(iso) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+// P2-2026-08-21: 移除 formatDate 死代码(模板用 $formatDateTime)
 
 onMounted(() => {
   fetchStats()
