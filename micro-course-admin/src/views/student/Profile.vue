@@ -270,6 +270,10 @@ const CertificatesCard = defineAsyncComponent({
 
 const userStore = useUserStore()
 
+// P2-2026-08-21: 模板 ref 声明（原未声明 → Vue 警告，无功能影响）
+const avatarUploadCompRef = ref(null)
+const avatarUploadMobileRef = ref(null)
+
 // P1-2: 个人信息加载错误状态
 const profileError = ref(false)
 

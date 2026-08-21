@@ -524,10 +524,12 @@ const debouncedSave = () => {
       ElMessage.warning(t('studentSettings.saveFailedLocal'))
     }
     // 所有设置持久化到 localStorage 作为离线 fallback
+    // P2-2026-08-21: 配额不足时不再弹"保存失败"(服务端已成功，避免成功后失败双 toast 矛盾)，
+    // 仅 console 记录
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
-    } catch {
-      ElMessage.error(t('studentSettings.saveFailed'))
+    } catch (e2) {
+      console.warn('[Settings] localStorage 写入失败(配额不足)', e2)
     }
   }, 300)
 }
