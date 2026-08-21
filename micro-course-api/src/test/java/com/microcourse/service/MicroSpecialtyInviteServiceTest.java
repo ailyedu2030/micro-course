@@ -41,6 +41,7 @@ class MicroSpecialtyInviteServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private MicroSpecialtyService msService;
     @Mock private ChapterTeacherAssignmentRepository chapterAssignRepository;
+    @Mock private com.microcourse.repository.DepartmentRepository departmentRepository;
 
     private MicroSpecialtyInviteServiceImpl service;
 
@@ -53,7 +54,7 @@ class MicroSpecialtyInviteServiceTest {
     void setUp() {
         service = new MicroSpecialtyInviteServiceImpl(
                 teacherRepository, msRepository, userRepository,
-                notificationService, msService, chapterAssignRepository);
+                notificationService, msService, chapterAssignRepository, departmentRepository);
     }
 
     // ==================== acceptInvite() ====================

@@ -308,6 +308,7 @@ public class StorageApplicationCudServiceImpl implements StorageApplicationCudSe
                             entity.setTeacherId(validTeacherId);
                             entity.setSource("TBD");
                             entity.setAcceptStatus("PENDING");
+                            entity.setMemberIndex(assignItem.getMemberIndex()); // P1-2026-08-21: 持久化团队成员序号
                             batchRepo.insert(entity);
                         }
                         sqlSession.commit();

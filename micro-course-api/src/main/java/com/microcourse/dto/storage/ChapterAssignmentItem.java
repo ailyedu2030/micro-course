@@ -39,6 +39,9 @@ public class ChapterAssignmentItem {
     /** 接受状态 (默认 PENDING) */
     private String acceptStatus;
 
+    /** P1-2026-08-21: 团队成员序号(申报阶段占位分配用, 0 基), 持久化后重载可还原 */
+    private Integer memberIndex;
+
     public ChapterAssignmentItem() {}
 
     public Long getId() { return id; }
@@ -57,4 +60,6 @@ public class ChapterAssignmentItem {
     public void setSource(String source) { this.source = source; }
     public String getAcceptStatus() { return acceptStatus; }
     public void setAcceptStatus(String acceptStatus) { this.acceptStatus = acceptStatus; }
+    public Integer getMemberIndex() { return memberIndex; }
+    public void setMemberIndex(Integer memberIndex) { this.memberIndex = memberIndex; }
 }

@@ -19,6 +19,10 @@ public class MicroSpecialtyTeacherVO {
     private String inviteStatus;
     private LocalDateTime inviteExpiresAt;
     private String role;
+    /** P1-2026-08-21: 跨学院审核展示字段（微专业标题/教师学院/微专业学院） */
+    private String microSpecialtyTitle;
+    private String teacherCollege;
+    private String specialtyCollege;
 
     public MicroSpecialtyTeacherVO() {}
 
@@ -57,4 +61,10 @@ public class MicroSpecialtyTeacherVO {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+    public String getMicroSpecialtyTitle() { return microSpecialtyTitle; }
+    public void setMicroSpecialtyTitle(String microSpecialtyTitle) { this.microSpecialtyTitle = microSpecialtyTitle; }
+    public String getTeacherCollege() { return teacherCollege; }
+    public void setTeacherCollege(String teacherCollege) { this.teacherCollege = teacherCollege; }
+    public String getSpecialtyCollege() { return specialtyCollege; }
+    public void setSpecialtyCollege(String specialtyCollege) { this.specialtyCollege = specialtyCollege; }
 }

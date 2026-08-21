@@ -18,6 +18,9 @@ public interface CourseFavoriteService {
 
     void unfavorite(Long userId, Long courseId);
 
+    /** P1-2026-08-21: 按收藏记录 id 删除（管理端/教师端取消收藏，修复 403 + id 语义错位） */
+    void deleteById(Long id);
+
     List<CourseFavoriteVO> getMyFavorites(Long userId);
 
     /**
