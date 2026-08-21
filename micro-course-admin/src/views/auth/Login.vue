@@ -148,7 +148,7 @@
       </el-dialog>
 
       <p class="login-footer">
-        © {{ new Date().getFullYear() }} 微课管理平台 · Powered by Vue 3 + Element Plus
+        © {{ new Date().getFullYear() }} {{ $t('app.title') }} · Powered by Vue 3 + Element Plus
       </p>
     </div>
   </div>
@@ -218,13 +218,18 @@ const rules = {
 
 // P1 SECURITY: 演示账号仅通过明确的环境变量 VITE_DEMO_ENABLED=true 启用
 // 禁止硬编码 fallback 凭据 — 生产构建 (import.meta.env.PROD) 恒为 []
-const quickAccounts = import.meta.env.DEV && import.meta.env.VITE_DEMO_ENABLED === 'true' && import.meta.env.VITE_DEMO_ADMIN_USER && import.meta.env.VITE_DEMO_ADMIN_PASS
+// P2-2026-08-21: 各角色 env 未配置时该项不展示(原仅校验 ADMIN env，其余角色可能填入 undefined)
+const quickAccounts = import.meta.env.DEV && import.meta.env.VITE_DEMO_ENABLED === 'true'
   ? [
-      { label: '管理员', type: 'danger', username: import.meta.env.VITE_DEMO_ADMIN_USER, password: import.meta.env.VITE_DEMO_ADMIN_PASS },
-      { label: '教务处', type: 'warning', username: import.meta.env.VITE_DEMO_ACADEMIC_USER, password: import.meta.env.VITE_DEMO_ACADEMIC_PASS },
-      { label: '教师', type: 'success', username: import.meta.env.VITE_DEMO_TEACHER_USER, password: import.meta.env.VITE_DEMO_TEACHER_PASS },
-      { label: '学生', type: 'primary', username: import.meta.env.VITE_DEMO_STUDENT_USER, password: import.meta.env.VITE_DEMO_STUDENT_PASS }
-    ]
+      import.meta.env.VITE_DEMO_ADMIN_USER && import.meta.env.VITE_DEMO_ADMIN_PASS
+        ? { label: '管理员', type: 'danger', username: import.meta.env.VITE_DEMO_ADMIN_USER, password: import.meta.env.VITE_DEMO_ADMIN_PASS } : null,
+      import.meta.env.VITE_DEMO_ACADEMIC_USER && import.meta.env.VITE_DEMO_ACADEMIC_PASS
+        ? { label: '教务处', type: 'warning', username: import.meta.env.VITE_DEMO_ACADEMIC_USER, password: import.meta.env.VITE_DEMO_ACADEMIC_PASS } : null,
+      import.meta.env.VITE_DEMO_TEACHER_USER && import.meta.env.VITE_DEMO_TEACHER_PASS
+        ? { label: '教师', type: 'success', username: import.meta.env.VITE_DEMO_TEACHER_USER, password: import.meta.env.VITE_DEMO_TEACHER_PASS } : null,
+      import.meta.env.VITE_DEMO_STUDENT_USER && import.meta.env.VITE_DEMO_STUDENT_PASS
+        ? { label: '学生', type: 'primary', username: import.meta.env.VITE_DEMO_STUDENT_USER, password: import.meta.env.VITE_DEMO_STUDENT_PASS } : null
+    ].filter(Boolean)
   : []
 
 const fillAccount = (acc) => {
@@ -237,9 +242,10 @@ const handleLogin = async () => {
   // P2 修复: 与 handleRegister 一致的幂等守卫，防止登录按钮连点触发并发请求
   if (loading.value) return
   if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    loading.value = true
+  loading.value = true // P2-2026-08-21: 提前置位，validate 异步回调窗口内连点也能被拦截
+  try {
+    const valid = await formRef.value.validate()
+    if (!valid) { loading.value = false; return }
     try {
       await userStore.login(form)
       // 客户体验修复 v1.7.0: 短时长 1.5s,避免 toast 滞留挡住导航
@@ -255,14 +261,18 @@ const handleLogin = async () => {
       router.push(safeRedirect)
     } catch (e) {
       // P1-2026-08-21: 423/401/网络错误均已由 request.js 拦截器提示（含锁定 15 分钟文案），
-      // 组件内重复弹 toast 会造成双提示且时长矛盾 → 仅对未拦截的异常兜底
+      // 组件内不再重复弹 toast（原网络错误也双提示）
       if (!e.response) {
-        ElMessage.error('网络连接失败，请检查后重试')
+        console.warn('[Login] 网络请求失败', e)
       }
     } finally {
       loading.value = false
     }
-  })
+  } catch (outerErr) {
+    // 外层 try：validate 本身抛错（极少见）也释放 loading
+    console.warn('[Login] 表单校验异常', outerErr)
+    loading.value = false
+  }
 }
 
 const handleRegister = async () => {
