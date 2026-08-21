@@ -65,6 +65,9 @@ export function useVideoProgressFlow(options = {}) {
         userId: unref(userId),
         courseId: unref(courseId),
         chapterId: unref(chapterId),
+        // P1-2026-08-21: 以 videoId 作为 sectionId 键控——多视频章节各视频独立进度，
+        // 与学习页 LearningView 按 sectionId(=视频id) 精确读写口径一致
+        sectionId: unref(videoId) != null ? Number(unref(videoId)) : undefined,
         videoPosition: Math.floor(snapshot?.current || 0),
         videoProgress: Math.round(snapshot?.progressPercentVal || 0)
       }
@@ -83,17 +86,20 @@ export function useVideoProgressFlow(options = {}) {
     createProgress: createLearningProgress,
     updateProgress: updateLearningProgress,
     findExistingProgress: async () => {
-      const res = await getLearningProgress({
-        courseId: unref(courseId),
-        chapterId: unref(chapterId)
-      })
+      // P1-2026-08-21: 按 sectionId(=videoId) 精确匹配(多视频章节不串档)，无则按 chapterId 兜底
+      const res = await getLearningProgress({ courseId: unref(courseId) })
       const rawData = res.data || []
+      const vid = unref(videoId)
       if (Array.isArray(rawData)) {
-        return rawData.find(p => Number(p.chapterId) === Number(unref(chapterId)))
+        if (vid != null) {
+          const bySection = rawData.find(p => p.sectionId != null && Number(p.sectionId) === Number(vid))
+          if (bySection) return bySection
+        }
+        return rawData.find(p => p.chapterId != null && Number(p.chapterId) === Number(unref(chapterId)))
       }
-      if (rawData && typeof rawData === 'object' && rawData.id &&
-        Number(rawData.chapterId) === Number(unref(chapterId))) {
-        return rawData
+      if (rawData && typeof rawData === 'object' && rawData.id) {
+        if (vid != null && rawData.sectionId != null && Number(rawData.sectionId) === Number(vid)) return rawData
+        if (Number(rawData.chapterId) === Number(unref(chapterId))) return rawData
       }
       return null
     },

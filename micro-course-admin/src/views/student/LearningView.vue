@@ -183,6 +183,8 @@ const tabs = [
   { key: 'announcement', label: t('learningView.tabAnnouncement'), icon: 'Bell' },
   { key: 'discussion', label: t('learningView.tabDiscussion'), icon: 'ChatDotRound' },
   { key: 'exam', label: t('learningView.tabExam'), icon: 'Edit' }
+  // P2-2026-08-21: note 无独立顶部 tab（由工具栏笔记按钮进入），此处不加 tab 项；
+  // 笔记激活时由 ResourceToolbar 笔记按钮状态反馈，避免 4 tab 全无高亮 —— 见 handleShowNotes
 ]
 const activeTab = ref('course')
 
@@ -485,13 +487,20 @@ async function loadProgress() {
     // 练习统计：单课程进度接口已按课时级聚合 completedExercises/totalExercises，
     // 任一进度记录都携带课程级汇总值，取首条即可（无记录时回退 0）
     const progressAgg = progressRawList.value[0] || {}
+    // P2-2026-08-21: getStudyDays/getTotalTime 为全站口径，课程卡片展示会误导；
+    // 课程级学习时长从本课程进度记录的 totalSeconds 汇总（无则显示 0）
+    const courseTimeSeconds = progressRawList.value.reduce((s, p) => s + (Number(p.totalSeconds) || 0), 0)
+    const courseStudyDays = progressRawList.value.reduce((days, p) => {
+      if (p.updatedAt) days.add(String(p.updatedAt).slice(0, 10))
+      return days
+    }, new Set()).size
     statsData.value = {
       videoCompleted: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.filter(l => l.status === 'COMPLETED').length || 0), 0),
       videoTotal: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0),
       exerciseCompleted: progressAgg.completedExercises ?? 0,
       exerciseTotal: progressAgg.totalExercises ?? 0,
-      totalTime: formatTotalTime(timeRes.data),
-      streakDays: (studyDaysRes.data?.totalDays) || 0
+      totalTime: courseTimeSeconds > 0 ? formatTotalTime({ totalSeconds: courseTimeSeconds }) : formatTotalTime(timeRes.data),
+      streakDays: courseStudyDays > 0 ? courseStudyDays : ((studyDaysRes.data?.totalDays) || 0)
     }
   } catch (err) {
 // eslint-disable-next-line no-console
