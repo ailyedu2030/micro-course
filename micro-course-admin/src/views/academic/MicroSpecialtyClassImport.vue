@@ -43,9 +43,10 @@
         <el-col :span="8"><el-result icon="danger" :title="$t('classImport.failedClass')" :sub-title="`${result.failedCount || 0} ${$t('classImport.classUnit')}`" /></el-col>
       </el-row>
       <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">{{ $t('classImport.viewDetail') }}</el-button>
-      <div v-if="result.errors && result.errors.length" class="error-list mg-top-12">
+      <!-- P2: 后端 VO 无 errors 字段(死代码) → 用 failedList 的 errorMsg 渲染失败明细 -->
+      <div v-if="importResult.failed.length" class="error-list mg-top-12">
         <h4>{{ $t('classImport.failedDetail') }}</h4>
-        <div v-for="(err, i) in result.errors" :key="i" class="error-item">{{ err }}</div>
+        <div v-for="(item, i) in importResult.failed" :key="i" class="error-item">{{ item.className }}: {{ item.errorMsg || $t('course.unknown') }}</div>
       </div>
     </el-card>
 
@@ -139,7 +140,8 @@ const onSpecialtyChange = async (id) => {
   loadingClasses.value = true
   try {
     // 加载所有班级 (学院级, 与微专业无关, 由用户筛选选择)
-    const { data } = await getClasses({ size: 100 })
+    // P2: 原 size:100 截断致大班级量学校班级无法导入
+    const { data } = await getClasses({ size: 1000 })
     classOptions.value = data?.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadClassesFailed')) }
   finally { loadingClasses.value = false }

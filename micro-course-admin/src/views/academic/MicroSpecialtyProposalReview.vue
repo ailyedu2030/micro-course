@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted } from 'vue' // P2: 移除 nextTick 死导入
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -116,6 +116,7 @@ const activeTab = ref('PENDING')
 const loading = ref(false)
 const actingId = ref(null)
 const router = useRouter()
+const route = useRoute()
 const { t } = useI18n()
 // 直接读 role，不通过函数（避免 Vite tree-shake 把 userStore 去掉了）
 const userStore = useUserStore()
@@ -252,7 +253,12 @@ const goPreview = (row) => {
   router.push(`/teacher/micro-specialties/storage-preview/${row.id}`)
 }
 
-onMounted(fetchData)
+// P2: 读 route.query.tab 让查看全部按钮(?tab=ALL)真正切到 ALL tab
+onMounted(() => {
+  const tab = route.query.tab
+  if (tab === "ALL") activeTab.value = "ALL"
+  fetchData()
+})
 
 </script>
 

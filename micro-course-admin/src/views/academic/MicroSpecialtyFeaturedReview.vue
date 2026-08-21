@@ -96,10 +96,11 @@ const rejectRules = {
 const rejectTarget = ref(null)
 const error = ref(false)
 
-const statusMap = { PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' }
-const statusTypeMap = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' }
-const statusLabel = (s) => statusMap[s] || s
-const statusType = (s) => statusTypeMap[s] || 'info'
+// P2: 全部tab会显示未申请(NONE/null)项，原直接透出原始码 → 补充映射
+const statusMap = { PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回', NONE: '未申请' }
+const statusTypeMap = { PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger', NONE: 'info' }
+const statusLabel = (s) => (s == null || s === '') ? '未申请' : (statusMap[s] || s)
+const statusType = (s) => (s == null || s === '') ? 'info' : (statusTypeMap[s] || 'info')
 
 const fetchData = async () => {
   loading.value = true

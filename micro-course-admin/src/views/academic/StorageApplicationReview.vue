@@ -27,7 +27,8 @@
             <el-tag v-else type="info" size="small">{{ row.status }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="updatedAt" :label="$t('storageApplicationReview.submittedAt')" width="130" align="center" :formatter="$formatDateTime">
+        <!-- P2: formatter 与插槽重复(插槽生效) → 移除死 formatter -->
+        <el-table-column prop="updatedAt" :label="$t('storageApplicationReview.submittedAt')" width="130" align="center">
           <template #default="{ row }">{{ $formatDate(row.updatedAt) || '-' }}</template>
         </el-table-column>
         <el-table-column :label="$t('app.operation')" width="300" align="center" fixed="right">
