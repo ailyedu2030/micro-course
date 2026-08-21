@@ -789,7 +789,8 @@ async function getStats(sharedEnrollments) {
     const userId = userStore.userInfo?.id
     const [totalTimeData, enrollmentData, studyDaysData, certData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
-      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(),
+      // P2-2026-08-21: 原三元恒真(sharedEnrollments 恒数组)else 死代码 → 直接取；补 size 防 >20 门截断
+      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments({ page: 0, size: 200 }),
       getStudyDays().catch(() => ({ data: { totalDays: 0 } })),
       getMyCertificates().catch(() => ({ data: [] }))
     ])
@@ -853,14 +854,15 @@ async function getRecent(sharedEnrollments) {
     // 取第一个进行中的课程作为"继续学习"
     const inProgress = filterActiveLearningEnrollments(enrollments).find(e => e.progress > 0)
     if (inProgress) {
-      let currentChapter = 1
+      let currentChapter = 0
       try {
         const res = await getLearningProgress({ courseId: inProgress.courseId })
         const progressList = Array.isArray(res.data) ? res.data : []
         // 取最后一个已完成的章节，或第一个进度条目
         const lastEntry = [...progressList].reverse().find(p => p.completed) || progressList[0]
-        if (lastEntry?.chapterId) {
-          currentChapter = 1  // P1-I: 暂不显示 DB ID,待后端返回 sortOrder
+        // P2-2026-08-21: 原恒赋 1 是死代码 → 使用真实 chapterId
+        if (lastEntry?.chapterId != null) {
+          currentChapter = Number(lastEntry.chapterId)
         }
       } catch (e) {
         console.warn('[LearningCenter] 获取学习进度失败', e)
