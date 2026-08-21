@@ -228,7 +228,8 @@ class="btn-icon btn-auto" :class="{ active: autoMode }"
         <button class="ctrl-btn" @click="goTo(Math.max(0, current - 1))" :disabled="current === 0" :aria-label="$t('slidePlayer.prevPage')">
           <el-icon :size="20"><ArrowLeft /></el-icon>
         </button>
-        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="!segmentAudioMode && (audioStatus === 'pending' || audioStatus === 'none' || audioStatus === 'generating' || audioStatus === 'failed')" :aria-label="$t('slidePlayer.playPauseAria')">
+        <!-- P2-2026-08-21: segmentAudioMode 恒 false(legacy 死标志)，移除恒真前缀 -->
+        <button class="ctrl-btn ctrl-btn-play" @click="togglePlay" :disabled="audioStatus === 'pending' || audioStatus === 'none' || audioStatus === 'generating' || audioStatus === 'failed'" :aria-label="$t('slidePlayer.playPauseAria')">
           <el-icon :size="24"><VideoPause v-if="playing" /><VideoPlay v-else /></el-icon>
         </button>
         <button class="ctrl-btn" @click="goTo(Math.min(pages.length - 1, current + 1))" :disabled="current >= pages.length - 1" :aria-label="$t('slidePlayer.nextPage')">
@@ -739,7 +740,8 @@ function onSlideAudioMessage(event) {
   // D9（P0 修复）：origin 是字符串 "null" 而非 JS null；source 必须为当前 iframe
   if (event.origin !== 'null') return
   const iframe = currentHtmlIframe()
-  if (iframe && event.source !== iframe.contentWindow) return
+  // P2-2026-08-21 安全加固: 无 iframe 时直接拒绝(原仅凭 origin==null 放行，页面内其它 sandbox iframe 可注入指令)
+  if (!iframe || event.source !== iframe.contentWindow) return
   const msg = event.data
   if (!msg || typeof msg !== 'object') return
 
@@ -1104,6 +1106,10 @@ async function loadAudio(index) {
       audioStatus.value = 'ready'
     } else if (hasReady) {
       audioStatus.value = 'pending' // 部分 READY + 部分 PENDING/无音频
+      // P2-2026-08-21: 与 PPT pending 分支(:1183)对齐，触发"生成耗时较长"提示计时
+      pendingStartTime.value = Date.now()
+      pendingTimeoutWarning.value = ''
+      startPendingTimer()
     } else {
       audioStatus.value = 'none'
     }
@@ -1207,7 +1213,9 @@ async function loadAudio(index) {
     return
   }
 
-  if (page?.narrationStatus !== 'AUDIO_READY') {
+  // P2-2026-08-21: 严格枚举比较会把 legacy(状态缺失/v1 旧值)但有 narrationAudioUrl 的页误判"无讲解音频"；
+  // 前面已显式处理 PENDING/GENERATING/FAILED，此处仅拒绝明确非就绪状态
+  if (page?.narrationStatus && page.narrationStatus !== 'AUDIO_READY' && page.narrationStatus !== 'READY') {
     audioStatus.value = 'none'
     audioDuration.value = 0
     audioRef.value.src = ''

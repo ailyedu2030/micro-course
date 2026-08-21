@@ -272,6 +272,7 @@ function retryVideo() {
   currentTime.value = 0
   emit('time-update', 0)
   duration.value = 0
+  bufferedPercent.value = 0 // P2-2026-08-21: 重试时重置缓冲条，避免残留旧缓冲宽度
   videoLoading.value = true
   nextTick(() => { videoLoading.value = false })
 }
