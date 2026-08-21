@@ -77,6 +77,10 @@ watch(() => props.section, (s) => {
     coursewareType: s.coursewareType || null,
     sortOrder: s.sortOrder ?? 0, duration: s.duration ?? 0, description: s.description || ''
   })
+  else {
+    // P1-2026-08-21: 新增模式(section=null)必须清空表单，否则残留上一课时数据易误提交重复课时
+    Object.assign(form, { title: '', sectionType: 'VIDEO', coursewareType: null, sortOrder: 0, duration: 0, description: '' })
+  }
 }, { immediate: true })
 
 const handleClose = () => emit('update:modelValue', false)
@@ -90,7 +94,8 @@ const handleSubmit = async () => {
   }
   // F-2026-08-10-17: 提交时把下拉复合值映射回 sectionType + coursewareType
   const { sectionType, coursewareType } = optionToSectionType(form.sectionType)
+  // P2-2026-08-21: 不再乐观关闭——父组件提交成功后才置 v-model=false；
+  // 原 emit 后立即 handleClose()，父组件异步失败时弹窗已关、表单已丢
   emit('submit', { ...form, sectionType, coursewareType })
-  handleClose()
 }
 </script>

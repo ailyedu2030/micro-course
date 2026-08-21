@@ -53,7 +53,7 @@
                 <el-icon v-else color="#94A3B8"><VideoCamera /></el-icon>
               </span>
               <span class="lesson-title">{{ lesson.title }}</span>
-              <span v-if="lesson.duration" class="lesson-duration">{{ lesson.duration }}</span>
+              <span v-if="lesson.duration" class="lesson-duration">{{ formatLessonDuration(lesson.duration) }}</span>
             </div>
             <!-- 课时分页（章节课时超过20页时显示） -->
             <div v-if="getLessonPageInfo(ch.id).total > MAX_LESSONS_PER_PAGE" class="lesson-pagination">
@@ -112,6 +112,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { Close, List, VideoPlay, VideoCamera, CircleCheck, DataAnalysis, Edit } from '@element-plus/icons-vue'
+
+// P2-2026-08-21: 课时时长秒数 → mm:ss 展示
+function formatLessonDuration(seconds) {
+  const s = Number(seconds)
+  if (!s || isNaN(s) || s <= 0) return ''
+  const m = Math.floor(s / 60)
+  const sec = Math.floor(s % 60)
+  return m > 0 ? `${m}分${sec > 0 ? sec + '秒' : ''}` : `${sec}秒`
+}
 
 const props = defineProps({
   chapters: { type: Array, default: () => [] },

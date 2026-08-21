@@ -629,6 +629,7 @@ public class StorageApplicationQueryServiceImpl implements StorageApplicationQue
             item.setCourseId(e.getCourseId());
             item.setChapterId(e.getChapterId());
             item.setTeacherId(e.getTeacherId());
+            item.setMemberIndex(e.getMemberIndex()); // P1-2026-08-21: 回读团队成员序号
             item.setSource(e.getSource() != null ? e.getSource() : "TBD");
             item.setAcceptStatus(e.getAcceptStatus() != null ? e.getAcceptStatus() : "PENDING");
             ProposalChapter ch = chapterRepository.selectById(e.getChapterId());

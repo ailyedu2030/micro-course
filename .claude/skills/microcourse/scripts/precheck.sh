@@ -734,6 +734,83 @@ check_window_doc_localstorage_at_module_level() {
     fi
 }
 
+# ----------------------------------------------------------------------------
+# R8 修复: working tree 异常残留文件 (P1-I 教训 2026-08-19)
+# 现象: 部署 jar mv 卡死的 session 期间产生 =700 0 字节空文件, 污染 working tree
+#       git status 显示 untracked, 不阻断 CI 但污染开发体验 + 横向残留风险
+# 根因: shell 误输入 (jar=... 简写 / > =重定向残留) 或 IDE 临时文件命名
+# 教训: working tree 异常命名 (以 = 开头纯数字) 应在 precheck 中检出, WARN 提示清理
+# 规则: git status --porcelain 中匹配 ? = 数字 形式的 0 字节空文件 -> WARN
+# ----------------------------------------------------------------------------
+check_working_tree_anomalies() {
+    local hits=0
+    local hit_files=()
+    local f
+    # 绕过 .gitignore, 直接 find 扫 = 开头纯数字 0 字节文件 (绕开 =[0-9]* 兜底仍能检出残留)
+    # 排除 .git / node_modules / target / dist / build / out / .audit-cache / .dsh-vision-router / .gitnexus 等
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        if [ -f "$ROOT/$f" ] && [ ! -s "$ROOT/$f" ]; then
+            hits=$((hits+1))
+            hit_files+=("$f")
+        fi
+    done < <(cd "$ROOT" && find . -maxdepth 3 -type f -name '=[0-9]*' -size 0 \
+        -not -path './.git/*' -not -path './node_modules/*' \
+        -not -path '*/node_modules/*' -not -path '*/target/*' -not -path '*/dist/*' \
+        -not -path '*/build/*' -not -path '*/out/*' -not -path '*/.audit-cache/*' \
+        -not -path '*/.dsh-vision-router/*' -not -path '*/.gitnexus/*' \
+        -not -path '*/.playwright-mcp/*' -not -path '*/.playwright-report/*' \
+        2>/dev/null | sed 's|^\./||')
+    if [ "$hits" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [R8] working tree 异常残留文件 ($hits 个, 以 = 开头纯数字空文件, 2026-08-19 部署残留教训):"
+        for f in "${hit_files[@]}"; do
+            echo "    - $f (rm 清理; .gitignore =[0-9]* 已加兜底)"
+        done
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# R9 修复: application.yml 不安全 dev placeholder 字面值 (P0 教训 2026-08-20)
+# 现象: APP_SECURITY_FIELD_ENCRYPTION_KEY 默认值 = "dev-32-char-key-not-for-production-!"
+#       APP_SECURITY_FIELD_ENCRYPTION_SALT 默认值 = "0123456789abcdef"
+#       长度均通过 FieldEncryptor isBlank/length 检查 → 生产忘设 env var 时默默用 dev key 加密
+#       字段级加密形同虚设 → P0 数据泄露 (注释 240 明示)
+# 根因: dev default 是"长度够但不安全"的字面值, fail-fast 仅查空+长度, 不查"是不是 dev placeholder"
+# 教训: 任何在 application.yml 中以 `${VAR:dev-...}` 或 `${VAR:not-for-production}` 形式
+#       提供的密钥/SALT/TOKEN 默认值都构成 P0 风险, 必须 WARN 提示清理
+# 规则: 扫描 application.yml / application-prod.yml, 检测已知不安全 dev placeholder 字面值 -> WARN
+# ----------------------------------------------------------------------------
+check_insecure_dev_secrets_in_application_yml() {
+    local hits=0
+    local hit_lines=()
+    local app_yml="$ROOT/micro-course-api/src/main/resources/application.yml"
+    [ -f "$app_yml" ] || return 0
+    # 不安全 dev placeholder 模式: dev-32-char-key / 0123456789abcdef / dev-only / please-change / not-for-production
+    # 排除注释行 (#) + 文档示例 + 已正确改空的行 (\${VAR:} 末尾的冒号 + 闭括号)
+    while IFS=: read -r line_num line_text; do
+        [ -z "$line_text" ] && continue
+        trimmed=$(echo "$line_text" | sed 's/^[[:space:]]*//')
+        # 跳过注释行 (含 #) 和已正确改空的 (末尾 :) 模式
+        case "$trimmed" in \#*|*:}) continue ;; esac
+        if echo "$line_text" | grep -qE "(dev-32-char-key-not-for-production|0123456789abcdef|dev-only-jwt-secret-key|dev-only-video-sign-secret|please-change-in-prod|not-for-production-!)"; then
+            hits=$((hits+1))
+            hit_lines+=("application.yml:$line_num: $trimmed")
+        fi
+    done < <(grep -nE "(dev-32-char-key-not-for-production|0123456789abcdef|dev-only-jwt-secret-key|dev-only-video-sign-secret|please-change-in-prod|not-for-production-!)" "$app_yml" 2>/dev/null)
+    if [ "$hits" -gt 0 ]; then
+        WARN=$((WARN+1))
+        echo "  ⚠ [R9] application.yml 残留不安全 dev placeholder 字面值 ($hits 处, P0 字段级加密形同虚设风险):"
+        for l in "${hit_lines[@]}"; do
+            echo "    - $l (改 default 为空 \\\${VAR:} 触发 fail-fast, 或部署时强制注入 env var)"
+        done
+    else
+        PASS=$((PASS+1))
+    fi
+}
+
 # 调用 R7 (在 R6 调用后)
 
 }
@@ -743,6 +820,8 @@ check_references_sync
 check_router_self_loop
 check_workflow_outputs_id
 check_window_doc_localstorage_at_module_level
+check_working_tree_anomalies
+check_insecure_dev_secrets_in_application_yml
 
 echo "------------------------------------------------------------"
 echo -e "  通过: ${GREEN}$PASS${NC} / 失败: ${RED}$FAIL${NC} / 警告: ${YELLOW}$WARN${NC}"

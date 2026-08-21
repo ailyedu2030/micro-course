@@ -14,7 +14,7 @@ public interface MicroSpecialtyInviteService {
     PageResult<?> getPendingInvites(int page, int size, String status);
 
     /** 跨学院待审批邀请列表（PENDING_ACADEMIC） */
-    PageResult<?> getPendingCrossDeptInvites(int page, int size);
+    PageResult<?> getPendingCrossDeptInvites(int page, int size, String inviteStatus);
 
     /** 接受邀请 → ACTIVE 或 PENDING_ACADEMIC（跨学院） */
     void acceptInvite(Long inviteId);

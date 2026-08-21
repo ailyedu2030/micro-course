@@ -195,7 +195,8 @@
           <div class="options-editor">
             <div v-for="(opt, idx) in optionList" :key="idx" class="option-item">
               <span class="option-label">{{ ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][idx] }}.</span>
-              <el-input v-model="opt.label" :placeholder="$t('question.optionContent')" class="option-input" />
+              <!-- P1-2026-08-21: 内容绑定 opt.text(原绑定 opt.label 致选项结构 {label:内容} 与学生端 {value,label,text} 契约不符 → 新题学生无法作答/判分必错) -->
+              <el-input v-model="opt.text" :placeholder="$t('question.optionContent')" class="option-input" />
               <el-radio v-if="formData.questionType === 'SINGLE'" :model-value="opt.correct" @click="setSingleCorrect(idx)" :title="$t('question.setCorrect')">√</el-radio>
               <el-checkbox v-if="formData.questionType === 'MULTIPLE'" v-model="opt.correct" :title="$t('question.setCorrect')">√</el-checkbox>
               <el-button type="danger" link @click="removeOption(idx)">{{ $t('app.delete') }}</el-button>
@@ -455,7 +456,14 @@ const handleExportExcel = async () => {
     const wb = new Workbook()
     const ws = wb.addWorksheet(t('question.list'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(t('question.exportFileName', { date: Date.now() }))
+    const wbout = await wb.xlsx.writeBuffer()
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = t('question.exportFileName', { date: Date.now() })
+    link.click()
+    URL.revokeObjectURL(url)
     ElMessage.success(t('question.exportSuccessCount', { count: exportData.length }))
   } catch {
     ElMessage.error(t('question.exportFailed'))
@@ -572,7 +580,19 @@ const handleEdit = (row) => {
   if (chapterOptions.value.length === 0) fetchChapterOptions()
   if (row.options) {
     try {
-      optionList.value = JSON.parse(row.options)
+      // P1-2026-08-21: 兼容旧格式({label:内容} / {label,content}) → 归一化 {value,label:字母,text:内容}
+      const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+      optionList.value = (JSON.parse(row.options) || []).map((o, idx) => {
+        if (o && o.value !== undefined && o.text !== undefined) return o
+        const letter = letters[idx] || ''
+        if (o && o.content !== undefined && o.value === undefined) {
+          return { value: o.label ?? letter, label: o.label ?? letter, text: o.content, correct: o.correct }
+        }
+        if (o && o.text === undefined) {
+          return { value: letter, label: letter, text: o.label ?? '', correct: o.correct }
+        }
+        return o
+      })
     } catch {
       optionList.value = []
     }
@@ -587,7 +607,8 @@ const handleEdit = (row) => {
 }
 
 function addOption() {
-  optionList.value.push({ label: '', correct: false })
+  const letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J']
+  optionList.value.push({ value: '', label: letters[optionList.value.length] || '', text: '', correct: false })
 }
 
 async function removeOption(idx) {
@@ -613,7 +634,7 @@ const handleDelete = async (row) => {
     ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('question.deleteFailed'))
     }
   }
@@ -639,7 +660,8 @@ const handleSubmit = async () => {
       if (formData.questionType === 'SINGLE' || formData.questionType === 'MULTIPLE') {
         // P2-14: 仅在 options 为对象时才 JSON.stringify，避免双重序列化
         formData.options = typeof optionList.value === 'string' ? optionList.value : JSON.stringify(optionList.value)
-        const correctOptions = optionList.value.filter(o => o.correct).map(o => o.label)
+        // P1-2026-08-21: 答案用选项 value(字母) 拼接(原用 label=内容, 与学生端判分契约不符)
+        const correctOptions = optionList.value.filter(o => o.correct).map(o => o.value || o.label)
         formData.answer = correctOptions.join(',')
       }
       if (formData.questionType === 'JUDGE' || formData.questionType === 'TRUE_FALSE') {

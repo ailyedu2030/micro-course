@@ -212,7 +212,7 @@ async function handleDismiss(row) {
     ElMessage.success(t('reportsManagement.statusDismissed'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('common.failed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(e?.response?.data?.message || t('common.failed'))
   }
 }
 
@@ -229,7 +229,7 @@ async function handleRemove(row) {
     ElMessage.success(t('reportsManagement.removedSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('common.failed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(e?.response?.data?.message || t('common.failed'))
   }
 }
 

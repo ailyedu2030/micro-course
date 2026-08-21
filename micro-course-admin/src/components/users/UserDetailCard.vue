@@ -63,6 +63,8 @@ const roleLabel = computed(() => {
 function formatTime(isoString) {
   if (!isoString) return '-'
   const d = new Date(isoString)
+  // P2-2026-08-21: 非法日期防御(原输出 NaN-NaN-NaN 00:00:00)
+  if (isNaN(d.getTime())) return '-'
   const pad = n => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }

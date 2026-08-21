@@ -84,6 +84,18 @@ public class CourseFavoriteController {
     }
 
     /**
+     * P1-2026-08-21: DELETE /api/favorites/record/{id} — 按收藏记录 id 删除
+     * 权限：ADMIN / ACADEMIC / TEACHER（管理端/教师端收藏管理页取消收藏）
+     * 语义：id = course_favorites 记录主键（区别于已废弃的 /favorites/{id} 按 courseId）
+     */
+    @DeleteMapping("/favorites/record/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'ACADEMIC', 'TEACHER')")
+    public R<Void> deleteById(@PathVariable Long id) {
+        favoriteService.deleteById(id);
+        return R.ok();
+    }
+
+    /**
      * 【已废弃】GET /api/favorites/my
      */
     @Deprecated

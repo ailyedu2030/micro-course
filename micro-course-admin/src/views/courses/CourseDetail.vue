@@ -781,7 +781,7 @@ const handleDeleteSection = async (chapter, section) => {
     ElMessage.success(t('course.deleteSuccess'))
     await loadSections(chapter.id)
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(e?.response?.data?.message || t('course.deleteFailed'))
   }
 }
 

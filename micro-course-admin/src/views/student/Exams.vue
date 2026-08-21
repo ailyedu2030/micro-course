@@ -82,25 +82,10 @@
                 <span>{{ $t('examCenter.duration', { minutes: exam.duration }) }}</span>
               </p>
               <div class="exam-actions">
-                <el-button
-                  v-if="exam._expired"
-                  type="info"
-                  size="small"
-                  disabled
-                >
-                  {{ $t('examCenter.expired') }}
-                </el-button>
-                <el-tooltip
-                  v-else-if="exam._notStarted"
-                  :content="$t('examCenter.notStartedTip', { startTime: formatTime(exam.examTime) })"
-                  placement="top"
-                >
-                  <el-button
-                    type="info"
-                    size="small"
-                    disabled
-                  >
-                    {{ $t('course.notStarted') }}
+                <!-- P1-2026-08-21: 移除依赖后端不存在 startTime 的死分支(_expired/_notStarted 永不触发) -->
+                <el-tooltip v-if="exam._attempted && !exam._passed" :content="$t('examCenter.alreadySubmittedTip') || '考试已提交，不可重复作答'" placement="top">
+                  <el-button type="primary" size="small" disabled>
+                    {{ $t('examCenter.joinExam') }}
                   </el-button>
                 </el-tooltip>
                 <el-button
@@ -328,10 +313,9 @@ const fetchExams = async () => {
       examId: exam.id,
       examTitle: exam.title,
       courseTitle: exam.courseTitle || t('examCenter.unknownCourse'),
-      // P1-C 修复 (2026-08-04): 未安排考试时间的试卷 startTime 为 null，
-      // 原逻辑回退 createdAt（创建时刻）→ 新试卷立即被判定"已过期"，
-      // 学生考试中心永远看不到新考试。未安排时间的考试应归入"待参加"（时间显示"未定"）。
-      examTime: exam.startTime || null,
+      // P1-2026-08-21: 后端 ExerciseVO/exercises 表无 startTime/排期字段(仅 timeLimit)，
+      // 原 examTime 恒 null → _expired/_notStarted 恒 false 是死代码，已移除对应 UI 分支
+      examTime: null,
       duration: exam.timeLimit || null
     }))
 
@@ -392,8 +376,11 @@ async function checkPrerequisiteChapters(exam) {
     // 3. 检查所有 sortOrder < currentSortOrder 的章节是否已完成
     const previousChapters = chapters.filter(c => (c.sortOrder || 0) < currentSortOrder)
     for (const prev of previousChapters) {
-      const progress = progressList.find(p => Number(p.chapterId) === Number(prev.id))
-      if (!progress || !progress.completed) {
+      // P1-I-2026-08-21: 进度行按课时(chapterId+sectionId)拆分，单行判定整章完成过松/误拦；
+      // 改为聚合该章节全部课时行——全部 completed 才算章节完成
+      const chapterRows = progressList.filter(p => Number(p.chapterId) === Number(prev.id))
+      const chapterComplete = chapterRows.length > 0 && chapterRows.every(p => p.completed)
+      if (!chapterComplete) {
         return false
       }
     }

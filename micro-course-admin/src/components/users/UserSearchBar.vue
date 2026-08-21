@@ -132,8 +132,7 @@ function debouncedEmit(event, ...args) {
   }, 300)
 }
 
-// 重写快捷 emit：select-change 走防抖
-const handleSelectChange = (event, ...args) => debouncedEmit(event, ...args)
+// P2-2026-08-21: 移除死代码 handleSelectChange(模板直接用 debouncedEmit)
 
 onUnmounted(() => {
   if (debounceTimer) clearTimeout(debounceTimer)

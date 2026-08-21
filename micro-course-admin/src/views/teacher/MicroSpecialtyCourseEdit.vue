@@ -4,52 +4,52 @@
 -->
 <template>
   <div class="ms-course-edit">
-    <el-page-header @back="$router.back()" :content="$i18nT('microSpecialtyCourseEdit.pageHeader', { title: detail?.title || '' })" class="mg-bottom-16" />
+    <el-page-header @back="$router.back()" :content="i18nT('microSpecialtyCourseEdit.pageHeader', { title: detail?.title || '' })" class="mg-bottom-16" />
 
     <div v-loading="loading">
       <el-result
         v-if="error"
         icon="error"
-        :title="$i18nT('microSpecialtyCourseEdit.loadFailed')"
-        :sub-title="$i18nT('microSpecialtyCourseEdit.loadFailedSubtitle')"
+        :title="i18nT('microSpecialtyCourseEdit.loadFailed')"
+        :sub-title="i18nT('microSpecialtyCourseEdit.loadFailedSubtitle')"
       >
         <template #extra>
-          <el-button type="primary" @click="fetchData">{{ $i18nT('common.retry') }}</el-button>
+          <el-button type="primary" @click="fetchData">{{ i18nT('common.retry') }}</el-button>
         </template>
       </el-result>
-      <el-empty v-else-if="!loading && !detail" :description="$i18nT('microSpecialtyCourseEdit.notFound')" />
+      <el-empty v-else-if="!loading && !detail" :description="i18nT('microSpecialtyCourseEdit.notFound')" />
 
       <div v-if="detail">
         <el-card shadow="never" class="mg-bottom-16" v-loading="coursesLoading">
           <template #header>
             <div class="card-header">
-              <span>{{ $i18nT('microSpecialtyCourseEdit.courseList', { count: courses.length }) }}</span>
-              <el-button type="primary" size="small" @click="showAddDialog">{{ $i18nT('microSpecialtyCourseEdit.addCourse') }}</el-button>
+              <span>{{ i18nT('microSpecialtyCourseEdit.courseList', { count: courses.length }) }}</span>
+              <el-button type="primary" size="small" @click="showAddDialog">{{ i18nT('microSpecialtyCourseEdit.addCourse') }}</el-button>
             </div>
           </template>
-          <el-table :data="courses" stripe border :empty-text="$i18nT('microSpecialtyCourseEdit.noCourses')">
-            <el-table-column prop="sortOrder" :label="$i18nT('microSpecialtyCourseEdit.sortOrder')" width="70" align="center" />
-            <el-table-column prop="courseTitle" :label="$i18nT('microSpecialtyCourseEdit.courseName')" min-width="200" show-overflow-tooltip />
-            <el-table-column :label="$i18nT('microSpecialtyCourseEdit.teacher')" width="140" show-overflow-tooltip>
+          <el-table :data="courses" stripe border :empty-text="i18nT('microSpecialtyCourseEdit.noCourses')">
+            <el-table-column prop="sortOrder" :label="i18nT('microSpecialtyCourseEdit.sortOrder')" width="70" align="center" />
+            <el-table-column prop="courseTitle" :label="i18nT('microSpecialtyCourseEdit.courseName')" min-width="200" show-overflow-tooltip />
+            <el-table-column :label="i18nT('microSpecialtyCourseEdit.teacher')" width="140" show-overflow-tooltip>
               <template #default="{ row }">
                 <span v-if="getTeacherName(row.courseId)">{{ getTeacherName(row.courseId) }}</span>
-                <span v-else class="no-teacher">{{ $i18nT('microSpecialtyCourseEdit.notAssigned') }}</span>
+                <span v-else class="no-teacher">{{ i18nT('microSpecialtyCourseEdit.notAssigned') }}</span>
               </template>
             </el-table-column>
-            <el-table-column :label="$i18nT('microSpecialtyCourseEdit.requiredElective')" width="100" align="center">
+            <el-table-column :label="i18nT('microSpecialtyCourseEdit.requiredElective')" width="100" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.isRequired" type="danger" size="small">{{ $i18nT('microSpecialtyCourseEdit.required') }}</el-tag>
-                <el-tag v-else type="info" size="small">{{ $i18nT('microSpecialtyCourseEdit.elective') }}</el-tag>
+                <el-tag v-if="row.isRequired" type="danger" size="small">{{ i18nT('microSpecialtyCourseEdit.required') }}</el-tag>
+                <el-tag v-else type="info" size="small">{{ i18nT('microSpecialtyCourseEdit.elective') }}</el-tag>
               </template>
             </el-table-column>
-            <el-table-column prop="credits" :label="$i18nT('microSpecialtyCourseEdit.credits')" width="80" align="center" />
-            <el-table-column prop="hours" :label="$i18nT('microSpecialtyCourseEdit.hours')" width="80" align="center" />
-            <el-table-column prop="minScore" :label="$i18nT('microSpecialtyCourseEdit.passScore')" width="90" align="center" />
-            <el-table-column :label="$i18nT('app.operation')" width="200" align="center" fixed="right">
+            <el-table-column prop="credits" :label="i18nT('microSpecialtyCourseEdit.credits')" width="80" align="center" />
+            <el-table-column prop="hours" :label="i18nT('microSpecialtyCourseEdit.hours')" width="80" align="center" />
+            <el-table-column prop="minScore" :label="i18nT('microSpecialtyCourseEdit.passScore')" width="90" align="center" />
+            <el-table-column :label="i18nT('app.operation')" width="200" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button size="small" @click="showEditItem(row)">{{ $i18nT('app.edit') }}</el-button>
-                <el-button size="small" @click="showAssignTeacher(row)">{{ $i18nT('microSpecialtyCourseEdit.assignTeacher') }}</el-button>
-                <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" @click="handleRemove(row)">{{ $i18nT('app.delete') }}</el-button>
+                <el-button size="small" @click="showEditItem(row)">{{ i18nT('app.edit') }}</el-button>
+                <el-button size="small" @click="showAssignTeacher(row)">{{ i18nT('microSpecialtyCourseEdit.assignTeacher') }}</el-button>
+                <el-button v-if="userRole === 'TEACHER' || userRole === 'ADMIN'" size="small" type="danger" @click="handleRemove(row)">{{ i18nT('app.delete') }}</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -58,76 +58,76 @@
     </div>
 
     <!-- 添加课程 Dialog -->
-    <el-dialog v-model="addVisible" :title="$i18nT('microSpecialtyCourseEdit.addTitle')" width="560px" @closed="resetAddForm">
+    <el-dialog v-model="addVisible" :title="i18nT('microSpecialtyCourseEdit.addTitle')" width="560px" @closed="resetAddForm">
       <el-form ref="addFormRef" :model="addForm" :rules="addRules" label-width="100px" @submit.prevent>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.selectCourse')" prop="courseId">
-          <el-select v-model="addForm.courseId" filterable :placeholder="$i18nT('microSpecialtyCourseEdit.searchCourse')" class="full-width">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.selectCourse')" prop="courseId">
+          <el-select v-model="addForm.courseId" filterable :placeholder="i18nT('microSpecialtyCourseEdit.searchCourse')" class="full-width">
             <el-option v-for="c in availableCourses" :key="c.id" :label="c.title" :value="c.id" />
           </el-select>
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.sortOrder')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.sortOrder')">
           <el-input-number v-model="addForm.sortOrder" :min="0" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.required')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.required')">
           <el-switch v-model="addForm.isRequired" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.credits')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.credits')">
           <el-input-number v-model="addForm.credits" :min="0" :precision="1" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.hours')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.hours')">
           <el-input-number v-model="addForm.hours" :min="0" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.passScore')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.passScore')">
           <el-input-number v-model="addForm.minScore" :min="0" :max="100" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="addVisible = false">{{ $i18nT('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="adding" :disabled="adding" @click="handleAdd">{{ $i18nT('microSpecialtyCourseEdit.addBtn') }}</el-button>
+        <el-button @click="addVisible = false">{{ i18nT('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="adding" :disabled="adding" @click="handleAdd">{{ i18nT('microSpecialtyCourseEdit.addBtn') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 指派教师 Dialog -->
-    <el-dialog v-model="assignVisible" :title="$i18nT('microSpecialtyCourseEdit.assignTitle')" width="480px" @closed="resetAssignForm">
+    <el-dialog v-model="assignVisible" :title="i18nT('microSpecialtyCourseEdit.assignTitle')" width="480px" @closed="resetAssignForm">
       <el-form ref="assignFormRef" :model="assignForm" :rules="assignRules" label-width="100px">
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.course')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.course')">
           <span class="assign-course-name">{{ assignCourse?.courseTitle || '' }}</span>
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.teacher')" prop="teacherId">
-          <el-select v-model="assignForm.teacherId" filterable :placeholder="$i18nT('microSpecialtyCourseEdit.selectTeacher')" class="full-width" clearable>
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.teacher')" prop="teacherId">
+          <el-select v-model="assignForm.teacherId" filterable :placeholder="i18nT('microSpecialtyCourseEdit.selectTeacher')" class="full-width" clearable>
             <el-option v-for="t in availableTeachers" :key="t.teacherId" :label="t.teacherName" :value="t.teacherId" />
           </el-select>
         </el-form-item>
-        <div class="assign-hint">{{ $i18nT('microSpecialtyCourseEdit.assignHint') }}</div>
+        <div class="assign-hint">{{ i18nT('microSpecialtyCourseEdit.assignHint') }}</div>
       </el-form>
       <template #footer>
-        <el-button @click="assignVisible = false">{{ $i18nT('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="assigning" :disabled="assigning" @click="handleAssignTeacher">{{ $i18nT('app.confirm') }}</el-button>
+        <el-button @click="assignVisible = false">{{ i18nT('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="assigning" :disabled="assigning" @click="handleAssignTeacher">{{ i18nT('app.confirm') }}</el-button>
       </template>
     </el-dialog>
 
     <!-- 编辑课程项 Dialog -->
-    <el-dialog v-model="editVisible" :title="$i18nT('microSpecialtyCourseEdit.editTitle')" width="480px" @closed="resetEditForm">
+    <el-dialog v-model="editVisible" :title="i18nT('microSpecialtyCourseEdit.editTitle')" width="480px" @closed="resetEditForm">
       <el-form ref="editFormRef" :model="editForm" label-width="100px" @submit.prevent>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.sortOrder')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.sortOrder')">
           <el-input-number v-model="editForm.sortOrder" :min="0" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.required')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.required')">
           <el-switch v-model="editForm.isRequired" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.credits')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.credits')">
           <el-input-number v-model="editForm.credits" :min="0" :precision="1" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.hours')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.hours')">
           <el-input-number v-model="editForm.hours" :min="0" />
         </el-form-item>
-        <el-form-item :label="$i18nT('microSpecialtyCourseEdit.passScore')">
+        <el-form-item :label="i18nT('microSpecialtyCourseEdit.passScore')">
           <el-input-number v-model="editForm.minScore" :min="0" :max="100" />
         </el-form-item>
       </el-form>
       <template #footer>
-        <el-button @click="editVisible = false">{{ $i18nT('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="editing" :disabled="editing" @click="handleEditSave">{{ $i18nT('app.save') }}</el-button>
+        <el-button @click="editVisible = false">{{ i18nT('common.cancel') }}</el-button>
+        <el-button type="primary" :loading="editing" :disabled="editing" @click="handleEditSave">{{ i18nT('app.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

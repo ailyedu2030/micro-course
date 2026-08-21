@@ -138,9 +138,9 @@
           <template #default="{ row }">
             <slot name="actions" :row="row">
               <el-button type="primary" link size="small" @click="$emit('view-detail', row)">详情</el-button>
-              <el-button type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
-              <el-button type="info" link size="small" @click="$emit('reset-password', row)">重置密码</el-button>
-              <el-button type="danger" link size="small" @click="$emit('delete', row)">删除</el-button>
+              <el-button v-if="userRole === 'ADMIN'" type="warning" link size="small" @click="$emit('edit', row)">编辑</el-button>
+              <el-button v-if="userRole === 'ADMIN'" type="info" link size="small" @click="$emit('reset-password', row)">重置密码</el-button>
+              <el-button v-if="userRole === 'ADMIN'" type="danger" link size="small" @click="$emit('delete', row)">删除</el-button>
             </slot>
           </template>
         </el-table-column>
@@ -165,6 +165,11 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useUserStore } from '@/store/user'
+
+// P1-2026-08-21: 共享组件角色感知——编辑/重置密码/删除后端均 ADMIN-only，ACADEMIC 不应看到必失败的按钮
+const userStore = useUserStore()
+const userRole = computed(() => userStore.role)
 
 const props = defineProps({
   loading: { type: Boolean, default: false },

@@ -472,7 +472,7 @@ onUnmounted(() => notificationStore.stopPolling())
   border-radius: var(--radius-2xl, 20px);
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
-  color: var(--el-text-color-secondary, #64748b);
+  color: var(--el-text-color-regular, #475569);
   text-decoration: none;
   cursor: pointer;
   transition: all var(--duration-base) var(--ease-out);

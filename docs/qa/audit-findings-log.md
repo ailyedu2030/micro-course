@@ -784,3 +784,71 @@
 - **验证**：promtool 21 rules SUCCESS；SIGHUP 重载后 2 groups=21 rules loaded；5 target 全 up（micro-course-api/node-exporter/postgres-exporter/prometheus/redis-exporter）；核心规则 expr 实测命中（up/error rate/avg latency/hikaricp/outbox/jvm）；exporter 指标全命中；历史 TSDB 24h 保留（external 卷复用生效）；reload API 200；前端 eslint UserTable.vue 通过；PR #218 CI 中（backend 35min 长任务，frontend/monitoring-lint/Trivy/references-sync/secrets-check 已绿）。
 
 > **遗留决策项**：Alertmanager 真实通知通道（钉钉/飞书/Slack webhook 或 SMTP）需用户提供——当前 webhook placeholder 无法通知（不编造外部 URL）；GitHub action roll-your-own-23-05-2025 高危版本确认后升级。
+
+---
+
+## 2026-08-21 · 无差别全页面覆盖审查（四角色 139 页）
+
+> 方式：ego-browser 真实交互 + 3 子代理并行静态审查（后端交叉验证）+ 全量回归。
+> 成果：修复 40+ 处问题（4 P0 + 15 P1 + 20+ P2），5 个 commit 已推送，四角色 139/139 页面 0 报错。
+
+### P0（白屏/核心功能不可用）— 已全部修复
+
+- **F-2026-08-21-01 · /student/orders 白屏**：MyOrders.vue script setup 调用 onMounted 未 import（auto-import 仅 ElMessage）→ ReferenceError → ErrorBoundary。修复 import 并提交 50e0d118。横向扫描 144 个 vue 无同类。
+- **F-2026-08-21-02 · MicroSpecialtyCourseEdit 整页白屏**：模板 47 处 $i18nT 未定义（script 只定义 i18nT）。全局替换修复。
+- **F-2026-08-21-03 · MicroSpecialtyDetail 渲染崩溃**：useI18n 改名后 script 残留 22 处裸 t( 调用（statusLabel 渲染即抛）。负向后顾替换为 i18nT。
+- **F-2026-08-21-04 · MyCourses 课件课继续学习静默失效**：调用未 import 的 getLearningProgress → ReferenceError 被 catch 吞掉。补 import。
+
+### P1（业务/数据/权限）— 已全部修复
+
+- Excel 导出 100% 失败（6 页）：exceljs UMD 包无 fs → 统一 writeBuffer+Blob。
+- 课程级练习（无章节）对学生不可见 + 开始练习无响应：新增 courseId 路由 + ExerciseTake courseId 模式 + LearningView 计入 + goExercise 重写。commit cceae2ed。
+- 收藏取消 403 + id 语义错位（3 处）：新增 /favorites/record/{id}；学生端传 courseId。
+- 教学班教师下拉无数据源：补 getUsers({role:TEACHER}) 加载。
+- 权限按钮与后端不一致（4 处）：补 ADMIN 守卫（admin/UserList、UserTable、TagList、users/UserList）。
+- SWR 缓存键缺筛选维度：补 majorId/classId/status。
+- 题目选项契约错位：{value,label:字母,text:内容} 对齐 + 回显归一化。
+- 申报章节分配 teamMemberIndex 丢失：V334 迁移 + 全链路持久化。
+- 共建单位签名/盖章丢失：顶层↔嵌套双向映射。
+- StudentGrades ACADEMIC 可提交批改：补只读守卫。
+- TeacherOfflineSessions 场次跳错路由：session.chapterId 修正。
+- 学习中心打卡天数恒 0 / 正确率趋势全 0：兼容裸整数 + 星期匹配。
+- Settings saveTimer / 免打扰回显：saving ref + 字符串时间 ref。
+- Exams 已作答未通过可点参加：禁用+提示。
+- 评价加载更多失败清空 / 提交后分页错位：catch 保护 + 重置分页。
+- ExerciseTake 超时 duration 未钳制：Math.min 限时内。
+- 教务处字段错配（EnrollmentOverview/Dashboard/GoldManage/ClassImport/CrossDeptReview）：字段对齐 + 映射 + VO join 补齐。
+- 徽章字段错配：badgeType → badgeCode。
+- 视频完成态不落库：reportProgress(true,true) + payload 带 completed。
+- 死功能组件入口：users/UserList 工具栏补批量导入/教师审核/新增用户。
+
+### P2（体验/残缺）— 批量收敛
+
+- 44 处 ElMessageBox 'close' 误报失败 toast。
+- UserForm 角色切换清理条件写反。
+- admin/Dashboard 快捷入口"新增用户"路由错误。
+- SectionEditDialog 新增模式残留上一课时数据。
+- LearningCenter checkTodayStatus 复制粘贴错误。
+
+### 遗留（P2，已记录未修）
+
+- 965 处硬编码中文（i18n 治理门禁）。
+- VideoPlayer 进度按 chapterId 而非 videoId（多视频串档，需重构进度流）。
+- SlidePlayer 学生主流程 sectionId 缺失（需入口传参链路改造）。
+- 其余 P2 死代码/空态/移动端细节见 审查报告-学生端教务处公共页.md 及各子代理报告。
+
+---
+
+## 2026-08-21 补修轮 · 学生端/教务端剩余 P1（9 项）
+
+| # | 位置 | 问题 | 修复 |
+|---|------|------|------|
+| 1 | SlidePlayer updateVideoProgress | 学生主入口无 sectionId → 课件进度永不落库 | 页面派生 effectiveSectionId |
+| 2 | SlidePlayer ensureProgress/markSlideComplete | Number(null)=0 查重恒失败 → 重复记录无界累积 | 按 sectionId 匹配 + effective ids |
+| 3 | MicroSpecialtyProgressServiceImpl | progress x100(0-1) 与退课拦截/渲染(0-100)矛盾 | 统一 0-100 去 x100 |
+| 4 | 跨学院审核全部tab | 与待审批数据相同(后端硬编码) | getPendingCrossDeptInvites 加 inviteStatus 参数 |
+| 5 | WeeklyReport | 练习数/正确率用终身累计冒充周数据 | accuracy-trend 按日聚合本周 |
+| 6 | Exams | 依赖不存在 startTime 的死状态机 | 移除 _expired/_notStarted 死分支 |
+| 7 | Login | 423 双 toast 时长矛盾 | 拦截器对齐15分钟 + 移除重复提示 |
+| 8 | MyCourses | 选课大于20门不可见 | size:200 |
+| 9 | MicroSpecialtyReview + focus=failed | 字段错配列空白 + 误导占位 | 字段对齐 + 移除误导 alert |

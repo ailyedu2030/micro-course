@@ -115,7 +115,6 @@
               <span class="settings-label">{{ $t('course.startTime') }}</span>
               <el-time-picker
                 v-model="quietHoursStartDate"
-                :value="settings.quietHoursStart"
                 format="HH:mm"
                 value-format="HH:mm"
                 :clearable="false"
@@ -127,7 +126,6 @@
               <span class="settings-label">{{ $t('course.endTime') }}</span>
               <el-time-picker
                 v-model="quietHoursEndDate"
-                :value="settings.quietHoursEnd"
                 format="HH:mm"
                 value-format="HH:mm"
                 :clearable="false"
@@ -199,7 +197,7 @@
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap">
-        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button">{{ $t('studentSettings.saveSettings') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave" class="save-button">{{ $t('studentSettings.saveSettings') }}</el-button>
       </div>
     </div>
 
@@ -283,7 +281,6 @@
               <span>{{ $t('studentSettings.startShort') }}</span>
               <el-time-picker
                 v-model="quietHoursStartDate"
-                :value="settings.quietHoursStart"
                 format="HH:mm"
                 value-format="HH:mm"
                 :clearable="false"
@@ -295,7 +292,6 @@
               <span>{{ $t('studentSettings.endShort') }}</span>
               <el-time-picker
                 v-model="quietHoursEndDate"
-                :value="settings.quietHoursEnd"
                 format="HH:mm"
                 value-format="HH:mm"
                 :clearable="false"
@@ -348,7 +344,7 @@
       </div>
 
       <div v-if="!loading && !error" class="save-button-wrap-h5">
-        <el-button type="primary" :loading="!!saveTimer" @click="handleSave" class="save-button-h5">{{ $t('studentSettings.saveSettings') }}</el-button>
+        <el-button type="primary" :loading="saving" @click="handleSave" class="save-button-h5">{{ $t('studentSettings.saveSettings') }}</el-button>
       </div>
 
       <div class="safe-area-bottom"></div>
@@ -391,8 +387,9 @@ const isMobile = ref(window.innerWidth <= 768)
 let resizeTimer = null
 
 // P1I-030: 免打扰时段绑定
-const quietHoursStartDate = ref(new Date())
-const quietHoursEndDate = ref(new Date())
+// P1-2026-08-21: 免打扰时段用字符串 ref(value-format=HH:mm)，Date ref 无法回显已保存的 22:00/07:00
+const quietHoursStartDate = ref('22:00')
+const quietHoursEndDate = ref('07:00')
 
 const onQuietHoursStartChange = (val) => {
   if (val) {
@@ -436,8 +433,8 @@ const loadSettings = async () => {
           if (extra.wechatNotification !== undefined) settings.value.wechatNotification = extra.wechatNotification
           // P1I-030: 免打扰时段
           if (extra.quietHoursEnabled !== undefined) settings.value.quietHoursEnabled = extra.quietHoursEnabled
-          if (extra.quietHoursStart) settings.value.quietHoursStart = extra.quietHoursStart
-          if (extra.quietHoursEnd) settings.value.quietHoursEnd = extra.quietHoursEnd
+          if (extra.quietHoursStart) { settings.value.quietHoursStart = extra.quietHoursStart; quietHoursStartDate.value = extra.quietHoursStart }
+          if (extra.quietHoursEnd) { settings.value.quietHoursEnd = extra.quietHoursEnd; quietHoursEndDate.value = extra.quietHoursEnd }
         } catch { /* ignore JSON parse error */ }
       }
     }
@@ -491,12 +488,16 @@ const loadSettings = async () => {
   }
 }
 
+// P1-2026-08-21: 模板引用的 saveTimer 未声明(loading 恒 false、可连点) → 用 saving 状态替代
+const saving = ref(false)
+
 // P1I-031: 防抖 debounce，避免频繁触发保存请求
 let debounceTimer = null
 const debouncedSave = () => {
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(async () => {
     debounceTimer = null
+    saving.value = true
     try {
       // P1C-037: 已登录用户同步所有偏好设置到后端（含播放/隐私/辅助功能）
       const extraPrefs = {
@@ -517,14 +518,18 @@ const debouncedSave = () => {
         extraPreferences: JSON.stringify(extraPrefs)
       })
       ElMessage.success(t('studentSettings.savedSuccess'))
+      saving.value = false
     } catch {
+      saving.value = false
       ElMessage.warning(t('studentSettings.saveFailedLocal'))
     }
     // 所有设置持久化到 localStorage 作为离线 fallback
+    // P2-2026-08-21: 配额不足时不再弹"保存失败"(服务端已成功，避免成功后失败双 toast 矛盾)，
+    // 仅 console 记录
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(settings.value))
-    } catch {
-      ElMessage.error(t('studentSettings.saveFailed'))
+    } catch (e2) {
+      console.warn('[Settings] localStorage 写入失败(配额不足)', e2)
     }
   }, 300)
 }

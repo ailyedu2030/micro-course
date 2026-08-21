@@ -41,7 +41,7 @@
         </div>
         <el-scrollbar class="chapter-scrollbar">
           <div class="chapter-list">
-            <div v-for="ch in enr.chapters" :key="ch.id" class="chapter-item" role="button" tabindex="0" :aria-label="`进入章节练习 ${ch.title}`" @click.stop="goExercise(ch.id)" @keydown.enter.stop="goExercise(ch.id)" @keydown.space.prevent.stop="goExercise(ch.id)">
+            <div v-for="ch in enr.chapters" :key="ch.id" class="chapter-item" :class="{ 'chapter-item--empty': !ch.exerciseCount }" :role="ch.exerciseCount > 0 ? 'button' : undefined" :tabindex="ch.exerciseCount > 0 ? 0 : -1" :aria-disabled="ch.exerciseCount <= 0" :aria-label="`进入章节练习 ${ch.title}`" @click.stop="ch.exerciseCount > 0 && goExercise(ch.id)" @keydown.enter.stop="ch.exerciseCount > 0 && goExercise(ch.id)" @keydown.space.prevent.stop="ch.exerciseCount > 0 && goExercise(ch.id)">
               <span>{{ ch.title }}</span>
               <el-tag v-if="ch.exerciseCount > 0" size="small" type="success">{{ ch.exerciseCount }} 练习</el-tag>
               <el-tag v-else size="small" type="info">暂无练习</el-tag>
@@ -63,6 +63,21 @@ import { getChapters } from '@/api/chapter'
 import { getExercises } from '@/api/exercise'
 import { filterActiveLearningEnrollments } from '@/utils/enrollmentFilters'
 
+// P2-2026-08-21: 并发受限的批量请求(避免 N×M 请求风暴)，失败项返回 null 不阻塞整体
+async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length)
+  let cursor = 0
+  async function worker() {
+    while (cursor < items.length) {
+      const idx = cursor++
+      try { results[idx] = await fn(items[idx], idx) } catch (e) { results[idx] = null }
+    }
+  }
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker())
+  await Promise.all(workers)
+  return results
+}
+
 const router = useRouter()
 const loading = ref(true)
 const error = ref(false)
@@ -83,7 +98,8 @@ async function fetchData() {
   error.value = false
   try {
     // Step 1: 获取我的课程列表（1 请求）
-    const { data } = await getMyEnrollments({ completed: false })
+    // P2-2026-08-21: 补 size 防 >20 门截断
+    const { data } = await getMyEnrollments({ completed: false, page: 0, size: 200 })
     const items = filterActiveLearningEnrollments(data?.items || data || [])
 
     if (items.length === 0) {
@@ -91,23 +107,19 @@ async function fetchData() {
       return
     }
 
-    // Step 2: 并行获取所有课程的章节（N 请求，并行）
-    const chapterResults = await Promise.all(
-      items.map(e => getChapters({ courseId: e.courseId, size: 100 }))
-    )
-    const chapterLists = chapterResults.map(r => r.data?.items || [])
+    // Step 2: 获取所有课程的章节（P2: 分批并发限流，避免 N 请求风暴）
+    const chapterResults = await mapLimit(items, 5, e => getChapters({ courseId: e.courseId, size: 100 }))
+    const chapterLists = chapterResults.map(r => (r && r.data?.items) || [])
 
-    // Step 3: 收集所有章节 ID，并行获取所有章节的练习（N×M 请求，并行）
+    // Step 3: 收集所有章节 ID，获取各章节练习（P2: 分批并发限流，原 N×M 全并行）
     const allChapterIds = chapterLists.flatMap(list => list.map(c => c.id))
-    const exerciseResults = await Promise.all(
-      allChapterIds.map(cid => getExercises({ chapterId: cid, size: 50 }))
-    )
+    const exerciseResults = await mapLimit(allChapterIds, 5, cid => getExercises({ chapterId: cid, size: 100 }))
 
     // 建立 chapterId → exerciseCount 的映射
     const exerciseCountMap = new Map()
     let idx = 0
     for (const chId of allChapterIds) {
-      const exercises = exerciseResults[idx]?.data?.items || []
+      const exercises = (exerciseResults[idx] && exerciseResults[idx].data?.items) || []
       exerciseCountMap.set(chId, exercises.length)
       idx++
     }
@@ -201,6 +213,9 @@ function goExercise(chapterId) {
   background: var(--role-primary-light-9);
   transform: translateX(4px);
 }
+/* P2-2026-08-21: 空练习章节禁用态 */
+.chapter-item--empty { opacity: 0.55; cursor: not-allowed; }
+.chapter-item--empty:hover { background: transparent; transform: none; }
 .chapter-item:active {
   transform: translateX(2px) scale(0.99);
 }

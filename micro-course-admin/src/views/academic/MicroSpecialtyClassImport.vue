@@ -43,9 +43,10 @@
         <el-col :span="8"><el-result icon="danger" :title="$t('classImport.failedClass')" :sub-title="`${result.failedCount || 0} ${$t('classImport.classUnit')}`" /></el-col>
       </el-row>
       <el-button v-if="importResult.success.length || importResult.failed.length" type="primary" size="small" class="mg-top-12" @click="showImportResult">{{ $t('classImport.viewDetail') }}</el-button>
-      <div v-if="result.errors && result.errors.length" class="error-list mg-top-12">
+      <!-- P2: 后端 VO 无 errors 字段(死代码) → 用 failedList 的 errorMsg 渲染失败明细 -->
+      <div v-if="importResult.failed.length" class="error-list mg-top-12">
         <h4>{{ $t('classImport.failedDetail') }}</h4>
-        <div v-for="(err, i) in result.errors" :key="i" class="error-item">{{ err }}</div>
+        <div v-for="(item, i) in importResult.failed" :key="i" class="error-item">{{ item.className }}: {{ item.errorMsg || $t('course.unknown') }}</div>
       </div>
     </el-card>
 
@@ -78,6 +79,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, classImport } from '@/api/microSpecialty'
 import { getClasses } from '@/api/class'
 import { getDepartments } from '@/api/department'
+import { getMajors } from '@/api/major'
 
 const { t } = useI18n()
 
@@ -96,9 +98,12 @@ const classOptions = ref([])
 // P1I-068: 院系列筛
 const departmentFilter = ref(null)
 const departmentOptions = ref([])
+// P1-2026-08-21: ClassVO 无 departmentId/departmentName(仅 majorId/majorName)，原筛选恒空锁死导入；
+// 加载专业表建立 majorId→departmentId 映射后按映射筛选
+const majorDeptMap = ref({})
 const filteredClassOptions = computed(() => {
   if (!departmentFilter.value) return classOptions.value
-  return classOptions.value.filter(c => c.departmentId === departmentFilter.value || c.departmentName === departmentOptions.value.find(d => d.id === departmentFilter.value)?.name)
+  return classOptions.value.filter(c => majorDeptMap.value[c.majorId] === departmentFilter.value)
 })
 const result = ref(null)
 const importResultDialogVisible = ref(false)
@@ -135,7 +140,8 @@ const onSpecialtyChange = async (id) => {
   loadingClasses.value = true
   try {
     // 加载所有班级 (学院级, 与微专业无关, 由用户筛选选择)
-    const { data } = await getClasses({ size: 100 })
+    // P2: 原 size:100 截断致大班级量学校班级无法导入
+    const { data } = await getClasses({ size: 1000 })
     classOptions.value = data?.items || data || []
   } catch (e) { ElMessage.error(e?.response?.data?.message || t('classImport.loadClassesFailed')) }
   finally { loadingClasses.value = false }
@@ -182,9 +188,21 @@ const fetchDepartments = async () => {
   } catch { /* 院系加载失败不影响主流程 */ }
 }
 
+// P1-2026-08-21: 建立 专业→院系 映射(ClassVO 无院系字段，需经 major 关联)
+const fetchMajorDeptMap = async () => {
+  try {
+    const { data } = await getMajors({ size: 500 })
+    const majors = data?.items || data || []
+    const map = {}
+    for (const m of majors) if (m.id != null && m.departmentId != null) map[m.id] = m.departmentId
+    majorDeptMap.value = map
+  } catch { /* 映射加载失败则院系筛选不可用但主流程可用 */ }
+}
+
 onMounted(() => {
   fetchSpecialties()
   fetchDepartments()
+  fetchMajorDeptMap()
 })
 </script>
 

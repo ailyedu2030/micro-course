@@ -303,7 +303,8 @@ const handleDelete = async (row) => {
     ElMessage.success(t('myReviews.deleteSuccess'))
     fetchMyReviews()
   } catch (err) {
-    if (err === 'cancel') return
+    // P2-2026-08-21: X/Esc 关闭 reject 值为 close，原只判 cancel 会误报删除失败
+    if (err === 'cancel' || err === 'close') return
     ElMessage.error(t('myReviews.deleteFailed'))
   }
 }

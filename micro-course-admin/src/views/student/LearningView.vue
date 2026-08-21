@@ -99,7 +99,7 @@
           <!-- 考试 Tab -->
           <div v-show="activeTab === 'exam'" class="tab-panel">
             <ExerciseQuickPanel
-              :exercise-count="currentExercises.length"
+              :exercise-count="totalExerciseCount"
               @start-exercise="goExercise"
             />
           </div>
@@ -150,6 +150,7 @@ import { getCourseById } from '@/api/course'
 import { getVideos } from '@/api/video'
 import { getLearningProgress, updateLearningProgress, createLearningProgress, getStudyDays, getTotalTime } from '@/api/learning-progress'
 import { getMyFavorites, addFavorite, removeFavorite } from '@/api/favorite'
+import { getExercises } from '@/api/exercise'
 import { useLearningProgressReporter } from '@/composables/useLearningProgressReporter'
 import { useLearningProgressHeartbeat } from '@/composables/useLearningProgressHeartbeat'
 
@@ -182,6 +183,8 @@ const tabs = [
   { key: 'announcement', label: t('learningView.tabAnnouncement'), icon: 'Bell' },
   { key: 'discussion', label: t('learningView.tabDiscussion'), icon: 'ChatDotRound' },
   { key: 'exam', label: t('learningView.tabExam'), icon: 'Edit' }
+  // P2-2026-08-21: note 无独立顶部 tab（由工具栏笔记按钮进入），此处不加 tab 项；
+  // 笔记激活时由 ResourceToolbar 笔记按钮状态反馈，避免 4 tab 全无高亮 —— 见 handleShowNotes
 ]
 const activeTab = ref('course')
 
@@ -290,6 +293,12 @@ const currentExercises = computed(() => {
   return currentChapter.value.exercises || []
 })
 
+// P1-C-2026-08-21: 课程级练习（无章节归属）——教师建练习未选章节时学生仍可见可作答
+const courseLevelExercises = ref([])
+const totalExerciseCount = computed(() => {
+  return (currentExercises.value?.length || 0) + (courseLevelExercises.value?.length || 0)
+})
+
 // 视频恢复位置（传给 VideoSection）
 const initialPosition = computed(() => progressMap.value[currentLessonId.value]?.videoPosition || 0)
 
@@ -334,12 +343,16 @@ async function retryLoad() {
 async function loadCourse(cid) {
   loading.value = true
   try {
-    // ✅ 并行获取课程、进度、视频
-    const [courseRes, progressRes, videosRes] = await Promise.all([
+    // ✅ 并行获取课程、进度、视频、课程级练习
+    const [courseRes, progressRes, videosRes, courseExRes] = await Promise.all([
       getCourseById(cid),
       getLearningProgress({ courseId: cid }),
-      getVideos({ courseId: cid, size: 100 })
+      getVideos({ courseId: cid, size: 100 }),
+      getExercises({ courseId: cid, size: 100 }).catch(() => ({ data: { items: [] } }))
     ])
+    // 课程级练习 = 无章节归属（chapterIds 为空）
+    const courseExList = courseExRes?.data?.items || (Array.isArray(courseExRes?.data) ? courseExRes.data : [])
+    courseLevelExercises.value = courseExList.filter(ex => !ex.chapterIds || ex.chapterIds.length === 0)
 
     course.value = courseRes.data || {}
 
@@ -474,13 +487,20 @@ async function loadProgress() {
     // 练习统计：单课程进度接口已按课时级聚合 completedExercises/totalExercises，
     // 任一进度记录都携带课程级汇总值，取首条即可（无记录时回退 0）
     const progressAgg = progressRawList.value[0] || {}
+    // P2-2026-08-21: getStudyDays/getTotalTime 为全站口径，课程卡片展示会误导；
+    // 课程级学习时长从本课程进度记录的 totalSeconds 汇总（无则显示 0）
+    const courseTimeSeconds = progressRawList.value.reduce((s, p) => s + (Number(p.totalSeconds) || 0), 0)
+    const courseStudyDays = progressRawList.value.reduce((days, p) => {
+      if (p.updatedAt) days.add(String(p.updatedAt).slice(0, 10))
+      return days
+    }, new Set()).size
     statsData.value = {
       videoCompleted: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.filter(l => l.status === 'COMPLETED').length || 0), 0),
       videoTotal: chapters.value.reduce((sum, ch) => sum + (ch.lessons?.length || 0), 0),
       exerciseCompleted: progressAgg.completedExercises ?? 0,
       exerciseTotal: progressAgg.totalExercises ?? 0,
-      totalTime: formatTotalTime(timeRes.data),
-      streakDays: (studyDaysRes.data?.totalDays) || 0
+      totalTime: courseTimeSeconds > 0 ? formatTotalTime({ totalSeconds: courseTimeSeconds }) : formatTotalTime(timeRes.data),
+      streakDays: courseStudyDays > 0 ? courseStudyDays : ((studyDaysRes.data?.totalDays) || 0)
     }
   } catch (err) {
 // eslint-disable-next-line no-console
@@ -505,9 +525,10 @@ async function toggleFavorite() {
     if (isFavorited.value) {
       // 取消收藏（需要找到收藏ID）
       const res = await getMyFavorites()
-      const fav = (res.data || []).find(f => f.courseId === courseId.value)
+      const fav = (res.data || []).find(f => String(f.courseId) === String(courseId.value))
       if (fav) {
-        await removeFavorite(fav.id)
+        // P1-2026-08-21: 后端 DELETE /favorites/{id} 的 id 是 courseId 语义(非记录id)，必须传 courseId
+        await removeFavorite(fav.courseId)
         isFavorited.value = false
         ElMessage.success(t('learningView.favoriteRemoved'))
       }
@@ -592,10 +613,23 @@ function goBack() {
 }
 
 function goExercise() {
-  if (!currentLessonId.value) return
-  // 从 goToLesson 传递的 lesson 中取 chapterId
-  const lesson = allLessons.value.find(l => l.id === currentLessonId.value)
-  const chId = lesson?.chapterId || currentChapter.value?.id
+  // P1-C-2026-08-21 修复：不依赖 currentLessonId（未选课时点击"开始练习"无响应）。
+  // 优先级：当前章节练习 → 课程级练习 → 第一个有练习的章节 → 当前章节（空态跳转）
+  const chId = currentChapter.value?.id
+  const chEx = currentExercises.value || []
+  if (chId && chEx.length > 0) {
+    router.push(`/student/chapters/${chId}/exercises`)
+    return
+  }
+  if (courseLevelExercises.value?.length > 0) {
+    router.push(`/student/courses/${courseId.value}/exercises`)
+    return
+  }
+  const firstCh = chapters.value.find(ch => (ch.exercises || []).length > 0)
+  if (firstCh) {
+    router.push(`/student/chapters/${firstCh.id}/exercises`)
+    return
+  }
   if (chId) {
     router.push(`/student/chapters/${chId}/exercises`)
   }

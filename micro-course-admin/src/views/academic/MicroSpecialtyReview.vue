@@ -18,14 +18,15 @@
       <el-table v-loading="loading" :data="items" stripe border>
         <template #empty><el-empty :description="$t('microSpecialtyReview.emptyPending')" style="max-width: 100%; min-width: 0; --el-empty-padding: 0;" /></template>
         <el-table-column prop="title" :label="$t('course.tableTitle')" min-width="180" show-overflow-tooltip />
-        <el-table-column prop="collegeName" :label="$t('microSpecialtyReview.college')" width="120" />
+        <el-table-column prop="departmentName" :label="$t('microSpecialtyReview.college')" width="120" />
         <el-table-column prop="creatorName" :label="$t('microSpecialtyReview.creator')" width="100" />
         <el-table-column :label="$t('app.status')" width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="statusType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" :label="$t('microSpecialtyReview.createdAt')" width="130" align="center" :formatter="$formatDateTime">
+        <!-- P2: formatter 与下方插槽重复(插槽生效)，移除死 formatter -->
+        <el-table-column prop="createdAt" :label="$t('microSpecialtyReview.createdAt')" width="130" align="center">
           <template #default="{ row }">{{ $formatDate(row.createdAt) || '-' }}</template>
         </el-table-column>
         <el-table-column :label="$t('app.operation')" width="380" align="center" fixed="right">
@@ -69,7 +70,7 @@
     <el-dialog v-model="detailVisible" :title="$t('microSpecialtyReview.detailTitle')" width="560px">
       <div class="detail-grid" v-if="detailRow">
         <div class="detail-item"><label>{{ $t('course.tableTitle') }}</label><span>{{ detailRow.title }}</span></div>
-        <div class="detail-item"><label>{{ $t('microSpecialtyReview.college') }}</label><span>{{ detailRow.collegeName || '-' }}</span></div>
+        <div class="detail-item"><label>{{ $t('microSpecialtyReview.college') }}</label><span>{{ detailRow.departmentName || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('microSpecialtyReview.creator') }}</label><span>{{ detailRow.creatorName || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('course.semester') }}</label><span>{{ detailRow.semester || '-' }}</span></div>
         <div class="detail-item"><label>{{ $t('microSpecialtyReview.maxStudents') }}</label><span>{{ detailRow.maxStudents || '-' }}</span></div>
@@ -85,7 +86,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getMicroSpecialtyList, approveMicroSpecialty, rejectMicroSpecialty, cancelMicroSpecialty, archiveMicroSpecialty, reopenMicroSpecialty } from '@/api/microSpecialty'
@@ -95,7 +96,8 @@ import { sanitizeHtml } from '@/utils/xss'
 const userStore = useUserStore()
 const { t } = useI18n()
 // 路由守卫竞态: 组件异步 load 在 store.getInfo() 前完成 → 错误 fetch → 403
-const hasAccess = ['ACADEMIC', 'ADMIN'].includes(userStore.role)
+// P2: hasAccess 改 computed(原一次性快照，角色加载后不更新)；无权限时给出提示而非静默空列表
+const hasAccess = computed(() => ['ACADEMIC', 'ADMIN'].includes(userStore.role))
 
 const activeTab = ref('PENDING')
 const loading = ref(false)
@@ -125,7 +127,11 @@ const statusTypeMap = { DRAFT: 'info', PENDING_REVIEW: 'warning', APPROVED: 'suc
 const error = ref(false)
 
 const fetchData = async () => {
-  if (!hasAccess) return
+  if (!hasAccess) {
+    // P2: 无权限不静默空列表
+    ElMessage.warning(t('course.noPermission') || '无权限访问该页面')
+    return
+  }
   loading.value = true
   error.value = false
   try {
@@ -195,7 +201,7 @@ const handleReopen = async (row) => {
   } catch (e) {
     // P1-C 修复: 原 catch 仅 console.debug 静默吞掉 API 失败，
     // 用户点击"重新开启"失败时无任何反馈
-    if (e === 'cancel') return
+    if (e === 'cancel' || e === 'close') return // P2: X/Esc 关闭不误报操作失败
     ElMessage.error(e?.response?.data?.message || t('course.operationFailed'))
   }
 }

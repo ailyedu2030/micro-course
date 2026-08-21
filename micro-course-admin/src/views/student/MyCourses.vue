@@ -234,6 +234,8 @@
                        size="small"
                        type="danger"
                        plain
+                       :disabled="course.progress > 50"
+                       :title="course.progress > 50 ? $t('course.dropUnavailable') || '学习进度超过50%不可退课' : ''"
                        @click.stop="handleDropOut(course)"
                         :aria-label="$t('course.dropCourse')"
                       >
@@ -485,6 +487,7 @@
                 plain
                 type="danger"
                 class="h5-dropout-btn"
+                :disabled="course.progress > 50"
                 :aria-label="$t('course.dropCourse')"
                 @click.stop="handleDropOut(course)"
               >
@@ -519,7 +522,8 @@ import {
 import { useUserStore } from '../../store/user'
 import { getMyEnrollments, cancelEnrollment } from '../../api/enrollment'
 import { getMyOrders } from '../../api/order'
-import { getCompletion, batchGetLearningProgress } from '../../api/learning-progress'
+// P0-2026-08-21: 补 getLearningProgress import（原缺失 → 课件类课程继续学习被 catch 吞掉静默失效）
+import { getCompletion, batchGetLearningProgress, getLearningProgress } from '../../api/learning-progress'
 import { getChapters } from '../../api/chapter'
 import { getMyFavorites } from '../../api/favorite'
 import { getCourseById } from '../../api/course'
@@ -563,7 +567,7 @@ const enrollments = ref([])
 const extraFavorites = ref([])
 const page = ref(1)
 const size = ref(9)
-const totalElements = ref(0)
+// P2: totalElements 死 ref(模板用 totalDisplayElements) → 移除
 
 // P2-14: URL 分页同步
 const { bindToQuery } = useUrlPagination()
@@ -677,7 +681,8 @@ const fetchEnrollments = async () => {
   dataLoaded.value = false
   try {
     // P0-5: 不再传 userId——后端从 JWT 中获取
-    const res = await getMyEnrollments()
+    // P1-2026-08-21: 不带 size 时后端默认 20 条，第 21+ 门课不可见 → 显式拉大
+    const res = await getMyEnrollments({ page: 0, size: 200 })
     const list = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
 
     // P1-5: 使用 Promise.allSettled 替代 Promise.all，防止单个失败导致全部中断
@@ -774,7 +779,7 @@ const fetchEnrollments = async () => {
         : (e.progress ?? 0)
       return { ...e, progress: updatedProgress, favorited: favoriteSet.has(String(e.courseId)) }
     })
-    totalElements.value = enrollments.value.length
+    // P2: 移除 totalElements 死赋值
     dataLoaded.value = true
     // P1I-020: 初始 Tab 为"进行中"时，立即懒加载视频进度
     if (activeTab.value === 'in-progress') {
@@ -792,9 +797,12 @@ const fetchEnrollments = async () => {
 }
 
 // P1I-020: 按需加载章节视频进度（避免 N+1 请求）
-let videoProgressLoaded = false
-async function loadVideoProgress() {
-  if (videoProgressLoaded) return
+// P2: 一次性标志导致重选课/刷新数据后进度不更新 → 改为跟踪已加载的课程集合，数据刷新时重置
+let videoProgressLoadedCourseIds = null
+async function loadVideoProgress(force = false) {
+  const currentIds = (inProgressCourses.value || []).map(e => e.courseId).join(',')
+  if (!force && videoProgressLoadedCourseIds === currentIds) return
+  videoProgressLoadedCourseIds = currentIds
   const inProgress = inProgressCourses.value
   if (inProgress.length === 0) return
   const chapterResults = await Promise.allSettled(
@@ -825,7 +833,6 @@ async function loadVideoProgress() {
     }
   })
   videoProgressMap.value = newVideoProgressMap
-  videoProgressLoaded = true
 }
 
 const handleTabChange = () => {
@@ -840,6 +847,10 @@ const handleTabChange = () => {
 const handleH5TabChange = (tab) => {
   activeTab.value = tab
   page.value = 1
+  // P2-2026-08-21: H5 切到"进行中"也懒加载视频进度(与桌面 handleTabChange 对齐)
+  if (tab === 'in-progress') {
+    loadVideoProgress()
+  }
 }
 
 const handleSizeChange = () => {

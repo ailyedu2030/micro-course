@@ -42,6 +42,9 @@ public class ChapterTeacherAssignment {
     @TableField("accept_status")
     private String acceptStatus;     // PENDING | ACCEPTED | DECLINED | REVOKED | LEFT
 
+    @TableField("member_index")
+    private Integer memberIndex;   // P1-2026-08-21: 团队成员序号(申报阶段占位分配)
+
     @TableField("accepted_at")
     private LocalDateTime acceptedAt;
 
@@ -80,6 +83,8 @@ public class ChapterTeacherAssignment {
     public void setSourceChapterId(Long sourceChapterId) { this.sourceChapterId = sourceChapterId; }
     public String getAcceptStatus() { return acceptStatus; }
     public void setAcceptStatus(String acceptStatus) { this.acceptStatus = acceptStatus; }
+    public Integer getMemberIndex() { return memberIndex; }
+    public void setMemberIndex(Integer memberIndex) { this.memberIndex = memberIndex; }
     public LocalDateTime getAcceptedAt() { return acceptedAt; }
     public void setAcceptedAt(LocalDateTime acceptedAt) { this.acceptedAt = acceptedAt; }
     public BigDecimal getFrozenPrice() { return frozenPrice; }

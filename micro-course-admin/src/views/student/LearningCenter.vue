@@ -789,7 +789,8 @@ async function getStats(sharedEnrollments) {
     const userId = userStore.userInfo?.id
     const [totalTimeData, enrollmentData, studyDaysData, certData] = await Promise.all([
       getTotalTime().catch(() => ({ data: { totalSeconds: 0 } })),
-      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments(),
+      // P2-2026-08-21: 原三元恒真(sharedEnrollments 恒数组)else 死代码 → 直接取；补 size 防 >20 门截断
+      sharedEnrollments ? { data: sharedEnrollments } : getMyEnrollments({ page: 0, size: 200 }),
       getStudyDays().catch(() => ({ data: { totalDays: 0 } })),
       getMyCertificates().catch(() => ({ data: [] }))
     ])
@@ -808,7 +809,8 @@ async function getStats(sharedEnrollments) {
     let streakDays = 0
     try {
       const streakRes = await getCheckInStreak()
-      streakDays = streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0
+      // P1-2026-08-21: 后端 GET /check-ins/streak 返回 R<Integer> 裸整数(非对象)，兼容两种形态
+      streakDays = typeof streakRes?.data === 'number' ? streakRes.data : (streakRes?.data?.streakDays ?? streakRes?.data?.streak ?? 0)
     } catch { /* P1C-029: 连续天数为 0 就显示 0，不 fallback 到总学习天数 */ streakDays = 0 }
 
     // 证书数量
@@ -852,14 +854,15 @@ async function getRecent(sharedEnrollments) {
     // 取第一个进行中的课程作为"继续学习"
     const inProgress = filterActiveLearningEnrollments(enrollments).find(e => e.progress > 0)
     if (inProgress) {
-      let currentChapter = 1
+      let currentChapter = 0
       try {
         const res = await getLearningProgress({ courseId: inProgress.courseId })
         const progressList = Array.isArray(res.data) ? res.data : []
         // 取最后一个已完成的章节，或第一个进度条目
         const lastEntry = [...progressList].reverse().find(p => p.completed) || progressList[0]
-        if (lastEntry?.chapterId) {
-          currentChapter = 1  // P1-I: 暂不显示 DB ID,待后端返回 sortOrder
+        // P2-2026-08-21: 原恒赋 1 是死代码 → 使用真实 chapterId
+        if (lastEntry?.chapterId != null) {
+          currentChapter = Number(lastEntry.chapterId)
         }
       } catch (e) {
         console.warn('[LearningCenter] 获取学习进度失败', e)
@@ -893,7 +896,13 @@ async function getChart() {
         chartData.value = dayLabels.map((day, idx) => {
           const found = trendData.find(t => {
             const tDay = t.day ?? t.date
-            return typeof tDay === 'number' ? tDay === idx + 1 : tDay === day
+            if (typeof tDay === 'number') return tDay === idx + 1
+            // P1-2026-08-21: 后端返回 date 字符串(如 2026-08-19)，需转星期标签匹配，否则正确率趋势恒全 0
+            if (typeof tDay === 'string' && /^\d{4}-\d{2}-\d{2}/.test(tDay)) {
+              const dow = new Date(tDay + 'T00:00:00').getDay() // 0=周日
+              return dayLabels[(dow === 0 ? 6 : dow - 1)] === day
+            }
+            return tDay === day
           })
           return {
             day,
@@ -1102,9 +1111,9 @@ async function checkTodayStatus() {
       return String(c.checkinDate).slice(0, 10) === todayStr
     })
   } catch (e) {
-      console.warn("[LearningCenter]", e)
-      ElMessage.warning(t('learning.trendDataLoadFailed'))
-    chartData.value = []
+    // P2-2026-08-21: 复制粘贴错误——打卡状态查询失败不应清空图表数据/提示趋势加载失败
+    console.warn("[LearningCenter] checkTodayStatus", e)
+    checkedInToday.value = false
   }
 }
 

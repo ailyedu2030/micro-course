@@ -405,7 +405,7 @@ async function handleRefresh() {
 
 // ===== 快捷入口 =====
 const quickActions = [
-  { label: t('admin.quickActions.addUser'), icon: markRaw(Plus), route: '/admin/users' },
+  { label: t('admin.quickActions.addUser'), icon: markRaw(Plus), route: '/users/create' }, // P2-2026-08-21: 原指向用户列表，应为新增用户表单
   { label: t('admin.quickActions.courseMgmt'), icon: markRaw(Reading), route: '/courses' },
   { label: t('admin.quickActions.deptMgmt'), icon: markRaw(OfficeBuilding), route: '/departments' },
   { label: t('admin.quickActions.classMgmt'), icon: markRaw(Tickets), route: '/admin/teaching-classes' },

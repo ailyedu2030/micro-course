@@ -85,7 +85,14 @@ scan_file() {
       findings+=("{\"file\":\"$file\",\"line\":$line_num,\"text\":$(echo "$line_text" | sed 's/"/\\"/g' | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().rstrip()))")}")
       findings_count=$((findings_count + 1))
     fi
-  done < <(grep -nE "CHANGE_ME|hooks\.slack\.com/services/[A-Z]|<placeholder>|your-(webhook|api-key|password)|TODO.*secret|REPLACE_ME" "$file" 2>/dev/null || true)
+    # P0-2026-08-20: 不安全 dev placeholder 检测（dev-32-char-key-not-for-production-! / 0123456789abcdef 等）
+    #   长度够 (32+/16+) 通过 FieldEncryptor length check, 但生产用 = P0 数据泄露
+    #   检测的 dev placeholder 字面值 (替换了 L1 后 application.yml 已无, 此处永久兜底防再发)
+    if echo "$line_text" | grep -qE "(dev-32-char-key-not-for-production|not-for-production|please-change-in-prod|dev-only-jwt-secret|dev-only-video-sign-secret|0123456789abcdef)" && [ "$is_alertmanager_marker" = "0" ]; then
+      findings+=("{\"file\":\"$file\",\"line\":$line_num,\"text\":$(echo "$line_text" | sed 's/"/\\"/g' | python3 -c "import sys,json; print(json.dumps(sys.stdin.read().rstrip()))")}")
+      findings_count=$((findings_count + 1))
+    fi
+  done < <(grep -nE "CHANGE_ME|hooks\.slack\.com/services/[A-Z]|<placeholder>|your-(webhook|api-key|password)|TODO.*secret|REPLACE_ME|dev-32-char-key-not-for-production|not-for-production|please-change-in-prod|dev-only-jwt-secret|dev-only-video-sign-secret|0123456789abcdef" "$file" 2>/dev/null || true)
 }
 
 for t in "${TARGETS[@]}"; do

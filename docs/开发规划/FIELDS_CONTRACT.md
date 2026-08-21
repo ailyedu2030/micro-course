@@ -8,11 +8,11 @@
 
 ## 总览
 
-- ✅ 前后端匹配: 162 字段
+- ✅ 前后端匹配: 165 字段
 
-- ⚠️ 前端孤儿 (有前端引用无后端实体): 19 字段
+- ⚠️ 前端孤儿 (有前端引用无后端实体): 16 字段
 
-- 后端实体字段总数: 2652
+- 后端实体字段总数: 2656
 
 - 前端引用字段总数: 447
 
@@ -847,7 +847,7 @@
 
 | CourseExercise | /api/courses/{courseId}/exercises | 9 | - |
 
-| CourseFavorite | /api | 7 | - |
+| CourseFavorite | /api | 8 | - |
 
 | CourseNote | /api/course-notes | 3 | - |
 
@@ -1054,7 +1054,7 @@
 
 | ChangePasswordRequest | 2 | 0 |
 
-| ChapterAssignmentItem | 8 | 0 |
+| ChapterAssignmentItem | 9 | 0 |
 
 | ChapterCreateRequest | 9 | 1 |
 
@@ -1324,7 +1324,7 @@
 
 | MicroSpecialtyTeacherRequest | 5 | 0 |
 
-| MicroSpecialtyTeacherVO | 12 | 0 |
+| MicroSpecialtyTeacherVO | 15 | 0 |
 
 | MicroSpecialtyUpdateRequest | 18 | 0 |
 

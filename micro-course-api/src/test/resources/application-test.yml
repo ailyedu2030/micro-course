@@ -54,7 +54,7 @@ plugin:
 # S-001/S-002: 字段级加密测试配置
 app:
   security:
-    field-encryption-key: test-32-char-key-for-encryption-!!!!!
+    field-encryption-key: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
     field-encryption-salt: 0123456789abcdef
 
 # P0-TEST-HMAC: 测试环境禁用支付回调签名校验（dev mock 模式）

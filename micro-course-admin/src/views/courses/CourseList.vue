@@ -334,7 +334,7 @@ import { getUsers } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
-const { t: i18nT } = useI18n()
+const { t, t: i18nT } = useI18n()
 // 【V333 简化方案】HTML 课件 / PPT 课件独立管理页复用本组件，fixedCourseType 强制类型维度
 const props = defineProps({
   fixedCourseType: { type: String, default: '' }
@@ -712,7 +712,14 @@ const handleExport = async () => {
     const wb = new Workbook()
     const ws = wb.addWorksheet(i18nT('course.courseList'))
     ws.addRows(exportData.map(row => Object.values(row)))
-    await wb.xlsx.writeFile(i18nT('course.exportFileName', { date: Date.now() }))
+    const wbout = await wb.xlsx.writeBuffer()
+    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = i18nT('course.exportFileName', { date: Date.now() })
+    link.click()
+    URL.revokeObjectURL(url)
     ElMessage.success(i18nT('course.exportSuccess', { count: exportData.length }))
   } catch {
     ElMessage.error(t('course.exportFailed'))

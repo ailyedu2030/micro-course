@@ -81,7 +81,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getFavorites, cancelFavorite } from '@/api/favorite'
+import { getFavorites, removeFavoriteRecord } from '@/api/favorite'
 
 const loading = ref(false)
 const tableData = ref([])
@@ -137,11 +137,11 @@ const handlePageChange = () => {
 const handleCancelFavorite = async (row) => {
   try {
     await ElMessageBox.confirm('确定取消收藏?', '提示', { type: 'warning' })
-    await cancelFavorite(row.id)
+    await removeFavoriteRecord(row.id)
     ElMessage.success('取消收藏成功')
     fetchData()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error('操作失败')
     }
   }

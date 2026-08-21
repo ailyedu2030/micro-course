@@ -481,7 +481,14 @@ async function handleExport() {
   const ws = wb.addWorksheet(t('studentList.title'))
   ws.addRows(exportData.map(row => Object.values(row)))
   const date = new Date().toISOString().split('T')[0]
-  await wb.xlsx.writeFile(`students-${date}.xlsx`)
+  const wbout = await wb.xlsx.writeBuffer()
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = 'students-' + date + '.xlsx'
+  link.click()
+  URL.revokeObjectURL(url)
   ElMessage.success(t('studentList.exportSuccess'))
 }
 

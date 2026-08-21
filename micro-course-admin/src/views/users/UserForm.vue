@@ -448,15 +448,16 @@ const studyYearsHint = computed(() => {
   return t('userList.yearsSystem', { years })
 })
 watch(() => formData.role, (newRole, oldRole) => {
-  // 角色切换时清除上一角色的专属字段
+  // P1-2026-08-21 修复: 角色切换时清除上一角色的专属字段（原条件写反：离开 STUDENT 才应清学生字段，
+  // 原实现把条件取反导致切走 STUDENT 时学生字段残留随提交、切走 TEACHER 时 teacherNo 残留）
   if (oldRole) {
-    if (oldRole !== 'STUDENT') {
+    if (oldRole === 'STUDENT') {
       formData.studentNo = ''
       formData.grade = ''
       formData.enrollmentYear = ''
       formData.graduationYear = ''
     }
-    if (oldRole !== 'TEACHER' && oldRole !== 'ACADEMIC') {
+    if (oldRole === 'TEACHER' || oldRole === 'ACADEMIC') {
       formData.teacherNo = ''
       formData.teacherStatus = null
     }

@@ -120,7 +120,7 @@ const handleApprove = async () => {
     ElMessage.success(t('discussionList.approveSuccess'))
     fetchPost()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -140,7 +140,7 @@ const handleReject = async () => {
     ElMessage.success(t('discussionList.rejectSuccess'))
     fetchPost()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.operationFailed'))
     }
   }
@@ -153,7 +153,7 @@ const handleDelete = async () => {
     ElMessage.success(t('discussionList.deleteSuccess'))
     router.push('/discussions')
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.deleteFailed'))
     }
   }
@@ -166,7 +166,7 @@ const handleDeleteReply = async (reply) => {
     ElMessage.success(t('discussionList.deleteSuccess'))
     fetchReplies()
   } catch (error) {
-    if (error !== 'cancel') {
+    if (!['cancel', 'close'].includes(error)) {
       ElMessage.error(t('discussionList.deleteFailed'))
     }
   }

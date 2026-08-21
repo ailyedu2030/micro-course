@@ -266,7 +266,8 @@ const router = useRouter()
 const loading = ref(false)
 const error = ref(false)
 const enrollments = ref([])
-const reapplying = ref(null) // enrollment ID being reapplied, for loading state
+const reapplying = ref(null)
+const dropping = ref(null) // P2: 退出防重入 // enrollment ID being reapplied, for loading state
 
 const stats = computed(() => {
   const result = { enrolled: 0, inProgress: 0, completed: 0, pending: 0 }
@@ -329,21 +330,26 @@ const goContinueLearning = (item) => {
 }
 
 const handleDrop = async (item) => {
+  // P2-2026-08-21: dropping 状态防重入（请求在途可重复点击提交多次退出）
+  if (dropping.value) return
   try {
     await ElMessageBox.confirm(
       t('myMicroSpecialties.dropConfirmMsg'),
       t('myMicroSpecialties.dropConfirmTitle'),
       { confirmButtonText: t('myMicroSpecialties.confirmDropBtn'), cancelButtonText: t('common.cancel'), type: 'warning' }
     )
+    dropping.value = item.id
     await dropEnrollment(item.id, { reason: '主动退出' })
     ElMessage.success(t('myMicroSpecialties.dropSuccess'))
     await fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 退出失败:', e)
       ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))
     }
+  } finally {
+    dropping.value = null
   }
 }
 
@@ -359,7 +365,7 @@ const handleReapply = async (item) => {
     ElMessage.success(t('myMicroSpecialties.reapplySuccess'))
     await fetchData()
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MyMS] 重新申请失败:', e)
       ElMessage.error(e?.response?.data?.message || t('myMicroSpecialties.operationFailed'))
@@ -379,7 +385,8 @@ const viewCertificate = async (item) => {
       a.href = url
       a.download = `证书_${item.certificateId}.pdf`
       a.click()
-      URL.revokeObjectURL(url)
+      // P2-2026-08-21: 延迟 revoke，Firefox 下载可能尚未开始即回收导致失败
+      setTimeout(() => URL.revokeObjectURL(url), 3000)
     } catch (e) {
       ElMessage.error(t('myMicroSpecialties.downloadFailed'))
     }

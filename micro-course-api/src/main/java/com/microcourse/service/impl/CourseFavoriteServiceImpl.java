@@ -85,6 +85,16 @@ public class CourseFavoriteServiceImpl implements CourseFavoriteService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteById(Long id) {
+        if (favoriteRepository.selectById(id) == null) {
+            throw new com.microcourse.exception.BusinessException(
+                    com.microcourse.exception.ErrorCode.BAD_REQUEST_PARAM, "收藏记录不存在");
+        }
+        favoriteRepository.deleteById(id);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<CourseFavoriteVO> getMyFavorites(Long userId) {
         LambdaQueryWrapper<CourseFavorite> wrapper = new LambdaQueryWrapper<>();

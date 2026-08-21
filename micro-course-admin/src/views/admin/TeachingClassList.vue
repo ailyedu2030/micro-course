@@ -175,6 +175,7 @@ import {
   cancelTeachingClass
 } from '@/api/teaching-class'
 import { getCourses } from '@/api/course'
+import { getUsers } from '@/api/user'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -365,7 +366,7 @@ async function handleComplete(row) {
     ElMessage.success(t('teachingClass.completeSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('teachingClass.completeFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('teachingClass.completeFailed'))
   }
 }
 
@@ -383,7 +384,7 @@ async function handleCancel(row) {
     ElMessage.success(t('teachingClass.cancelSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('teachingClass.cancelFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('teachingClass.cancelFailed'))
   }
 }
 
@@ -394,7 +395,7 @@ async function handleDelete(row) {
     ElMessage.success(t('course.deleteSuccess'))
     fetchData()
   } catch (e) {
-    if (e !== 'cancel') ElMessage.error(t('course.deleteFailed'))
+    if (!['cancel', 'close'].includes(e)) ElMessage.error(t('course.deleteFailed'))
   }
 }
 
@@ -437,8 +438,20 @@ function handleDialogClose() {
   formData.classSchedules = []
 }
 
+// P1-2026-08-21: 授课教师下拉无数据源(teacherOptions 从未加载), 补齐加载逻辑
+async function fetchTeacherOptions() {
+  try {
+    const { data } = await getUsers({ role: 'TEACHER', page: 0, size: 100 })
+    const list = Array.isArray(data) ? data : (data?.items || data?.records || [])
+    teacherOptions.value = list
+  } catch (e) {
+    console.warn('[TeachingClassList] 教师列表加载失败', e)
+  }
+}
+
 onMounted(() => {
   fetchCourses()
+  fetchTeacherOptions()
   fetchData()
 })
 </script>

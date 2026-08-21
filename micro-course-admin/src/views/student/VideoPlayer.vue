@@ -136,6 +136,8 @@
               @error="onVideoError"
               @waiting="onBufferingStart"
               @playing="onBufferingEnd"
+              @play="isPlaying = true"
+              @pause="isPlaying = false"
               @progress="onProgress"
               @dblclick="togglePlay"
             >

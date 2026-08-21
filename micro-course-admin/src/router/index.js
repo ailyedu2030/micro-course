@@ -202,6 +202,8 @@ const routes = [
   { path: '/academic/micro-specialties/storage-review', name: 'AcademicStorageApplicationReview', component: () => import('../views/academic/StorageApplicationReview.vue'), meta: { titleKey: 'route.AcademicStorageApplicationReview', title: '存储申请表审批', requiresAuth: true, roles: ['ACADEMIC', 'ADMIN'] } },
   { path: '/student/redirect', redirect: '/student/courses', meta: { requiresAuth: false } },
   { path: '/student/chapters/:chapterId/exercises', name: 'StudentExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
+  // P1-C-2026-08-21: 课程级练习作答路由（无章节归属的练习，教师建练习未选章节时学生仍可作答）
+  { path: '/student/courses/:courseId/exercises', name: 'StudentCourseExerciseTake', component: () => import('../views/student/ExerciseTake.vue'), meta: { requiresAuth: true, roles: ['STUDENT', 'TEACHER', 'ADMIN'] } },
   { path: '/student/discussions', name: 'StudentDiscussion', component: () => import('../views/student/DiscussionView.vue'), meta: { requiresAuth: true, roles: ['STUDENT'] } },
   // Fix P3: /student/discussion/:chapterId -> /student/discussions?chapterId=:chapterId
   { path: '/student/discussion/:chapterId', redirect: (to) => `/student/discussions?chapterId=${to.params.chapterId}` },

@@ -185,10 +185,14 @@ const handleBuy = async () => {
       )
     } catch { buyLoading.value = false; return }
     await payOrder(order.id, 'BALANCE')
-    // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
-    const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 100 })
-    const list = filterCourseCollectionEnrollments(Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || []))
-    enrolledCourseIds.value = new Set(list.map(e => e.courseId))
+    // P2-2026-08-21: 支付成功后的刷新/状态拉取失败不得掩盖支付成功
+    // （原 getMyEnrollments 抛错落入外层 catch 弹"操作失败"→ 诱导用户重复下单）
+    try {
+      // P1C-012: 购买成功时重新拉取 enrollment 状态确认所有课程已注册
+      const { data: myEnrollments } = await getMyEnrollments({ page: 0, size: 100 })
+      const list = filterCourseCollectionEnrollments(Array.isArray(myEnrollments) ? myEnrollments : (myEnrollments?.items || []))
+      enrolledCourseIds.value = new Set(list.map(e => e.courseId))
+    } catch (e2) { console.warn('[BundleDetail] 支付后刷新选课状态失败', e2) }
     // 重新拉取最新状态
     try {
       const { data: status } = await getBundleEnrollmentStatus(bundleId.value)

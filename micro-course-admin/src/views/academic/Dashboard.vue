@@ -199,7 +199,7 @@
                 <span>{{ $t('academicDashboard.loadFailed') }}</span>
               </div>
               <el-table v-else :data="warnings" class="warning-table" :empty-text="$t('common.noData')">
-                <el-table-column prop="name" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
+                <el-table-column prop="courseTitle" :label="$t('course.courseName')" min-width="160" show-overflow-tooltip />
                 <el-table-column prop="completionRate" :label="$t('teacherDashboard.completionRate')" width="100" align="center">
                   <template #default="{ row }">
                     <span :class="row.completionRate < 30 ? 'rate-danger' : 'rate-success'">
@@ -248,6 +248,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, markRaw, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { ElMessage } from 'element-plus'
 import { Reading, User, TrendCharts, Finished, Refresh, DataAnalysis, Collection, Setting, ArrowLeft } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import {
@@ -417,6 +418,8 @@ const hotCourses = ref([])
 // 定时刷新
 const refreshInterval = ref(60000)
 let refreshTimer = null
+// P2-2026-08-21: 院系详情缓存（loadStats 与 loadDepartmentStats 各调一次 getDepartmentDetail → 重复请求）
+let deptDetailCache = { deptId: null, data: null }
 
 async function refreshAll() {
   await Promise.all([
@@ -433,10 +436,13 @@ async function refreshAll() {
 async function loadStats() {
   statsLoading.value = true
   try {
-    // P1C-063: 数据下钻 — 如果指定了 departmentId，加载院系详情
+    // P1C-063: 数据下钻 — 如果指定了 departmentId，加载院系详情（P2: 走缓存避免与 loadDepartmentStats 重复请求）
     if (departmentId.value) {
-      const res = await getDepartmentDetail(departmentId.value)
-      const d = res.data || {}
+      if (!deptDetailCache.deptId || deptDetailCache.deptId !== departmentId.value) {
+        const res = await getDepartmentDetail(departmentId.value)
+        deptDetailCache = { deptId: departmentId.value, data: res.data || {} }
+      }
+      const d = deptDetailCache.data || {}
       departmentName.value = d.departmentName || ''
       stats.value = {
         totalCourses: d.totalCourses ?? 0,
@@ -456,7 +462,9 @@ async function loadStats() {
     }
     animateAllStats(stats.value)
   } catch {
-    // silent
+    // P2-2026-08-21: 失败静默会让统计卡停留 0/0% 误导 → 给用户反馈
+    console.warn('[AcademicDashboard] loadStats 失败', new Error().stack)
+    ElMessage.warning(t('academicDashboard.statsLoadFailed') || '统计数据加载失败')
   } finally {
     statsLoading.value = false
   }
@@ -470,7 +478,12 @@ async function loadDepartmentStats() {
     // P1C-063: 数据下钻 — 只显示选中院系
     let items = []
     if (departmentId.value) {
-      const res = await getDepartmentDetail(departmentId.value)
+      // P2: 复用 loadStats 已缓存的院系详情
+      let res = { data: deptDetailCache.deptId === departmentId.value ? deptDetailCache.data : null }
+      if (!res.data) {
+        res = await getDepartmentDetail(departmentId.value)
+        deptDetailCache = { deptId: departmentId.value, data: res.data || null }
+      }
       if (res.data) {
         // 构造单条院系数据给图表
         items = [{
@@ -623,7 +636,8 @@ function renderTrendChart(participationData, completionData) {
         name: t('academicDashboard.participationRate'),
         type: 'line',
         smooth: true,
-        data: participationData.map(item => item.value ?? 0),
+        // P1-2026-08-21: 后端参与率为 0-1 小数(与完成率 0-100 共用 max:100 轴会贴 0)，归一化为百分比
+        data: participationData.map(item => { const v = item.value ?? 0; return v <= 1 ? Math.round(v * 100) : v }),
         itemStyle: { color: '#4F46E5' },
         lineStyle: { width: 2 },
         areaStyle: { opacity: 0.12 }
@@ -664,7 +678,8 @@ async function loadHotCourses() {
     const res = await getCourses({
       page: 0,
       size: 10,
-      sort: 'studentCount,desc',
+      sortBy: 'studentCount',
+      sortOrder: 'desc',
       status: 4  // PUBLISHED
     })
     const items = res.data?.items || res.data || []

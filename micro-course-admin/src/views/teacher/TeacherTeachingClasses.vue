@@ -466,7 +466,7 @@ async function handleRemoveStudent(cls, student) {
     delete studentData[cls.id]
     await fetchStudents(cls)
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[TeacherTeachingClasses] 移除学生失败', e)
       ElMessage.error(t('teachingClass.removeFailed'))

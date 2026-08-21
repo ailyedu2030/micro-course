@@ -31,6 +31,7 @@
       :limit="1"
       :on-change="handleFileChange"
       :on-remove="handleFileRemove"
+      :on-exceed="handleExceed"
     >
       <el-icon class="upload-icon"><UploadFilled /></el-icon>
       <div class="upload-text">将文件拖到此处，或<em>点击上传</em></div>
@@ -63,7 +64,27 @@ const uploadFile = ref(null)
 const importLoading = ref(false)
 
 function handleFileChange(file) {
-  uploadFile.value = file.raw
+  // P2-2026-08-21: 客户端文件类型/大小校验(原仅 accept 软限制)
+  const raw = file.raw
+  if (!raw) return
+  const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel', 'text/csv']
+  if (!validTypes.includes(raw.type)) {
+    ElMessage.warning('仅支持 .xlsx / .xls / .csv 文件')
+    uploadRef.value?.clearFiles?.()
+    return
+  }
+  if (raw.size > 10 * 1024 * 1024) {
+    ElMessage.warning('文件大小不能超过 10MB')
+    uploadRef.value?.clearFiles?.()
+    return
+  }
+  uploadFile.value = raw
+}
+
+// P2: 超限/重复选择时清空旧文件(原 on-exceed 未处理，静默拒绝)
+function handleExceed() {
+  uploadRef.value?.clearFiles?.()
+  ElMessage.info('请重新选择要导入的文件')
 }
 
 function handleFileRemove() {
@@ -81,7 +102,14 @@ async function handleDownloadTemplate() {
   const ws = wb.addWorksheet('用户导入')
   ws.addRows(wsData)
   ws.columns = [{ width: 15 }, { width: 12 }, { width: 15 }, { width: 28 }, { width: 10 }, { width: 12 }, { width: 10 }, { width: 8 }, { width: 12 }, { width: 10 }]
-  await wb.xlsx.writeFile('用户导入样表.xlsx')
+  const wbout = await wb.xlsx.writeBuffer()
+  const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '用户导入样表.xlsx'
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 async function handleBatchImport() {

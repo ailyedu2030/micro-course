@@ -80,13 +80,14 @@
         <el-table-column prop="courseName" :label="$t('enrollmentOverview.course')" min-width="180" show-overflow-tooltip />
         <el-table-column :label="$t('app.status')" width="100" align="center">
           <template #default="{ row }">
-            <el-tag v-if="row.status === 'ENROLLED'" type="primary" size="small">{{ $t('enrollmentOverview.statusEnrolled') }}</el-tag>
-            <el-tag v-else-if="row.status === 'APPROVED'" type="success" size="small">{{ $t('enrollmentOverview.statusApproved') }}</el-tag>
-            <el-tag v-else-if="row.status === 'PENDING'" type="warning" size="small">{{ $t('enrollmentOverview.statusPending') }}</el-tag>
-            <el-tag v-else-if="row.status === 'COMPLETED'" type="success" size="small">{{ $t('enrollmentOverview.statusCompleted') }}</el-tag>
-            <el-tag v-else-if="row.status === 'CANCELLED'" type="info" size="small">{{ $t('enrollmentOverview.statusCancelled') }}</el-tag>
-            <el-tag v-else-if="row.status === 'DROPPED'" type="danger" size="small">{{ $t('enrollmentOverview.statusDropped') }}</el-tag>
-            <el-tag v-else type="info" size="small">{{ row.status || '-' }}</el-tag>
+            <!-- P1-2026-08-21: 后端字段是 enrollmentStatus(EnrollmentVO)，row.status 恒 undefined 致状态全 "-" -->
+            <el-tag v-if="row.enrollmentStatus === 'APPROVED'" type="success" size="small">{{ $t('enrollmentOverview.statusApproved') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'ENROLLED' || row.enrollmentStatus === 'ACTIVE'" type="primary" size="small">{{ $t('enrollmentOverview.statusEnrolled') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'PENDING'" type="warning" size="small">{{ $t('enrollmentOverview.statusPending') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'COMPLETED'" type="success" size="small">{{ $t('enrollmentOverview.statusCompleted') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'CANCELLED'" type="info" size="small">{{ $t('enrollmentOverview.statusCancelled') }}</el-tag>
+            <el-tag v-else-if="row.enrollmentStatus === 'DROPPED'" type="danger" size="small">{{ $t('enrollmentOverview.statusDropped') }}</el-tag>
+            <el-tag v-else type="info" size="small">{{ row.enrollmentStatus || '-' }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="progress" :label="$t('enrollmentOverview.progress')" width="100" align="center">
@@ -94,7 +95,7 @@
             <span>{{ row.progress != null ? row.progress + '%' : '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="createdAt" :label="$t('enrollmentOverview.enrolledAt')" width="170" :formatter="$formatDateTime" />
+        <el-table-column prop="enrolledAt" :label="$t('enrollmentOverview.enrolledAt')" width="170" :formatter="$formatDateTime" />
       </el-table>
       <div v-if="tableData.length > 0" class="pagination-wrap">
         <el-pagination
@@ -144,9 +145,11 @@ async function fetchStats() {
     const { data } = await getEnrollments({ page: 0, size: 100 })
     const items = data.items || []
     stats.totalEnrollments = data.totalElements || items.length
-    stats.activeEnrollments = items.filter(i => i.status === 'ENROLLED').length
-    stats.pendingEnrollments = items.filter(i => i.status === 'PENDING').length
-    stats.completedEnrollments = items.filter(i => i.status === 'COMPLETED').length
+    // P1-2026-08-21: 字段应为 enrollmentStatus + 新枚举(APPROVED 为生效态)，旧 ENROLLED/PENDING 枚举已迁移
+    const active = ['APPROVED', 'ENROLLED', 'ACTIVE', 'WAITLIST']
+    stats.activeEnrollments = items.filter(i => active.includes(i.enrollmentStatus)).length
+    stats.pendingEnrollments = items.filter(i => i.enrollmentStatus === 'PENDING').length
+    stats.completedEnrollments = items.filter(i => i.enrollmentStatus === 'COMPLETED').length
   } catch {
     // 统计加载失败不影响主体表格
   }
@@ -185,21 +188,20 @@ function handleReset() {
   fetchData()
 }
 
+// P2-2026-08-21: el-pagination 切 size 同时触发 size-change 与 current-change → 去重
+let sizeChangePending = false
 function handleSizeChange() {
   page.value = 1
+  sizeChangePending = true
   fetchData()
 }
 
 function handlePageChange() {
+  if (sizeChangePending) { sizeChangePending = false; return }
   fetchData()
 }
 
-function formatDate(iso) {
-  if (!iso) return '-'
-  const d = new Date(iso)
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
+// P2-2026-08-21: 移除 formatDate 死代码(模板用 $formatDateTime)
 
 onMounted(() => {
   fetchStats()

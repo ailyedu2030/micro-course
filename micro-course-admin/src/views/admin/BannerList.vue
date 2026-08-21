@@ -378,7 +378,7 @@ async function handleDelete(row) {
     ElMessage.success(t('bannerList.deleteSuccess'))
     fetchData()
   } catch (err) {
-    if (err !== 'cancel') {
+    if (!['cancel', 'close'].includes(err)) {
       ElMessage.error(err.message || t('bannerList.deleteFailed'))
     }
   }
@@ -403,7 +403,7 @@ async function handleToggleStatus(row) {
     fetchData()
   } catch (e) {
 // eslint-disable-next-line no-console
-    if (e !== 'cancel') console.debug(e)
+    if (!['cancel', 'close'].includes(e)) console.debug(e)
     row.enabled = !newVal
   }
 }

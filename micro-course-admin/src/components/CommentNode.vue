@@ -40,7 +40,8 @@
           <span class="action-count">{{ comment.likeCount || 0 }}</span>
         </el-button>
 
-        <el-button link size="small" class="action-btn" aria-label="回复" @click="handleToggleReply">
+        <!-- P2-2026-08-21: 待审/驳回帖的评论内回复也须禁用(与主回复框守卫一致) -->
+        <el-button link size="small" class="action-btn" aria-label="回复" :disabled="replyDisabled" @click="handleToggleReply">
           <el-icon class="action-icon"><ChatLineRound /></el-icon>
           <span class="action-label">回复</span>
         </el-button>
@@ -102,7 +103,9 @@ const MAX_DEPTH = 10
 const props = defineProps({
   comment: { type: Object, required: true },
   depth: { type: Number, default: 0 },
-  replyingId: { type: [Number, String], default: null }
+  replyingId: { type: [Number, String], default: null },
+  // P2-2026-08-21: 待审/驳回帖禁用评论内回复
+  replyDisabled: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['reply', 'like'])

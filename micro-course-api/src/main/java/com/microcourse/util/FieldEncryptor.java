@@ -21,15 +21,25 @@ public class FieldEncryptor {
             @Value("${app.security.field-encryption-salt:}") String salt) {
         if (password == null || password.isBlank()) {
             throw new IllegalArgumentException(
-                    "app.security.field-encryption-key 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_KEY（>= 32 字符）");
+                    "app.security.field-encryption-key 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_KEY"
+                    + "（32 字节 = 64 个 hex 字符，可用 `openssl rand -hex 32` 生成）");
         }
-        if (password.length() < 32) {
+        // P0-2026-08-20 修复: Encryptors.delux 的 password 必须是 hex 编码的 32 字节密钥 (AesBytesEncryptor Hex.decode),
+        // 旧消息 ">= 32 字符" 误导 —— 32 字符普通字符串会触发 Non-hex character 错误
+        if (!password.matches("[0-9a-fA-F]{64}")) {
             throw new IllegalArgumentException(
-                    "app.security.field-encryption-key 长度不足 32 字符，当前长度: " + password.length());
+                    "app.security.field-encryption-key 必须是 64 个 hex 字符（32 字节）。"
+                    + "请用 `openssl rand -hex 32` 生成，当前长度: " + password.length());
         }
         if (salt == null || salt.isBlank()) {
             throw new IllegalArgumentException(
-                    "app.security.field-encryption-salt 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_SALT（>= 16 字符）");
+                    "app.security.field-encryption-salt 未配置。请设置环境变量 APP_SECURITY_FIELD_ENCRYPTION_SALT"
+                    + "（8 字节 = 16 个 hex 字符，可用 `openssl rand -hex 8` 生成）");
+        }
+        if (!salt.matches("[0-9a-fA-F]{16}")) {
+            throw new IllegalArgumentException(
+                    "app.security.field-encryption-salt 必须是 16 个 hex 字符（8 字节）。"
+                    + "请用 `openssl rand -hex 8` 生成，当前长度: " + salt.length());
         }
         this.encryptor = Encryptors.delux(password, salt);
     }

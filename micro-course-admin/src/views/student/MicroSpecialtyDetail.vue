@@ -110,15 +110,8 @@
           <el-tab-pane :label="$t('microSpecialtyDetail.tabCourses')" name="courses">
             <el-empty v-if="!courses.length" :description="$t('microSpecialtyDetail.noCourses')" />
             <template v-else>
-              <!-- 不合格课程提示 -->
-              <el-alert
-                v-if="focusFailed"
-                type="warning"
-                :title="$t('microSpecialtyDetail.focusFailedAlert')"
-                :closable="false"
-                show-icon
-                class="mg-bottom-12"
-              />
+              <!-- P1-2026-08-21: 移除 focus=failed 误导占位(课程 VO 无 per-course failed 字段，无法按失败过滤，
+                   原 alert 声称"以下是未通过考核的课程"但列表实为全量课程) -->
               <!-- 修读要求汇总卡片 -->
               <div class="ms-requirements-card">
                 <div class="ms-req-item">
@@ -323,10 +316,10 @@
               type="primary"
               size="large"
               :loading="applyLoading"
-              :disabled="!canEnroll"
+              :disabled="!canEnroll || statusLoadFailed"
               @click="handleApply"
             >
-              {{ canEnroll ? $t('microSpecialtyDetail.applyNow') : (!isStudent ? $t('microSpecialtyDetail.studentOnly') : (ms?.status === 'RECRUITING' ? $t('course.pleaseLogin') : $t('microSpecialtyDetail.applyClosed'))) }}
+              {{ statusLoadFailed ? '报名状态加载失败，请刷新重试' : (canEnroll ? $t('microSpecialtyDetail.applyNow') : (!isStudent ? $t('microSpecialtyDetail.studentOnly') : (ms?.status === 'RECRUITING' ? $t('course.pleaseLogin') : $t('microSpecialtyDetail.applyClosed')))) }}
             </el-button>
           </div>
         </div>
@@ -362,7 +355,7 @@ const stats = ref(null)
 const loading = ref(false)
 const error = ref(false)
 const activeTab = ref(route.query.tab || 'courses')
-const focusFailed = ref(route.query.focus === 'failed')
+// P1-2026-08-21: focusFailed 死代码已移除（无 failed 过滤数据支撑）
 const gotoFirst = ref(route.query.goto === 'first')
 
 const courses = ref([])
@@ -372,6 +365,7 @@ const teachers = ref([])
 // Enrollment
 const enrollmentId = ref(null)
 const enrollmentStatus = ref(null)
+const statusLoadFailed = ref(false) // P2: 报名状态查询失败标记
 const applyLoading = ref(false)
 const reapplyLoading = ref(false)
 
@@ -394,14 +388,14 @@ const canReapply = computed(() => {
 const statusLabel = computed(() => {
   if (!ms.value) return ''
   const map = {
-    DRAFT: t('course.draft'),
-    PENDING_REVIEW: t('microSpecialtyDetail.reviewing'),
-    APPROVED: t('course.approved'),
-    REJECTED: t('microSpecialtyDetail.rejected'),
-    ARCHIVED: t('course.archived'),
-    RECRUITING: t('courseSquare.msRecruiting'),
-    COMPLETED: t('microSpecialtyDetail.completed'),
-    CANCELLED: t('microSpecialtyDetail.cancelled')
+    DRAFT: i18nT('course.draft'),
+    PENDING_REVIEW: i18nT('microSpecialtyDetail.reviewing'),
+    APPROVED: i18nT('course.approved'),
+    REJECTED: i18nT('microSpecialtyDetail.rejected'),
+    ARCHIVED: i18nT('course.archived'),
+    RECRUITING: i18nT('courseSquare.msRecruiting'),
+    COMPLETED: i18nT('microSpecialtyDetail.completed'),
+    CANCELLED: i18nT('microSpecialtyDetail.cancelled')
   }
   return map[ms.value.status] || ms.value.status || '—'
 })
@@ -458,6 +452,8 @@ const checkEnrollment = async () => {
       enrollmentStatus.value = found.status
     }
   } catch (e) {
+    // P2-2026-08-21: 查询失败不能误导用户认为"未报名"可立即报名(服务端虽兜底拒绝，但 UI 状态错误)
+    statusLoadFailed.value = true
     console.warn('[MSDetail] 检查报名状态失败:', e)
   }
 }
@@ -465,7 +461,7 @@ const checkEnrollment = async () => {
 // 报名
 const handleApply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning(t('microSpecialtyDetail.studentOnlyApply'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.studentOnlyApply'))
     return
   }
   try {
@@ -479,7 +475,7 @@ const handleApply = async () => {
     ElMessage.success(i18nT('course.signupSuccess'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 报名失败:', e)
       ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.applyFailed'))
@@ -492,11 +488,11 @@ const handleApply = async () => {
 // 重新申请
 const handleReapply = async () => {
   if (!isStudent.value) {
-    ElMessage.warning(t('microSpecialtyDetail.studentOnlyReapply'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.studentOnlyReapply'))
     return
   }
   if (!canReapply.value) {
-    ElMessage.warning(t('microSpecialtyDetail.reapplyNotRecruiting'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.reapplyNotRecruiting'))
     return
   }
   try {
@@ -507,13 +503,13 @@ const handleReapply = async () => {
     )
     reapplyLoading.value = true
     await reapplyEnrollment(enrollmentId.value)
-    ElMessage.success(t('microSpecialtyDetail.reapplied'))
+    ElMessage.success(i18nT('microSpecialtyDetail.reapplied'))
     enrollmentStatus.value = 'PENDING'
   } catch (e) {
-    if (e !== 'cancel') {
+    if (!['cancel', 'close'].includes(e)) {
 // eslint-disable-next-line no-console
       console.debug('[MSDetail] 重新申请失败:', e)
-      ElMessage.error(e?.response?.data?.message || t('microSpecialtyDetail.operationFailed'))
+      ElMessage.error(e?.response?.data?.message || i18nT('microSpecialtyDetail.operationFailed'))
     }
   } finally {
     reapplyLoading.value = false
@@ -544,13 +540,13 @@ const courseClickable = computed(() => {
 const goCourse = (courseId) => {
   if (!courseId) return
   if (!isLoggedIn.value) {
-    ElMessage.warning(t('microSpecialtyDetail.loginToStudy'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.loginToStudy'))
     goLogin()
     return
   }
   const targetPath = resolveCourseDetailPath(courseId)
   if (!targetPath) {
-    ElMessage.warning(t('microSpecialtyDetail.noCourseEntry'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.noCourseEntry'))
     return
   }
   if (isStaffViewer.value) {
@@ -558,19 +554,19 @@ const goCourse = (courseId) => {
     return
   }
   if (!enrollmentStatus.value) {
-    ElMessage.warning(t('microSpecialtyDetail.enrollToStudy'))
+    ElMessage.warning(i18nT('microSpecialtyDetail.enrollToStudy'))
     return
   }
   if (!courseClickable.value) {
     const reapplyTip = ms.value?.status === 'RECRUITING'
-      ? t('microSpecialtyDetail.needReapply')
-      : t('microSpecialtyDetail.reapplyClosed')
+      ? i18nT('microSpecialtyDetail.needReapply')
+      : i18nT('microSpecialtyDetail.reapplyClosed')
     const tipMap = {
-      DROPPED: t('microSpecialtyDetail.droppedTip', { tip: reapplyTip }),
-      REJECTED: t('microSpecialtyDetail.rejectedTip', { tip: reapplyTip }),
-      FAILED: t('microSpecialtyDetail.failedTip', { tip: reapplyTip })
+      DROPPED: i18nT('microSpecialtyDetail.droppedTip', { tip: reapplyTip }),
+      REJECTED: i18nT('microSpecialtyDetail.rejectedTip', { tip: reapplyTip }),
+      FAILED: i18nT('microSpecialtyDetail.failedTip', { tip: reapplyTip })
     }
-    ElMessage.warning(tipMap[enrollmentStatus.value] || t('microSpecialtyDetail.courseNotAccessible'))
+    ElMessage.warning(tipMap[enrollmentStatus.value] || i18nT('microSpecialtyDetail.courseNotAccessible'))
     return
   }
   router.push(targetPath)

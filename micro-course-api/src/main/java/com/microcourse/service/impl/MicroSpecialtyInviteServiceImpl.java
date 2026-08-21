@@ -38,6 +38,7 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     private final MicroSpecialtyTeacherRepository teacherRepository;
     private final MicroSpecialtyRepository msRepository;
     private final UserRepository userRepository;
+    private final com.microcourse.repository.DepartmentRepository departmentRepository;
     private final NotificationService notificationService;
     private final MicroSpecialtyService msService;
     private final ChapterTeacherAssignmentRepository chapterAssignRepository;
@@ -47,13 +48,15 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
                                            UserRepository userRepository,
                                            NotificationService notificationService,
                                            MicroSpecialtyService msService,
-                                           ChapterTeacherAssignmentRepository chapterAssignRepository) {
+                                           ChapterTeacherAssignmentRepository chapterAssignRepository,
+                                           com.microcourse.repository.DepartmentRepository departmentRepository) {
         this.teacherRepository = teacherRepository;
         this.msRepository = msRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.msService = msService;
         this.chapterAssignRepository = chapterAssignRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     @Override
@@ -77,13 +80,52 @@ public class MicroSpecialtyInviteServiceImpl implements MicroSpecialtyInviteServ
     }
 
     @Override
-    public PageResult<?> getPendingCrossDeptInvites(int page, int size) {
-        IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(
-                new Page<>(page + 1, size),
-                new LambdaQueryWrapper<MicroSpecialtyTeacher>()
-                        .in(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC", "PENDING")
-                        .orderByDesc(MicroSpecialtyTeacher::getInvitedAt));
-        return PageResult.of(ipage);
+    public PageResult<?> getPendingCrossDeptInvites(int page, int size, String inviteStatus) {
+        LambdaQueryWrapper<MicroSpecialtyTeacher> qw = new LambdaQueryWrapper<>();
+        // P1-2026-08-21: 支持"全部"tab(不传 status 查全部状态)；默认只查待审批
+        if (inviteStatus != null && !inviteStatus.isBlank()) {
+            qw.eq(MicroSpecialtyTeacher::getInviteStatus, inviteStatus);
+        } else {
+            qw.in(MicroSpecialtyTeacher::getInviteStatus, "PENDING_ACADEMIC", "PENDING");
+        }
+        qw.orderByDesc(MicroSpecialtyTeacher::getInvitedAt);
+        IPage<MicroSpecialtyTeacher> ipage = teacherRepository.selectPage(new Page<>(page + 1, size), qw);
+        // P1-2026-08-21: 实体无 teacherName/微专业标题/学院名 → 前端 4 列空白，映射为 VO 补齐展示字段
+        java.util.List<com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO> voList = new java.util.ArrayList<>();
+        java.util.Map<Long, MicroSpecialty> msCache = new java.util.HashMap<>();
+        java.util.Map<Long, User> userCache = new java.util.HashMap<>();
+        java.util.Map<Long, String> deptCache = new java.util.HashMap<>();
+        for (MicroSpecialtyTeacher t : ipage.getRecords()) {
+            com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO vo = new com.microcourse.dto.microSpecialty.MicroSpecialtyTeacherVO();
+            vo.setId(t.getId());
+            vo.setMicroSpecialtyId(t.getMicroSpecialtyId());
+            vo.setTeacherId(t.getTeacherId());
+            vo.setRole(t.getRole());
+            vo.setCourseId(t.getCourseId());
+            vo.setResponsibility(t.getResponsibility());
+            vo.setInviteStatus(t.getInviteStatus());
+            MicroSpecialty ms = msCache.computeIfAbsent(t.getMicroSpecialtyId(), msRepository::selectById);
+            if (ms != null) vo.setMicroSpecialtyTitle(ms.getTitle());
+            User u = userCache.computeIfAbsent(t.getTeacherId(), userRepository::selectById);
+            if (u != null) {
+                vo.setTeacherName(u.getRealName() != null ? u.getRealName() : u.getUsername());
+                if (u.getDepartmentId() != null) {
+                    String deptName = deptCache.computeIfAbsent(u.getDepartmentId(), did -> {
+                        com.microcourse.entity.Department d = departmentRepository == null ? null : departmentRepository.selectById(did);
+                        return d != null ? d.getName() : null;
+                    });
+                    vo.setTeacherCollege(deptName);
+                }
+            }
+            vo.setSpecialtyCollege(ms != null && ms.getOfferDepartmentId() != null
+                    ? deptCache.computeIfAbsent(ms.getOfferDepartmentId(), did -> {
+                        com.microcourse.entity.Department d = departmentRepository == null ? null : departmentRepository.selectById(did);
+                        return d != null ? d.getName() : null;
+                    })
+                    : null);
+            voList.add(vo);
+        }
+        return PageResult.of(voList, ipage.getTotal(), page, size);
     }
 
     @Override
