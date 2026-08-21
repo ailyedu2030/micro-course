@@ -376,8 +376,11 @@ async function checkPrerequisiteChapters(exam) {
     // 3. 检查所有 sortOrder < currentSortOrder 的章节是否已完成
     const previousChapters = chapters.filter(c => (c.sortOrder || 0) < currentSortOrder)
     for (const prev of previousChapters) {
-      const progress = progressList.find(p => Number(p.chapterId) === Number(prev.id))
-      if (!progress || !progress.completed) {
+      // P1-I-2026-08-21: 进度行按课时(chapterId+sectionId)拆分，单行判定整章完成过松/误拦；
+      // 改为聚合该章节全部课时行——全部 completed 才算章节完成
+      const chapterRows = progressList.filter(p => Number(p.chapterId) === Number(prev.id))
+      const chapterComplete = chapterRows.length > 0 && chapterRows.every(p => p.completed)
+      if (!chapterComplete) {
         return false
       }
     }
