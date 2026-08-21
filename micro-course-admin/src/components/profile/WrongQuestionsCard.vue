@@ -114,7 +114,9 @@ const fetchMyEnrollments = async () => {
     const res = await getMyEnrollments({ userId })
     myCourses.value = filterCourseCollectionEnrollments(res.data?.items || res.data || [])
   } catch {
-    // silent
+    // P2-2026-08-21: 失败静默会让课程筛选下拉空且无原因提示
+    console.warn('[WrongQuestionsCard] 获取选课列表失败', new Error().stack)
+    ElMessage.warning('课程列表加载失败，筛选可能不完整')
   }
 }
 

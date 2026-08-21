@@ -31,11 +31,11 @@
           <el-icon v-else color="var(--el-text-color-placeholder)" :size="isMobile ? 28 : 32"><Lock /></el-icon>
         </div>
         <div class="badge-name">{{ badge.badgeName }}</div>
-        <div v-if="badge.earnedAt" class="badge-date">{{ badge.earnedAt }}</div>
+        <div v-if="badge.earnedAt" class="badge-date">{{ formatBadgeDate(badge.earnedAt) }}</div>
         <div v-else class="badge-tip">未解锁</div>
       </div>
     </div>
-    <el-empty v-if="!badgeLoading && allBadges.length === 0" description="暂无成就数据" :image-size="60" />
+    <!-- P2-2026-08-21: allBadges 恒 3 项(锁定态设计)，此空态永不触发 → 移除死代码 -->
   </el-card>
 </template>
 
@@ -66,6 +66,14 @@ const allBadges = computed(() => {
     return earned ? { ...b, ...earned } : { ...b, earnedAt: null }
   })
 })
+
+// P2-2026-08-21: earnedAt 原始 ISO 时间戳直出 → 格式化为本地日期
+function formatBadgeDate(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
 
 const goToAchievements = () => {
   router.push('/student/achievements')
