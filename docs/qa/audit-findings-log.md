@@ -836,3 +836,19 @@
 - VideoPlayer 进度按 chapterId 而非 videoId（多视频串档，需重构进度流）。
 - SlidePlayer 学生主流程 sectionId 缺失（需入口传参链路改造）。
 - 其余 P2 死代码/空态/移动端细节见 审查报告-学生端教务处公共页.md 及各子代理报告。
+
+---
+
+## 2026-08-21 补修轮 · 学生端/教务端剩余 P1（9 项）
+
+| # | 位置 | 问题 | 修复 |
+|---|------|------|------|
+| 1 | SlidePlayer updateVideoProgress | 学生主入口无 sectionId → 课件进度永不落库 | 页面派生 effectiveSectionId |
+| 2 | SlidePlayer ensureProgress/markSlideComplete | Number(null)=0 查重恒失败 → 重复记录无界累积 | 按 sectionId 匹配 + effective ids |
+| 3 | MicroSpecialtyProgressServiceImpl | progress x100(0-1) 与退课拦截/渲染(0-100)矛盾 | 统一 0-100 去 x100 |
+| 4 | 跨学院审核全部tab | 与待审批数据相同(后端硬编码) | getPendingCrossDeptInvites 加 inviteStatus 参数 |
+| 5 | WeeklyReport | 练习数/正确率用终身累计冒充周数据 | accuracy-trend 按日聚合本周 |
+| 6 | Exams | 依赖不存在 startTime 的死状态机 | 移除 _expired/_notStarted 死分支 |
+| 7 | Login | 423 双 toast 时长矛盾 | 拦截器对齐15分钟 + 移除重复提示 |
+| 8 | MyCourses | 选课大于20门不可见 | size:200 |
+| 9 | MicroSpecialtyReview + focus=failed | 字段错配列空白 + 误导占位 | 字段对齐 + 移除误导 alert |
