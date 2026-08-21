@@ -82,7 +82,7 @@
             <el-tag v-if="course.categoryName" size="small" effect="plain" type="info">{{ course.categoryName }}</el-tag>
           </div>
           <div class="hero-stats">
-            <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ course.avgRating.toFixed(1) }}</strong> {{ $t('course.scoreUnit') }}</span>
+            <span v-if="course.avgRating" class="hero-stat"><el-icon><Star /></el-icon> <strong>{{ Number(course.avgRating).toFixed(1) }}</strong> {{ $t('course.scoreUnit') }}</span>
             <span v-if="course.studentCount" class="hero-stat"><el-icon><User /></el-icon> <strong>{{ course.studentCount }}</strong> {{ $t('course.peopleLearning') }}</span>
           </div>
 
@@ -384,7 +384,7 @@
     </el-dialog>
 
     <!-- 写评价弹窗 -->
-    <el-dialog v-model="reviewDialogVisible" :title="$t('course.writeReview')" width="480px">
+    <el-dialog v-model="reviewDialogVisible" :title="$t('course.writeReview')" width="480px" class="responsive-dialog">
         <el-form :model="reviewForm" :rules="reviewRules">
           <el-form-item :label="$t('course.rating')" prop="rating">
             <el-rate v-model="reviewForm.rating" />
@@ -400,7 +400,7 @@
       </el-dialog>
 
     <!-- 回复评价弹窗 -->
-    <el-dialog v-model="replyDialogVisible" :title="$t('course.replyReviewTitle')" width="480px">
+    <el-dialog v-model="replyDialogVisible" :title="$t('course.replyReviewTitle')" width="480px" class="responsive-dialog">
       <el-form :model="replyForm" :rules="replyRules">
         <el-form-item :label="$t('course.reply')" prop="content">
           <el-input v-model="replyForm.content" type="textarea" :rows="4" maxlength="500" show-word-limit :placeholder="$t('course.replyPlaceholder')" />
@@ -594,10 +594,8 @@ const stopPreview = () => {
   if (videoRef.value) { videoRef.value.pause(); videoRef.value.src = '' }
 }
 
-const isMobile = ref(window.innerWidth <= 768)
-const handleResize = () => { isMobile.value = window.innerWidth <= 768 }
-window.addEventListener('resize', handleResize)
-onBeforeUnmount(() => { window.removeEventListener('resize', handleResize); if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null } })
+// P2-2026-08-21: 移除模板未使用的 isMobile 死代码与全局 resize 监听(监听泄漏)
+onBeforeUnmount(() => { if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null } })
 
 const defaultCoverUrl = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" fill="%23e0e0e0"><rect width="280" height="180" rx="8"/><text x="140" y="95" text-anchor="middle" fill="%23999" font-size="16">${t('course.noCoverText')}</text></svg>`)
 const handleCoverError = (e) => { e.target.src = defaultCoverUrl }
@@ -652,7 +650,8 @@ const fetchTeacher = async () => {
 const checkEnrollment = async () => {
   if (!isLoggedIn.value || !courseId.value) return
   const uid = userStore.userInfo?.id; if (!uid) return
-  try { const { data } = await getMyEnrollments(); const list = Array.isArray(data) ? data : (data?.items || []); const match = list.find(e => String(e.courseId) === String(courseId.value)); isEnrolled.value = match && ['ENROLLED','APPROVED','COMPLETED','WAITLIST','SUSPENDED'].includes(match.enrollmentStatus); isWaitlisted.value = match?.enrollmentStatus === 'WAITLIST' }
+  // P2-2026-08-21: 不带 size 后端默认 20 条，选课>20 门时误判未选课(自愈型但误导)
+  try { const { data } = await getMyEnrollments({ page: 0, size: 200 }); const list = Array.isArray(data) ? data : (data?.items || []); const match = list.find(e => String(e.courseId) === String(courseId.value)); isEnrolled.value = match && ['ENROLLED','APPROVED','COMPLETED','WAITLIST','SUSPENDED'].includes(match.enrollmentStatus); isWaitlisted.value = match?.enrollmentStatus === 'WAITLIST' }
   catch (e) { console.warn('[CourseDetail] checkEnrollment 获取选课状态失败', e); isEnrolled.value = false }
 }
 
@@ -1422,5 +1421,7 @@ onMounted(async () => {
     z-index: var(--z-sticky);
     border-radius: 0;
   }
+  /* P2-2026-08-21: 评价/回复弹窗 375px 不横向溢出 */
+  :deep(.responsive-dialog) { width: 92vw !important; max-width: 480px; }
 }
 </style>

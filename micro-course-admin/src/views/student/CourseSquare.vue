@@ -338,6 +338,24 @@ v-for="item in featured" :key="'feat-'+item.id"
             </div>
           </div>
         </div>
+        <!-- P2-2026-08-21: 仅返回招募数据时区块不再空白 -->
+        <div v-if="!goldFeatured.length && !featured.length && recruiting.length" class="ms-recruiting-row">
+          <div
+v-for="item in recruiting" :key="'recr-'+item.id"
+            class="ms-card" role="button" tabindex="0"
+            :aria-label="item.title" @click="goMSDetail(item.id)" @keydown.enter="goMSDetail(item.id)"
+>
+            <div class="ms-card-cover">
+              <img v-if="item.coverUrl" :src="item.coverUrl" :alt="item.title" loading="lazy" class="ms-cover-img" />
+              <div v-else class="ms-cover-placeholder"><el-icon :size="28"><Notebook /></el-icon></div>
+              <span class="ms-new-badge">招生中</span>
+            </div>
+            <div class="ms-card-body">
+              <h4 class="ms-card-title">{{ item.title }}</h4>
+              <p class="ms-card-dept">{{ item.departmentName }}</p>
+            </div>
+          </div>
+        </div>
       </template>
       <!-- P1-C-12-03 fix: 无数据时显示空态文案,不再整段隐藏 -->
       <el-empty v-else :description="$t('courseSquare.noMSProjects')" />
@@ -647,7 +665,10 @@ const handleSearch = () => {
 }
 
 // 重置
+// P2-2026-08-21: 清空 keyword 会触发 watch 的延迟 fetch，与下方 fetchCourses 重复 → 用标记跳过 watch
+let skipKeywordWatch = false
 const handleReset = () => {
+  skipKeywordWatch = true
   searchForm.keyword = ''
   searchForm.difficulty = ''
   searchForm.offerDepartmentId = ''
@@ -664,13 +685,17 @@ const handleCategoryChange = () => {
 }
 
 // 翻页
+// P2-2026-08-21: el-pagination 切 size 会同时触发 size-change 与 current-change → 双请求去重
+let sizeChangePending = false
 const handleSizeChange = (newSize) => {
   size.value = newSize
   page.value = 1
+  sizeChangePending = true
   fetchCourses()
 }
 
 const handlePageChange = (newPage) => {
+  if (sizeChangePending) { sizeChangePending = false; return } // 已由 size-change 触发
   page.value = newPage
   fetchCourses()
 }
@@ -764,6 +789,7 @@ let debounceTimer = null
 
 // P1I-006: 单字符搜索不再阻塞 — 移除 length >= 2 的限制
 watch(() => searchForm.keyword, (newVal, oldVal) => {
+  if (skipKeywordWatch) { skipKeywordWatch = false; return }
   if (debounceTimer) clearTimeout(debounceTimer)
   if (!newVal) {
     debounceTimer = setTimeout(() => {
