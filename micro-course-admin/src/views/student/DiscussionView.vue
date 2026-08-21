@@ -172,6 +172,7 @@
             :comment="comment"
             :depth="0"
             :replying-id="replyingCommentId"
+            :reply-disabled="currentPost.status === 0 || currentPost.status === 2"
             @reply="handleReply"
             @like="handleLikeComment"
           />
@@ -216,7 +217,6 @@
 <script setup>
 import { ref, reactive, onMounted, computed, onUnmounted, watch } from 'vue'
 import { useUrlPagination } from '@/composables/useUrlPagination';
-import { swrCache } from '@/composables/useStaleWhileRevalidate';
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getPosts, createPost, getPostById, getComments, createComment, likeComment, deletePost } from '@/api/discussion'
@@ -245,7 +245,8 @@ const { bindToQuery } = useUrlPagination()
 bindToQuery(page, size, null, [])
 
 const checkMobile = () => {
-  isMobile.value = window.innerWidth < 768
+  // P2-2026-08-21: 与初始化断点统一(<=768)，避免 768px 精确边界行为跳变
+  isMobile.value = window.innerWidth <= 768
 }
 
 const handleResize = () => {
@@ -505,6 +506,8 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', handleResize)
+  // P2-2026-08-21: 清理 size-change 防抖定时器，避免卸载后执行 fetchData
+  if (fetchTimer) clearTimeout(fetchTimer)
 })
 </script>
 
