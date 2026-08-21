@@ -316,10 +316,10 @@
               type="primary"
               size="large"
               :loading="applyLoading"
-              :disabled="!canEnroll"
+              :disabled="!canEnroll || statusLoadFailed"
               @click="handleApply"
             >
-              {{ canEnroll ? $t('microSpecialtyDetail.applyNow') : (!isStudent ? $t('microSpecialtyDetail.studentOnly') : (ms?.status === 'RECRUITING' ? $t('course.pleaseLogin') : $t('microSpecialtyDetail.applyClosed'))) }}
+              {{ statusLoadFailed ? '报名状态加载失败，请刷新重试' : (canEnroll ? $t('microSpecialtyDetail.applyNow') : (!isStudent ? $t('microSpecialtyDetail.studentOnly') : (ms?.status === 'RECRUITING' ? $t('course.pleaseLogin') : $t('microSpecialtyDetail.applyClosed')))) }}
             </el-button>
           </div>
         </div>
@@ -365,6 +365,7 @@ const teachers = ref([])
 // Enrollment
 const enrollmentId = ref(null)
 const enrollmentStatus = ref(null)
+const statusLoadFailed = ref(false) // P2: 报名状态查询失败标记
 const applyLoading = ref(false)
 const reapplyLoading = ref(false)
 
@@ -451,6 +452,8 @@ const checkEnrollment = async () => {
       enrollmentStatus.value = found.status
     }
   } catch (e) {
+    // P2-2026-08-21: 查询失败不能误导用户认为"未报名"可立即报名(服务端虽兜底拒绝，但 UI 状态错误)
+    statusLoadFailed.value = true
     console.warn('[MSDetail] 检查报名状态失败:', e)
   }
 }
