@@ -94,7 +94,8 @@ const localData = ref(JSON.parse(JSON.stringify(props.modelValue || [])))
 watch(
   () => props.modelValue,
   (v) => {
-    localData.value = v || []
+    // P2-2026-08-21: 深拷贝回写，避免直接引用父 prop 数组后被 addRow/removeRow mutation 污染父级
+    localData.value = JSON.parse(JSON.stringify(v || []))
   },
   { deep: true }
 )

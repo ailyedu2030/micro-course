@@ -3,8 +3,9 @@
     <div v-if="localUrl && !uploading" class="preview-area">
       <img :src="localUrl" alt="预览" class="preview-img" @click="handleSelect" />
       <div class="preview-actions">
-        <el-button size="small" type="primary" link @click="handleSelect">更换</el-button>
-        <el-button size="small" type="danger" link @click="handleRemove">删除</el-button>
+        <!-- P2-2026-08-21: readonly/disabled 模式下禁止更换/删除(原只禁用上传入口) -->
+        <el-button size="small" type="primary" link :disabled="disabled || readonly" @click="handleSelect">更换</el-button>
+        <el-button size="small" type="danger" link :disabled="disabled || readonly" @click="handleRemove">删除</el-button>
       </div>
     </div>
 
@@ -41,6 +42,7 @@ const props = defineProps({
   imageUrl: { type: String, default: '' },
   label: { type: String, default: '签名' },
   disabled: { type: Boolean, default: false },
+  readonly: { type: Boolean, default: false }, // P2: 只读预览(禁止更换/删除)
   // P1-UX: 接受外部传入的上传函数 (file, onProgress) => Promise<{url, fileName, fileSize}>
   // 父组件需实现真实后端调用 + 进度回调
   uploader: { type: Function, default: null }

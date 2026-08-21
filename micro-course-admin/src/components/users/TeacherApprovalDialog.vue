@@ -41,7 +41,7 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getUsers, updateTeacherStatus } from '@/api/user'
 
 const props = defineProps({
@@ -77,23 +77,37 @@ async function loadPendingTeachers() {
   }
 }
 
+// P2-2026-08-21: actingId 防重入 + 驳回二次确认
+const actingId = ref(null)
+
 async function handleApprove(row) {
+  if (actingId.value) return
+  actingId.value = row.id
   try {
     await updateTeacherStatus(row.id, { teacherStatus: 1, reason: '' })
     ElMessage.success(`教师 ${row.realName} 审核通过`)
     loadPendingTeachers()
   } catch {
     ElMessage.error('操作失败')
+  } finally {
+    actingId.value = null
   }
 }
 
 async function handleReject(row) {
+  if (actingId.value) return
+  try {
+    await ElMessageBox.confirm(`确定驳回教师 ${row.realName} 的入驻申请？驳回后需重新申请`, '驳回确认', { type: 'warning', confirmButtonText: '驳回', cancelButtonText: '取消' })
+  } catch { return }
+  actingId.value = row.id
   try {
     await updateTeacherStatus(row.id, { teacherStatus: 2, reason: '' })
     ElMessage.success(`教师 ${row.realName} 已驳回`)
     loadPendingTeachers()
   } catch {
     ElMessage.error('操作失败')
+  } finally {
+    actingId.value = null
   }
 }
 

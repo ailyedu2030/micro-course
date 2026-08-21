@@ -94,7 +94,8 @@ const handleSubmit = async () => {
   }
   // F-2026-08-10-17: 提交时把下拉复合值映射回 sectionType + coursewareType
   const { sectionType, coursewareType } = optionToSectionType(form.sectionType)
+  // P2-2026-08-21: 不再乐观关闭——父组件提交成功后才置 v-model=false；
+  // 原 emit 后立即 handleClose()，父组件异步失败时弹窗已关、表单已丢
   emit('submit', { ...form, sectionType, coursewareType })
-  handleClose()
 }
 </script>
